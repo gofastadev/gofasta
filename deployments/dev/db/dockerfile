@@ -1,0 +1,3 @@
+From postgres:14-alpine as go-gql-template_db_build_dev
+
+EXPOSE 5432

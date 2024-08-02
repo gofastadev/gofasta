@@ -1,0 +1,7 @@
+From golang:1.22.5-alpine3.20 as go-gql-template_api_build_dev
+
+RUN go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+
+WORKDIR /go-gql-template
+
+expose $PORT
