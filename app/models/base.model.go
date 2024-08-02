@@ -9,6 +9,7 @@ import (
 )
 
 type BaseModel interface {
+	gorm.Model
 	GetID() uuid.UUID
 	GetCreatedAt() time.Time
 	GetUpdatedAt() time.Time
@@ -17,8 +18,8 @@ type BaseModel interface {
 // This is a concrete implementation of BaseModel
 type BaseModelImpl struct {
 	ID        uuid.UUID `gorm:"type:uuid;primary_key;"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	CreatedAt time.Time `gorm:"type:timestamp;not null;"`
+	UpdatedAt time.Time `gorm:"type:timestamp;not null;"`
 }
 
 func (b BaseModelImpl) GetID() uuid.UUID        { return b.ID }

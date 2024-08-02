@@ -6,14 +6,13 @@ package resolvers
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/healtronlabs/go_gql_template/app"
 	"github.com/healtronlabs/go_gql_template/app/graphql/goTypes"
 )
 
 // CreateUser is the resolver for the createUser field.
-func (r *mutationResolver) CreateUser(ctx context.Context, input goTypes.NewUser) (*goTypes.User, error) {
+func (r *mutationResolver) CreateUser(ctx context.Context, input goTypes.NewUserDto) (*goTypes.User, error) {
 	return r.UserService.CreateUser(input)
 }
 
@@ -35,26 +34,6 @@ func (r *userResolver) CreatedAt(ctx context.Context, obj *goTypes.User) (string
 // UpdatedAt is the resolver for the updatedAt field.
 func (r *userResolver) UpdatedAt(ctx context.Context, obj *goTypes.User) (string, error) {
 	return obj.UpdatedAt.String(), nil
-}
-
-// FirstName is the resolver for the firstName field.
-func (r *userResolver) FirstName(ctx context.Context, obj *goTypes.User) (string, error) {
-	panic(fmt.Errorf("not implemented: FirstName - firstName"))
-}
-
-// OtherNames is the resolver for the otherNames field.
-func (r *userResolver) OtherNames(ctx context.Context, obj *goTypes.User) (string, error) {
-	panic(fmt.Errorf("not implemented: OtherNames - otherNames"))
-}
-
-// Email is the resolver for the email field.
-func (r *userResolver) Email(ctx context.Context, obj *goTypes.User) (string, error) {
-	panic(fmt.Errorf("not implemented: Email - email"))
-}
-
-// PhoneNumber is the resolver for the phoneNumber field.
-func (r *userResolver) PhoneNumber(ctx context.Context, obj *goTypes.User) (string, error) {
-	panic(fmt.Errorf("not implemented: PhoneNumber - phoneNumber"))
 }
 
 // User returns app.UserResolver implementation.

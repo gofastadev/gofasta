@@ -23,9 +23,21 @@ func (u *UserService) GetUsers() ([]*goTypes.User, error) {
 	return res, nil
 }
 
-func (u *UserService) CreateUser(input goTypes.NewUser) (*goTypes.User, error) {
-	userData := models.User{Name: input.Name}
+func (u *UserService) CreateUser(input goTypes.NewUserDto) (*goTypes.User, error) {
+	userData := models.User{
+		FirstName: input.FirstName,
+		OtherNames: input.OtherNames,
+		PhoneNumber: input.PhoneNumber,
+		Email: input.Email,
+		Password: "Just a random password",
+	}
 	result := u.DB.Create(&userData)
-	user := &goTypes.User{Name: userData.Name, Id: userData.ID}
+	user := &goTypes.User{
+		Id: userData.ID,
+		FirstName: userData.FirstName,
+		OtherNames: userData.OtherNames,
+		PhoneNumber: userData.PhoneNumber,
+		Email: userData.Email,
+	}
 	return user, result.Error
 }

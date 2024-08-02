@@ -12,10 +12,13 @@ extend type Query {
   users: [User!]!
 }
 
-input NewUser {
-  name: String!
+input NewUserDto {
+  firstName: String!
+  otherNames: String!
+  email: String!
+  phoneNumber: String!
 }
 
 extend type Mutation {
-  createUser(input: NewUser!): User!
+  createUser(input: NewUserDto!): User!
 }

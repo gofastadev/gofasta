@@ -7,12 +7,18 @@ import (
 )
 
 type User struct {
-	Id        uuid.UUID `json:"id"`
-	Name      string    `json:"name" gorm:"not null"`
-	CreatedAt time.Time `json:"createdAt"`
-	UpdatedAt time.Time `json:"updatedAt"`
+	Id          uuid.UUID `json:"id"`
+	FirstName   string    `json:"firstName"`
+	OtherNames  string    `json:"otherNames"`
+	Email       string    `json:"email"`
+	PhoneNumber string    `json:"phoneNumber"`
+	CreatedAt   time.Time `json:"createdAt"`
+	UpdatedAt   time.Time `json:"updatedAt"`
 }
 
-type NewUser struct {
-	Name string `json:"name"`
+type NewUserDto struct {
+	FirstName   string `json:"firstName"`
+	OtherNames  string `json:"otherNames"`
+	Email       string `json:"email"`
+	PhoneNumber string `json:"phoneNumber"`
 }
