@@ -22,3 +22,11 @@ type NewUserDto struct {
 	Email       string `json:"email"`
 	PhoneNumber string `json:"phoneNumber"`
 }
+
+type UserFiltersDto struct {
+	Id          *string `json:"id,omitempty"`
+	FirstName   *string `json:"firstName,omitempty"`
+	OtherNames  *string `json:"otherNames,omitempty"`
+	Email       *string `json:"email,omitempty"`
+	PhoneNumber *string `json:"phoneNumber,omitempty"`
+}

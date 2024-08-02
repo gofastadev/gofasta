@@ -11,7 +11,7 @@ type User {
 
 # QUERIES
 extend type Query {
-  users: [User!]!
+  users(filters: UserFiltersDto!): [User!]!
 }
 
 # MUTATIONS
@@ -25,4 +25,12 @@ input NewUserDto {
   otherNames: String!
   email: String!
   phoneNumber: String!
+}
+
+input UserFiltersDto {
+  id: String
+  firstName: String
+  otherNames: String
+  email: String
+  phoneNumber: String
 }

@@ -17,7 +17,7 @@ func NewUserService(db *gorm.DB) *UserService {
 	return &UserService{DB: db}
 }
 
-func (u *UserService) GetUsers() ([]*goTypes.User, error) {
+func (u *UserService) GetUsers(filters goTypes.UserFiltersDto) ([]*goTypes.User, error) {
 	var res []*goTypes.User
 	result := u.DB.Find(&res)
 	if result.Error != nil {

@@ -55,7 +55,7 @@ type ComplexityRoot struct {
 
 	Query struct {
 		QueryHealth func(childComplexity int) int
-		Users       func(childComplexity int) int
+		Users       func(childComplexity int, filters goTypes.UserFiltersDto) int
 	}
 
 	User struct {
@@ -75,7 +75,7 @@ type MutationResolver interface {
 }
 type QueryResolver interface {
 	QueryHealth(ctx context.Context) (string, error)
-	Users(ctx context.Context) ([]*goTypes.User, error)
+	Users(ctx context.Context, filters goTypes.UserFiltersDto) ([]*goTypes.User, error)
 }
 type UserResolver interface {
 	ID(ctx context.Context, obj *goTypes.User) (string, error)
@@ -133,7 +133,12 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			break
 		}
 
-		return e.complexity.Query.Users(childComplexity), true
+		args, err := ec.field_Query_users_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.Users(childComplexity, args["filters"].(goTypes.UserFiltersDto)), true
 
 	case "User.createdAt":
 		if e.complexity.User.CreatedAt == nil {
@@ -193,6 +198,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	ec := executionContext{rc, e, 0, 0, make(chan graphql.DeferredResult)}
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
 		ec.unmarshalInputNewUserDto,
+		ec.unmarshalInputUserFiltersDto,
 	)
 	first := true
 
@@ -338,6 +344,21 @@ func (ec *executionContext) field_Query___type_args(ctx context.Context, rawArgs
 		}
 	}
 	args["name"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_users_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 goTypes.UserFiltersDto
+	if tmp, ok := rawArgs["filters"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("filters"))
+		arg0, err = ec.unmarshalNUserFiltersDto2githubᚗcomᚋhealtronlabsᚋgo_gql_templateᚋappᚋgraphqlᚋgoTypesᚐUserFiltersDto(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["filters"] = arg0
 	return args, nil
 }
 
@@ -552,7 +573,7 @@ func (ec *executionContext) _Query_users(ctx context.Context, field graphql.Coll
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Users(rctx)
+		return ec.resolvers.Query().Users(rctx, fc.Args["filters"].(goTypes.UserFiltersDto))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -569,7 +590,7 @@ func (ec *executionContext) _Query_users(ctx context.Context, field graphql.Coll
 	return ec.marshalNUser2ᚕᚖgithubᚗcomᚋhealtronlabsᚋgo_gql_templateᚋappᚋgraphqlᚋgoTypesᚐUserᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_Query_users(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Query_users(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Query",
 		Field:      field,
@@ -594,6 +615,17 @@ func (ec *executionContext) fieldContext_Query_users(_ context.Context, field gr
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_users_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
 	}
 	return fc, nil
 }
@@ -2856,6 +2888,61 @@ func (ec *executionContext) unmarshalInputNewUserDto(ctx context.Context, obj in
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputUserFiltersDto(ctx context.Context, obj interface{}) (goTypes.UserFiltersDto, error) {
+	var it goTypes.UserFiltersDto
+	asMap := map[string]interface{}{}
+	for k, v := range obj.(map[string]interface{}) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"id", "firstName", "otherNames", "email", "phoneNumber"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "id":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Id = data
+		case "firstName":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("firstName"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.FirstName = data
+		case "otherNames":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("otherNames"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.OtherNames = data
+		case "email":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("email"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Email = data
+		case "phoneNumber":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("phoneNumber"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.PhoneNumber = data
+		}
+	}
+
+	return it, nil
+}
+
 // endregion **************************** input.gotpl *****************************
 
 // region    ************************** interface.gotpl ***************************
@@ -3623,6 +3710,11 @@ func (ec *executionContext) marshalNUser2ᚖgithubᚗcomᚋhealtronlabsᚋgo_gql
 		return graphql.Null
 	}
 	return ec._User(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNUserFiltersDto2githubᚗcomᚋhealtronlabsᚋgo_gql_templateᚋappᚋgraphqlᚋgoTypesᚐUserFiltersDto(ctx context.Context, v interface{}) (goTypes.UserFiltersDto, error) {
+	res, err := ec.unmarshalInputUserFiltersDto(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalN__Directive2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐDirective(ctx context.Context, sel ast.SelectionSet, v introspection.Directive) graphql.Marshaler {
