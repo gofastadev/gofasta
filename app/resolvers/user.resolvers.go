@@ -7,8 +7,8 @@ package resolvers
 import (
 	"context"
 
-	"github.com/healtronlabs/go-gql-template/app"
-	"github.com/healtronlabs/go-gql-template/app/graphql/goTypes"
+	"github.com/healtronlabs/go_gql_template/app"
+	"github.com/healtronlabs/go_gql_template/app/graphql/goTypes"
 )
 
 // CreateUser is the resolver for the createUser field.

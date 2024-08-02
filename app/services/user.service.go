@@ -1,8 +1,8 @@
 package services
 
 import (
-	"github.com/healtronlabs/go-gql-template/app/graphql/goTypes"
-	"github.com/healtronlabs/go-gql-template/app/models"
+	"github.com/healtronlabs/go_gql_template/app/graphql/goTypes"
+	"github.com/healtronlabs/go_gql_template/app/models"
 	"gorm.io/gorm"
 )
 

@@ -1,4 +1,4 @@
-module github.com/healtronlabs/go-gql-template
+module github.com/healtronlabs/go_gql_template
 
 go 1.22.5
 

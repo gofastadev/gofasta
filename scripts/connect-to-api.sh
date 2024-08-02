@@ -1,6 +1,6 @@
 #!/bin/sh
 
-cd /go-gql-template
+cd /go_gql_template
 
 source .env
 

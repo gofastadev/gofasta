@@ -1,5 +1,5 @@
 services:
-  go-gql-template_go:
+  go_gql_template_go:
     build:
       context: .
       dockerfile: deployments/dev/app/dockerfile
@@ -11,7 +11,7 @@ services:
     volumes:
       - type: bind
         source: .
-        target: /go-gql-template
+        target: /go_gql_template
     ports:
       - $PORT:$PORT
     command: sh -c 'go mod tidy && go run github.com/air-verse/air'
@@ -21,7 +21,7 @@ services:
     profiles:
       - main
 
-  go-gql-template_postgres:
+  go_gql_template_postgres:
     build:
       context: .
       dockerfile: deployments/dev/db/dockerfile

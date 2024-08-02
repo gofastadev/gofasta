@@ -14,7 +14,7 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/introspection"
-	"github.com/healtronlabs/go-gql-template/app/graphql/goTypes"
+	"github.com/healtronlabs/go_gql_template/app/graphql/goTypes"
 	gqlparser "github.com/vektah/gqlparser/v2"
 	"github.com/vektah/gqlparser/v2/ast"
 )

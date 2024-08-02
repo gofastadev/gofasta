@@ -17,7 +17,7 @@ func serve() {
 		port = defaultPort
 	}
 
-	http.Handle("/", playground.Handler("GraphQL playground", "/query"))
+	http.Handle("/", playground.Handler("GraphQL playground", "/graphql"))
 	http.Handle("/graphql", setupAndInitializeDb())
 
 	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
