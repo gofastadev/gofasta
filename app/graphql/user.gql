@@ -1,3 +1,4 @@
+# OBJECT TYPES FOR OUTPUT
 type User {
   id: ID!
   createdAt: DateTime!
@@ -8,17 +9,20 @@ type User {
   phoneNumber: String!
 }
 
+# QUERIES
 extend type Query {
   users: [User!]!
 }
 
+# MUTATIONS
+extend type Mutation {
+  createUser(input: NewUserDto!): User!
+}
+
+# INPUTS
 input NewUserDto {
   firstName: String!
   otherNames: String!
   email: String!
   phoneNumber: String!
-}
-
-extend type Mutation {
-  createUser(input: NewUserDto!): User!
 }
