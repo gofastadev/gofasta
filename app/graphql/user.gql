@@ -2,7 +2,10 @@ type User {
   id: ID!
   createdAt: DateTime!
   updatedAt: DateTime!
-  name: String!
+  firstName: String!
+  otherNames: String!
+  email: String!
+  phoneNumber: String!
 }
 
 extend type Query {
