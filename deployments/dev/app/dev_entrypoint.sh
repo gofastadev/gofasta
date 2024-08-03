@@ -33,7 +33,7 @@ echo "Installing all dependencies..."
 go mod tidy
 
 echo "Waiting for postgres to be available..."
-sh deployments/dev/app/wait-for-it.sh -t 30 -q go_gql_template_db_container_dev:5432
+sh deployments/dev/app/wait-for-it.sh -t 30 -q ${PROJECT_NAME}_db_container_dev:5432
 
 if [ -z "${DATABASE_URL:-}" ]; then
   warnfail "DATABASE_URL is not set"
