@@ -69,3 +69,7 @@ func (u *UserService) CreateUser(input dtos.NewUserDto) (*dtos.User, error) {
 	}
 	return user, result.Error
 }
+
+func (u *UserService) UpdateUser(input dtos.UserFieldsForUpdateDto) (*dtos.User, error) {
+	return nil, nil
+}

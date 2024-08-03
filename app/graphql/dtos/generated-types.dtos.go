@@ -55,6 +55,14 @@ type UserFieldsForFiltersDto struct {
 	PhoneNumber *string `json:"phoneNumber,omitempty"`
 }
 
+type UserFieldsForUpdateDto struct {
+	ID          string  `json:"id"`
+	FirstName   *string `json:"firstName,omitempty"`
+	OtherNames  *string `json:"otherNames,omitempty"`
+	Email       *string `json:"email,omitempty"`
+	PhoneNumber *string `json:"phoneNumber,omitempty"`
+}
+
 type UserFiltersDto struct {
 	Fields     *UserFieldsForFiltersDto `json:"fields"`
 	Pagination *TPaginationInputDto     `json:"pagination,omitempty"`

@@ -15,6 +15,11 @@ func (r *mutationResolver) CreateUser(ctx context.Context, input dtos.NewUserDto
 	return r.UserService.CreateUser(input)
 }
 
+// UpdateUser is the resolver for the updateUser field.
+func (r *mutationResolver) UpdateUser(ctx context.Context, input dtos.UserFieldsForUpdateDto) (*dtos.User, error) {
+	return r.UserService.UpdateUser(input)
+}
+
 // Users is the resolver for the users field.
 func (r *queryResolver) Users(ctx context.Context, filters dtos.UserFiltersDto) (*dtos.UsersResponseDto, error) {
 	return r.UserService.GetUsers(filters)

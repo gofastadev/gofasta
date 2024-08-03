@@ -22,6 +22,7 @@ extend type Query {
 # MUTATIONS
 extend type Mutation {
   createUser(input: NewUserDto!): User!
+  updateUser(input: UserFieldsForUpdateDto!): User!
 }
 
 # INPUTS
@@ -43,4 +44,12 @@ input UserFiltersDto {
   fields: UserFieldsForFiltersDto!
   pagination: TPaginationInputDto
   sorting: TSortingInputDto
+}
+
+input UserFieldsForUpdateDto {
+  id: ID!
+  firstName: String
+  otherNames: String
+  email: String
+  phoneNumber: String
 }
