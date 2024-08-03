@@ -14,8 +14,8 @@ exec:
 
 # Where should any generated models go?
 model:
-  filename: app/graphql/goTypes/models_gen.go
-  package: goTypes
+  filename: app/graphql/dtos/generated-types.dtos.go
+  package: dtos
 
 # Where should the resolver implementations go?
 resolver:
@@ -66,7 +66,7 @@ resolver:
 # gqlgen will search for any type names in the schema in these go packages
 # if they match it will use them, otherwise it will generate them.
 autobind:
- - "github.com/healtronlabs/go_gql_template/app/graphql/goTypes"
+ - "github.com/healtronlabs/go_gql_template/app/graphql/dtos"
 
 # This section declares type mapping between the GraphQL and go type systems
 #

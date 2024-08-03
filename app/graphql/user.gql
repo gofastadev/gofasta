@@ -9,9 +9,14 @@ type User {
   phoneNumber: String!
 }
 
+type UsersResponseDto {
+  users: [User!]!
+  pagination: TPaginationObjectDto!
+}
+
 # QUERIES
 extend type Query {
-  users(filters: UserFiltersDto!): [User!]!
+  users(filters: UserFiltersDto!): UsersResponseDto!
 }
 
 # MUTATIONS
@@ -27,9 +32,15 @@ input NewUserDto {
   phoneNumber: String!
 }
 
-input UserFiltersDto {
+input UserFieldsForFiltersDto {
   firstName: String
   otherNames: String
   email: String
   phoneNumber: String
+}
+
+input UserFiltersDto {
+  fields: UserFieldsForFiltersDto!
+  pagination: TPaginationInputDto
+  sorting: TSortingInputDto
 }

@@ -2,17 +2,7 @@ package utils
 
 import (
 	"reflect"
-	"regexp"
-	"strings"
 )
-
-// Convert camelCase to snake_case
-func camelToSnake(s string) string {
-    // Insert underscores before capital letters and convert to lowercase
-    re := regexp.MustCompile("([a-z0-9])([A-Z])")
-    snake := re.ReplaceAllString(s, "${1}_${2}")
-    return strings.ToLower(snake)
-}
 
 func ConvertStructToMap(obj interface{}) map[string]string {
     result := make(map[string]string)
@@ -31,7 +21,7 @@ func ConvertStructToMap(obj interface{}) map[string]string {
 			continue
 		} else {
 			fieldName := typeOfObj.Field(i).Name
-			snakeName := camelToSnake(fieldName)
+			snakeName := CamelToSnake(fieldName)
 			result[snakeName] = field.Elem().String()
 		}
     }
