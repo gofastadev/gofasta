@@ -19,11 +19,13 @@ func NewUserService(db *gorm.DB) *UserService {
 
 func (u *UserService) GetUsers(filters goTypes.UserFiltersDto) ([]*goTypes.User, error) {
 	var res []*goTypes.User
-	result := u.DB.Find(&res)
-	if result.Error != nil {
-		return nil, result.Error
+	userFilters := utils.ConvertStructToMap(filters)
+	query, err := utils.BuildQueryForAnyModel(u.DB.Model(&models.User{}), userFilters)
+	if err != nil {
+		return nil, err
 	}
-	return res, nil
+	result := query.Find(&res)
+	return res, result.Error
 }
 
 func (u *UserService) CreateUser(input goTypes.NewUserDto) (*goTypes.User, error) {

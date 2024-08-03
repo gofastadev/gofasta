@@ -24,7 +24,6 @@ type NewUserDto struct {
 }
 
 type UserFiltersDto struct {
-	Id          *string `json:"id,omitempty"`
 	FirstName   *string `json:"firstName,omitempty"`
 	OtherNames  *string `json:"otherNames,omitempty"`
 	Email       *string `json:"email,omitempty"`

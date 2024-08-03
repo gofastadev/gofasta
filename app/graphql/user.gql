@@ -28,7 +28,6 @@ input NewUserDto {
 }
 
 input UserFiltersDto {
-  id: String
   firstName: String
   otherNames: String
   email: String
