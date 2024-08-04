@@ -45,7 +45,6 @@ func (u *UserService) GetUsers(filters dtos.UserFiltersDto) (*dtos.UsersResponse
 }
 
 func (u *UserService) CreateUser(input dtos.NewUserDto) (*dtos.UserResponseDto, error) {
-
 	if validationErrors := utils.ValidateInput(input); len(validationErrors) > 0 {
 		return &dtos.UserResponseDto{Errors: validationErrors}, nil
 	}
@@ -76,7 +75,10 @@ func (u *UserService) CreateUser(input dtos.NewUserDto) (*dtos.UserResponseDto, 
 	return &dtos.UserResponseDto{Data: user}, nil
 }
 
-func (u *UserService) UpdateUser(input dtos.UserFieldsForUpdateDto) (*dtos.User, error) {
+func (u *UserService) UpdateUser(input dtos.UserFieldsForUpdateDto) (*dtos.UserResponseDto, error) {
+	if validationErrors := utils.ValidateInput(input); len(validationErrors) > 0 {
+		return &dtos.UserResponseDto{Errors: validationErrors}, nil
+	}
 	userDataForUpdate := utils.ConvertStructToMap(input)
 	if err := u.DB.Model(&models.User{}).Where("ID = ?", input.ID).Updates(userDataForUpdate).Error; err != nil {
 		return nil, err
@@ -85,7 +87,7 @@ func (u *UserService) UpdateUser(input dtos.UserFieldsForUpdateDto) (*dtos.User,
 	if err != nil {
 		return nil, err
 	}
-	return foundUser, nil
+	return &dtos.UserResponseDto{Data: foundUser}, nil
 }
 
 // PRIVATE FUNCTIONS

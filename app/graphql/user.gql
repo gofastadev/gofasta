@@ -27,7 +27,7 @@ extend type Query {
 # MUTATIONS
 extend type Mutation {
   createUser(input: NewUserDto!): UserResponseDto!
-  updateUser(input: UserFieldsForUpdateDto!): User!
+  updateUser(input: UserFieldsForUpdateDto!): UserResponseDto!
 }
 
 # INPUTS
