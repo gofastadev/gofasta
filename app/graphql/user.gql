@@ -14,6 +14,11 @@ type UsersResponseDto {
   pagination: TPaginationObjectDto!
 }
 
+type UserResponseDto {
+  data: User
+  errors: [TCommonApiErrorDto]
+}
+
 # QUERIES
 extend type Query {
   users(filters: UserFiltersDto!): UsersResponseDto!
@@ -21,7 +26,7 @@ extend type Query {
 
 # MUTATIONS
 extend type Mutation {
-  createUser(input: NewUserDto!): User!
+  createUser(input: NewUserDto!): UserResponseDto!
   updateUser(input: UserFieldsForUpdateDto!): User!
 }
 

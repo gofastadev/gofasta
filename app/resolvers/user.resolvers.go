@@ -11,7 +11,7 @@ import (
 )
 
 // CreateUser is the resolver for the createUser field.
-func (r *mutationResolver) CreateUser(ctx context.Context, input dtos.NewUserDto) (*dtos.User, error) {
+func (r *mutationResolver) CreateUser(ctx context.Context, input dtos.NewUserDto) (*dtos.UserResponseDto, error) {
 	return r.UserService.CreateUser(input)
 }
 

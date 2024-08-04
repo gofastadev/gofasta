@@ -4,7 +4,6 @@ import (
 	"log"
 	"math"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/healtronlabs/go_gql_template/app/graphql/dtos"
 	"github.com/healtronlabs/go_gql_template/app/models"
 	"github.com/healtronlabs/go_gql_template/app/utils"
@@ -45,10 +44,10 @@ func (u *UserService) GetUsers(filters dtos.UserFiltersDto) (*dtos.UsersResponse
 	return &returnedRes, usersRes.Error
 }
 
-func (u *UserService) CreateUser(input dtos.NewUserDto) (*dtos.User, error) {
-	validate := validator.New()
-	if err := validate.Struct(input); err != nil {
-		return nil, err
+func (u *UserService) CreateUser(input dtos.NewUserDto) (*dtos.UserResponseDto, error) {
+
+	if validationErrors := utils.ValidateInput(input); len(validationErrors) > 0 {
+		return &dtos.UserResponseDto{Errors: validationErrors}, nil
 	}
 	randomPassword, err := utils.GeneratePassword(16)
 	if err != nil {
@@ -74,7 +73,7 @@ func (u *UserService) CreateUser(input dtos.NewUserDto) (*dtos.User, error) {
 		CreatedAt:   userData.CreatedAt.String(),
 		UpdatedAt:   userData.UpdatedAt.String(),
 	}
-	return user, nil
+	return &dtos.UserResponseDto{Data: user}, nil
 }
 
 func (u *UserService) UpdateUser(input dtos.UserFieldsForUpdateDto) (*dtos.User, error) {

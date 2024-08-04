@@ -14,6 +14,11 @@ type Mutation struct {
 type Query struct {
 }
 
+type TCommonAPIErrorDto struct {
+	FieldName *string `json:"fieldName,omitempty"`
+	Message   string  `json:"message"`
+}
+
 type TPaginationObjectDto struct {
 	TotalRecords   *int `json:"totalRecords,omitempty"`
 	RecordsPerPage *int `json:"recordsPerPage,omitempty"`
@@ -55,6 +60,11 @@ type UserFiltersDto struct {
 	Fields     *UserFieldsForFiltersDto `json:"fields"`
 	Pagination *TPaginationInputDto     `json:"pagination,omitempty"`
 	Sorting    *TSortingInputDto        `json:"sorting,omitempty"`
+}
+
+type UserResponseDto struct {
+	Data   *User                 `json:"data,omitempty"`
+	Errors []*TCommonAPIErrorDto `json:"errors,omitempty"`
 }
 
 type UsersResponseDto struct {

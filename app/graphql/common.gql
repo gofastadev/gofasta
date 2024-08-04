@@ -23,3 +23,8 @@ type TPaginationObjectDto {
     totalPages: Int
     currentPage: Int
 }
+
+type TCommonApiErrorDto {
+    fieldName: String
+    message: String!
+}
