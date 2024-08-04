@@ -10,6 +10,12 @@ import (
 	"github.com/healtronlabs/go_gql_template/app/graphql/dtos"
 )
 
+func IsUUIDv4(fl validator.FieldLevel) bool {
+	id := fl.Field().String()
+	err := ValidateIdStringIsValidUUID(id)
+	return err == nil
+}
+
 // NewValidator creates and returns a new validator instance with custom error messages
 func newValidator() (*validator.Validate, ut.Translator, error) {
     validate := validator.New()
@@ -33,7 +39,7 @@ func newValidator() (*validator.Validate, ut.Translator, error) {
     customMessages := map[string]string{
         "required": "is a required field",
         "email":    "must be a valid email address",
-        "uuid4":    "must be a valid UUID",
+        "uuid4":    "must be a valid UUIDV4",
         "min":      "must be at least {1} characters long",
         "max":      "must be at most {1} characters long",
         "len":      "must be exactly {1} characters long",
@@ -48,7 +54,6 @@ func newValidator() (*validator.Validate, ut.Translator, error) {
             return t
         })
     }
-
     return validate, trans, nil
 }
 

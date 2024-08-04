@@ -94,7 +94,7 @@ type ComplexityRoot struct {
 type MutationResolver interface {
 	MutationHealth(ctx context.Context) (string, error)
 	CreateUser(ctx context.Context, input dtos.NewUserDto) (*dtos.UserResponseDto, error)
-	UpdateUser(ctx context.Context, input dtos.UserFieldsForUpdateDto) (*dtos.User, error)
+	UpdateUser(ctx context.Context, input dtos.UserFieldsForUpdateDto) (*dtos.UserResponseDto, error)
 }
 type QueryResolver interface {
 	QueryHealth(ctx context.Context) (string, error)
@@ -650,9 +650,9 @@ func (ec *executionContext) _Mutation_updateUser(ctx context.Context, field grap
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*dtos.User)
+	res := resTmp.(*dtos.UserResponseDto)
 	fc.Result = res
-	return ec.marshalNUser2ᚖgithubᚗcomᚋhealtronlabsᚋgo_gql_templateᚋappᚋgraphqlᚋdtosᚐUser(ctx, field.Selections, res)
+	return ec.marshalNUserResponseDto2ᚖgithubᚗcomᚋhealtronlabsᚋgo_gql_templateᚋappᚋgraphqlᚋdtosᚐUserResponseDto(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Mutation_updateUser(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -663,22 +663,12 @@ func (ec *executionContext) fieldContext_Mutation_updateUser(ctx context.Context
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "id":
-				return ec.fieldContext_User_id(ctx, field)
-			case "createdAt":
-				return ec.fieldContext_User_createdAt(ctx, field)
-			case "updatedAt":
-				return ec.fieldContext_User_updatedAt(ctx, field)
-			case "firstName":
-				return ec.fieldContext_User_firstName(ctx, field)
-			case "otherNames":
-				return ec.fieldContext_User_otherNames(ctx, field)
-			case "email":
-				return ec.fieldContext_User_email(ctx, field)
-			case "phoneNumber":
-				return ec.fieldContext_User_phoneNumber(ctx, field)
+			case "data":
+				return ec.fieldContext_UserResponseDto_data(ctx, field)
+			case "errors":
+				return ec.fieldContext_UserResponseDto_errors(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type UserResponseDto", field.Name)
 		},
 	}
 	defer func() {
@@ -4546,10 +4536,6 @@ func (ec *executionContext) marshalNTPaginationObjectDto2ᚖgithubᚗcomᚋhealt
 		return graphql.Null
 	}
 	return ec._TPaginationObjectDto(ctx, sel, v)
-}
-
-func (ec *executionContext) marshalNUser2githubᚗcomᚋhealtronlabsᚋgo_gql_templateᚋappᚋgraphqlᚋdtosᚐUser(ctx context.Context, sel ast.SelectionSet, v dtos.User) graphql.Marshaler {
-	return ec._User(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalNUser2ᚕᚖgithubᚗcomᚋhealtronlabsᚋgo_gql_templateᚋappᚋgraphqlᚋdtosᚐUserᚄ(ctx context.Context, sel ast.SelectionSet, v []*dtos.User) graphql.Marshaler {
