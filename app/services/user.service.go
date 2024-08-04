@@ -63,16 +63,8 @@ func (u *UserService) CreateUser(input dtos.NewUserDto) (*dtos.UserResponseDto, 
 	if err := u.DB.Create(&userData).Error; err != nil {
 		return nil, err
 	}
-	user := &dtos.User{
-		ID:          userData.ID.String(),
-		FirstName:   userData.FirstName,
-		OtherNames:  userData.OtherNames,
-		PhoneNumber: userData.PhoneNumber,
-		Email:       userData.Email,
-		CreatedAt:   userData.CreatedAt.String(),
-		UpdatedAt:   userData.UpdatedAt.String(),
-	}
-	return &dtos.UserResponseDto{Data: user}, nil
+	user, err := castUserModelToUserDto(&userData)
+	return &dtos.UserResponseDto{Data: user}, err
 }
 
 func (u *UserService) UpdateUser(input dtos.UserFieldsForUpdateDto) (*dtos.UserResponseDto, error) {
@@ -84,10 +76,7 @@ func (u *UserService) UpdateUser(input dtos.UserFieldsForUpdateDto) (*dtos.UserR
 		return nil, err
 	}
 	foundUser, err := u.findUserById(input.ID)
-	if err != nil {
-		return nil, err
-	}
-	return &dtos.UserResponseDto{Data: foundUser}, nil
+	return &dtos.UserResponseDto{Data: foundUser}, err
 }
 
 // PRIVATE FUNCTIONS
@@ -99,6 +88,14 @@ func (u *UserService) findUserById(id string) (*dtos.User, error) {
 	if err := u.DB.Where("ID = ?", id).First(&user).Error; err != nil {
 		return nil, err
 	}
+	foundUser, err := castUserModelToUserDto(&user)
+	if err != nil {
+		return nil, err
+	}
+	return foundUser, nil
+}
+
+func castUserModelToUserDto(user *models.User) (*dtos.User, error) {
 	foundUser := &dtos.User{
 		ID:          user.ID.String(),
 		FirstName:   user.FirstName,
