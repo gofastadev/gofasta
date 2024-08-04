@@ -4,4 +4,4 @@
 
 source .env
 
-migrate -database ${DATABASE_URL} -path database/migrations up
+migrate -database ${DATABASE_URL} -path db/migrations up

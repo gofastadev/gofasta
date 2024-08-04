@@ -11,19 +11,7 @@ import (
 type Mutation struct {
 }
 
-type NewUserDto struct {
-	FirstName   string `json:"firstName"`
-	OtherNames  string `json:"otherNames"`
-	Email       string `json:"email"`
-	PhoneNumber string `json:"phoneNumber"`
-}
-
 type Query struct {
-}
-
-type TPaginationInputDto struct {
-	Limit *int `json:"limit,omitempty"`
-	Page  *int `json:"page,omitempty"`
 }
 
 type TPaginationObjectDto struct {

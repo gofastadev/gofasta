@@ -4,6 +4,7 @@ import (
 	"log"
 	"math"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/healtronlabs/go_gql_template/app/graphql/dtos"
 	"github.com/healtronlabs/go_gql_template/app/models"
 	"github.com/healtronlabs/go_gql_template/app/utils"
@@ -45,6 +46,10 @@ func (u *UserService) GetUsers(filters dtos.UserFiltersDto) (*dtos.UsersResponse
 }
 
 func (u *UserService) CreateUser(input dtos.NewUserDto) (*dtos.User, error) {
+	validate := validator.New()
+	if err := validate.Struct(input); err != nil {
+		return nil, err
+	}
 	randomPassword, err := utils.GeneratePassword(16)
 	if err != nil {
 		log.Printf("Error while generating a random password: %v", err)
