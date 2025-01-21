@@ -27,3 +27,14 @@ type UserFiltersDto struct {
 	Pagination *TPaginationInputDto     `json:"pagination,omitempty" schema:"pagination"`
 	Sorting    *TSortingInputDto        `json:"sorting,omitempty" schema:"sorting"`
 }
+
+type TUserFiltersQueryParamsDto struct {
+	FirstName       *string          `json:"firstName,omitempty" schema:"firstName"`
+	OtherNames      *string          `json:"otherNames,omitempty" schema:"otherNames"`
+	Email           *string          `json:"email,omitempty" schema:"email"`
+	PhoneNumber     *string          `json:"phoneNumber,omitempty" schema:"phoneNumber"`
+	Limit           *int             `json:"limit,omitempty" schema:"limit" validate:"gte=1"`
+	Page            *int             `json:"page,omitempty" schema:"page" validate:"gte=1"`
+	SortByField     string           `json:"sortByField" schema:"sortByField" validate:"required"`
+	SortOrientation *SortOrientation `json:"sortOrientation,omitempty" schema:"sortOrientation" validate:"omitempty"`
+}

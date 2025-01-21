@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 
 	"github.com/healtronlabs/go_gql_template/app/dtos"
@@ -20,16 +19,34 @@ func NewUserControllerInstance(userService services.UserService) *UserController
 }
 
 // GetUser handles GET /users requests.
-func (uc *UserController) GetUsersWithFilters(w http.ResponseWriter, r *http.Request, filters dtos.UserFiltersDto) {
-	fmt.Println("=====>the getUsersWithFilters is pinged")
-	// usersRes, err := uc.UserService.GetUsers(filters)
-	// if err != nil {
-	// 	http.Error(w, "User not found", http.StatusNotFound)
-	// 	return
-	// }
+func (uc *UserController) GetUsersWithFilters(w http.ResponseWriter, r *http.Request, filters dtos.TUserFiltersQueryParamsDto) {
+	var userFilters dtos.UserFiltersDto
+	userFilters.Fields = &dtos.UserFieldsForFiltersDto{
+		FirstName:   filters.FirstName,
+		OtherNames:  filters.OtherNames,
+		Email:       filters.Email,
+		PhoneNumber: filters.PhoneNumber,
+	}
+	userFilters.Pagination = &dtos.TPaginationInputDto{
+		Limit: filters.Limit,
+		Page:  filters.Page,
+	}
+	sortField := filters.SortByField
+	if sortField == "" {
+		sortField = "id"
+	}
+	userFilters.Sorting = &dtos.TSortingInputDto{
+		SortByField:     sortField,
+		SortOrientation: filters.SortOrientation,
+	}
+	usersRes, err := uc.UserService.GetUsers(userFilters)
+	if err != nil {
+		http.Error(w, "Users not found", http.StatusNotFound)
+		return
+	}
 
-	// w.Header().Set("Content-Type", "application/json")
-	// json.NewEncoder(w).Encode(usersRes)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(usersRes)
 }
 
 // CreateUser handles POST /users requests.
