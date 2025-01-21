@@ -7,7 +7,7 @@ import (
 	ut "github.com/go-playground/universal-translator"
 	"github.com/go-playground/validator/v10"
 	en_translations "github.com/go-playground/validator/v10/translations/en"
-	dtos "github.com/healtronlabs/go_gql_template/app/dtos"
+	"github.com/healtronlabs/go_gql_template/app/dtos"
 )
 
 func IsUUIDv4(fl validator.FieldLevel) bool {

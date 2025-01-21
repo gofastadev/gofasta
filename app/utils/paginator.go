@@ -3,7 +3,7 @@ package utils
 import (
 	"fmt"
 
-	dtos "github.com/healtronlabs/go_gql_template/app/dtos"
+	"github.com/healtronlabs/go_gql_template/app/dtos"
 )
 
 type PreparePaginating struct {
