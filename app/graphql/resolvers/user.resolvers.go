@@ -6,22 +6,21 @@ package resolvers
 
 import (
 	"context"
-	"fmt"
 
 	dtosGql "github.com/healtronlabs/go_gql_template/app/graphql/dtos_gql"
 )
 
 // CreateUser is the resolver for the createUser field.
 func (r *mutationResolver) CreateUser(ctx context.Context, input dtosGql.NewUserDto) (*dtosGql.UserResponseDto, error) {
-	panic(fmt.Errorf("not implemented: CreateUser - createUser"))
+	return r.UserService.CreateUser(input)
 }
 
 // UpdateUser is the resolver for the updateUser field.
 func (r *mutationResolver) UpdateUser(ctx context.Context, input dtosGql.UserFieldsForUpdateDto) (*dtosGql.UserResponseDto, error) {
-	panic(fmt.Errorf("not implemented: UpdateUser - updateUser"))
+	return r.UserService.UpdateUser(input)
 }
 
 // Users is the resolver for the users field.
 func (r *queryResolver) Users(ctx context.Context, filters dtosGql.UserFiltersDto) (*dtosGql.UsersResponseDto, error) {
-	panic(fmt.Errorf("not implemented: Users - users"))
+	return r.UserService.GetUsers(filters)
 }

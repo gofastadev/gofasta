@@ -4,9 +4,9 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/gorilla/mux"
 	"github.com/healtronlabs/go_gql_template/app"
-	"github.com/healtronlabs/go_gql_template/app/controllers"
-	"github.com/healtronlabs/go_gql_template/app/resolvers"
-	"github.com/healtronlabs/go_gql_template/app/routes"
+	"github.com/healtronlabs/go_gql_template/app/rest/controllers"
+	"github.com/healtronlabs/go_gql_template/app/graphql/resolvers"
+	"github.com/healtronlabs/go_gql_template/app/rest/routes"
 	"github.com/healtronlabs/go_gql_template/app/services"
 	"github.com/healtronlabs/go_gql_template/configs"
 )

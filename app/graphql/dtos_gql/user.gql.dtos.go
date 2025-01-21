@@ -1,4 +1,4 @@
-package dtos
+package dtosGql
 
 type NewUserDto struct {
 	FirstName   string `json:"firstName" schema:"firstName" validate:"required"`

@@ -1,6 +1,6 @@
 # Where are all the schema files located? globs are supported eg  src/**/*.graphqls
 schema:
-  - app/graphql/*.gql
+  - app/graphql/schema/*.gql
 
 # Where should the generated server code go?
 exec:
@@ -14,8 +14,8 @@ exec:
 
 # Where should any generated models go?
 model:
-  filename: app/graphql/dtos/generated-types.dtos.go
-  package: dtos
+  filename: app/graphql/dtos_gql/generated-types.gql.dtos.go
+  package: dtosGql
 
 # Where should the resolver implementations go?
 resolver:
@@ -66,7 +66,7 @@ resolver:
 # gqlgen will search for any type names in the schema in these go packages
 # if they match it will use them, otherwise it will generate them.
 autobind:
- - "github.com/healtronlabs/go_gql_template/app/graphql/dtos"
+ - "github.com/healtronlabs/go_gql_template/app/graphql/dtos_gql"
 
 # This section declares type mapping between the GraphQL and go type systems
 #

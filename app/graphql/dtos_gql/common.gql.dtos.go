@@ -1,4 +1,4 @@
-package dtos
+package dtosGql
 
 type TPaginationInputDto struct {
 	Limit *int `json:"limit,omitempty" schema:"limit" validate:"gte=1"`

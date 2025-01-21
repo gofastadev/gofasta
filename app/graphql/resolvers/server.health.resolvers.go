@@ -6,19 +6,18 @@ package resolvers
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/healtronlabs/go_gql_template/app"
 )
 
 // MutationHealth is the resolver for the mutationHealth field.
 func (r *mutationResolver) MutationHealth(ctx context.Context) (string, error) {
-	panic(fmt.Errorf("not implemented: MutationHealth - mutationHealth"))
+	return "The mutation is healthy!", nil
 }
 
 // QueryHealth is the resolver for the queryHealth field.
 func (r *queryResolver) QueryHealth(ctx context.Context) (string, error) {
-	panic(fmt.Errorf("not implemented: QueryHealth - queryHealth"))
+	return "The query is healthy", nil
 }
 
 // Mutation returns app.MutationResolver implementation.

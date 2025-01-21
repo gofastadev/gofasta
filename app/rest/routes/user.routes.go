@@ -5,8 +5,8 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/schema"
-	"github.com/healtronlabs/go_gql_template/app/controllers"
-	"github.com/healtronlabs/go_gql_template/app/graphql/dtos"
+	"github.com/healtronlabs/go_gql_template/app/rest/controllers"
+	dtosRest "github.com/healtronlabs/go_gql_template/app/rest/dtos_rest"
 )
 
 func UserRoutes(r *mux.Router, userController *controllers.UserController) {
@@ -22,7 +22,7 @@ func UserRoutes(r *mux.Router, userController *controllers.UserController) {
 				http.Error(w, "Failed to parse query parameters", http.StatusBadRequest)
 				return
 			}
-			var filters dtos.UserFiltersDto
+			var filters dtosRest.UserFiltersDto
 			if err := decoder.Decode(&filters, r.URL.Query()); err != nil {
 				http.Error(w, "Invalid query parameters: "+err.Error(), http.StatusBadRequest)
 				return

@@ -3,12 +3,12 @@ package utils
 import (
 	"fmt"
 
-	"github.com/healtronlabs/go_gql_template/app/graphql/dtos"
+	dtosGql "github.com/healtronlabs/go_gql_template/app/graphql/dtos_gql"
 )
 
 type PreparePaginating struct {
-	PageFilters *dtos.TPaginationInputDto
-	Sorting     *dtos.TSortingInputDto
+	PageFilters *dtosGql.TPaginationInputDto
+	Sorting     *dtosGql.TSortingInputDto
 }
 
 func (p *PreparePaginating) GetOffset() int {
