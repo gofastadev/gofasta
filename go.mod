@@ -9,6 +9,7 @@ require (
 	github.com/go-playground/universal-translator v0.18.1
 	github.com/go-playground/validator/v10 v10.22.0
 	github.com/google/uuid v1.6.0
+	github.com/gorilla/mux v1.8.1
 	github.com/vektah/gqlparser/v2 v2.5.16
 	gorm.io/driver/postgres v1.5.9
 	gorm.io/gorm v1.25.11
