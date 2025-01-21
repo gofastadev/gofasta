@@ -60,7 +60,7 @@ func (uc *UserController) CreateUser(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateUser handles PUT /users/{id} requests.
-func (uc *UserController) UpdateUser(w http.ResponseWriter, r *http.Request) {
+func (uc *UserController) UpdateUser(w http.ResponseWriter, r *http.Request, id int) {
 	vars := mux.Vars(r)
 	// id, err := strconv.Atoi(vars["id"])
 	// if err != nil {
