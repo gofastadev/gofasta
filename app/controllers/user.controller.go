@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/gorilla/mux"
 	"github.com/healtronlabs/go_gql_template/app/graphql/dtos"
 	"github.com/healtronlabs/go_gql_template/app/services"
 )
@@ -20,28 +19,21 @@ func NewUserControllerInstance(userService services.UserService) *UserController
 	return &UserController{UserService: userService}
 }
 
-// GetUser handles GET /users/{id} requests.
-// func (uc *UserController) GetUser(w http.ResponseWriter, r *http.Request) {
-// 	vars := mux.Vars(r)
-// 	id, err := strconv.Atoi(vars["id"])
-// 	if err != nil {
-// 		http.Error(w, "Invalid user ID", http.StatusBadRequest)
-// 		return
-// 	}
+// GetUser handles GET /users requests.
+func (uc *UserController) GetUsersWithFilters(w http.ResponseWriter, r *http.Request, filters dtos.UserFiltersDto) {
+	fmt.Println("=====>the getUsersWithFilters is pinged")
+	usersRes, err := uc.UserService.GetUsers(filters)
+	if err != nil {
+		http.Error(w, "User not found", http.StatusNotFound)
+		return
+	}
 
-// 	user, err := uc.UserService.GetUserByID(id)
-// 	if err != nil {
-// 		http.Error(w, "User not found", http.StatusNotFound)
-// 		return
-// 	}
-
-// 	w.Header().Set("Content-Type", "application/json")
-// 	json.NewEncoder(w).Encode(user)
-// }
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(usersRes)
+}
 
 // CreateUser handles POST /users requests.
 func (uc *UserController) CreateUser(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("===>The CreateUser has been pinged")
 	var user dtos.NewUserDto
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
@@ -60,22 +52,13 @@ func (uc *UserController) CreateUser(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateUser handles PUT /users/{id} requests.
-func (uc *UserController) UpdateUser(w http.ResponseWriter, r *http.Request, id int) {
-	vars := mux.Vars(r)
-	// id, err := strconv.Atoi(vars["id"])
-	// if err != nil {
-	// 	http.Error(w, "Invalid user ID", http.StatusBadRequest)
-	// 	return
-	// }
-
-	var user dtos.UserFieldsForUpdateDto
-	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+func (uc *UserController) UpdateUser(w http.ResponseWriter, r *http.Request, id string) {
+	var dataForUpdate dtos.UserFieldsForUpdateDto
+	if err := json.NewDecoder(r.Body).Decode(&dataForUpdate); err != nil {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return
 	}
-	dataForUpdate := dtos.UserFieldsForUpdateDto{
-		ID: vars["id"],
-	}
+	dataForUpdate.ID = id
 	updatedUser, err := uc.UserService.UpdateUser(dataForUpdate)
 	if err != nil {
 		http.Error(w, "Failed to update user", http.StatusInternalServerError)

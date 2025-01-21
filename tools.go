@@ -8,4 +8,5 @@ import (
 	_ "gorm.io/driver/postgres"
 	_ "gorm.io/gorm"
 	_ "github.com/gorilla/mux"
+	_ "github.com/gorilla/schema"
 )

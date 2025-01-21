@@ -2,42 +2,45 @@ package routes
 
 import (
 	"net/http"
-	"strconv"
 
 	"github.com/gorilla/mux"
+	"github.com/gorilla/schema"
 	"github.com/healtronlabs/go_gql_template/app/controllers"
+	"github.com/healtronlabs/go_gql_template/app/graphql/dtos"
 )
 
 func UserRoutes(r *mux.Router, userController *controllers.UserController) {
+	var decoder = schema.NewDecoder()
 	// Base route for /users
 	r.HandleFunc("/users", func(w http.ResponseWriter, r *http.Request) {
+		decoder.IgnoreUnknownKeys(true)
 		switch r.Method {
 		case http.MethodPost:
 			userController.CreateUser(w, r)
-		// case http.MethodGet:
-		// 	userController.GetUsers(w, r)
+		case http.MethodGet:
+			if err := r.ParseForm(); err != nil {
+				http.Error(w, "Failed to parse query parameters", http.StatusBadRequest)
+				return
+			}
+			var filters dtos.UserFiltersDto
+			if err := decoder.Decode(&filters, r.URL.Query()); err != nil {
+				http.Error(w, "Invalid query parameters: "+err.Error(), http.StatusBadRequest)
+				return
+			}
+
+			userController.GetUsersWithFilters(w, r, filters)
 		default:
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		}
 	}).Methods(http.MethodPost, http.MethodGet)
 
 	// Nested route for /users/{id}
-	r.HandleFunc("/users/{id:[0-9]+}", func(w http.ResponseWriter, r *http.Request) {
+	r.HandleFunc("/users/{id}", func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
-		idStr := vars["id"]
-		id, err := strconv.Atoi(idStr)
-		if err != nil {
-			http.Error(w, "Invalid user ID", http.StatusBadRequest)
-			return
-		}
 
 		switch r.Method {
-		// case http.MethodGet:
-		// 	userController.GetUserByID(w, r, id)
 		case http.MethodPut:
-			userController.UpdateUser(w, r, id)
-		// case http.MethodDelete:
-		// 	userController.DeleteUserByID(w, r, id)
+			userController.UpdateUser(w, r, vars["id"])
 		default:
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		}
