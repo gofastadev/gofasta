@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -40,6 +41,7 @@ func NewUserControllerInstance(userService services.UserService) *UserController
 
 // CreateUser handles POST /users requests.
 func (uc *UserController) CreateUser(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("===>The CreateUser has been pinged")
 	var user dtos.NewUserDto
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)

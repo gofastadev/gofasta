@@ -13,13 +13,21 @@ const defaultPort = "8080"
 func serve() {
 
 	port := os.Getenv("PORT")
+	playgroundRoute := os.Getenv("GRAPHQL_PLAYGROUND_ROUTE")
+	graphqlGeneralRoute := os.Getenv("GRAPHQL_GENERAL_ROUTE")
 	if port == "" {
 		port = defaultPort
 	}
+	if playgroundRoute == "" {
+		playgroundRoute = "/graphql-playground"
+	}
+	if graphqlGeneralRoute == "" {
+		graphqlGeneralRoute = "/graphql"
+	}
 
-	http.Handle("/", playground.Handler("GraphQL playground", "/graphql"))
-	http.Handle("/graphql", setupAndInitializeDb())
+	http.Handle(playgroundRoute, playground.Handler("GraphQL playground", graphqlGeneralRoute))
+	http.Handle(graphqlGeneralRoute, setupAndInitializeDb())
 
-	log.Printf("connect to http://localhost:%s/ for GraphQL playground", port)
+	log.Printf("connect to http://localhost:%s%s for GraphQL playground", port, playgroundRoute)
 	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
