@@ -5,8 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	dtosGql "github.com/healtronlabs/go_gql_template/app/graphql/dtos_gql"
-	dtosRest "github.com/healtronlabs/go_gql_template/app/rest/dtos_rest"
+	"github.com/healtronlabs/go_gql_template/app/dtos"
 	"github.com/healtronlabs/go_gql_template/app/services"
 )
 
@@ -21,7 +20,7 @@ func NewUserControllerInstance(userService services.UserService) *UserController
 }
 
 // GetUser handles GET /users requests.
-func (uc *UserController) GetUsersWithFilters(w http.ResponseWriter, r *http.Request, filters dtosRest.UserFiltersDto) {
+func (uc *UserController) GetUsersWithFilters(w http.ResponseWriter, r *http.Request, filters dtos.UserFiltersDto) {
 	fmt.Println("=====>the getUsersWithFilters is pinged")
 	// usersRes, err := uc.UserService.GetUsers(filters)
 	// if err != nil {
@@ -35,7 +34,7 @@ func (uc *UserController) GetUsersWithFilters(w http.ResponseWriter, r *http.Req
 
 // CreateUser handles POST /users requests.
 func (uc *UserController) CreateUser(w http.ResponseWriter, r *http.Request) {
-	var user dtosGql.NewUserDto
+	var user dtos.NewUserDto
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return
@@ -54,7 +53,7 @@ func (uc *UserController) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 // UpdateUser handles PUT /users/{id} requests.
 func (uc *UserController) UpdateUser(w http.ResponseWriter, r *http.Request, id string) {
-	var dataForUpdate dtosGql.UserFieldsForUpdateDto
+	var dataForUpdate dtos.UserFieldsForUpdateDto
 	if err := json.NewDecoder(r.Body).Decode(&dataForUpdate); err != nil {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return

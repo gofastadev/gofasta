@@ -7,7 +7,7 @@ import (
 	ut "github.com/go-playground/universal-translator"
 	"github.com/go-playground/validator/v10"
 	en_translations "github.com/go-playground/validator/v10/translations/en"
-	dtosGql "github.com/healtronlabs/go_gql_template/app/graphql/dtos_gql"
+	dtos "github.com/healtronlabs/go_gql_template/app/dtos"
 )
 
 func IsUUIDv4(fl validator.FieldLevel) bool {
@@ -57,19 +57,19 @@ func newValidator() (*validator.Validate, ut.Translator, error) {
 	return validate, trans, nil
 }
 
-func ValidateInput(input interface{}) []*dtosGql.TCommonAPIErrorDto {
+func ValidateInput(input interface{}) []*dtos.TCommonAPIErrorDto {
 	validate, trans, err := newValidator()
 	if err != nil {
-		return []*dtosGql.TCommonAPIErrorDto{{Message: "Validation initialization error"}}
+		return []*dtos.TCommonAPIErrorDto{{Message: "Validation initialization error"}}
 	}
 
-	valErrs := []*dtosGql.TCommonAPIErrorDto{}
+	valErrs := []*dtos.TCommonAPIErrorDto{}
 	validationError := validate.Struct(input)
 	if validationError != nil {
 		if validationErrors, ok := validationError.(validator.ValidationErrors); ok {
 			for _, vErr := range validationErrors {
 				fieldName := ConvertUpperCamelToLowerCamel(vErr.Field())
-				valErrs = append(valErrs, &dtosGql.TCommonAPIErrorDto{Message: vErr.Translate(trans), FieldName: &fieldName})
+				valErrs = append(valErrs, &dtos.TCommonAPIErrorDto{Message: vErr.Translate(trans), FieldName: &fieldName})
 			}
 		}
 	}

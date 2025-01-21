@@ -7,20 +7,20 @@ package resolvers
 import (
 	"context"
 
-	dtosGql "github.com/healtronlabs/go_gql_template/app/graphql/dtos_gql"
+	"github.com/healtronlabs/go_gql_template/app/dtos"
 )
 
 // CreateUser is the resolver for the createUser field.
-func (r *mutationResolver) CreateUser(ctx context.Context, input dtosGql.NewUserDto) (*dtosGql.UserResponseDto, error) {
+func (r *mutationResolver) CreateUser(ctx context.Context, input dtos.NewUserDto) (*dtos.UserResponseDto, error) {
 	return r.UserService.CreateUser(input)
 }
 
 // UpdateUser is the resolver for the updateUser field.
-func (r *mutationResolver) UpdateUser(ctx context.Context, input dtosGql.UserFieldsForUpdateDto) (*dtosGql.UserResponseDto, error) {
+func (r *mutationResolver) UpdateUser(ctx context.Context, input dtos.UserFieldsForUpdateDto) (*dtos.UserResponseDto, error) {
 	return r.UserService.UpdateUser(input)
 }
 
 // Users is the resolver for the users field.
-func (r *queryResolver) Users(ctx context.Context, filters dtosGql.UserFiltersDto) (*dtosGql.UsersResponseDto, error) {
+func (r *queryResolver) Users(ctx context.Context, filters dtos.UserFiltersDto) (*dtos.UsersResponseDto, error) {
 	return r.UserService.GetUsers(filters)
 }
