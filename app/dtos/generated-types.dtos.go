@@ -26,11 +26,6 @@ type TPaginationObjectDto struct {
 	CurrentPage    *int `json:"currentPage,omitempty"`
 }
 
-type TSortingInputDto struct {
-	SortByField     string           `json:"sortByField"`
-	SortOrientation *SortOrientation `json:"sortOrientation,omitempty"`
-}
-
 type User struct {
 	ID          string `json:"id"`
 	CreatedAt   string `json:"createdAt"`
@@ -39,19 +34,6 @@ type User struct {
 	OtherNames  string `json:"otherNames"`
 	Email       string `json:"email"`
 	PhoneNumber string `json:"phoneNumber"`
-}
-
-type UserFieldsForFiltersDto struct {
-	FirstName   *string `json:"firstName,omitempty"`
-	OtherNames  *string `json:"otherNames,omitempty"`
-	Email       *string `json:"email,omitempty"`
-	PhoneNumber *string `json:"phoneNumber,omitempty"`
-}
-
-type UserFiltersDto struct {
-	Fields     *UserFieldsForFiltersDto `json:"fields"`
-	Pagination *TPaginationInputDto     `json:"pagination,omitempty"`
-	Sorting    *TSortingInputDto        `json:"sorting,omitempty"`
 }
 
 type UserResponseDto struct {

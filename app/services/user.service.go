@@ -4,7 +4,7 @@ import (
 	"log"
 	"math"
 
-	"github.com/healtronlabs/go_gql_template/app/graphql/dtos"
+	"github.com/healtronlabs/go_gql_template/app/dtos"
 	"github.com/healtronlabs/go_gql_template/app/models"
 	"github.com/healtronlabs/go_gql_template/app/utils"
 	"gorm.io/gorm"
