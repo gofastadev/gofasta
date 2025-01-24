@@ -38,7 +38,7 @@ services:
         source: postgres_data
         target: /var/lib/postgresql
     ports:
-      - 6545:5432
+      - ${DB_HOST_PORT}:${DB_CONTAINER_PORT}
     networks:
       - ${DOCKER_NETWORK_NAME}
     restart: always
