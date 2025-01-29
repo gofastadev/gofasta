@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"time"
+
+	"github.com/google/uuid"
 )
 
 type Mutation struct {
@@ -27,13 +30,16 @@ type TPaginationObjectDto struct {
 }
 
 type User struct {
-	ID          string `json:"id"`
-	CreatedAt   string `json:"createdAt"`
-	UpdatedAt   string `json:"updatedAt"`
-	FirstName   string `json:"firstName"`
-	OtherNames  string `json:"otherNames"`
-	Email       string `json:"email"`
-	PhoneNumber string `json:"phoneNumber"`
+	ID            uuid.UUID `json:"id"`
+	RecordVersion int       `json:"recordVersion"`
+	CreatedAt     time.Time `json:"createdAt"`
+	UpdatedAt     time.Time `json:"updatedAt"`
+	FirstName     string    `json:"firstName"`
+	OtherNames    string    `json:"otherNames"`
+	Email         string    `json:"email"`
+	PhoneNumber   string    `json:"phoneNumber"`
+	IsActive      bool      `json:"isActive"`
+	IsDeletable   bool      `json:"isDeletable"`
 }
 
 type UserResponseDto struct {

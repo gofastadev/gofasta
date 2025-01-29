@@ -1,12 +1,15 @@
 # OBJECT TYPES FOR OUTPUT
 type User {
   id: ID!
+  recordVersion: Int!
   createdAt: DateTime!
   updatedAt: DateTime!
   firstName: String!
   otherNames: String!
   email: String!
   phoneNumber: String!
+  isActive: Boolean!
+  isDeletable: Boolean!
 }
 
 type UsersResponseDto {
@@ -27,7 +30,7 @@ extend type Query {
 # MUTATIONS
 extend type Mutation {
   createUser(input: NewUserDto!): UserResponseDto!
-  updateUser(input: UserFieldsForUpdateDto!): UserResponseDto!
+  updateUser(input: TUserFieldsForUpdateDto!): UserResponseDto!
 }
 
 # INPUTS
@@ -51,10 +54,13 @@ input UserFiltersDto {
   sorting: TSortingInputDto
 }
 
-input UserFieldsForUpdateDto {
+input TUserFieldsForUpdateDto {
   id: ID!
+  RecordVersion: Int!
   firstName: String
   otherNames: String
   email: String
   phoneNumber: String
+  IsActive: Boolean
+  IsDeletable: Boolean
 }

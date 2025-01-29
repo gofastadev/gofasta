@@ -16,7 +16,7 @@ func (r *mutationResolver) CreateUser(ctx context.Context, input dtos.NewUserDto
 }
 
 // UpdateUser is the resolver for the updateUser field.
-func (r *mutationResolver) UpdateUser(ctx context.Context, input dtos.UserFieldsForUpdateDto) (*dtos.UserResponseDto, error) {
+func (r *mutationResolver) UpdateUser(ctx context.Context, input dtos.TUserFieldsForUpdateDto) (*dtos.UserResponseDto, error) {
 	return r.UserService.UpdateUser(input)
 }
 

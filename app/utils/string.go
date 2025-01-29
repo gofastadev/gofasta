@@ -14,9 +14,9 @@ func CamelToSnake(s string) string {
 	return strings.ToLower(snake)
 }
 
-func ValidateIdStringIsValidUUID(u string) error {
-	_, err := uuid.Parse(u)
-	return err
+func ParseIdStringIsValidUUID(u string) (uuid.UUID, error) {
+	value, err := uuid.Parse(u)
+	return value, err
 }
 
 func ConvertUpperCamelToLowerCamel(input string) string {

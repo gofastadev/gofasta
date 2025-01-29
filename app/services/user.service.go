@@ -4,6 +4,7 @@ import (
 	"log"
 	"math"
 
+	"github.com/google/uuid"
 	"github.com/healtronlabs/gofasta/app/dtos"
 	"github.com/healtronlabs/gofasta/app/models"
 	"github.com/healtronlabs/gofasta/app/utils"
@@ -68,7 +69,7 @@ func (u *UserService) CreateUser(input dtos.NewUserDto) (*dtos.UserResponseDto, 
 	return &dtos.UserResponseDto{Data: user}, err
 }
 
-func (u *UserService) UpdateUser(input dtos.UserFieldsForUpdateDto) (*dtos.UserResponseDto, error) {
+func (u *UserService) UpdateUser(input dtos.TUserFieldsForUpdateDto) (*dtos.UserResponseDto, error) {
 	if validationErrors := validators.ValidateInput(input, u.DB); len(validationErrors) > 0 {
 		return &dtos.UserResponseDto{Errors: validationErrors}, nil
 	}
@@ -81,10 +82,7 @@ func (u *UserService) UpdateUser(input dtos.UserFieldsForUpdateDto) (*dtos.UserR
 }
 
 // PRIVATE FUNCTIONS
-func (u *UserService) findUserById(id string) (*dtos.User, error) {
-	if err := utils.ValidateIdStringIsValidUUID(id); err != nil {
-		return nil, err
-	}
+func (u *UserService) findUserById(id uuid.UUID) (*dtos.User, error) {
 	var user models.User
 	if err := u.DB.Where("ID = ?", id).First(&user).Error; err != nil {
 		return nil, err
@@ -98,13 +96,16 @@ func (u *UserService) findUserById(id string) (*dtos.User, error) {
 
 func castUserModelToUserDto(user *models.User) (*dtos.User, error) {
 	foundUser := &dtos.User{
-		ID:          user.ID.String(),
-		FirstName:   user.FirstName,
-		OtherNames:  user.OtherNames,
-		PhoneNumber: user.PhoneNumber,
-		Email:       user.Email,
-		CreatedAt:   user.CreatedAt.String(),
-		UpdatedAt:   user.UpdatedAt.String(),
+		ID:            user.ID,
+		RecordVersion: user.RecordVersion,
+		FirstName:     user.FirstName,
+		OtherNames:    user.OtherNames,
+		PhoneNumber:   user.PhoneNumber,
+		Email:         user.Email,
+		CreatedAt:     user.CreatedAt,
+		UpdatedAt:     user.UpdatedAt,
+		IsActive:      user.IsActive,
+		IsDeletable:   user.IsDeletable,
 	}
 	return foundUser, nil
 }

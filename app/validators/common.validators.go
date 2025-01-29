@@ -12,7 +12,7 @@ import (
 
 func isUUIDv4Valid(fl validator.FieldLevel) bool {
 	id := getValue(fl)
-	err := utils.ValidateIdStringIsValidUUID(id)
+	_, err := utils.ParseIdStringIsValidUUID(id)
 	return err == nil
 }
 

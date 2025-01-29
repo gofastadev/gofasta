@@ -6,6 +6,7 @@ import (
 
 	"github.com/healtronlabs/gofasta/app/dtos"
 	"github.com/healtronlabs/gofasta/app/services"
+	"github.com/healtronlabs/gofasta/app/utils"
 )
 
 // UserController handles RESTful requests for users.
@@ -70,12 +71,17 @@ func (uc *UserController) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 // UpdateUser handles PUT /users/{id} requests.
 func (uc *UserController) UpdateUser(w http.ResponseWriter, r *http.Request, id string) {
-	var dataForUpdate dtos.UserFieldsForUpdateDto
+	var dataForUpdate dtos.TUserFieldsForUpdateDto
 	if err := json.NewDecoder(r.Body).Decode(&dataForUpdate); err != nil {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return
 	}
-	dataForUpdate.ID = id
+	userId, err := utils.ParseIdStringIsValidUUID(id)
+	if err != nil {
+		http.Error(w, "UserID should be a valid UUID", http.StatusBadRequest)
+		return
+	}
+	dataForUpdate.ID = userId
 	updatedUser, err := uc.UserService.UpdateUser(dataForUpdate)
 	if err != nil {
 		http.Error(w, "Failed to update user", http.StatusInternalServerError)
