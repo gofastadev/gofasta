@@ -14,7 +14,6 @@ services:
         target: /gofasta
     ports:
       - $PORT:$PORT
-    # command: sh -c 'go mod tidy && go run github.com/air-verse/air'
     entrypoint: ["deployments/dev/app/dev_entrypoint.sh"]
     networks:
       - ${DOCKER_NETWORK_NAME}
