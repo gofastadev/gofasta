@@ -1,7 +1,6 @@
 package services
 
 import (
-	"fmt"
 	"log"
 	"math"
 
@@ -26,9 +25,7 @@ func (u *UserService) FindUsersWithFilters(filters dtos.UserFiltersDto) (*dtos.U
 		return nil, err
 	}
 	var foundUsers []*dtos.User
-	fmt.Println("=====>we are here before paginate")
 	paginator := utils.PreparePaginating{PageFilters: filters.Pagination, Sorting: filters.Sorting}
-	fmt.Println("=====>we are here after paginate")
 	page := paginator.GetPage()
 	limit := paginator.GetLimit()
 	var totalUsers int64
