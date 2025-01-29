@@ -3713,7 +3713,7 @@ func (ec *executionContext) unmarshalInputUserFiltersDto(ctx context.Context, ob
 		switch k {
 		case "fields":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("fields"))
-			data, err := ec.unmarshalNUserFieldsForFiltersDto2ᚖgithubᚗcomᚋhealtronlabsᚋgofastaᚋappᚋdtosᚐUserFieldsForFiltersDto(ctx, v)
+			data, err := ec.unmarshalOUserFieldsForFiltersDto2ᚖgithubᚗcomᚋhealtronlabsᚋgofastaᚋappᚋdtosᚐUserFieldsForFiltersDto(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -4592,11 +4592,6 @@ func (ec *executionContext) marshalNUser2ᚖgithubᚗcomᚋhealtronlabsᚋgofast
 	return ec._User(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNUserFieldsForFiltersDto2ᚖgithubᚗcomᚋhealtronlabsᚋgofastaᚋappᚋdtosᚐUserFieldsForFiltersDto(ctx context.Context, v interface{}) (*dtos.UserFieldsForFiltersDto, error) {
-	res, err := ec.unmarshalInputUserFieldsForFiltersDto(ctx, v)
-	return &res, graphql.ErrorOnPath(ctx, err)
-}
-
 func (ec *executionContext) unmarshalNUserFieldsForUpdateDto2githubᚗcomᚋhealtronlabsᚋgofastaᚋappᚋdtosᚐUserFieldsForUpdateDto(ctx context.Context, v interface{}) (dtos.UserFieldsForUpdateDto, error) {
 	res, err := ec.unmarshalInputUserFieldsForUpdateDto(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -5031,6 +5026,14 @@ func (ec *executionContext) marshalOUser2ᚖgithubᚗcomᚋhealtronlabsᚋgofast
 		return graphql.Null
 	}
 	return ec._User(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOUserFieldsForFiltersDto2ᚖgithubᚗcomᚋhealtronlabsᚋgofastaᚋappᚋdtosᚐUserFieldsForFiltersDto(ctx context.Context, v interface{}) (*dtos.UserFieldsForFiltersDto, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := ec.unmarshalInputUserFieldsForFiltersDto(ctx, v)
+	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) marshalO__EnumValue2ᚕgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐEnumValueᚄ(ctx context.Context, sel ast.SelectionSet, v []introspection.EnumValue) graphql.Marshaler {

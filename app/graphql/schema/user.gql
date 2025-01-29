@@ -46,7 +46,7 @@ input UserFieldsForFiltersDto {
 }
 
 input UserFiltersDto {
-  fields: UserFieldsForFiltersDto!
+  fields: UserFieldsForFiltersDto
   pagination: TPaginationInputDto
   sorting: TSortingInputDto
 }
