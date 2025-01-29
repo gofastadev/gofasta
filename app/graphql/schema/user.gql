@@ -21,7 +21,7 @@ type UserResponseDto {
 
 # QUERIES
 extend type Query {
-  users(filters: UserFiltersDto!): UsersResponseDto!
+  findUsersWithFilters(filters: UserFiltersDto!): UsersResponseDto!
 }
 
 # MUTATIONS

@@ -39,7 +39,7 @@ func (uc *UserController) GetUsersWithFilters(w http.ResponseWriter, r *http.Req
 		SortByField:     sortField,
 		SortOrientation: filters.SortOrientation,
 	}
-	usersRes, err := uc.UserService.GetUsers(userFilters)
+	usersRes, err := uc.UserService.FindUsersWithFilters(userFilters)
 	if err != nil {
 		http.Error(w, "Users not found", http.StatusNotFound)
 		return

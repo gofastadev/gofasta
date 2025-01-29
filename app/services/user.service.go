@@ -19,7 +19,7 @@ func NewUserService(db *gorm.DB) *UserService {
 	return &UserService{DB: db}
 }
 
-func (u *UserService) GetUsers(filters dtos.UserFiltersDto) (*dtos.UsersResponseDto, error) {
+func (u *UserService) FindUsersWithFilters(filters dtos.UserFiltersDto) (*dtos.UsersResponseDto, error) {
 	query, err := utils.BuildQueryForAnyModel(u.DB.Model(&models.User{}), utils.ConvertStructToMap(filters.Fields))
 	if err != nil {
 		return nil, err
