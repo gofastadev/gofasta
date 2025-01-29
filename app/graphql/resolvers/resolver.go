@@ -1,6 +1,6 @@
 package resolvers
 
-import "github.com/healtronlabs/go_gql_template/app/services"
+import "github.com/healtronlabs/gofasta/app/services"
 
 // This file will not be regenerated automatically.
 //

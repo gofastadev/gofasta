@@ -3,7 +3,7 @@ package utils
 import (
 	"fmt"
 
-	"github.com/healtronlabs/go_gql_template/app/dtos"
+	"github.com/healtronlabs/gofasta/app/dtos"
 )
 
 type PreparePaginating struct {
@@ -16,13 +16,21 @@ func (p *PreparePaginating) GetOffset() int {
 }
 
 func (p *PreparePaginating) GetLimit() int {
+	defaultLimit := 10
+	if p.PageFilters == nil {
+		return defaultLimit
+	}
 	if limit := p.PageFilters.Limit; limit != nil {
 		return *limit
 	}
-	return 10
+	return defaultLimit
 }
 
 func (p *PreparePaginating) GetPage() int {
+	defaultPage := 1
+	if p.PageFilters == nil {
+		return defaultPage
+	}
 	if page := p.PageFilters.Page; page != nil {
 		return *page
 	}

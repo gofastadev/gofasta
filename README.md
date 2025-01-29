@@ -1,8 +1,8 @@
-# Go GraphqlQL API Template Repo
+# Gofasta Repo
 ## Motivation
 In the evolving landscape of web development, GraphQL has emerged as a powerful alternative to REST APIs, offering more flexibility and efficiency in querying data. However, many existing Golang packages and templates are primarily focused on REST APIs, with limited support for integrating GraphQL functionalities, especially when using gqlgen.
 
-Recognizing this gap, the go-gql-template project was created to streamline the development of GraphQL APIs in Golang. Our goal is to provide a robust, full-featured template that simplifies the setup and configuration of a GraphQL server, enabling developers to focus on building and optimizing their applications rather than wrestling with boilerplate code.
+Recognizing this gap, the gofasta project was created to streamline the development of GraphQL APIs in Golang. Our goal is to provide a robust, full-featured template that simplifies the setup and configuration of a GraphQL server, enabling developers to focus on building and optimizing their applications rather than wrestling with boilerplate code.
 
 This template includes pre-configured packages and best practices tailored specifically for GraphQL development. Once the server is up and running, the API will be accessible at the /graphql endpoint, providing a solid foundation for building scalable and efficient GraphQL services.
 

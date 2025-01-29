@@ -3,12 +3,12 @@ package main
 import (
 	"github.com/99designs/gqlgen/graphql/handler"
 	"github.com/gorilla/mux"
-	"github.com/healtronlabs/go_gql_template/app"
-	"github.com/healtronlabs/go_gql_template/app/rest/controllers"
-	"github.com/healtronlabs/go_gql_template/app/graphql/resolvers"
-	"github.com/healtronlabs/go_gql_template/app/rest/routes"
-	"github.com/healtronlabs/go_gql_template/app/services"
-	"github.com/healtronlabs/go_gql_template/configs"
+	"github.com/healtronlabs/gofasta/app"
+	"github.com/healtronlabs/gofasta/app/rest/controllers"
+	"github.com/healtronlabs/gofasta/app/graphql/resolvers"
+	"github.com/healtronlabs/gofasta/app/rest/routes"
+	"github.com/healtronlabs/gofasta/app/services"
+	"github.com/healtronlabs/gofasta/configs"
 )
 
 func setupAndInitializeDb() (*handler.Server, *mux.Router) {

@@ -1,4 +1,4 @@
-module github.com/healtronlabs/go_gql_template
+module github.com/healtronlabs/gofasta
 
 go 1.22.5
 

@@ -5,8 +5,9 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/schema"
-	"github.com/healtronlabs/go_gql_template/app/dtos"
-	"github.com/healtronlabs/go_gql_template/app/rest/controllers"
+	"github.com/healtronlabs/gofasta/app/dtos"
+	"github.com/healtronlabs/gofasta/app/rest/controllers"
+	"github.com/healtronlabs/gofasta/app/utils"
 )
 
 func UserRoutes(r *mux.Router, userController *controllers.UserController) {
@@ -28,7 +29,7 @@ func UserRoutes(r *mux.Router, userController *controllers.UserController) {
 				return
 			}
 
-			userController.GetUsersWithFilters(w, r, filters)
+			userController.FindUsersWithFilters(w, r, filters)
 		default:
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		}
@@ -37,10 +38,19 @@ func UserRoutes(r *mux.Router, userController *controllers.UserController) {
 	// Nested route for /users/{id}
 	r.HandleFunc("/users/{id}", func(w http.ResponseWriter, r *http.Request) {
 		vars := mux.Vars(r)
-
+		id := vars["id"]
+		passedId, err := utils.ParseIdStringIsValidUUID(id)
+		if err != nil {
+			http.Error(w, "id should be a valid UUID", http.StatusBadRequest)
+			return
+		}
 		switch r.Method {
 		case http.MethodPut:
-			userController.UpdateUser(w, r, vars["id"])
+			userController.UpdateUser(w, r, passedId)
+		case http.MethodDelete:
+			userController.ArchiveUser(w, r, passedId)
+		case http.MethodGet:
+			userController.FindUserById(w, r, passedId)
 		default:
 			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
 		}

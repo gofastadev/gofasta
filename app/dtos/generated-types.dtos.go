@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"io"
 	"strconv"
+	"time"
+
+	"github.com/google/uuid"
 )
 
 type Mutation struct {
@@ -19,6 +22,12 @@ type TCommonAPIErrorDto struct {
 	Message   string  `json:"message"`
 }
 
+type TCommonResponseDto struct {
+	Status  int                   `json:"status"`
+	Message *string               `json:"message,omitempty"`
+	Errors  []*TCommonAPIErrorDto `json:"errors,omitempty"`
+}
+
 type TPaginationObjectDto struct {
 	TotalRecords   *int `json:"totalRecords,omitempty"`
 	RecordsPerPage *int `json:"recordsPerPage,omitempty"`
@@ -26,24 +35,28 @@ type TPaginationObjectDto struct {
 	CurrentPage    *int `json:"currentPage,omitempty"`
 }
 
-type User struct {
-	ID          string `json:"id"`
-	CreatedAt   string `json:"createdAt"`
-	UpdatedAt   string `json:"updatedAt"`
-	FirstName   string `json:"firstName"`
-	OtherNames  string `json:"otherNames"`
-	Email       string `json:"email"`
-	PhoneNumber string `json:"phoneNumber"`
-}
-
-type UserResponseDto struct {
+type TUserResponseDto struct {
 	Data   *User                 `json:"data,omitempty"`
 	Errors []*TCommonAPIErrorDto `json:"errors,omitempty"`
 }
 
-type UsersResponseDto struct {
-	Users      []*User               `json:"users"`
+type TUsersResponseDto struct {
+	Data       []*User               `json:"data"`
 	Pagination *TPaginationObjectDto `json:"pagination"`
+}
+
+type User struct {
+	ID            uuid.UUID  `json:"id"`
+	RecordVersion int        `json:"recordVersion"`
+	CreatedAt     time.Time  `json:"createdAt"`
+	UpdatedAt     time.Time  `json:"updatedAt"`
+	FirstName     string     `json:"firstName"`
+	OtherNames    string     `json:"otherNames"`
+	Email         string     `json:"email"`
+	PhoneNumber   string     `json:"phoneNumber"`
+	IsActive      bool       `json:"isActive"`
+	IsDeletable   bool       `json:"isDeletable"`
+	DeletedAt     *time.Time `json:"deletedAt,omitempty"`
 }
 
 type SortOrientation string

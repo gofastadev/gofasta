@@ -4,8 +4,9 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/healtronlabs/go_gql_template/app/dtos"
-	"github.com/healtronlabs/go_gql_template/app/services"
+	"github.com/google/uuid"
+	"github.com/healtronlabs/gofasta/app/dtos"
+	"github.com/healtronlabs/gofasta/app/services"
 )
 
 // UserController handles RESTful requests for users.
@@ -19,7 +20,7 @@ func NewUserControllerInstance(userService services.UserService) *UserController
 }
 
 // GetUser handles GET /users requests.
-func (uc *UserController) GetUsersWithFilters(w http.ResponseWriter, r *http.Request, filters dtos.TUserFiltersQueryParamsDto) {
+func (uc *UserController) FindUsersWithFilters(w http.ResponseWriter, r *http.Request, filters dtos.TUserFiltersQueryParamsDto) {
 	var userFilters dtos.UserFiltersDto
 	userFilters.Fields = &dtos.UserFieldsForFiltersDto{
 		FirstName:   filters.FirstName,
@@ -39,7 +40,7 @@ func (uc *UserController) GetUsersWithFilters(w http.ResponseWriter, r *http.Req
 		SortByField:     sortField,
 		SortOrientation: filters.SortOrientation,
 	}
-	usersRes, err := uc.UserService.GetUsers(userFilters)
+	usersRes, err := uc.UserService.FindUsersWithFilters(userFilters)
 	if err != nil {
 		http.Error(w, "Users not found", http.StatusNotFound)
 		return
@@ -51,7 +52,7 @@ func (uc *UserController) GetUsersWithFilters(w http.ResponseWriter, r *http.Req
 
 // CreateUser handles POST /users requests.
 func (uc *UserController) CreateUser(w http.ResponseWriter, r *http.Request) {
-	var user dtos.NewUserDto
+	var user dtos.TCreateUserDto
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return
@@ -69,13 +70,13 @@ func (uc *UserController) CreateUser(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateUser handles PUT /users/{id} requests.
-func (uc *UserController) UpdateUser(w http.ResponseWriter, r *http.Request, id string) {
-	var dataForUpdate dtos.UserFieldsForUpdateDto
+func (uc *UserController) UpdateUser(w http.ResponseWriter, r *http.Request, userId uuid.UUID) {
+	var dataForUpdate dtos.TUserFieldsForUpdateDto
 	if err := json.NewDecoder(r.Body).Decode(&dataForUpdate); err != nil {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return
 	}
-	dataForUpdate.ID = id
+	dataForUpdate.ID = userId
 	updatedUser, err := uc.UserService.UpdateUser(dataForUpdate)
 	if err != nil {
 		http.Error(w, "Failed to update user", http.StatusInternalServerError)
@@ -86,19 +87,30 @@ func (uc *UserController) UpdateUser(w http.ResponseWriter, r *http.Request, id 
 	json.NewEncoder(w).Encode(updatedUser)
 }
 
-// DeleteUser handles DELETE /users/{id} requests.
-// func (uc *UserController) DeleteUser(w http.ResponseWriter, r *http.Request) {
-// 	vars := mux.Vars(r)
-// 	id, err := strconv.Atoi(vars["id"])
-// 	if err != nil {
-// 		http.Error(w, "Invalid user ID", http.StatusBadRequest)
-// 		return
-// 	}
+// UpdateUser handles PUT /users/{id} requests.
+func (uc *UserController) FindUserById(w http.ResponseWriter, r *http.Request, userId uuid.UUID) {
+	var dataForUpdate dtos.TFindUserByIDDto
+	if err := json.NewDecoder(r.Body).Decode(&dataForUpdate); err != nil {
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
+	dataForUpdate.UserID = userId
+	updatedUser, err := uc.UserService.FindUserByID(dataForUpdate)
+	if err != nil {
+		http.Error(w, "Failed to update user", http.StatusInternalServerError)
+		return
+	}
 
-// 	if err := uc.UserService.DeleteUser(id); err != nil {
-// 		http.Error(w, "Failed to delete user", http.StatusInternalServerError)
-// 		return
-// 	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(updatedUser)
+}
 
-// 	w.WriteHeader(http.StatusNoContent)
-// }
+func (uc *UserController) ArchiveUser(w http.ResponseWriter, r *http.Request, userId uuid.UUID) {
+	res, err := uc.UserService.ArchiveUser(dtos.TArchiveUserDto{UserID: userId})
+	if err != nil {
+		http.Error(w, "Failed to delete user", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(res)
+}

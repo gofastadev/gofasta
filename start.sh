@@ -11,9 +11,9 @@ if [ -z "$1" ]; then
   echo "No argument supplied"
 else
   if [[ "$1" == "dev" || "$1" == "qa" || "$1" == "prod" ]]; then
-    echo "Starting go_gql_template in: $1 environment..."
-    docker compose -p go_gql_template_helpers -f "./compose-$1.yml" --profile db up -d
-    docker compose -p go_gql_template_full_setup -f "./compose-$1.yml" --profile main up
+    echo "Starting gofasta in: $1 environment..."
+    docker compose -p gofasta_helpers -f "./compose-$1.yml" --profile db up -d
+    docker compose -p gofasta_full_setup -f "./compose-$1.yml" --profile main up
   else
     echo "Invalid environment: $1, valid environments are: dev, qa, prod"
   fi

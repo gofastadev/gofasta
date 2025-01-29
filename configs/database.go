@@ -16,7 +16,7 @@ import (
 			os.Getenv("DB_USER"),
 			os.Getenv("DB_PASSWORD"),
 			os.Getenv("DB_NAME"),
-			os.Getenv("DB_PORT"),
+			os.Getenv("DB_CONTAINER_PORT"),
 		)
 	
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
@@ -30,7 +30,7 @@ import (
 	if err != nil {
 		log.Fatalf("Failed to get database instance: %v", err)
 	} else {
-		log.Println("======= Successfully go the db instance =======")
+		log.Println("======= Successfully got the db instance =======")
 	}
 
 	// SetMaxIdleConns sets the maximum number of connections in the idle connection pool.
