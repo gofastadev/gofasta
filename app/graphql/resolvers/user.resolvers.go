@@ -11,16 +11,26 @@ import (
 )
 
 // CreateUser is the resolver for the createUser field.
-func (r *mutationResolver) CreateUser(ctx context.Context, input dtos.NewUserDto) (*dtos.UserResponseDto, error) {
+func (r *mutationResolver) CreateUser(ctx context.Context, input dtos.TCreateUserDto) (*dtos.TUserResponseDto, error) {
 	return r.UserService.CreateUser(input)
 }
 
 // UpdateUser is the resolver for the updateUser field.
-func (r *mutationResolver) UpdateUser(ctx context.Context, input dtos.TUserFieldsForUpdateDto) (*dtos.UserResponseDto, error) {
+func (r *mutationResolver) UpdateUser(ctx context.Context, input dtos.TUserFieldsForUpdateDto) (*dtos.TUserResponseDto, error) {
 	return r.UserService.UpdateUser(input)
 }
 
+// ArchiveUser is the resolver for the archiveUser field.
+func (r *mutationResolver) ArchiveUser(ctx context.Context, input dtos.TArchiveUserDto) (*dtos.TCommonResponseDto, error) {
+	return r.UserService.ArchiveUser(input)
+}
+
 // Users is the resolver for the users field.
-func (r *queryResolver) FindUsersWithFilters(ctx context.Context, filters dtos.UserFiltersDto) (*dtos.UsersResponseDto, error) {
+func (r *queryResolver) FindUsersWithFilters(ctx context.Context, filters dtos.UserFiltersDto) (*dtos.TUsersResponseDto, error) {
 	return r.UserService.FindUsersWithFilters(filters)
+}
+
+// FindUserByID is the resolver for the findUserById field.
+func (r *queryResolver) FindUserByID(ctx context.Context, filters dtos.TFindUserByIDDto) (*dtos.TUserResponseDto, error) {
+	return r.UserService.FindUserByID(filters)
 }

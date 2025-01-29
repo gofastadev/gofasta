@@ -22,11 +22,27 @@ type TCommonAPIErrorDto struct {
 	Message   string  `json:"message"`
 }
 
+type TCommonResponseDto struct {
+	Status  int                   `json:"status"`
+	Message *string               `json:"message,omitempty"`
+	Errors  []*TCommonAPIErrorDto `json:"errors,omitempty"`
+}
+
 type TPaginationObjectDto struct {
 	TotalRecords   *int `json:"totalRecords,omitempty"`
 	RecordsPerPage *int `json:"recordsPerPage,omitempty"`
 	TotalPages     *int `json:"totalPages,omitempty"`
 	CurrentPage    *int `json:"currentPage,omitempty"`
+}
+
+type TUserResponseDto struct {
+	Data   *User                 `json:"data,omitempty"`
+	Errors []*TCommonAPIErrorDto `json:"errors,omitempty"`
+}
+
+type TUsersResponseDto struct {
+	Users      []*User               `json:"users"`
+	Pagination *TPaginationObjectDto `json:"pagination"`
 }
 
 type User struct {
@@ -40,16 +56,6 @@ type User struct {
 	PhoneNumber   string    `json:"phoneNumber"`
 	IsActive      bool      `json:"isActive"`
 	IsDeletable   bool      `json:"isDeletable"`
-}
-
-type UserResponseDto struct {
-	Data   *User                 `json:"data,omitempty"`
-	Errors []*TCommonAPIErrorDto `json:"errors,omitempty"`
-}
-
-type UsersResponseDto struct {
-	Users      []*User               `json:"users"`
-	Pagination *TPaginationObjectDto `json:"pagination"`
 }
 
 type SortOrientation string

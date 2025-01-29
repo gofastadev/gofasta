@@ -28,3 +28,9 @@ type TCommonApiErrorDto {
     fieldName: String
     message: String!
 }
+
+type TCommonResponseDto {
+    status: Int!
+    message: String
+    errors: [TCommonApiErrorDto!]
+}

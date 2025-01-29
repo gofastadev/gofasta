@@ -12,29 +12,37 @@ type User {
   isDeletable: Boolean!
 }
 
-type UsersResponseDto {
+type TUsersResponseDto {
   users: [User!]!
   pagination: TPaginationObjectDto!
 }
 
-type UserResponseDto {
+type TUserResponseDto {
   data: User
   errors: [TCommonApiErrorDto]
 }
 
 # QUERIES
 extend type Query {
-  findUsersWithFilters(filters: UserFiltersDto!): UsersResponseDto!
+  findUsersWithFilters(filters: UserFiltersDto!): TUsersResponseDto!
+  findUserById(filters: TFindUserByIdDto!): TUserResponseDto!
 }
 
 # MUTATIONS
 extend type Mutation {
-  createUser(input: NewUserDto!): UserResponseDto!
-  updateUser(input: TUserFieldsForUpdateDto!): UserResponseDto!
+  createUser(input: TCreateUserDto!): TUserResponseDto!
+  updateUser(input: TUserFieldsForUpdateDto!): TUserResponseDto!
+  archiveUser(input: TArchiveUserDto!): TCommonResponseDto!
 }
 
 # INPUTS
-input NewUserDto {
+input TFindUserByIdDto {
+  userId: ID!
+}
+input TArchiveUserDto {
+  userId: ID!
+}
+input TCreateUserDto {
   firstName: String!
   otherNames: String!
   email: String!
@@ -56,7 +64,7 @@ input UserFiltersDto {
 
 input TUserFieldsForUpdateDto {
   id: ID!
-  RecordVersion: Int!
+  recordVersion: Int!
   firstName: String
   otherNames: String
   email: String

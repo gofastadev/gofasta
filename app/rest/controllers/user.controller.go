@@ -52,7 +52,7 @@ func (uc *UserController) GetUsersWithFilters(w http.ResponseWriter, r *http.Req
 
 // CreateUser handles POST /users requests.
 func (uc *UserController) CreateUser(w http.ResponseWriter, r *http.Request) {
-	var user dtos.NewUserDto
+	var user dtos.TCreateUserDto
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return

@@ -3,6 +3,7 @@ CREATE TABLE "users" (
     "first_name" character varying NOT NULL,
     "other_names" character varying NOT NULL,
     "email" character varying NOT NULL UNIQUE,
+    "password" character varying NOT NULL,
     "phone_number" character varying NOT NULL UNIQUE,
     "is_deletable" Boolean NOT NULL DEFAULT true,
     "is_active" Boolean NOT NULL DEFAULT true,

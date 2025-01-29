@@ -2,22 +2,31 @@ package dtos
 
 import "github.com/google/uuid"
 
-type NewUserDto struct {
-	FirstName   string `json:"firstName" schema:"firstName" validate:"required"`
-	OtherNames  string `json:"otherNames" schema:"otherNames" validate:"required"`
-	Email       string `json:"email" schema:"email" validate:"required,email"`
-	PhoneNumber string `json:"phoneNumber" schema:"phoneNumber" validate:"required,len=10"`
+type TUserFieldsForUpdateDto struct {
+	ID            uuid.UUID `json:"id" validate:"required,uuid4_valid,does_record_exist_by_id_for_verification=users"`
+	RecordVersion int       `json:"recordVersion" validate:"required,min=1"`
+	FirstName     *string   `json:"firstName,omitempty" validate:"omitempty,min=1,max=50"`
+	OtherNames    *string   `json:"otherNames,omitempty" validate:"omitempty,min=1,max=150"`
+	Email         *string   `json:"email,omitempty" validate:"omitempty,email,is_record_exist_by_email_for_conflict=users"`
+	PhoneNumber   *string   `json:"phoneNumber,omitempty" validate:"omitempty,is_record_exist_by_phone_number_for_conflict=users"`
+	IsActive      *bool     `json:"isActive,omitempty"`
+	IsDeletable   *bool     `json:"isDeletable,omitempty"`
 }
 
-type TUserFieldsForUpdateDto struct {
-	ID             uuid.UUID `json:"id" validate:"required,uuid4_valid,does_record_exist_by_id_for_verification=users"`
-	RecordVersion  int       `json:"recordVersion" validate:"required,min=1"`
-	FirstName      *string   `json:"firstName,omitempty"`
-	OtherNames     *string   `json:"otherNames,omitempty"`
-	Email          *string   `json:"email,omitempty" validate:"omitempty,is_record_exist_by_email_for_conflict=users"`
-	PhoneNumber    *string   `json:"phoneNumber,omitempty" validate:"omitempty,is_record_exist_by_phone_number_for_conflict=users"`
-	IsActive       *bool     `json:"isActive,omitempty"`
-	IsDeletable    *bool     `json:"isDeletable,omitempty"`
+type TCreateUserDto struct {
+	FirstName      string    `json:"firstName" validate:"required,min=1,max=50"`
+	OtherNames     string    `json:"otherNames" validate:"required,min=1,max=150"`
+	Email          string    `json:"email" validate:"required,email,is_record_exist_by_email_for_conflict=users"`
+	PhoneNumber    string    `json:"phoneNumber" validate:"required,is_valid_phone_number,is_record_exist_by_phone_number_for_conflict=users"`
+	ProfilePicture *string   `json:"profilePicture,omitempty" validate:"omitempty,is_valid_url"`
+}
+
+type TArchiveUserDto struct {
+	UserID uuid.UUID `json:"userId" validate:"uuid4_valid,does_record_exist_by_id_for_verification=users,is_record_deletable=users"`
+}
+
+type TFindUserByIDDto struct {
+	UserID uuid.UUID `json:"userId" validate:"uuid4_valid,does_record_exist_by_id_for_verification=users"`
 }
 
 type UserFieldsForFiltersDto struct {
