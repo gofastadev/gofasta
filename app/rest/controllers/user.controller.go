@@ -4,10 +4,9 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/gorilla/mux"
+	"github.com/google/uuid"
 	"github.com/healtronlabs/gofasta/app/dtos"
 	"github.com/healtronlabs/gofasta/app/services"
-	"github.com/healtronlabs/gofasta/app/utils"
 )
 
 // UserController handles RESTful requests for users.
@@ -71,15 +70,10 @@ func (uc *UserController) CreateUser(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateUser handles PUT /users/{id} requests.
-func (uc *UserController) UpdateUser(w http.ResponseWriter, r *http.Request, id string) {
+func (uc *UserController) UpdateUser(w http.ResponseWriter, r *http.Request, userId uuid.UUID) {
 	var dataForUpdate dtos.TUserFieldsForUpdateDto
 	if err := json.NewDecoder(r.Body).Decode(&dataForUpdate); err != nil {
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
-		return
-	}
-	userId, err := utils.ParseIdStringIsValidUUID(id)
-	if err != nil {
-		http.Error(w, "UserID should be a valid UUID", http.StatusBadRequest)
 		return
 	}
 	dataForUpdate.ID = userId
@@ -93,14 +87,25 @@ func (uc *UserController) UpdateUser(w http.ResponseWriter, r *http.Request, id 
 	json.NewEncoder(w).Encode(updatedUser)
 }
 
-func (uc *UserController) DeleteUser(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	userId, err := utils.ParseIdStringIsValidUUID(vars["id"])
+// UpdateUser handles PUT /users/{id} requests.
+func (uc *UserController) FindUserById(w http.ResponseWriter, r *http.Request, userId uuid.UUID) {
+	var dataForUpdate dtos.TFindUserByIDDto
+	if err := json.NewDecoder(r.Body).Decode(&dataForUpdate); err != nil {
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
+	dataForUpdate.UserID = userId
+	updatedUser, err := uc.UserService.FindUserByID(dataForUpdate)
 	if err != nil {
-		http.Error(w, "UserID should be a valid UUID", http.StatusBadRequest)
+		http.Error(w, "Failed to update user", http.StatusInternalServerError)
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(updatedUser)
+}
+
+func (uc *UserController) ArchiveUser(w http.ResponseWriter, r *http.Request, userId uuid.UUID) {
 	res, err := uc.UserService.ArchiveUser(dtos.TArchiveUserDto{UserID: userId})
 	if err != nil {
 		http.Error(w, "Failed to delete user", http.StatusInternalServerError)
