@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# cd /go_gql_template
+# cd /gofasta
 
 source .env
 

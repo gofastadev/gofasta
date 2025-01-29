@@ -5,8 +5,8 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/schema"
-	"github.com/healtronlabs/go_gql_template/app/dtos"
-	"github.com/healtronlabs/go_gql_template/app/rest/controllers"
+	"github.com/healtronlabs/gofasta/app/dtos"
+	"github.com/healtronlabs/gofasta/app/rest/controllers"
 )
 
 func UserRoutes(r *mux.Router, userController *controllers.UserController) {

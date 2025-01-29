@@ -6,7 +6,7 @@ import (
 	"reflect"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/healtronlabs/go_gql_template/app/utils"
+	"github.com/healtronlabs/gofasta/app/utils"
 	"gorm.io/gorm"
 )
 

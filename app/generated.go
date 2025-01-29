@@ -14,7 +14,7 @@ import (
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/99designs/gqlgen/graphql/introspection"
-	"github.com/healtronlabs/go_gql_template/app/dtos"
+	"github.com/healtronlabs/gofasta/app/dtos"
 	gqlparser "github.com/vektah/gqlparser/v2"
 	"github.com/vektah/gqlparser/v2/ast"
 )
@@ -427,7 +427,7 @@ func (ec *executionContext) field_Mutation_createUser_args(ctx context.Context, 
 	var arg0 dtos.NewUserDto
 	if tmp, ok := rawArgs["input"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
-		arg0, err = ec.unmarshalNNewUserDto2githubᚗcomᚋhealtronlabsᚋgo_gql_templateᚋappᚋdtosᚐNewUserDto(ctx, tmp)
+		arg0, err = ec.unmarshalNNewUserDto2githubᚗcomᚋhealtronlabsᚋgofastaᚋappᚋdtosᚐNewUserDto(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -442,7 +442,7 @@ func (ec *executionContext) field_Mutation_updateUser_args(ctx context.Context, 
 	var arg0 dtos.UserFieldsForUpdateDto
 	if tmp, ok := rawArgs["input"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("input"))
-		arg0, err = ec.unmarshalNUserFieldsForUpdateDto2githubᚗcomᚋhealtronlabsᚋgo_gql_templateᚋappᚋdtosᚐUserFieldsForUpdateDto(ctx, tmp)
+		arg0, err = ec.unmarshalNUserFieldsForUpdateDto2githubᚗcomᚋhealtronlabsᚋgofastaᚋappᚋdtosᚐUserFieldsForUpdateDto(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -472,7 +472,7 @@ func (ec *executionContext) field_Query_users_args(ctx context.Context, rawArgs 
 	var arg0 dtos.UserFiltersDto
 	if tmp, ok := rawArgs["filters"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("filters"))
-		arg0, err = ec.unmarshalNUserFiltersDto2githubᚗcomᚋhealtronlabsᚋgo_gql_templateᚋappᚋdtosᚐUserFiltersDto(ctx, tmp)
+		arg0, err = ec.unmarshalNUserFiltersDto2githubᚗcomᚋhealtronlabsᚋgofastaᚋappᚋdtosᚐUserFiltersDto(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -591,7 +591,7 @@ func (ec *executionContext) _Mutation_createUser(ctx context.Context, field grap
 	}
 	res := resTmp.(*dtos.UserResponseDto)
 	fc.Result = res
-	return ec.marshalNUserResponseDto2ᚖgithubᚗcomᚋhealtronlabsᚋgo_gql_templateᚋappᚋdtosᚐUserResponseDto(ctx, field.Selections, res)
+	return ec.marshalNUserResponseDto2ᚖgithubᚗcomᚋhealtronlabsᚋgofastaᚋappᚋdtosᚐUserResponseDto(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Mutation_createUser(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -652,7 +652,7 @@ func (ec *executionContext) _Mutation_updateUser(ctx context.Context, field grap
 	}
 	res := resTmp.(*dtos.UserResponseDto)
 	fc.Result = res
-	return ec.marshalNUserResponseDto2ᚖgithubᚗcomᚋhealtronlabsᚋgo_gql_templateᚋappᚋdtosᚐUserResponseDto(ctx, field.Selections, res)
+	return ec.marshalNUserResponseDto2ᚖgithubᚗcomᚋhealtronlabsᚋgofastaᚋappᚋdtosᚐUserResponseDto(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Mutation_updateUser(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -757,7 +757,7 @@ func (ec *executionContext) _Query_users(ctx context.Context, field graphql.Coll
 	}
 	res := resTmp.(*dtos.UsersResponseDto)
 	fc.Result = res
-	return ec.marshalNUsersResponseDto2ᚖgithubᚗcomᚋhealtronlabsᚋgo_gql_templateᚋappᚋdtosᚐUsersResponseDto(ctx, field.Selections, res)
+	return ec.marshalNUsersResponseDto2ᚖgithubᚗcomᚋhealtronlabsᚋgofastaᚋappᚋdtosᚐUsersResponseDto(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_Query_users(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -1501,7 +1501,7 @@ func (ec *executionContext) _UserResponseDto_data(ctx context.Context, field gra
 	}
 	res := resTmp.(*dtos.User)
 	fc.Result = res
-	return ec.marshalOUser2ᚖgithubᚗcomᚋhealtronlabsᚋgo_gql_templateᚋappᚋdtosᚐUser(ctx, field.Selections, res)
+	return ec.marshalOUser2ᚖgithubᚗcomᚋhealtronlabsᚋgofastaᚋappᚋdtosᚐUser(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_UserResponseDto_data(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -1558,7 +1558,7 @@ func (ec *executionContext) _UserResponseDto_errors(ctx context.Context, field g
 	}
 	res := resTmp.([]*dtos.TCommonAPIErrorDto)
 	fc.Result = res
-	return ec.marshalOTCommonApiErrorDto2ᚕᚖgithubᚗcomᚋhealtronlabsᚋgo_gql_templateᚋappᚋdtosᚐTCommonAPIErrorDto(ctx, field.Selections, res)
+	return ec.marshalOTCommonApiErrorDto2ᚕᚖgithubᚗcomᚋhealtronlabsᚋgofastaᚋappᚋdtosᚐTCommonAPIErrorDto(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_UserResponseDto_errors(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -1608,7 +1608,7 @@ func (ec *executionContext) _UsersResponseDto_users(ctx context.Context, field g
 	}
 	res := resTmp.([]*dtos.User)
 	fc.Result = res
-	return ec.marshalNUser2ᚕᚖgithubᚗcomᚋhealtronlabsᚋgo_gql_templateᚋappᚋdtosᚐUserᚄ(ctx, field.Selections, res)
+	return ec.marshalNUser2ᚕᚖgithubᚗcomᚋhealtronlabsᚋgofastaᚋappᚋdtosᚐUserᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_UsersResponseDto_users(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -1668,7 +1668,7 @@ func (ec *executionContext) _UsersResponseDto_pagination(ctx context.Context, fi
 	}
 	res := resTmp.(*dtos.TPaginationObjectDto)
 	fc.Result = res
-	return ec.marshalNTPaginationObjectDto2ᚖgithubᚗcomᚋhealtronlabsᚋgo_gql_templateᚋappᚋdtosᚐTPaginationObjectDto(ctx, field.Selections, res)
+	return ec.marshalNTPaginationObjectDto2ᚖgithubᚗcomᚋhealtronlabsᚋgofastaᚋappᚋdtosᚐTPaginationObjectDto(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) fieldContext_UsersResponseDto_pagination(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
@@ -3583,7 +3583,7 @@ func (ec *executionContext) unmarshalInputTSortingInputDto(ctx context.Context, 
 			it.SortByField = data
 		case "sortOrientation":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sortOrientation"))
-			data, err := ec.unmarshalOSortOrientation2ᚖgithubᚗcomᚋhealtronlabsᚋgo_gql_templateᚋappᚋdtosᚐSortOrientation(ctx, v)
+			data, err := ec.unmarshalOSortOrientation2ᚖgithubᚗcomᚋhealtronlabsᚋgofastaᚋappᚋdtosᚐSortOrientation(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -3713,21 +3713,21 @@ func (ec *executionContext) unmarshalInputUserFiltersDto(ctx context.Context, ob
 		switch k {
 		case "fields":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("fields"))
-			data, err := ec.unmarshalNUserFieldsForFiltersDto2ᚖgithubᚗcomᚋhealtronlabsᚋgo_gql_templateᚋappᚋdtosᚐUserFieldsForFiltersDto(ctx, v)
+			data, err := ec.unmarshalNUserFieldsForFiltersDto2ᚖgithubᚗcomᚋhealtronlabsᚋgofastaᚋappᚋdtosᚐUserFieldsForFiltersDto(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Fields = data
 		case "pagination":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("pagination"))
-			data, err := ec.unmarshalOTPaginationInputDto2ᚖgithubᚗcomᚋhealtronlabsᚋgo_gql_templateᚋappᚋdtosᚐTPaginationInputDto(ctx, v)
+			data, err := ec.unmarshalOTPaginationInputDto2ᚖgithubᚗcomᚋhealtronlabsᚋgofastaᚋappᚋdtosᚐTPaginationInputDto(ctx, v)
 			if err != nil {
 				return it, err
 			}
 			it.Pagination = data
 		case "sorting":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("sorting"))
-			data, err := ec.unmarshalOTSortingInputDto2ᚖgithubᚗcomᚋhealtronlabsᚋgo_gql_templateᚋappᚋdtosᚐTSortingInputDto(ctx, v)
+			data, err := ec.unmarshalOTSortingInputDto2ᚖgithubᚗcomᚋhealtronlabsᚋgofastaᚋappᚋdtosᚐTSortingInputDto(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -4508,7 +4508,7 @@ func (ec *executionContext) marshalNID2string(ctx context.Context, sel ast.Selec
 	return res
 }
 
-func (ec *executionContext) unmarshalNNewUserDto2githubᚗcomᚋhealtronlabsᚋgo_gql_templateᚋappᚋdtosᚐNewUserDto(ctx context.Context, v interface{}) (dtos.NewUserDto, error) {
+func (ec *executionContext) unmarshalNNewUserDto2githubᚗcomᚋhealtronlabsᚋgofastaᚋappᚋdtosᚐNewUserDto(ctx context.Context, v interface{}) (dtos.NewUserDto, error) {
 	res, err := ec.unmarshalInputNewUserDto(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
@@ -4528,7 +4528,7 @@ func (ec *executionContext) marshalNString2string(ctx context.Context, sel ast.S
 	return res
 }
 
-func (ec *executionContext) marshalNTPaginationObjectDto2ᚖgithubᚗcomᚋhealtronlabsᚋgo_gql_templateᚋappᚋdtosᚐTPaginationObjectDto(ctx context.Context, sel ast.SelectionSet, v *dtos.TPaginationObjectDto) graphql.Marshaler {
+func (ec *executionContext) marshalNTPaginationObjectDto2ᚖgithubᚗcomᚋhealtronlabsᚋgofastaᚋappᚋdtosᚐTPaginationObjectDto(ctx context.Context, sel ast.SelectionSet, v *dtos.TPaginationObjectDto) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -4538,7 +4538,7 @@ func (ec *executionContext) marshalNTPaginationObjectDto2ᚖgithubᚗcomᚋhealt
 	return ec._TPaginationObjectDto(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNUser2ᚕᚖgithubᚗcomᚋhealtronlabsᚋgo_gql_templateᚋappᚋdtosᚐUserᚄ(ctx context.Context, sel ast.SelectionSet, v []*dtos.User) graphql.Marshaler {
+func (ec *executionContext) marshalNUser2ᚕᚖgithubᚗcomᚋhealtronlabsᚋgofastaᚋappᚋdtosᚐUserᚄ(ctx context.Context, sel ast.SelectionSet, v []*dtos.User) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
 	isLen1 := len(v) == 1
@@ -4562,7 +4562,7 @@ func (ec *executionContext) marshalNUser2ᚕᚖgithubᚗcomᚋhealtronlabsᚋgo_
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalNUser2ᚖgithubᚗcomᚋhealtronlabsᚋgo_gql_templateᚋappᚋdtosᚐUser(ctx, sel, v[i])
+			ret[i] = ec.marshalNUser2ᚖgithubᚗcomᚋhealtronlabsᚋgofastaᚋappᚋdtosᚐUser(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -4582,7 +4582,7 @@ func (ec *executionContext) marshalNUser2ᚕᚖgithubᚗcomᚋhealtronlabsᚋgo_
 	return ret
 }
 
-func (ec *executionContext) marshalNUser2ᚖgithubᚗcomᚋhealtronlabsᚋgo_gql_templateᚋappᚋdtosᚐUser(ctx context.Context, sel ast.SelectionSet, v *dtos.User) graphql.Marshaler {
+func (ec *executionContext) marshalNUser2ᚖgithubᚗcomᚋhealtronlabsᚋgofastaᚋappᚋdtosᚐUser(ctx context.Context, sel ast.SelectionSet, v *dtos.User) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -4592,26 +4592,26 @@ func (ec *executionContext) marshalNUser2ᚖgithubᚗcomᚋhealtronlabsᚋgo_gql
 	return ec._User(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNUserFieldsForFiltersDto2ᚖgithubᚗcomᚋhealtronlabsᚋgo_gql_templateᚋappᚋdtosᚐUserFieldsForFiltersDto(ctx context.Context, v interface{}) (*dtos.UserFieldsForFiltersDto, error) {
+func (ec *executionContext) unmarshalNUserFieldsForFiltersDto2ᚖgithubᚗcomᚋhealtronlabsᚋgofastaᚋappᚋdtosᚐUserFieldsForFiltersDto(ctx context.Context, v interface{}) (*dtos.UserFieldsForFiltersDto, error) {
 	res, err := ec.unmarshalInputUserFieldsForFiltersDto(ctx, v)
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNUserFieldsForUpdateDto2githubᚗcomᚋhealtronlabsᚋgo_gql_templateᚋappᚋdtosᚐUserFieldsForUpdateDto(ctx context.Context, v interface{}) (dtos.UserFieldsForUpdateDto, error) {
+func (ec *executionContext) unmarshalNUserFieldsForUpdateDto2githubᚗcomᚋhealtronlabsᚋgofastaᚋappᚋdtosᚐUserFieldsForUpdateDto(ctx context.Context, v interface{}) (dtos.UserFieldsForUpdateDto, error) {
 	res, err := ec.unmarshalInputUserFieldsForUpdateDto(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalNUserFiltersDto2githubᚗcomᚋhealtronlabsᚋgo_gql_templateᚋappᚋdtosᚐUserFiltersDto(ctx context.Context, v interface{}) (dtos.UserFiltersDto, error) {
+func (ec *executionContext) unmarshalNUserFiltersDto2githubᚗcomᚋhealtronlabsᚋgofastaᚋappᚋdtosᚐUserFiltersDto(ctx context.Context, v interface{}) (dtos.UserFiltersDto, error) {
 	res, err := ec.unmarshalInputUserFiltersDto(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNUserResponseDto2githubᚗcomᚋhealtronlabsᚋgo_gql_templateᚋappᚋdtosᚐUserResponseDto(ctx context.Context, sel ast.SelectionSet, v dtos.UserResponseDto) graphql.Marshaler {
+func (ec *executionContext) marshalNUserResponseDto2githubᚗcomᚋhealtronlabsᚋgofastaᚋappᚋdtosᚐUserResponseDto(ctx context.Context, sel ast.SelectionSet, v dtos.UserResponseDto) graphql.Marshaler {
 	return ec._UserResponseDto(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNUserResponseDto2ᚖgithubᚗcomᚋhealtronlabsᚋgo_gql_templateᚋappᚋdtosᚐUserResponseDto(ctx context.Context, sel ast.SelectionSet, v *dtos.UserResponseDto) graphql.Marshaler {
+func (ec *executionContext) marshalNUserResponseDto2ᚖgithubᚗcomᚋhealtronlabsᚋgofastaᚋappᚋdtosᚐUserResponseDto(ctx context.Context, sel ast.SelectionSet, v *dtos.UserResponseDto) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -4621,11 +4621,11 @@ func (ec *executionContext) marshalNUserResponseDto2ᚖgithubᚗcomᚋhealtronla
 	return ec._UserResponseDto(ctx, sel, v)
 }
 
-func (ec *executionContext) marshalNUsersResponseDto2githubᚗcomᚋhealtronlabsᚋgo_gql_templateᚋappᚋdtosᚐUsersResponseDto(ctx context.Context, sel ast.SelectionSet, v dtos.UsersResponseDto) graphql.Marshaler {
+func (ec *executionContext) marshalNUsersResponseDto2githubᚗcomᚋhealtronlabsᚋgofastaᚋappᚋdtosᚐUsersResponseDto(ctx context.Context, sel ast.SelectionSet, v dtos.UsersResponseDto) graphql.Marshaler {
 	return ec._UsersResponseDto(ctx, sel, &v)
 }
 
-func (ec *executionContext) marshalNUsersResponseDto2ᚖgithubᚗcomᚋhealtronlabsᚋgo_gql_templateᚋappᚋdtosᚐUsersResponseDto(ctx context.Context, sel ast.SelectionSet, v *dtos.UsersResponseDto) graphql.Marshaler {
+func (ec *executionContext) marshalNUsersResponseDto2ᚖgithubᚗcomᚋhealtronlabsᚋgofastaᚋappᚋdtosᚐUsersResponseDto(ctx context.Context, sel ast.SelectionSet, v *dtos.UsersResponseDto) graphql.Marshaler {
 	if v == nil {
 		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
 			ec.Errorf(ctx, "the requested element is null which the schema does not allow")
@@ -4930,7 +4930,7 @@ func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.Sele
 	return res
 }
 
-func (ec *executionContext) unmarshalOSortOrientation2ᚖgithubᚗcomᚋhealtronlabsᚋgo_gql_templateᚋappᚋdtosᚐSortOrientation(ctx context.Context, v interface{}) (*dtos.SortOrientation, error) {
+func (ec *executionContext) unmarshalOSortOrientation2ᚖgithubᚗcomᚋhealtronlabsᚋgofastaᚋappᚋdtosᚐSortOrientation(ctx context.Context, v interface{}) (*dtos.SortOrientation, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -4939,7 +4939,7 @@ func (ec *executionContext) unmarshalOSortOrientation2ᚖgithubᚗcomᚋhealtron
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalOSortOrientation2ᚖgithubᚗcomᚋhealtronlabsᚋgo_gql_templateᚋappᚋdtosᚐSortOrientation(ctx context.Context, sel ast.SelectionSet, v *dtos.SortOrientation) graphql.Marshaler {
+func (ec *executionContext) marshalOSortOrientation2ᚖgithubᚗcomᚋhealtronlabsᚋgofastaᚋappᚋdtosᚐSortOrientation(ctx context.Context, sel ast.SelectionSet, v *dtos.SortOrientation) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -4962,7 +4962,7 @@ func (ec *executionContext) marshalOString2ᚖstring(ctx context.Context, sel as
 	return res
 }
 
-func (ec *executionContext) marshalOTCommonApiErrorDto2ᚕᚖgithubᚗcomᚋhealtronlabsᚋgo_gql_templateᚋappᚋdtosᚐTCommonAPIErrorDto(ctx context.Context, sel ast.SelectionSet, v []*dtos.TCommonAPIErrorDto) graphql.Marshaler {
+func (ec *executionContext) marshalOTCommonApiErrorDto2ᚕᚖgithubᚗcomᚋhealtronlabsᚋgofastaᚋappᚋdtosᚐTCommonAPIErrorDto(ctx context.Context, sel ast.SelectionSet, v []*dtos.TCommonAPIErrorDto) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
@@ -4989,7 +4989,7 @@ func (ec *executionContext) marshalOTCommonApiErrorDto2ᚕᚖgithubᚗcomᚋheal
 			if !isLen1 {
 				defer wg.Done()
 			}
-			ret[i] = ec.marshalOTCommonApiErrorDto2ᚖgithubᚗcomᚋhealtronlabsᚋgo_gql_templateᚋappᚋdtosᚐTCommonAPIErrorDto(ctx, sel, v[i])
+			ret[i] = ec.marshalOTCommonApiErrorDto2ᚖgithubᚗcomᚋhealtronlabsᚋgofastaᚋappᚋdtosᚐTCommonAPIErrorDto(ctx, sel, v[i])
 		}
 		if isLen1 {
 			f(i)
@@ -5003,14 +5003,14 @@ func (ec *executionContext) marshalOTCommonApiErrorDto2ᚕᚖgithubᚗcomᚋheal
 	return ret
 }
 
-func (ec *executionContext) marshalOTCommonApiErrorDto2ᚖgithubᚗcomᚋhealtronlabsᚋgo_gql_templateᚋappᚋdtosᚐTCommonAPIErrorDto(ctx context.Context, sel ast.SelectionSet, v *dtos.TCommonAPIErrorDto) graphql.Marshaler {
+func (ec *executionContext) marshalOTCommonApiErrorDto2ᚖgithubᚗcomᚋhealtronlabsᚋgofastaᚋappᚋdtosᚐTCommonAPIErrorDto(ctx context.Context, sel ast.SelectionSet, v *dtos.TCommonAPIErrorDto) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}
 	return ec._TCommonApiErrorDto(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalOTPaginationInputDto2ᚖgithubᚗcomᚋhealtronlabsᚋgo_gql_templateᚋappᚋdtosᚐTPaginationInputDto(ctx context.Context, v interface{}) (*dtos.TPaginationInputDto, error) {
+func (ec *executionContext) unmarshalOTPaginationInputDto2ᚖgithubᚗcomᚋhealtronlabsᚋgofastaᚋappᚋdtosᚐTPaginationInputDto(ctx context.Context, v interface{}) (*dtos.TPaginationInputDto, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -5018,7 +5018,7 @@ func (ec *executionContext) unmarshalOTPaginationInputDto2ᚖgithubᚗcomᚋheal
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) unmarshalOTSortingInputDto2ᚖgithubᚗcomᚋhealtronlabsᚋgo_gql_templateᚋappᚋdtosᚐTSortingInputDto(ctx context.Context, v interface{}) (*dtos.TSortingInputDto, error) {
+func (ec *executionContext) unmarshalOTSortingInputDto2ᚖgithubᚗcomᚋhealtronlabsᚋgofastaᚋappᚋdtosᚐTSortingInputDto(ctx context.Context, v interface{}) (*dtos.TSortingInputDto, error) {
 	if v == nil {
 		return nil, nil
 	}
@@ -5026,7 +5026,7 @@ func (ec *executionContext) unmarshalOTSortingInputDto2ᚖgithubᚗcomᚋhealtro
 	return &res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalOUser2ᚖgithubᚗcomᚋhealtronlabsᚋgo_gql_templateᚋappᚋdtosᚐUser(ctx context.Context, sel ast.SelectionSet, v *dtos.User) graphql.Marshaler {
+func (ec *executionContext) marshalOUser2ᚖgithubᚗcomᚋhealtronlabsᚋgofastaᚋappᚋdtosᚐUser(ctx context.Context, sel ast.SelectionSet, v *dtos.User) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}

@@ -4,9 +4,9 @@ import (
 	"log"
 	"math"
 
-	"github.com/healtronlabs/go_gql_template/app/dtos"
-	"github.com/healtronlabs/go_gql_template/app/models"
-	"github.com/healtronlabs/go_gql_template/app/utils"
+	"github.com/healtronlabs/gofasta/app/dtos"
+	"github.com/healtronlabs/gofasta/app/models"
+	"github.com/healtronlabs/gofasta/app/utils"
 	"gorm.io/gorm"
 )
 

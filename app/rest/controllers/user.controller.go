@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/healtronlabs/go_gql_template/app/dtos"
-	"github.com/healtronlabs/go_gql_template/app/services"
+	"github.com/healtronlabs/gofasta/app/dtos"
+	"github.com/healtronlabs/gofasta/app/services"
 )
 
 // UserController handles RESTful requests for users.

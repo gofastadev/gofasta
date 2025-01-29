@@ -2,8 +2,8 @@ package validators
 
 import (
 	"github.com/go-playground/validator/v10"
-	"github.com/healtronlabs/go_gql_template/app/dtos"
-	"github.com/healtronlabs/go_gql_template/app/utils"
+	"github.com/healtronlabs/gofasta/app/dtos"
+	"github.com/healtronlabs/gofasta/app/utils"
 	"gorm.io/gorm"
 )
 
