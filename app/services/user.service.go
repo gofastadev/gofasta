@@ -7,6 +7,7 @@ import (
 	"github.com/healtronlabs/gofasta/app/dtos"
 	"github.com/healtronlabs/gofasta/app/models"
 	"github.com/healtronlabs/gofasta/app/utils"
+	"github.com/healtronlabs/gofasta/app/validators"
 	"gorm.io/gorm"
 )
 
@@ -45,7 +46,7 @@ func (u *UserService) GetUsers(filters dtos.UserFiltersDto) (*dtos.UsersResponse
 }
 
 func (u *UserService) CreateUser(input dtos.NewUserDto) (*dtos.UserResponseDto, error) {
-	if validationErrors := utils.ValidateInput(input); len(validationErrors) > 0 {
+	if validationErrors := validators.ValidateInput(input, u.DB); len(validationErrors) > 0 {
 		return &dtos.UserResponseDto{Errors: validationErrors}, nil
 	}
 	randomPassword, err := utils.GeneratePassword(16)
@@ -68,7 +69,7 @@ func (u *UserService) CreateUser(input dtos.NewUserDto) (*dtos.UserResponseDto, 
 }
 
 func (u *UserService) UpdateUser(input dtos.UserFieldsForUpdateDto) (*dtos.UserResponseDto, error) {
-	if validationErrors := utils.ValidateInput(input); len(validationErrors) > 0 {
+	if validationErrors := validators.ValidateInput(input, u.DB); len(validationErrors) > 0 {
 		return &dtos.UserResponseDto{Errors: validationErrors}, nil
 	}
 	userDataForUpdate := utils.ConvertStructToMap(input)
