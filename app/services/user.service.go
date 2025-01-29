@@ -36,7 +36,7 @@ func (u *UserService) FindUsersWithFilters(filters dtos.UserFiltersDto) (*dtos.T
 	totalPages := int(math.Ceil(float64(totalUsers) / float64(limit)))
 	usersRes := query.Limit(paginator.GetLimit()).Offset(paginator.GetOffset()).Order(paginator.GetSort()).Find(&foundUsers)
 	returnedRes := dtos.TUsersResponseDto{
-		Users: foundUsers,
+		Data: foundUsers,
 		Pagination: &dtos.TPaginationObjectDto{
 			TotalRecords:   &totalRecords,
 			CurrentPage:    &page,
@@ -146,6 +146,7 @@ func castUserModelToUserDto(user *models.User) (*dtos.User, error) {
 		UpdatedAt:     user.UpdatedAt,
 		IsActive:      user.IsActive,
 		IsDeletable:   user.IsDeletable,
+		DeletedAt:     &user.DeletedAt,
 	}
 	return foundUser, nil
 }

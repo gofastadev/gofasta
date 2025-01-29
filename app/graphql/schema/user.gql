@@ -10,10 +10,11 @@ type User {
   phoneNumber: String!
   isActive: Boolean!
   isDeletable: Boolean!
+  deletedAt: DateTime
 }
 
 type TUsersResponseDto {
-  users: [User!]!
+  data: [User!]!
   pagination: TPaginationObjectDto!
 }
 

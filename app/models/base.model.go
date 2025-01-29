@@ -13,6 +13,7 @@ type BaseModel interface {
 	GetID() uuid.UUID
 	GetCreatedAt() time.Time
 	GetUpdatedAt() time.Time
+	GetDeletedAt() time.Time
 	GetIsActive() bool
 	GetIsDeletable() bool
 	GetRecordVersion() int
@@ -23,6 +24,7 @@ type BaseModelImpl struct {
 	ID            uuid.UUID `gorm:"type:uuid;primary_key;"`
 	CreatedAt     time.Time `gorm:"type:timestamp;not null;"`
 	UpdatedAt     time.Time `gorm:"type:timestamp;not null;"`
+	DeletedAt     time.Time `gorm:"type:timestamp;"`
 	RecordVersion int       `gorm:"type:int;not null;default:1"`
 	IsActive      bool      `gorm:"type:bool;not null;default:true"`
 	IsDeletable   bool      `gorm:"type:bool;not null;default:true"`
@@ -34,6 +36,7 @@ func (b BaseModelImpl) GetUpdatedAt() time.Time { return b.UpdatedAt }
 func (b BaseModelImpl) GetIsActive() bool       { return b.IsActive }
 func (b BaseModelImpl) GetIsDeletable() bool    { return b.IsDeletable }
 func (b BaseModelImpl) GetRecordVersion() int   { return b.RecordVersion }
+func (b BaseModelImpl) GetDeletedAt() time.Time { return b.DeletedAt }
 
 func (base *BaseModelImpl) BeforeCreate(txt *gorm.DB) error {
 	base.ID = uuid.New()

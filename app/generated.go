@@ -86,12 +86,13 @@ type ComplexityRoot struct {
 	}
 
 	TUsersResponseDto struct {
+		Data       func(childComplexity int) int
 		Pagination func(childComplexity int) int
-		Users      func(childComplexity int) int
 	}
 
 	User struct {
 		CreatedAt     func(childComplexity int) int
+		DeletedAt     func(childComplexity int) int
 		Email         func(childComplexity int) int
 		FirstName     func(childComplexity int) int
 		ID            func(childComplexity int) int
@@ -286,6 +287,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TUserResponseDto.Errors(childComplexity), true
 
+	case "TUsersResponseDto.data":
+		if e.complexity.TUsersResponseDto.Data == nil {
+			break
+		}
+
+		return e.complexity.TUsersResponseDto.Data(childComplexity), true
+
 	case "TUsersResponseDto.pagination":
 		if e.complexity.TUsersResponseDto.Pagination == nil {
 			break
@@ -293,19 +301,19 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.TUsersResponseDto.Pagination(childComplexity), true
 
-	case "TUsersResponseDto.users":
-		if e.complexity.TUsersResponseDto.Users == nil {
-			break
-		}
-
-		return e.complexity.TUsersResponseDto.Users(childComplexity), true
-
 	case "User.createdAt":
 		if e.complexity.User.CreatedAt == nil {
 			break
 		}
 
 		return e.complexity.User.CreatedAt(childComplexity), true
+
+	case "User.deletedAt":
+		if e.complexity.User.DeletedAt == nil {
+			break
+		}
+
+		return e.complexity.User.DeletedAt(childComplexity), true
 
 	case "User.email":
 		if e.complexity.User.Email == nil {
@@ -944,8 +952,8 @@ func (ec *executionContext) fieldContext_Query_findUsersWithFilters(ctx context.
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "users":
-				return ec.fieldContext_TUsersResponseDto_users(ctx, field)
+			case "data":
+				return ec.fieldContext_TUsersResponseDto_data(ctx, field)
 			case "pagination":
 				return ec.fieldContext_TUsersResponseDto_pagination(ctx, field)
 			}
@@ -1593,6 +1601,8 @@ func (ec *executionContext) fieldContext_TUserResponseDto_data(_ context.Context
 				return ec.fieldContext_User_isActive(ctx, field)
 			case "isDeletable":
 				return ec.fieldContext_User_isDeletable(ctx, field)
+			case "deletedAt":
+				return ec.fieldContext_User_deletedAt(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -1647,8 +1657,8 @@ func (ec *executionContext) fieldContext_TUserResponseDto_errors(_ context.Conte
 	return fc, nil
 }
 
-func (ec *executionContext) _TUsersResponseDto_users(ctx context.Context, field graphql.CollectedField, obj *dtos.TUsersResponseDto) (ret graphql.Marshaler) {
-	fc, err := ec.fieldContext_TUsersResponseDto_users(ctx, field)
+func (ec *executionContext) _TUsersResponseDto_data(ctx context.Context, field graphql.CollectedField, obj *dtos.TUsersResponseDto) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_TUsersResponseDto_data(ctx, field)
 	if err != nil {
 		return graphql.Null
 	}
@@ -1661,7 +1671,7 @@ func (ec *executionContext) _TUsersResponseDto_users(ctx context.Context, field 
 	}()
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Users, nil
+		return obj.Data, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1678,7 +1688,7 @@ func (ec *executionContext) _TUsersResponseDto_users(ctx context.Context, field 
 	return ec.marshalNUser2ᚕᚖgithubᚗcomᚋhealtronlabsᚋgofastaᚋappᚋdtosᚐUserᚄ(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) fieldContext_TUsersResponseDto_users(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_TUsersResponseDto_data(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "TUsersResponseDto",
 		Field:      field,
@@ -1706,6 +1716,8 @@ func (ec *executionContext) fieldContext_TUsersResponseDto_users(_ context.Conte
 				return ec.fieldContext_User_isActive(ctx, field)
 			case "isDeletable":
 				return ec.fieldContext_User_isDeletable(ctx, field)
+			case "deletedAt":
+				return ec.fieldContext_User_deletedAt(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type User", field.Name)
 		},
@@ -2202,6 +2214,47 @@ func (ec *executionContext) fieldContext_User_isDeletable(_ context.Context, fie
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _User_deletedAt(ctx context.Context, field graphql.CollectedField, obj *dtos.User) (ret graphql.Marshaler) {
+	fc, err := ec.fieldContext_User_deletedAt(ctx, field)
+	if err != nil {
+		return graphql.Null
+	}
+	ctx = graphql.WithFieldContext(ctx, fc)
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.DeletedAt, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*time.Time)
+	fc.Result = res
+	return ec.marshalODateTime2ᚖtimeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) fieldContext_User_deletedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "User",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type DateTime does not have child fields")
 		},
 	}
 	return fc, nil
@@ -4695,8 +4748,8 @@ func (ec *executionContext) _TUsersResponseDto(ctx context.Context, sel ast.Sele
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("TUsersResponseDto")
-		case "users":
-			out.Values[i] = ec._TUsersResponseDto_users(ctx, field, obj)
+		case "data":
+			out.Values[i] = ec._TUsersResponseDto_data(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
@@ -4789,6 +4842,8 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "deletedAt":
+			out.Values[i] = ec._User_deletedAt(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -5630,6 +5685,22 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 		return graphql.Null
 	}
 	res := graphql.MarshalBoolean(*v)
+	return res
+}
+
+func (ec *executionContext) unmarshalODateTime2ᚖtimeᚐTime(ctx context.Context, v interface{}) (*time.Time, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalTime(v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalODateTime2ᚖtimeᚐTime(ctx context.Context, sel ast.SelectionSet, v *time.Time) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	res := graphql.MarshalTime(*v)
 	return res
 }
 
