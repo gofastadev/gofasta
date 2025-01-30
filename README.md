@@ -15,21 +15,29 @@ By leveraging this template, developers can accelerate their project setup, main
 │   │   ├── db-init.go
 │   │   ├── main.go
 │   │   └── server.go
+│   ├── dtos
+│   │   ├── common.dtos.go
+│   │   ├── generated-types.dtos.go
+│   │   └── user.dtos.go
 │   ├── graphql
-│   │   ├── dtos
-│   │   │   ├── common.dtos.go
-│   │   │   ├── generated-types.dtos.go
-│   │   │   ├── user.dtos.go
+│   ├── resolvers
+│   │   ├── resolver.go
+│   │   ├── server.health.resolvers.go
+│   │   └── user.resolvers.go
+│   ├── schema
 │   │   ├── common.gql
 │   │   ├── server.health.gql
 │   │   └── user.gql
 │   ├── models
 │   │   ├── base.model.go
 │   │   └── user.model.go
-│   ├── resolvers
-│   │   ├── resolver.go
-│   │   ├── server.health.resolvers.go
-│   │   └── user.resolvers.go
+│   ├── rest
+│   │   ├── controllers
+│   │   │   ├── controller.go
+│   │   │   └── user.controller.go
+│   │   ├── routes
+│   │   │   ├── index.routes.go
+│   │   │   └── user.routes.go
 │   ├── services
 │   │   └── user.service.go
 │   ├── utils
@@ -38,16 +46,29 @@ By leveraging this template, developers can accelerate their project setup, main
 │   │   ├── paginator.go
 │   │   ├── random-password.go
 │   │   ├── string.go
-│   │   ├── validator.go
+│   │   └── validator.go
+│   ├── validators
+│   │   ├── common.validators.go
+│   │   ├── custom-messages.validators.go
+│   │   ├── register.validators.go
+│   │   ├── user.validators.go
+│   │   ├── validate-input.go
+│   │   ├── validator.utils.go
 │   │   └── generated.go
 ├── configs
 │   └── database.go
 ├── db
 │   ├── migrations
-│   │   ├── 000001_create_function_to_update_updated_at_column.down.sql
-│   │   ├── 000001_create_function_to_update_updated_at_column.up.sql
-│   │   ├── 000002_create_users.down.sql
-│   │   └── 000002_create_users.up.sql
+│   │   ├── 000001_create_citext_extension.down.sql
+│   │   ├── 000001_create_citext_extension.up.sql
+│   │   ├── 000002_create_function_to_update_updated_at_column.down.sql
+│   │   ├── 000002_create_function_to_update_updated_at_column.up.sql
+│   │   ├── 000003_create_function_to_avoid_duplicate_records.down.sql
+│   │   ├── 000003_create_function_to_avoid_duplicate_records.up.sql
+│   │   ├── 000004_increment_record_version.down.sql
+│   │   ├── 000004_increment_record_version.up.sql
+│   │   ├── 000005_create_users.down.sql
+│   │   └── 000005_create_users.up.sql
 ├── deployments
 │   ├── dev
 │   │   ├── app
@@ -56,8 +77,40 @@ By leveraging this template, developers can accelerate their project setup, main
 │   │   │   └── wait-for-it.sh
 │   │   ├── db
 │   │   │   └── dockerfile
-│   ├── prod
-│   └── qa
+│   ├── production
+│   │   ├── app
+│   │   │   ├── compose-production.yml
+│   │   │   ├── deploy-production.sh
+│   │   │   ├── dockerfile
+│   │   │   ├── gofasta-production-process.sh
+│   │   │   ├── production_entrypoint.sh
+│   │   │   └── wait-for-it.sh
+│   │   ├── db
+│   │   │   ├── compose-production.yml
+│   │   │   ├── dockerfile
+│   │   │   └── gofasta-production-postgresql-db-process.sh
+│   │   ├── server
+│   │   │   ├── proxy-reverse-config
+│   │   │   │   ├── gofasta-qa.ironji.com.conf
+│   │   │   │   ├── .gitkeep
+│   │   │   │   └── .gitkeep
+│   ├── qa
+│   │   ├── app
+│   │   │   ├── compose-qa.yml
+│   │   │   ├── deploy-qa.sh
+│   │   │   ├── dockerfile
+│   │   │   ├── gofasta-qa-process.sh
+│   │   │   ├── qa_entrypoint.sh
+│   │   │   └── wait-for-it.sh
+│   │   ├── db
+│   │   │   ├── compose-qa.yml
+│   │   │   ├── dockerfile
+│   │   │   └── gofasta-qa-postgresql-db-process.sh
+│   │   ├── server
+│   │   │   ├── proxy-reverse-config
+│   │   │   │   ├── gofasta-qa.ironji.com.conf
+│   │   │   │   ├── .gitkeep
+│   │   │   │   └── .gitkeep
 ├── scripts
 │   ├── connect-to-api.sh
 │   ├── connect-to-db.sh
@@ -68,6 +121,7 @@ By leveraging this template, developers can accelerate their project setup, main
 │   ├── build-errors.log
 ├── .air.toml
 ├── .env
+├── .env.sample
 ├── .gitignore
 ├── compose-dev.yml
 ├── go.mod
