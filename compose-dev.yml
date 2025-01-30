@@ -29,9 +29,9 @@ services:
     image: ${PROJECT_NAME}_db_image_dev
     container_name: ${PROJECT_NAME}_db_container_dev
     environment:
-      POSTGRES_USER: ${PROJECT_NAME}
-      POSTGRES_PASSWORD: ${PROJECT_NAME}
-      POSTGRES_DB: ${PROJECT_NAME}_development
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
     volumes:
       - type: volume
         source: postgres_data
