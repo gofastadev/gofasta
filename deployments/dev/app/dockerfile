@@ -1,7 +1,7 @@
-From golang:1.22.5-alpine3.20 as gofasta_api_build_dev
+FROM golang:1.22.5-alpine3.20 as gofasta_api_build_dev
 
 RUN go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
 
 WORKDIR /gofasta
 
-expose $PORT
+EXPOSE $PORT

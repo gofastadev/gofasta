@@ -1,0 +1,17 @@
+services:
+  gofasta_go_qa:
+    image: healtron/${PROJECT_NAME}:${ENV}
+    container_name: ${PROJECT_NAME}_web_container_${ENV}
+    env_file:
+      - "./../../../.env"
+    ports:
+      - ${PORT}:${PORT}
+    networks:
+      - ${DOCKER_NETWORK_NAME}
+    restart: always
+    profiles:
+      - main
+
+networks:
+  healtron_network_qa:
+    external: true
