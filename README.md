@@ -15,21 +15,29 @@ By leveraging this template, developers can accelerate their project setup, main
 │   │   ├── db-init.go
 │   │   ├── main.go
 │   │   └── server.go
+│   ├── dtos
+│   │   ├── common.dtos.go
+│   │   ├── generated-types.dtos.go
+│   │   └── user.dtos.go
 │   ├── graphql
-│   │   ├── dtos
-│   │   │   ├── common.dtos.go
-│   │   │   ├── generated-types.dtos.go
-│   │   │   ├── user.dtos.go
-│   │   ├── common.gql
-│   │   ├── server.health.gql
-│   │   └── user.gql
+│   │   ├── resolvers
+│   │   │   │   ├── resolver.go
+│   │   │   │   ├── server.health.resolvers.go
+│   │   │   │   └── user.resolvers.go
+│   │   ├── schema
+│   │   │   ├── common.gql
+│   │   │   │   ├── server.health.gql
+│   │   │   │   └── user.gql
 │   ├── models
 │   │   ├── base.model.go
 │   │   └── user.model.go
-│   ├── resolvers
-│   │   ├── resolver.go
-│   │   ├── server.health.resolvers.go
-│   │   └── user.resolvers.go
+│   ├── rest
+│   │   ├── controllers
+│   │   │   ├── controller.go
+│   │   │   └── user.controller.go
+│   │   ├── routes
+│   │   │   ├── index.routes.go
+│   │   │   └── user.routes.go
 │   ├── services
 │   │   └── user.service.go
 │   ├── utils
@@ -38,16 +46,29 @@ By leveraging this template, developers can accelerate their project setup, main
 │   │   ├── paginator.go
 │   │   ├── random-password.go
 │   │   ├── string.go
-│   │   ├── validator.go
+│   │   └── validator.go
+│   ├── validators
+│   │   ├── common.validators.go
+│   │   ├── custom-messages.validators.go
+│   │   ├── register.validators.go
+│   │   ├── user.validators.go
+│   │   ├── validate-input.go
+│   │   ├── validator.utils.go
 │   │   └── generated.go
 ├── configs
 │   └── database.go
 ├── db
 │   ├── migrations
-│   │   ├── 000001_create_function_to_update_updated_at_column.down.sql
-│   │   ├── 000001_create_function_to_update_updated_at_column.up.sql
-│   │   ├── 000002_create_users.down.sql
-│   │   └── 000002_create_users.up.sql
+│   │   ├── 000001_create_citext_extension.down.sql
+│   │   ├── 000001_create_citext_extension.up.sql
+│   │   ├── 000002_create_function_to_update_updated_at_column.down.sql
+│   │   ├── 000002_create_function_to_update_updated_at_column.up.sql
+│   │   ├── 000003_create_function_to_avoid_duplicate_records.down.sql
+│   │   ├── 000003_create_function_to_avoid_duplicate_records.up.sql
+│   │   ├── 000004_increment_record_version.down.sql
+│   │   ├── 000004_increment_record_version.up.sql
+│   │   ├── 000005_create_users.down.sql
+│   │   └── 000005_create_users.up.sql
 ├── deployments
 │   ├── dev
 │   │   ├── app
@@ -56,8 +77,40 @@ By leveraging this template, developers can accelerate their project setup, main
 │   │   │   └── wait-for-it.sh
 │   │   ├── db
 │   │   │   └── dockerfile
-│   ├── prod
-│   └── qa
+│   ├── production
+│   │   ├── app
+│   │   │   ├── compose-production.yml
+│   │   │   ├── deploy-production.sh
+│   │   │   ├── dockerfile
+│   │   │   ├── gofasta-production-process.sh
+│   │   │   ├── production_entrypoint.sh
+│   │   │   └── wait-for-it.sh
+│   │   ├── db
+│   │   │   ├── compose-production.yml
+│   │   │   ├── dockerfile
+│   │   │   └── gofasta-production-postgresql-db-process.sh
+│   │   ├── server
+│   │   │   ├── proxy-reverse-config
+│   │   │   │   ├── gofasta-qa.ironji.com.conf
+│   │   │   │   ├── .gitkeep
+│   │   │   │   └── .gitkeep
+│   ├── qa
+│   │   ├── app
+│   │   │   ├── compose-qa.yml
+│   │   │   ├── deploy-qa.sh
+│   │   │   ├── dockerfile
+│   │   │   ├── gofasta-qa-process.sh
+│   │   │   ├── qa_entrypoint.sh
+│   │   │   └── wait-for-it.sh
+│   │   ├── db
+│   │   │   ├── compose-qa.yml
+│   │   │   ├── dockerfile
+│   │   │   └── gofasta-qa-postgresql-db-process.sh
+│   │   ├── server
+│   │   │   ├── proxy-reverse-config
+│   │   │   │   ├── gofasta-qa.ironji.com.conf
+│   │   │   │   ├── .gitkeep
+│   │   │   │   └── .gitkeep
 ├── scripts
 │   ├── connect-to-api.sh
 │   ├── connect-to-db.sh
@@ -68,6 +121,7 @@ By leveraging this template, developers can accelerate their project setup, main
 │   ├── build-errors.log
 ├── .air.toml
 ├── .env
+├── .env.sample
 ├── .gitignore
 ├── compose-dev.yml
 ├── go.mod
@@ -79,87 +133,105 @@ By leveraging this template, developers can accelerate their project setup, main
 ```
 
 ### Directory and File Descriptions
-`app/`: Contains the core application code.
 
-- `cmd/`: Contains the entry point files for the application.
+ `app/`
 
-    - `db-init.go`: Initialization script for the database.
-    - `main.go`: Main entry point of the application.
-    - `server.go`: Server configuration and startup code.
-    - `graphql/`: GraphQL schema and data transfer objects (DTOs).
+Contains the core application code.
 
-        - `dtos/`:
-            - `common.dtos.go`: Common data transfer objects.
-            - `generated-types.dtos.go`: Auto-generated types for GraphQL.
-            - `user.dtos.go`: User-related data transfer objects.
-        - `common.gql`: Common GraphQL schema.
-        - `server.health.gql`: Server health check schema.
-        - `user.gql`: User-related GraphQL schema.
-    - `models/`: Database models.
+- ``: Contains the entry point files for the application.
 
-        - `base.model.go`: Base model definitions.
-        - `user.model.go`: User model definitions.
-    - `resolvers/`: GraphQL resolvers.
+  - `db-init.go`: Initialization script for the database.
+  - `main.go`: Main entry point of the application.
+  - `server.go`: Server configuration and startup code.
 
-        - `resolver.go`: Main resolver file.
-        - `server.health.resolvers.go`: Resolvers for server health checks.
-        - `user.resolvers.go`: User-related resolvers.
-    - `services/`: Service layer for business logic.
+- ``: GraphQL schema and data transfer objects (DTOs).
 
-        - `user.service.go`: User-related business logic.
-    - `utils/`: Utility functions and helpers.
+  - ``:
+    - `common.dtos.go`: Common data transfer objects.
+    - `generated-types.dtos.go`: Auto-generated types for GraphQL.
+    - `user.dtos.go`: User-related data transfer objects.
+  - `common.gql`: Common GraphQL schema.
+  - `server.health.gql`: Server health check schema.
+  - `user.gql`: User-related GraphQL schema.
 
-        - `build-search-query.go`: Functions for building search queries.
-        - `convert-struct-to-map.go`: Functions for converting structs to maps.
-        - `paginator.go`: Pagination utility.
-        - `random-password.go`: Random password generator.
-        - `string.go`: String manipulation utilities.
-        - `validator.go`: Validation utilities.
-    - `generated.go`: Auto-generated code, this file is auto-generated by `gqlgen` a package we use for graphql by running this command:
-    ```sh
-    go run github.com/99designs/gqlgen generate
-    ```
-    You will have to run that command always whenever you are done with modifying any file with `.gql` extension from `graphql/` folder
+- ``: Database models.
 
-- `configs/`
+  - `base.model.go`: Base model definitions.
+  - `user.model.go`: User model definitions.
+
+- ``: GraphQL resolvers.
+
+  - `resolver.go`: Main resolver file.
+  - `server.health.resolvers.go`: Resolvers for server health checks.
+  - `user.resolvers.go`: User-related resolvers.
+
+- ``: Service layer for business logic.
+
+  - `user.service.go`: User-related business logic.
+
+- ``: Utility functions and helpers.
+
+  - `build-search-query.go`: Functions for building search queries.
+  - `convert-struct-to-map.go`: Functions for converting structs to maps.
+  - `paginator.go`: Pagination utility.
+  - `random-password.go`: Random password generator.
+  - `string.go`: String manipulation utilities.
+  - `validator.go`: Validation utilities.
+
+- ``: Auto-generated code, created by `gqlgen` by running:
+
+  ```sh
+  go run github.com/99designs/gqlgen generate
+  ```
+
+  Run this command whenever modifying any `.gql` files in `graphql/`.
+
+#### `configs/`
+
 Configuration files.
 
-    - `database.g`o: Database configuration.
-- `db/`
+- `database.go`: Database configuration.
+
+#### `db/`
+
 Database-related files.
 
-    - `migrations/`: Database migration files.
-        -     `000001_create_function_to_update_updated_at_column.down.sql`: Down migration for updating updated_at column function.
-        -   `000001_create_function_to_update_updated_at_column.up.sql`: Up migration for updating updated_at column function.
-        - `000002_create_users.down.sql`: Down migration for creating users table.
-        - `000002_create_users.up.sql`: Up migration for creating users table.
-- `deployments/`
+- ``: Database migration files.
+  - `000001_create_function_to_update_updated_at_column.down.sql`: Down migration for updating `updated_at` column function.
+  - `000001_create_function_to_update_updated_at_column.up.sql`: Up migration for updating `updated_at` column function.
+  - `000002_create_users.down.sql`: Down migration for creating users table.
+  - `000002_create_users.up.sql`: Up migration for creating users table.
+
+#### `deployments/`
+
 Deployment-related files.
 
-    - `dev/`: Development environment configurations.
+- ``: Development environment configurations.
+  - ``:
+    - `dev_entrypoint.sh`: Development entry point script.
+    - `dockerfile`: Dockerfile for the app.
+    - `wait-for-it.sh`: Script to wait for dependencies to be ready.
+  - ``:
+    - `dockerfile`: Dockerfile for the database.
+- ``: Production environment configurations.
+- ``: QA environment configurations.
 
-        - `app/`:
-            - `dev_entrypoint.sh`: Development entry point script.
-            - `dockerfile`: Dockerfile for the app.
-            - `wait-for-it.sh`: Script to wait for dependencies to be ready.
-        - `db/`:
-            - `dockerfile`: Dockerfile for the database.
-    - `prod/`: Production environment configurations.
+#### `scripts/`
 
-    - `qa/`: QA environment configurations.
-
-- `scripts/`
 Helper scripts for common tasks.
 
-    - `connect-to-api.sh`: Script to connect to the API container.
-    - `connect-to-db.sh`: Script to connect to the database container.
-    - `generate-migration.sh`: Script to generate database migrations.
-    - `migrate-down.sh`: Script to migrate the database down.
-    - `migrate-up.sh`: Script to migrate the database up.
-- `tmp/`
+- `connect-to-api.sh`: Script to connect to the API container.
+- `connect-to-db.sh`: Script to connect to the database container.
+- `generate-migration.sh`: Script to generate database migrations.
+- `migrate-down.sh`: Script to migrate the database down.
+- `migrate-up.sh`: Script to migrate the database up.
+
+#### `tmp/`
+
 Temporary files.
 
-#### Root Files
+### Root Files
+
 - `.air.toml`: Air configuration for live reloading.
 - `.env`: Environment variables.
 - `.gitignore`: Git ignore file.
