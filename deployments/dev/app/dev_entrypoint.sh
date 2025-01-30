@@ -12,7 +12,7 @@ set -euo pipefail
 #  - Start the dev server.
 # It also accepts any commands to be run instead.
 
-warnfail() {
+warn_on_fail() {
   echo "$@" >&2
   exit 1
 }
@@ -36,7 +36,7 @@ echo "Waiting for postgres to be available..."
 sh deployments/dev/app/wait-for-it.sh -t 30 -q ${PROJECT_NAME}_db_container_dev:5432
 
 if [ -z "${DATABASE_URL:-}" ]; then
-  warnfail "DATABASE_URL is not set"
+  warn_on_fail "DATABASE_URL is not set"
 fi
 
 if ! psql -d "$DATABASE_URL" -c '\d schema_migrations' >/dev/null 2>&1; then

@@ -1,3 +1,3 @@
-From postgres:14-alpine as gofasta_db_build_dev
+FROM postgres:14-alpine as gofasta_db_build_dev
 
 EXPOSE 5432
