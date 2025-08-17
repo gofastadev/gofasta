@@ -36,6 +36,7 @@ func (m *BaseModule) Configure(container *container.DIContainer) error {
 	for _, provider := range m.providers {
 		// Implementation will depend on reflection and struct tags
 		// This is a simplified version
+		_ = provider // Avoid unused variable error
 	}
 	
 	return nil
@@ -76,7 +77,7 @@ func (m *BaseModule) AddController(controller interface{}) {
 	m.controllers = append(m.controllers, controller)
 }
 
-// AddImport adds an import to the module
+// AddImport adds an imported module
 func (m *BaseModule) AddImport(module Module) {
 	m.imports = append(m.imports, module)
 }
