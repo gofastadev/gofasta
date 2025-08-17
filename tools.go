@@ -1,12 +1,12 @@
 package tools
 
-import(
+import (
 	_ "github.com/99designs/gqlgen"
 	_ "github.com/air-verse/air"
-	_ "gorm.io/gorm"
-	_ "gorm.io/driver/postgres"
+	_ "github.com/go-playground/validator/v10"
 	_ "github.com/google/uuid"
-	_ "github.com/golang-migrate/migrate/v4"
-	_ "github.com/golang-migrate/migrate/v4/database/postgres"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
+	_ "gorm.io/driver/postgres"
+	_ "gorm.io/gorm"
+	_ "github.com/gorilla/mux"
+	_ "github.com/gorilla/schema"
 )

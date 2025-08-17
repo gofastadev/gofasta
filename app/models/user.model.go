@@ -2,9 +2,9 @@ package models
 
 type User struct {
 	BaseModelImpl
-	Name string `json:"name" gorm:"not null"`
-}
-
-type NewUser struct {
-	Name string `json:"name"`
+	FirstName   string `gorm:"not null"`
+	OtherNames  string `gorm:"not null"`
+	Email       string `gorm:"not null"`
+	PhoneNumber string `gorm:"not null"`
+	Password    string `gorm:"not null"`
 }

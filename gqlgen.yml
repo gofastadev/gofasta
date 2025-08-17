@@ -1,6 +1,6 @@
 # Where are all the schema files located? globs are supported eg  src/**/*.graphqls
 schema:
-  - app/graphql/*.gql
+  - app/graphql/schema/*.gql
 
 # Where should the generated server code go?
 exec:
@@ -14,13 +14,13 @@ exec:
 
 # Where should any generated models go?
 model:
-  filename: app/graphql/goTypes/models_gen.go
-  package: goTypes
+  filename: app/dtos/generated-types.dtos.go
+  package: dtos
 
 # Where should the resolver implementations go?
 resolver:
   layout: follow-schema
-  dir: app/resolvers
+  dir: app/graphql/resolvers
   package: resolvers
   filename_template: "{name}.resolvers.go"
   # Optional: turn on to not generate template comments above resolvers
@@ -66,7 +66,7 @@ resolver:
 # gqlgen will search for any type names in the schema in these go packages
 # if they match it will use them, otherwise it will generate them.
 autobind:
- - "github.com/healtronlabs/go_gql_template/app/graphql/goTypes"
+ - "github.com/healtronlabs/gofasta/app/dtos"
 
 # This section declares type mapping between the GraphQL and go type systems
 #
@@ -76,12 +76,12 @@ autobind:
 models:
   ID:
     model:
-      - github.com/99designs/gqlgen/graphql.ID
-      - github.com/99designs/gqlgen/graphql.Int
-      - github.com/99designs/gqlgen/graphql.Int64
-      - github.com/99designs/gqlgen/graphql.Int32
+      - github.com/99designs/gqlgen/graphql.UUID
   Int:
     model:
       - github.com/99designs/gqlgen/graphql.Int
       - github.com/99designs/gqlgen/graphql.Int64
       - github.com/99designs/gqlgen/graphql.Int32
+  DateTime:
+    model:
+      - github.com/99designs/gqlgen/graphql.Time

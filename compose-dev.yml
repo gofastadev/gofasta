@@ -1,5 +1,5 @@
 services:
-  go_gql_template_go:
+  gofasta_go:
     build:
       context: .
       dockerfile: deployments/dev/app/dockerfile
@@ -11,10 +11,9 @@ services:
     volumes:
       - type: bind
         source: .
-        target: /go_gql_template
+        target: /gofasta
     ports:
       - $PORT:$PORT
-    # command: sh -c 'go mod tidy && go run github.com/air-verse/air'
     entrypoint: ["deployments/dev/app/dev_entrypoint.sh"]
     networks:
       - ${DOCKER_NETWORK_NAME}
@@ -22,7 +21,7 @@ services:
     profiles:
       - main
 
-  go_gql_template_postgres:
+  gofasta_postgres:
     build:
       context: .
       dockerfile: deployments/dev/db/dockerfile
@@ -30,15 +29,15 @@ services:
     image: ${PROJECT_NAME}_db_image_dev
     container_name: ${PROJECT_NAME}_db_container_dev
     environment:
-      POSTGRES_USER: ${PROJECT_NAME}
-      POSTGRES_PASSWORD: ${PROJECT_NAME}
-      POSTGRES_DB: ${PROJECT_NAME}_development
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
     volumes:
       - type: volume
         source: postgres_data
         target: /var/lib/postgresql
     ports:
-      - 6545:5432
+      - ${DB_HOST_PORT}:${DB_CONTAINER_PORT}
     networks:
       - ${DOCKER_NETWORK_NAME}
     restart: always
