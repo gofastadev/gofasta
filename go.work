@@ -1,0 +1,28 @@
+go 1.24.5
+
+use (
+	.
+	./examples/basic-api
+	./examples/e-commerce
+	./examples/graphql-api
+	./examples/microservices
+	./examples/multi-database
+	./packages/auth
+	./packages/cache
+	./packages/cli
+	./packages/config
+	./packages/core
+	./packages/events
+	./packages/graphql
+	./packages/http
+	./packages/logging
+	./packages/orm
+	./packages/testing
+	./packages/validation
+	./plugins/compression
+	./plugins/cors
+	./plugins/metrics
+	./plugins/rate-limit
+	./plugins/swagger
+	./plugins/tracing
+)
