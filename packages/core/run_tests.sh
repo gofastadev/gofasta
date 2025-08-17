@@ -75,7 +75,7 @@ fi
 
 # Validate test coverage threshold
 COVERAGE_NUM=$(echo $COVERAGE | sed 's/%//')
-THRESHOLD=45
+THRESHOLD=95
 
 if (( $(echo "$COVERAGE_NUM >= $THRESHOLD" | bc -l) )); then
     print_success "Coverage threshold met: $COVERAGE (>= ${THRESHOLD}%)"

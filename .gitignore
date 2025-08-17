@@ -59,3 +59,4 @@ coverage.html
 # Generated files
 generated.go
 *.pb.go
+test_summary.txt
