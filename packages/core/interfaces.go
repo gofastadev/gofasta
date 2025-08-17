@@ -7,9 +7,11 @@ import (
 )
 
 // Provider represents a service provider that can be registered with the DI container
+// Any type can be a Provider - services are discovered through reflection and registration
 type Provider interface{}
 
-// Controller represents a controller that handles HTTP requests
+// Controller represents a controller that handles HTTP requests  
+// Any type can be a Controller - routes are discovered through struct tags and method reflection
 type Controller interface{}
 
 // RequestContext represents the context of an HTTP request

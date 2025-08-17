@@ -9,11 +9,11 @@ import (
 // Module defines the interface for Gofasta modules
 type Module interface {
 	Configure(container *DIContainer) error
-	GetProviders() []interface{}
-	GetControllers() []interface{}
+	GetProviders() []Provider    // ✅ Now matches whitepaper specification!
+	GetControllers() []Controller // ✅ Now matches whitepaper specification!
 	GetImports() []Module
-	Initialize() error
-	Cleanup() error
+	Initialize() error // Additional lifecycle method (enhancement)
+	Cleanup() error   // Additional lifecycle method (enhancement)
 }
 
 // BaseModule provides a default implementation of Module
@@ -60,13 +60,23 @@ func (m *BaseModule) Configure(container *DIContainer) error {
 }
 
 // GetProviders implements Module interface
-func (m *BaseModule) GetProviders() []interface{} {
-	return m.providers
+func (m *BaseModule) GetProviders() []Provider {
+	// Convert []interface{} to []Provider (both are equivalent since Provider is interface{})
+	providers := make([]Provider, len(m.providers))
+	for i, p := range m.providers {
+		providers[i] = p
+	}
+	return providers
 }
 
 // GetControllers implements Module interface
-func (m *BaseModule) GetControllers() []interface{} {
-	return m.controllers
+func (m *BaseModule) GetControllers() []Controller {
+	// Convert []interface{} to []Controller (both are equivalent since Controller is interface{})
+	controllers := make([]Controller, len(m.controllers))
+	for i, c := range m.controllers {
+		controllers[i] = c
+	}
+	return controllers
 }
 
 // GetImports implements Module interface
@@ -241,13 +251,23 @@ func (m *DecoratedModule) Cleanup() error {
 }
 
 // GetProviders returns the module's providers
-func (m *DecoratedModule) GetProviders() []interface{} {
-	return m.providers
+func (m *DecoratedModule) GetProviders() []Provider {
+	// Convert []interface{} to []Provider (both are equivalent since Provider is interface{})
+	providers := make([]Provider, len(m.providers))
+	for i, p := range m.providers {
+		providers[i] = p
+	}
+	return providers
 }
 
 // GetControllers returns the module's controllers
-func (m *DecoratedModule) GetControllers() []interface{} {
-	return m.controllers
+func (m *DecoratedModule) GetControllers() []Controller {
+	// Convert []interface{} to []Controller (both are equivalent since Controller is interface{})
+	controllers := make([]Controller, len(m.controllers))
+	for i, c := range m.controllers {
+		controllers[i] = c
+	}
+	return controllers
 }
 
 // GetImports returns the module's imports
