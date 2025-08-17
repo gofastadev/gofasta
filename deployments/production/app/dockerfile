@@ -8,7 +8,7 @@ RUN go build -o gofasta ./app/main
 
 # Stage 2: Final Image
 FROM golang:1.22.5-alpine3.20
-RUN go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+RUN go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@v4.16.2
 ARG ENV
 ENV ENV=${ENV}
 
