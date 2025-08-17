@@ -1,7 +1,0 @@
-type Query {
-    queryHealth: String!
-}
-
-type Mutation {
-    mutationHealth: String!
-}

@@ -1,1 +1,0 @@
-DROP FUNCTION avoid_deleting_record_with_is_deletable_equal_to_false_function();
