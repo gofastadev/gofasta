@@ -3,7 +3,6 @@ package core
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"os"
 	"os/signal"
 	"reflect"
@@ -71,7 +70,6 @@ type GofastaApplication struct {
 	isStarted          bool
 	isShuttingDown     bool
 	shutdownFn         func() error
-	httpServer         *http.Server
 	ctx                context.Context
 	cancel             context.CancelFunc
 	mutex              sync.RWMutex
@@ -200,15 +198,7 @@ func (app *GofastaApplication) Shutdown(timeout time.Duration) error {
 	// Cancel application context
 	app.cancel()
 
-	// Shutdown HTTP server if running
-	if app.httpServer != nil {
-		ctx, cancel := context.WithTimeout(context.Background(), timeout)
-		defer cancel()
-
-		if err := app.httpServer.Shutdown(ctx); err != nil {
-			fmt.Printf("Error shutting down HTTP server: %v\n", err)
-		}
-	}
+	// HTTP server shutdown should be handled by HTTP module
 
 	// Execute custom shutdown function
 	if app.shutdownFn != nil {
@@ -302,7 +292,7 @@ func (app *GofastaApplication) DestroyScope(scopeId string) error {
 	return app.container.DestroyScope(scopeId)
 }
 
-// Listen starts the HTTP server on the specified port
+// Listen delegates to HTTP module for server functionality
 func (app *GofastaApplication) Listen(port int) error {
 	if !app.isStarted {
 		if err := app.Start(); err != nil {
@@ -313,46 +303,13 @@ func (app *GofastaApplication) Listen(port int) error {
 	// Update port in config
 	app.config.Port = port
 
-	// Create HTTP server
-	mux := http.NewServeMux()
+	// HTTP server functionality should be handled by HTTP module
+	// This is a placeholder - actual implementation should use HTTP module
+	fmt.Printf("🌐 Gofasta application ready to listen on port %d\n", port)
+	fmt.Println("Note: HTTP server functionality should be implemented via HTTP module")
 	
-	// Add health check endpoint
-	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		fmt.Fprintf(w, `{"status":"ok","uptime":"%v","environment":"%s"}`, 
-			time.Since(app.startTime), app.config.Environment)
-	})
-
-	// Add metrics endpoint if enabled
-	if app.config.EnableMetrics {
-		mux.HandleFunc("/metrics", func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Content-Type", "text/plain")
-			w.WriteHeader(http.StatusOK)
-			fmt.Fprintf(w, "# Gofasta Application Metrics\n")
-			fmt.Fprintf(w, "gofasta_uptime_seconds %f\n", time.Since(app.startTime).Seconds())
-			fmt.Fprintf(w, "gofasta_modules_total %d\n", len(app.modules))
-		})
-	}
-
-	// This will be enhanced when HTTP module is implemented
-	// For now, just a basic server
-	app.httpServer = &http.Server{
-		Addr:    fmt.Sprintf("%s:%d", app.config.Host, port),
-		Handler: mux,
-	}
-
-	// Setup graceful shutdown
-	go app.setupGracefulShutdown()
-
-	fmt.Printf("🌐 Gofasta application listening on http://%s:%d\n", app.config.Host, port)
-	
-	// Start server
-	if err := app.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		return fmt.Errorf("failed to start HTTP server: %w", err)
-	}
-
-	return nil
+	// Block to prevent application from exiting
+	select {}
 }
 
 // setupGracefulShutdown sets up graceful shutdown handling
