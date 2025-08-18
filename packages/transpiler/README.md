@@ -1,4 +1,4 @@
-# GoFasta Transpiler
+# Gofasta Transpiler
 
 A powerful transpiler that transforms `.gofa` files with advanced decorators into optimized Go code. This transpiler brings elegant decorator syntax and dependency injection patterns to the Go ecosystem while maintaining Go's performance characteristics.
 
@@ -286,7 +286,7 @@ The transpiler follows a three-phase architecture:
 
 ### Key Components
 
-- **Lexer** (`lexer.go`): Tokenizes GoFasta syntax including decorators
+- **Lexer** (`lexer.go`): Tokenizes Gofasta syntax including decorators
 - **Parser** (`parser.go`): Builds typed AST from token stream
 - **AST** (`ast.go`): Defines AST node types and visitor patterns
 - **CodeGen** (`codegen.go`): Generates Go code from AST
@@ -367,4 +367,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## 🙏 Acknowledgments
 
 - Built on Go's excellent parsing and AST libraries
-- Thanks to the GoFasta community for feedback and contributions
+- Thanks to the Gofasta community for feedback and contributions

@@ -13,50 +13,50 @@ const (
 	ILLEGAL TokenType = iota
 	EOF
 	COMMENT
-	
+
 	// Literals
-	IDENT     // identifiers
-	INT       // integers
-	FLOAT     // floats  
-	STRING    // string literals
-	CHAR      // character literals
-	BOOLEAN   // true/false
-	
+	IDENT   // identifiers
+	INT     // integers
+	FLOAT   // floats
+	STRING  // string literals
+	CHAR    // character literals
+	BOOLEAN // true/false
+
 	// Operators
-	ASSIGN    // =
-	PLUS      // +
-	MINUS     // -
-	MULTIPLY  // *
-	DIVIDE    // /
-	MODULO    // %
-	
+	ASSIGN   // =
+	PLUS     // +
+	MINUS    // -
+	MULTIPLY // *
+	DIVIDE   // /
+	MODULO   // %
+
 	// Comparison
-	EQ        // ==
-	NOT_EQ    // !=
-	LT        // <
-	GT        // >
-	LTE       // <=
-	GTE       // >=
-	
+	EQ     // ==
+	NOT_EQ // !=
+	LT     // <
+	GT     // >
+	LTE    // <=
+	GTE    // >=
+
 	// Logical
-	AND       // &&
-	OR        // ||
-	NOT       // !
-	
+	AND // &&
+	OR  // ||
+	NOT // !
+
 	// Punctuation
 	SEMICOLON // ;
 	COMMA     // ,
 	PERIOD    // .
 	COLON     // :
-	
+
 	// Delimiters
-	LPAREN    // (
-	RPAREN    // )
-	LBRACE    // {
-	RBRACE    // }
-	LBRACKET  // [
-	RBRACKET  // ]
-	
+	LPAREN   // (
+	RPAREN   // )
+	LBRACE   // {
+	RBRACE   // }
+	LBRACKET // [
+	RBRACKET // ]
+
 	// Keywords
 	PACKAGE   // package
 	IMPORT    // import
@@ -70,13 +70,13 @@ const (
 	ELSE      // else
 	FOR       // for
 	RETURN    // return
-	
-	// GoFasta-specific tokens
-	DECORATOR   // @
-	ARROW       // =>
-	SPREAD      // ...
-	QUESTION    // ?
-	
+
+	// Gofasta-specific tokens
+	DECORATOR // @
+	ARROW     // =>
+	SPREAD    // ...
+	QUESTION  // ?
+
 	// Go types
 	GO_INT     // int
 	GO_STRING  // string
@@ -100,71 +100,71 @@ type Token struct {
 
 // String returns a string representation of the token
 func (t Token) String() string {
-	return fmt.Sprintf("Token{Type: %s, Literal: %q, Line: %d, Column: %d}", 
+	return fmt.Sprintf("Token{Type: %s, Literal: %q, Line: %d, Column: %d}",
 		tokenTypeNames[t.Type], t.Literal, t.Line, t.Column)
 }
 
 // tokenTypeNames maps TokenType to readable names
 var tokenTypeNames = map[TokenType]string{
-	ILLEGAL:   "ILLEGAL",
-	EOF:       "EOF",
-	COMMENT:   "COMMENT",
-	IDENT:     "IDENT",
-	INT:       "INT",
-	FLOAT:     "FLOAT",
-	STRING:    "STRING",
-	CHAR:      "CHAR",
-	BOOLEAN:   "BOOLEAN",
-	ASSIGN:    "ASSIGN",
-	PLUS:      "PLUS",
-	MINUS:     "MINUS",
-	MULTIPLY:  "MULTIPLY",
-	DIVIDE:    "DIVIDE",
-	MODULO:    "MODULO",
-	EQ:        "EQ",
-	NOT_EQ:    "NOT_EQ",
-	LT:        "LT",
-	GT:        "GT",
-	LTE:       "LTE",
-	GTE:       "GTE",
-	AND:       "AND",
-	OR:        "OR",
-	NOT:       "NOT",
-	SEMICOLON: "SEMICOLON",
-	COMMA:     "COMMA",
-	PERIOD:    "PERIOD",
-	COLON:     "COLON",
-	LPAREN:    "LPAREN",
-	RPAREN:    "RPAREN",
-	LBRACE:    "LBRACE",
-	RBRACE:    "RBRACE",
-	LBRACKET:  "LBRACKET",
-	RBRACKET:  "RBRACKET",
-	PACKAGE:   "PACKAGE",
-	IMPORT:    "IMPORT",
-	TYPE:      "TYPE",
-	STRUCT:    "STRUCT",
-	INTERFACE: "INTERFACE",
-	FUNC:      "FUNC",
-	VAR:       "VAR",
-	CONST:     "CONST",
-	IF:        "IF",
-	ELSE:      "ELSE",
-	FOR:       "FOR",
-	RETURN:    "RETURN",
-	DECORATOR: "DECORATOR",
-	ARROW:     "ARROW",
-	SPREAD:    "SPREAD",
-	QUESTION:  "QUESTION",
-	GO_INT:    "GO_INT",
-	GO_STRING: "GO_STRING",
-	GO_BOOL:   "GO_BOOL",
-	GO_FLOAT:  "GO_FLOAT",
-	GO_SLICE:  "GO_SLICE",
-	GO_MAP:    "GO_MAP",
-	GO_CHAN:   "GO_CHAN",
+	ILLEGAL:    "ILLEGAL",
+	EOF:        "EOF",
+	COMMENT:    "COMMENT",
+	IDENT:      "IDENT",
+	INT:        "INT",
+	FLOAT:      "FLOAT",
+	STRING:     "STRING",
+	CHAR:       "CHAR",
+	BOOLEAN:    "BOOLEAN",
+	ASSIGN:     "ASSIGN",
+	PLUS:       "PLUS",
+	MINUS:      "MINUS",
+	MULTIPLY:   "MULTIPLY",
+	DIVIDE:     "DIVIDE",
+	MODULO:     "MODULO",
+	EQ:         "EQ",
+	NOT_EQ:     "NOT_EQ",
+	LT:         "LT",
+	GT:         "GT",
+	LTE:        "LTE",
+	GTE:        "GTE",
+	AND:        "AND",
+	OR:         "OR",
+	NOT:        "NOT",
+	SEMICOLON:  "SEMICOLON",
+	COMMA:      "COMMA",
+	PERIOD:     "PERIOD",
+	COLON:      "COLON",
+	LPAREN:     "LPAREN",
+	RPAREN:     "RPAREN",
+	LBRACE:     "LBRACE",
+	RBRACE:     "RBRACE",
+	LBRACKET:   "LBRACKET",
+	RBRACKET:   "RBRACKET",
+	PACKAGE:    "PACKAGE",
+	IMPORT:     "IMPORT",
+	TYPE:       "TYPE",
+	STRUCT:     "STRUCT",
+	INTERFACE:  "INTERFACE",
+	FUNC:       "FUNC",
+	VAR:        "VAR",
+	CONST:      "CONST",
+	IF:         "IF",
+	ELSE:       "ELSE",
+	FOR:        "FOR",
+	RETURN:     "RETURN",
+	DECORATOR:  "DECORATOR",
+	ARROW:      "ARROW",
+	SPREAD:     "SPREAD",
+	QUESTION:   "QUESTION",
+	GO_INT:     "GO_INT",
+	GO_STRING:  "GO_STRING",
+	GO_BOOL:    "GO_BOOL",
+	GO_FLOAT:   "GO_FLOAT",
+	GO_SLICE:   "GO_SLICE",
+	GO_MAP:     "GO_MAP",
+	GO_CHAN:    "GO_CHAN",
 	GO_POINTER: "GO_POINTER",
-	GO_ERROR:  "GO_ERROR",
+	GO_ERROR:   "GO_ERROR",
 }
 
 // Keywords map
@@ -222,7 +222,7 @@ func (l *Lexer) readChar() {
 	}
 	l.position = l.readPosition
 	l.readPosition++
-	
+
 	if l.ch == '\n' {
 		l.line++
 		l.column = 0
@@ -242,13 +242,13 @@ func (l *Lexer) peekChar() byte {
 // NextToken scans the input and returns the next token
 func (l *Lexer) NextToken() Token {
 	var tok Token
-	
+
 	l.skipWhitespace()
-	
+
 	pos := token.Pos(l.position)
 	line := l.line
 	column := l.column
-	
+
 	switch l.ch {
 	case '@':
 		tok = Token{Type: DECORATOR, Literal: string(l.ch), Position: pos, Line: line, Column: column}
@@ -353,6 +353,12 @@ func (l *Lexer) NextToken() Token {
 		tok.Position = pos
 		tok.Line = line
 		tok.Column = column
+	case '`':
+		tok.Type = STRING
+		tok.Literal = l.readRawString()
+		tok.Position = pos
+		tok.Line = line
+		tok.Column = column
 	case '\'':
 		tok.Type = CHAR
 		tok.Literal = l.readChar2()
@@ -379,7 +385,7 @@ func (l *Lexer) NextToken() Token {
 			tok = Token{Type: ILLEGAL, Literal: string(l.ch), Position: pos, Line: line, Column: column}
 		}
 	}
-	
+
 	l.readChar()
 	return tok
 }
@@ -404,11 +410,11 @@ func (l *Lexer) readIdentifier() string {
 func (l *Lexer) readNumber() (TokenType, string) {
 	position := l.position
 	tokenType := INT
-	
+
 	for isDigit(l.ch) {
 		l.readChar()
 	}
-	
+
 	// Check for decimal point
 	if l.ch == '.' && isDigit(l.peekChar()) {
 		tokenType = FLOAT
@@ -417,7 +423,7 @@ func (l *Lexer) readNumber() (TokenType, string) {
 			l.readChar()
 		}
 	}
-	
+
 	return tokenType, l.input[position:l.position]
 }
 
@@ -432,6 +438,18 @@ func (l *Lexer) readString() string {
 		// Handle escape sequences
 		if l.ch == '\\' {
 			l.readChar()
+		}
+	}
+	return l.input[position:l.position]
+}
+
+// readRawString reads a raw string literal (backticks)
+func (l *Lexer) readRawString() string {
+	position := l.position + 1 // skip opening backtick
+	for {
+		l.readChar()
+		if l.ch == '`' || l.ch == 0 {
+			break
 		}
 	}
 	return l.input[position:l.position]
@@ -458,11 +476,11 @@ func (l *Lexer) readSingleLineComment() Token {
 	position := l.position
 	line := l.line
 	column := l.column
-	
+
 	for l.ch != '\n' && l.ch != 0 {
 		l.readChar()
 	}
-	
+
 	return Token{
 		Type:     COMMENT,
 		Literal:  l.input[position:l.position],
@@ -477,10 +495,10 @@ func (l *Lexer) readMultiLineComment() Token {
 	position := l.position
 	line := l.line
 	column := l.column
-	
+
 	l.readChar() // skip '/'
 	l.readChar() // skip '*'
-	
+
 	for {
 		if l.ch == 0 {
 			break
@@ -492,7 +510,7 @@ func (l *Lexer) readMultiLineComment() Token {
 		}
 		l.readChar()
 	}
-	
+
 	return Token{
 		Type:     COMMENT,
 		Literal:  l.input[position:l.position],
@@ -533,25 +551,25 @@ func lookupIdent(ident string) TokenType {
 func TokenizeFile(input string) ([]Token, error) {
 	lexer := NewLexer(input)
 	var tokens []Token
-	
+
 	for {
 		token := lexer.NextToken()
 		tokens = append(tokens, token)
-		
+
 		if token.Type == EOF {
 			break
 		}
-		
+
 		if token.Type == ILLEGAL {
-			return nil, fmt.Errorf("illegal token %q at line %d, column %d", 
+			return nil, fmt.Errorf("illegal token %q at line %d, column %d",
 				token.Literal, token.Line, token.Column)
 		}
 	}
-	
+
 	return tokens, nil
 }
 
-// IsValidGoFastaFile checks if the file contains GoFasta decorators
+// IsValidGoFastaFile checks if the file contains Gofasta decorators
 func IsValidGoFastaFile(tokens []Token) bool {
 	for _, token := range tokens {
 		if token.Type == DECORATOR {

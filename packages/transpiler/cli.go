@@ -36,10 +36,10 @@ func (cli *CLI) Run(args []string) error {
 		cli.printUsage()
 		return nil
 	}
-	
+
 	command := args[1]
 	commandArgs := args[2:]
-	
+
 	switch command {
 	case "transpile", "t":
 		return cli.transpileCommand(commandArgs)
@@ -58,8 +58,8 @@ func (cli *CLI) Run(args []string) error {
 
 // transpileCommand handles the transpile command
 func (cli *CLI) transpileCommand(args []string) error {
-	fs := flag.NewFlagSet("transpile", flag.ExitOnError)
-	
+	fs := flag.NewFlagSet("transpile", flag.ContinueOnError)
+
 	var (
 		inputDir       = fs.String("input", ".", "Input directory containing .gofa files")
 		outputDir      = fs.String("output", "", "Output directory for .go files (default: same as input)")
@@ -70,7 +70,7 @@ func (cli *CLI) transpileCommand(args []string) error {
 		dryRun         = fs.Bool("dry-run", false, "Show what would be transpiled without actually doing it")
 		force          = fs.Bool("force", false, "Overwrite existing .go files")
 	)
-	
+
 	fs.Usage = func() {
 		fmt.Println("Usage: gofasta transpile [options]")
 		fmt.Println("\nTranspile .gofa files to .go files")
@@ -82,40 +82,40 @@ func (cli *CLI) transpileCommand(args []string) error {
 		fmt.Println("  gofasta transpile -file user.controller.gofa")
 		fmt.Println("  gofasta transpile -input . -workers 8 -verbose")
 	}
-	
+
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	
+
 	// Set default output directory if not specified
 	if *outputDir == "" {
 		*outputDir = *inputDir
 	}
-	
+
 	// Validate input
 	if *single != "" {
 		return cli.transpileSingleFile(*single, *outputDir, *verbose, *dryRun, *force)
 	}
-	
+
 	// Validate input directory
 	if _, err := os.Stat(*inputDir); os.IsNotExist(err) {
 		return fmt.Errorf("input directory does not exist: %s", *inputDir)
 	}
-	
+
 	// Create output directory if it doesn't exist
 	if !*dryRun {
 		if err := os.MkdirAll(*outputDir, 0755); err != nil {
 			return fmt.Errorf("failed to create output directory: %w", err)
 		}
 	}
-	
+
 	// Check for existing files
 	if !*force && !*dryRun {
 		if err := cli.checkExistingFiles(*inputDir, *outputDir, *preserveStruct); err != nil {
 			return err
 		}
 	}
-	
+
 	// Setup transpiler options
 	opts := TranspileOptions{
 		MaxWorkers:     *maxWorkers,
@@ -124,11 +124,11 @@ func (cli *CLI) transpileCommand(args []string) error {
 		PreserveStruct: *preserveStruct,
 		Verbose:        *verbose,
 	}
-	
+
 	if *dryRun {
 		return cli.dryRunTranspile(*inputDir, opts)
 	}
-	
+
 	// Create and run batch transpiler
 	batchTranspiler := NewBatchTranspiler(opts)
 	return batchTranspiler.TranspileProject(*inputDir)
@@ -136,8 +136,8 @@ func (cli *CLI) transpileCommand(args []string) error {
 
 // watchCommand handles the watch command
 func (cli *CLI) watchCommand(args []string) error {
-	fs := flag.NewFlagSet("watch", flag.ExitOnError)
-	
+	fs := flag.NewFlagSet("watch", flag.ContinueOnError)
+
 	var (
 		inputDir       = fs.String("input", ".", "Input directory to watch for .gofa files")
 		outputDir      = fs.String("output", "", "Output directory for .go files (default: same as input)")
@@ -146,7 +146,7 @@ func (cli *CLI) watchCommand(args []string) error {
 		debounce       = fs.Duration("debounce", 500*time.Millisecond, "Debounce delay for file changes")
 		verbose        = fs.Bool("verbose", false, "Enable verbose output")
 	)
-	
+
 	fs.Usage = func() {
 		fmt.Println("Usage: gofasta watch [options]")
 		fmt.Println("\nWatch .gofa files and transpile automatically on changes")
@@ -157,21 +157,21 @@ func (cli *CLI) watchCommand(args []string) error {
 		fmt.Println("  gofasta watch -input src -output dist")
 		fmt.Println("  gofasta watch -debounce 1s -verbose")
 	}
-	
+
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
-	
+
 	// Set default output directory if not specified
 	if *outputDir == "" {
 		*outputDir = *inputDir
 	}
-	
+
 	// Validate input directory
 	if _, err := os.Stat(*inputDir); os.IsNotExist(err) {
 		return fmt.Errorf("input directory does not exist: %s", *inputDir)
 	}
-	
+
 	// Setup transpiler options
 	opts := TranspileOptions{
 		MaxWorkers:     *maxWorkers,
@@ -180,31 +180,31 @@ func (cli *CLI) watchCommand(args []string) error {
 		PreserveStruct: *preserveStruct,
 		Verbose:        *verbose,
 	}
-	
+
 	// Create and start watch mode
 	watchMode := NewWatchMode(opts, *inputDir, *debounce)
-	
+
 	fmt.Println("Press Ctrl+C to stop watching...")
-	
+
 	// Handle interrupt signal
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	
+
 	// Start watching
 	if err := watchMode.Start(); err != nil {
 		return fmt.Errorf("failed to start watch mode: %w", err)
 	}
-	
+
 	// Wait for interrupt
 	<-ctx.Done()
 	watchMode.Stop()
-	
+
 	return nil
 }
 
 // versionCommand handles the version command
 func (cli *CLI) versionCommand(args []string) error {
-	fmt.Printf("GoFasta Transpiler v%s\n", cli.version)
+	fmt.Printf("Gofasta Transpiler v%s\n", cli.version)
 	fmt.Println("Transform .gofa files with decorators to Go code")
 	fmt.Println("")
 	fmt.Println("Features:")
@@ -233,14 +233,14 @@ func (cli *CLI) helpCommand(args []string) error {
 		}
 		return nil
 	}
-	
+
 	cli.printUsage()
 	return nil
 }
 
 // printUsage prints general usage information
 func (cli *CLI) printUsage() {
-	fmt.Printf("GoFasta Transpiler v%s\n", cli.version)
+	fmt.Printf("Gofasta Transpiler v%s\n", cli.version)
 	fmt.Println("Transform .gofa files with decorators to Go code")
 	fmt.Println("")
 	fmt.Println("Usage:")
@@ -267,89 +267,89 @@ func (cli *CLI) transpileSingleFile(inputFile, outputDir string, verbose, dryRun
 	if !strings.HasSuffix(inputFile, ".gofa") {
 		return fmt.Errorf("input file must have .gofa extension: %s", inputFile)
 	}
-	
+
 	// Check if input file exists
 	if _, err := os.Stat(inputFile); os.IsNotExist(err) {
 		return fmt.Errorf("input file does not exist: %s", inputFile)
 	}
-	
+
 	// Generate output file path
 	baseName := filepath.Base(inputFile)
 	baseName = strings.TrimSuffix(baseName, ".gofa") + ".go"
 	outputFile := filepath.Join(outputDir, baseName)
-	
+
 	// Check if output file exists
 	if !force && !dryRun {
 		if _, err := os.Stat(outputFile); err == nil {
 			return fmt.Errorf("output file already exists: %s (use -force to overwrite)", outputFile)
 		}
 	}
-	
+
 	if verbose {
 		fmt.Printf("Transpiling: %s -> %s\n", inputFile, outputFile)
 	}
-	
+
 	if dryRun {
 		fmt.Printf("Would transpile: %s -> %s\n", inputFile, outputFile)
 		return nil
 	}
-	
+
 	// Read input file
 	content, err := os.ReadFile(inputFile)
 	if err != nil {
 		return fmt.Errorf("failed to read input file: %w", err)
 	}
-	
+
 	// Transpile
 	start := time.Now()
 	goCode, err := TranspileFile(inputFile, string(content))
 	duration := time.Since(start)
-	
+
 	if err != nil {
 		return fmt.Errorf("transpilation failed: %w", err)
 	}
-	
+
 	// Create output directory
 	if err := os.MkdirAll(filepath.Dir(outputFile), 0755); err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
-	
+
 	// Write output file
 	if err := os.WriteFile(outputFile, []byte(goCode), 0644); err != nil {
 		return fmt.Errorf("failed to write output file: %w", err)
 	}
-	
+
 	if verbose {
 		fmt.Printf("✅ Successfully transpiled in %v\n", duration)
 	}
-	
+
 	return nil
 }
 
 // dryRunTranspile performs a dry run showing what would be transpiled
 func (cli *CLI) dryRunTranspile(inputDir string, opts TranspileOptions) error {
 	fmt.Printf("🔍 Dry run: scanning %s for .gofa files...\n", inputDir)
-	
+
 	transpiler := NewParallelTranspiler(opts)
 	gofaFiles, err := transpiler.findGofaFiles(inputDir)
 	if err != nil {
 		return fmt.Errorf("failed to find .gofa files: %w", err)
 	}
-	
+
 	if len(gofaFiles) == 0 {
 		fmt.Println("No .gofa files found")
 		return nil
 	}
-	
+
 	fmt.Printf("\nFound %d .gofa files:\n", len(gofaFiles))
 	for i, file := range gofaFiles {
 		outputPath := transpiler.getOutputPath(inputDir, file)
 		fmt.Printf("  %d. %s -> %s\n", i+1, file, outputPath)
 	}
-	
+
 	fmt.Printf("\nTranspilation would use %d workers\n", transpiler.maxWorkers)
 	fmt.Println("Run without -dry-run to perform actual transpilation")
-	
+
 	return nil
 }
 
@@ -359,12 +359,12 @@ func (cli *CLI) checkExistingFiles(inputDir, outputDir string, preserveStruct bo
 		OutputDir:      outputDir,
 		PreserveStruct: preserveStruct,
 	})
-	
+
 	gofaFiles, err := transpiler.findGofaFiles(inputDir)
 	if err != nil {
 		return err
 	}
-	
+
 	var existingFiles []string
 	for _, gofaFile := range gofaFiles {
 		outputPath := transpiler.getOutputPath(inputDir, gofaFile)
@@ -372,7 +372,7 @@ func (cli *CLI) checkExistingFiles(inputDir, outputDir string, preserveStruct bo
 			existingFiles = append(existingFiles, outputPath)
 		}
 	}
-	
+
 	if len(existingFiles) > 0 {
 		fmt.Printf("The following output files already exist:\n")
 		for _, file := range existingFiles {
@@ -381,14 +381,14 @@ func (cli *CLI) checkExistingFiles(inputDir, outputDir string, preserveStruct bo
 		fmt.Println("\nUse -force to overwrite existing files")
 		return fmt.Errorf("output files already exist")
 	}
-	
+
 	return nil
 }
 
 // RunMain is the main entry point for the CLI
 func RunMain() {
 	cli := NewCLI("1.0.0")
-	
+
 	if err := cli.Run(os.Args); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)

@@ -22,20 +22,25 @@ type UserController struct {
 	expectedTokens := []TokenType{
 		DECORATOR, IDENT, LPAREN, STRING, RPAREN,
 		TYPE, IDENT, STRUCT, LBRACE,
-		IDENT, MULTIPLY, IDENT, STRING,
+		IDENT, MULTIPLY, IDENT, STRING, // backtick string tag is parsed as STRING
 		RBRACE, EOF,
 	}
 	
 	var actualTokens []TokenType
+	var tokenDetails []string
 	for {
 		token := lexer.NextToken()
 		actualTokens = append(actualTokens, token.Type)
+		tokenDetails = append(tokenDetails, fmt.Sprintf("%s(%s)", tokenTypeNames[token.Type], token.Literal))
 		if token.Type == EOF {
 			break
 		}
 	}
 	
 	if len(actualTokens) != len(expectedTokens) {
+		t.Logf("Expected tokens: %v", expectedTokens)
+		t.Logf("Actual tokens: %v", actualTokens)
+		t.Logf("Token details: %v", tokenDetails)
 		t.Fatalf("Expected %d tokens, got %d", len(expectedTokens), len(actualTokens))
 	}
 	
@@ -82,6 +87,7 @@ func GetUser(id string) {
 	}
 	
 	if len(controller.Decorators) != 1 {
+		t.Logf("Controller: %+v", controller)
 		t.Fatalf("Expected 1 decorator, got %d", len(controller.Decorators))
 	}
 	

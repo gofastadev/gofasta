@@ -5,7 +5,7 @@ import (
 	"go/token"
 )
 
-// GofaASTNode represents the base interface for all GoFasta AST nodes
+// GofaASTNode represents the base interface for all Gofasta AST nodes
 type GofaASTNode interface {
 	String() string
 	Pos() token.Pos
@@ -13,12 +13,12 @@ type GofaASTNode interface {
 
 // GofaFile represents a complete .gofa file
 type GofaFile struct {
-	Package     *ast.Ident            // package name
-	Imports     []*ast.ImportSpec     // import declarations
-	Decorators  []*DecoratorNode      // file-level decorators
-	Declarations []GofaDeclaration    // type and function declarations
-	Comments    []*ast.CommentGroup   // comments
-	Position    token.Pos
+	Package      *ast.Ident          // package name
+	Imports      []*ast.ImportSpec   // import declarations
+	Decorators   []*DecoratorNode    // file-level decorators
+	Declarations []GofaDeclaration   // type and function declarations
+	Comments     []*ast.CommentGroup // comments
+	Position     token.Pos
 }
 
 func (f *GofaFile) String() string {
@@ -37,10 +37,10 @@ type GofaDeclaration interface {
 
 // DecoratorNode represents a decorator like @Controller("/api")
 type DecoratorNode struct {
-	Name       string                 // decorator name (Controller, Get, etc.)
-	Args       []DecoratorArg         // decorator arguments
-	Target     GofaDeclaration        // what this decorator applies to
-	Position   token.Pos
+	Name     string          // decorator name (Controller, Get, etc.)
+	Args     []DecoratorArg  // decorator arguments
+	Target   GofaDeclaration // what this decorator applies to
+	Position token.Pos
 }
 
 func (d *DecoratorNode) String() string {
@@ -53,18 +53,18 @@ func (d *DecoratorNode) Pos() token.Pos {
 
 // DecoratorArg represents an argument to a decorator
 type DecoratorArg struct {
-	Key   string      // for named arguments like {path: "/api"}
-	Value interface{} // string, number, boolean, array, or object
-	Position   token.Pos
+	Key      string      // for named arguments like {path: "/api"}
+	Value    interface{} // string, number, boolean, array, or object
+	Position token.Pos
 }
 
 // ControllerDeclaration represents a controller class
 type ControllerDeclaration struct {
-	Name        string             // controller name
-	Decorators  []*DecoratorNode   // @Controller, @UseGuards, etc.
-	Fields      []*FieldNode       // injected dependencies
-	Methods     []*MethodNode      // controller methods/routes
-	Position    token.Pos
+	Name       string           // controller name
+	Decorators []*DecoratorNode // @Controller, @UseGuards, etc.
+	Fields     []*FieldNode     // injected dependencies
+	Methods    []*MethodNode    // controller methods/routes
+	Position   token.Pos
 }
 
 func (c *ControllerDeclaration) String() string {
@@ -79,11 +79,11 @@ func (c *ControllerDeclaration) isDeclaration() {}
 
 // ServiceDeclaration represents a service/provider class
 type ServiceDeclaration struct {
-	Name        string             // service name  
-	Decorators  []*DecoratorNode   // @Injectable, etc.
-	Fields      []*FieldNode       // injected dependencies
-	Methods     []*MethodNode      // service methods
-	Position    token.Pos
+	Name       string           // service name
+	Decorators []*DecoratorNode // @Injectable, etc.
+	Fields     []*FieldNode     // injected dependencies
+	Methods    []*MethodNode    // service methods
+	Position   token.Pos
 }
 
 func (s *ServiceDeclaration) String() string {
@@ -98,9 +98,9 @@ func (s *ServiceDeclaration) isDeclaration() {}
 
 // ModuleDeclaration represents a module
 type ModuleDeclaration struct {
-	Name        string             // module name
-	Decorators  []*DecoratorNode   // @Module decorator
-	Position    token.Pos
+	Name       string           // module name
+	Decorators []*DecoratorNode // @Module decorator
+	Position   token.Pos
 }
 
 func (m *ModuleDeclaration) String() string {
@@ -132,11 +132,11 @@ func (f *FieldNode) Pos() token.Pos {
 
 // MethodNode represents a method with possible route decorators
 type MethodNode struct {
-	Name       string             // method name
-	Params     []*ParameterNode   // method parameters
-	ReturnType string             // return type
-	Body       []ast.Stmt         // method body statements
-	Decorators []*DecoratorNode   // @Get, @Post, etc.
+	Name       string           // method name
+	Params     []*ParameterNode // method parameters
+	ReturnType string           // return type
+	Body       []ast.Stmt       // method body statements
+	Decorators []*DecoratorNode // @Get, @Post, etc.
 	Position   token.Pos
 }
 
@@ -150,9 +150,9 @@ func (m *MethodNode) Pos() token.Pos {
 
 // ParameterNode represents a method parameter with possible decorators
 type ParameterNode struct {
-	Name       string             // parameter name
-	Type       string             // parameter type
-	Decorators []*DecoratorNode   // @Body, @Param, @Query, etc.
+	Name       string           // parameter name
+	Type       string           // parameter type
+	Decorators []*DecoratorNode // @Body, @Param, @Query, etc.
 	Position   token.Pos
 }
 
@@ -173,7 +173,7 @@ const (
 	ServiceDecorator
 	ModuleDecorator
 	InjectableDecorator
-	
+
 	// Method-level decorators
 	GetDecorator
 	PostDecorator
@@ -182,14 +182,14 @@ const (
 	PatchDecorator
 	OptionsDecorator
 	HeadDecorator
-	
+
 	// Cross-cutting decorators
 	UseGuardsDecorator
 	UseMiddlewareDecorator
 	UsePipesDecorator
 	UseFiltersDecorator
 	UseInterceptorsDecorator
-	
+
 	// Parameter decorators
 	BodyDecorator
 	ParamDecorator
@@ -197,14 +197,14 @@ const (
 	HeadersDecorator
 	RequestDecorator
 	ResponseDecorator
-	
+
 	// Other decorators
 	HttpCodeDecorator
 	VersionDecorator
 	RolesDecorator
 	CacheDecorator
 	ThrottleDecorator
-	
+
 	// Custom decorators
 	CustomDecorator
 )
@@ -286,7 +286,7 @@ func Walk(v Visitor, node GofaASTNode) {
 		for _, decorator := range n.Decorators {
 			Walk(v, decorator)
 		}
-		
+
 	case *ControllerDeclaration:
 		for _, decorator := range n.Decorators {
 			Walk(v, decorator)
@@ -297,7 +297,7 @@ func Walk(v Visitor, node GofaASTNode) {
 		for _, method := range n.Methods {
 			Walk(v, method)
 		}
-		
+
 	case *ServiceDeclaration:
 		for _, decorator := range n.Decorators {
 			Walk(v, decorator)
@@ -308,12 +308,12 @@ func Walk(v Visitor, node GofaASTNode) {
 		for _, method := range n.Methods {
 			Walk(v, method)
 		}
-		
+
 	case *ModuleDeclaration:
 		for _, decorator := range n.Decorators {
 			Walk(v, decorator)
 		}
-		
+
 	case *MethodNode:
 		for _, decorator := range n.Decorators {
 			Walk(v, decorator)
@@ -321,12 +321,12 @@ func Walk(v Visitor, node GofaASTNode) {
 		for _, param := range n.Params {
 			Walk(v, param)
 		}
-		
+
 	case *ParameterNode:
 		for _, decorator := range n.Decorators {
 			Walk(v, decorator)
 		}
-		
+
 	case *FieldNode:
 		for _, decorator := range n.Decorators {
 			Walk(v, decorator)

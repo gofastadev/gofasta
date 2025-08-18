@@ -7,35 +7,35 @@ import (
 	"strings"
 )
 
-// CodeGenerator generates Go code from GoFasta AST
+// CodeGenerator generates Go code from Gofasta AST
 type CodeGenerator struct {
-	packageName      string
-	imports          []string
+	packageName       string
+	imports           []string
 	decoratorRegistry map[string]*DecoratorNode
-	generatedCode    strings.Builder
-	indentLevel      int
+	generatedCode     strings.Builder
+	indentLevel       int
 }
 
 // NewCodeGenerator creates a new code generator
 func NewCodeGenerator(packageName string) *CodeGenerator {
 	return &CodeGenerator{
-		packageName:      packageName,
-		imports:          []string{},
+		packageName:       packageName,
+		imports:           []string{},
 		decoratorRegistry: make(map[string]*DecoratorNode),
 	}
 }
 
-// GenerateGoCode generates Go code from a GoFasta AST
+// GenerateGoCode generates Go code from a Gofasta AST
 func (g *CodeGenerator) GenerateGoCode(file *GofaFile) (string, error) {
 	g.reset()
-	
+
 	// Generate package declaration
 	g.writeLine(fmt.Sprintf("package %s", g.packageName))
 	g.writeLine("")
-	
+
 	// Collect imports
 	g.collectImports(file)
-	
+
 	// Generate import statements
 	if len(g.imports) > 0 {
 		g.writeLine("import (")
@@ -47,7 +47,7 @@ func (g *CodeGenerator) GenerateGoCode(file *GofaFile) (string, error) {
 		g.writeLine(")")
 		g.writeLine("")
 	}
-	
+
 	// Generate declarations
 	for _, decl := range file.Declarations {
 		if err := g.generateDeclaration(decl); err != nil {
@@ -55,14 +55,14 @@ func (g *CodeGenerator) GenerateGoCode(file *GofaFile) (string, error) {
 		}
 		g.writeLine("")
 	}
-	
+
 	// Format the generated code
 	formatted, err := format.Source([]byte(g.generatedCode.String()))
 	if err != nil {
 		// Return unformatted code if formatting fails
 		return g.generatedCode.String(), nil
 	}
-	
+
 	return string(formatted), nil
 }
 
@@ -85,7 +85,7 @@ func (g *CodeGenerator) generateControllerDeclaration(controller *ControllerDecl
 	// Generate struct declaration
 	g.writeLine(fmt.Sprintf("type %s struct {", controller.Name))
 	g.indent()
-	
+
 	// Generate fields with injection tags
 	for _, field := range controller.Fields {
 		tag := g.generateInjectionTag(field)
@@ -95,15 +95,15 @@ func (g *CodeGenerator) generateControllerDeclaration(controller *ControllerDecl
 			g.writeLine(fmt.Sprintf("%s %s", field.Name, field.Type))
 		}
 	}
-	
+
 	g.unindent()
 	g.writeLine("}")
 	g.writeLine("")
-	
+
 	// Generate route registration function
 	g.generateControllerRouteRegistration(controller)
 	g.writeLine("")
-	
+
 	// Generate methods
 	for _, method := range controller.Methods {
 		if err := g.generateControllerMethod(controller, method); err != nil {
@@ -111,7 +111,7 @@ func (g *CodeGenerator) generateControllerDeclaration(controller *ControllerDecl
 		}
 		g.writeLine("")
 	}
-	
+
 	return nil
 }
 
@@ -120,7 +120,7 @@ func (g *CodeGenerator) generateServiceDeclaration(service *ServiceDeclaration) 
 	// Generate struct declaration
 	g.writeLine(fmt.Sprintf("type %s struct {", service.Name))
 	g.indent()
-	
+
 	// Generate fields with injection tags
 	for _, field := range service.Fields {
 		tag := g.generateInjectionTag(field)
@@ -130,17 +130,17 @@ func (g *CodeGenerator) generateServiceDeclaration(service *ServiceDeclaration) 
 			g.writeLine(fmt.Sprintf("%s %s", field.Name, field.Type))
 		}
 	}
-	
+
 	g.unindent()
 	g.writeLine("}")
 	g.writeLine("")
-	
+
 	// Generate Initialize method if Injectable
 	if g.hasDecorator(service.Decorators, "Injectable") {
 		g.generateServiceInitializeMethod(service)
 		g.writeLine("")
 	}
-	
+
 	// Generate methods
 	for _, method := range service.Methods {
 		if err := g.generateServiceMethod(service, method); err != nil {
@@ -148,7 +148,7 @@ func (g *CodeGenerator) generateServiceDeclaration(service *ServiceDeclaration) 
 		}
 		g.writeLine("")
 	}
-	
+
 	return nil
 }
 
@@ -161,10 +161,10 @@ func (g *CodeGenerator) generateModuleDeclaration(module *ModuleDeclaration) err
 	g.unindent()
 	g.writeLine("}")
 	g.writeLine("")
-	
+
 	// Generate Configure method
 	g.generateModuleConfigureMethod(module)
-	
+
 	return nil
 }
 
@@ -172,22 +172,22 @@ func (g *CodeGenerator) generateModuleDeclaration(module *ModuleDeclaration) err
 func (g *CodeGenerator) generateControllerRouteRegistration(controller *ControllerDeclaration) {
 	g.writeLine(fmt.Sprintf("func (c *%s) RegisterRoutes(server *httpPackage.HTTPServer) error {", controller.Name))
 	g.indent()
-	
+
 	controllerPath := g.getControllerPath(controller)
-	
+
 	for _, method := range controller.Methods {
 		routeInfo := g.getRouteInfo(method)
 		if routeInfo.Method != "" {
 			fullPath := g.combineRoutePaths(controllerPath, routeInfo.Path)
-			
+
 			// Generate route registration
-			g.writeLine(fmt.Sprintf("server.%s(\"%s\", c.%s)", 
-				strings.Title(strings.ToLower(routeInfo.Method)), 
-				fullPath, 
+			g.writeLine(fmt.Sprintf("server.%s(\"%s\", c.%s)",
+				strings.Title(strings.ToLower(routeInfo.Method)),
+				fullPath,
 				method.Name))
 		}
 	}
-	
+
 	g.writeLine("return nil")
 	g.unindent()
 	g.writeLine("}")
@@ -199,17 +199,17 @@ func (g *CodeGenerator) generateControllerMethod(controller *ControllerDeclarati
 	signature := g.generateMethodSignature(controller.Name, method, true)
 	g.writeLine(signature + " {")
 	g.indent()
-	
+
 	// Generate parameter extraction from HTTP context
 	g.generateParameterExtraction(method)
-	
+
 	// Generate method body placeholder
 	g.writeLine("// TODO: Implement method logic")
 	g.writeLine("ctx.JSON(200, map[string]interface{}{\"message\": \"Not implemented\"})")
-	
+
 	g.unindent()
 	g.writeLine("}")
-	
+
 	return nil
 }
 
@@ -219,16 +219,16 @@ func (g *CodeGenerator) generateServiceMethod(service *ServiceDeclaration, metho
 	signature := g.generateMethodSignature(service.Name, method, false)
 	g.writeLine(signature + " {")
 	g.indent()
-	
+
 	// Generate method body placeholder
 	g.writeLine("// TODO: Implement method logic")
 	if method.ReturnType != "" && method.ReturnType != "void" {
 		g.writeLine("return nil")
 	}
-	
+
 	g.unindent()
 	g.writeLine("}")
-	
+
 	return nil
 }
 
@@ -242,14 +242,14 @@ func (g *CodeGenerator) generateServiceInitializeMethod(service *ServiceDeclarat
 	g.writeLine("}")
 }
 
-// generateModuleConfigureMethod generates Configure method for modules  
+// generateModuleConfigureMethod generates Configure method for modules
 func (g *CodeGenerator) generateModuleConfigureMethod(module *ModuleDeclaration) {
 	g.writeLine(fmt.Sprintf("func (m *%s) Configure(container *core.DIContainer) error {", module.Name))
 	g.indent()
-	
+
 	// Extract module configuration from decorators
 	moduleConfig := g.getModuleConfig(module)
-	
+
 	// Register providers
 	if len(moduleConfig.Providers) > 0 {
 		g.writeLine("// Register providers")
@@ -262,7 +262,7 @@ func (g *CodeGenerator) generateModuleConfigureMethod(module *ModuleDeclaration)
 		}
 		g.writeLine("")
 	}
-	
+
 	// Register controllers
 	if len(moduleConfig.Controllers) > 0 {
 		g.writeLine("// Register controllers")
@@ -275,7 +275,7 @@ func (g *CodeGenerator) generateModuleConfigureMethod(module *ModuleDeclaration)
 		}
 		g.writeLine("")
 	}
-	
+
 	g.writeLine("return nil")
 	g.unindent()
 	g.writeLine("}")
@@ -286,11 +286,16 @@ func (g *CodeGenerator) generateModuleConfigureMethod(module *ModuleDeclaration)
 // generateMethodSignature generates method signature
 func (g *CodeGenerator) generateMethodSignature(receiverType string, method *MethodNode, isController bool) string {
 	var sig strings.Builder
-	
+
 	// Receiver
-	receiverChar := strings.ToLower(receiverType[:1])
+	var receiverChar string
+	if isController {
+		receiverChar = "c" // Standard 'c' for controllers
+	} else {
+		receiverChar = "s" // Standard 's' for services
+	}
 	sig.WriteString(fmt.Sprintf("func (%s *%s) %s", receiverChar, receiverType, method.Name))
-	
+
 	// Parameters
 	sig.WriteString("(")
 	if isController {
@@ -300,7 +305,7 @@ func (g *CodeGenerator) generateMethodSignature(receiverType string, method *Met
 			sig.WriteString(", ")
 		}
 	}
-	
+
 	for i, param := range method.Params {
 		if i > 0 {
 			sig.WriteString(", ")
@@ -308,7 +313,7 @@ func (g *CodeGenerator) generateMethodSignature(receiverType string, method *Met
 		sig.WriteString(fmt.Sprintf("%s %s", param.Name, param.Type))
 	}
 	sig.WriteString(")")
-	
+
 	// Return type
 	if method.ReturnType != "" && method.ReturnType != "void" {
 		if isController {
@@ -317,7 +322,7 @@ func (g *CodeGenerator) generateMethodSignature(receiverType string, method *Met
 			sig.WriteString(" " + method.ReturnType)
 		}
 	}
-	
+
 	return sig.String()
 }
 
@@ -325,7 +330,7 @@ func (g *CodeGenerator) generateMethodSignature(receiverType string, method *Met
 func (g *CodeGenerator) generateParameterExtraction(method *MethodNode) {
 	for _, param := range method.Params {
 		paramDecorators := g.getParameterDecorators(param)
-		
+
 		for _, decorator := range paramDecorators {
 			switch decorator.Name {
 			case "Body":
@@ -336,21 +341,21 @@ func (g *CodeGenerator) generateParameterExtraction(method *MethodNode) {
 				g.writeLine("return")
 				g.unindent()
 				g.writeLine("}")
-				
+
 			case "Param":
 				paramName := g.getDecoratorArgValue(decorator, 0)
 				if paramName == "" {
 					paramName = param.Name
 				}
 				g.writeLine(fmt.Sprintf("%s := ctx.GetParam(\"%s\")", param.Name, paramName))
-				
+
 			case "Query":
 				queryName := g.getDecoratorArgValue(decorator, 0)
 				if queryName == "" {
 					queryName = param.Name
 				}
 				g.writeLine(fmt.Sprintf("%s := ctx.GetQuery(\"%s\")", param.Name, queryName))
-				
+
 			case "Headers":
 				headerName := g.getDecoratorArgValue(decorator, 0)
 				if headerName == "" {
@@ -367,17 +372,17 @@ func (g *CodeGenerator) generateInjectionTag(field *FieldNode) string {
 	if field.Tag != "" {
 		return field.Tag
 	}
-	
+
 	// Generate inject tag based on field name/type
 	return `inject:""`
 }
 
 // collectImports collects all necessary imports
 func (g *CodeGenerator) collectImports(file *GofaFile) {
-	// Standard imports for GoFasta
+	// Standard imports for Gofasta
 	g.addImport("github.com/healtronlabs/gofasta/packages/core")
 	g.addImport("github.com/healtronlabs/gofasta/packages/http")
-	
+
 	// Check if we need additional imports based on decorators
 	for _, decl := range file.Declarations {
 		g.collectImportsFromDeclaration(decl)
@@ -390,7 +395,7 @@ func (g *CodeGenerator) collectImportsFromDeclaration(decl GofaDeclaration) {
 	case *ControllerDeclaration:
 		// Controllers need HTTP package
 		g.addImport("github.com/healtronlabs/gofasta/packages/http")
-		
+
 	case *ServiceDeclaration:
 		// Check for database-related imports
 		for _, field := range d.Fields {
@@ -398,7 +403,7 @@ func (g *CodeGenerator) collectImportsFromDeclaration(decl GofaDeclaration) {
 				g.addImport("github.com/healtronlabs/gofasta/packages/orm")
 			}
 		}
-		
+
 	case *ModuleDeclaration:
 		// Modules need core package
 		g.addImport("github.com/healtronlabs/gofasta/packages/core")
@@ -453,7 +458,7 @@ func (g *CodeGenerator) getControllerPath(controller *ControllerDeclaration) str
 	if controllerDecorator != nil && len(controllerDecorator.Args) > 0 {
 		return g.getDecoratorArgValue(controllerDecorator, 0)
 	}
-	
+
 	// Default path based on controller name
 	name := strings.TrimSuffix(controller.Name, "Controller")
 	return "/" + strings.ToLower(name)
@@ -468,10 +473,10 @@ type RouteInfo struct {
 // getRouteInfo extracts route information from method decorators
 func (g *CodeGenerator) getRouteInfo(method *MethodNode) RouteInfo {
 	routeInfo := RouteInfo{}
-	
+
 	// Check for HTTP method decorators
 	httpMethods := []string{"Get", "Post", "Put", "Delete", "Patch", "Options", "Head"}
-	
+
 	for _, decorator := range method.Decorators {
 		for _, httpMethod := range httpMethods {
 			if decorator.Name == httpMethod {
@@ -483,7 +488,7 @@ func (g *CodeGenerator) getRouteInfo(method *MethodNode) RouteInfo {
 			}
 		}
 	}
-	
+
 	// Fallback to method name convention
 	methodName := strings.ToLower(method.Name)
 	for _, httpMethod := range []string{"get", "post", "put", "delete", "patch"} {
@@ -493,7 +498,7 @@ func (g *CodeGenerator) getRouteInfo(method *MethodNode) RouteInfo {
 			break
 		}
 	}
-	
+
 	return routeInfo
 }
 
@@ -513,12 +518,12 @@ type ModuleConfig struct {
 // getModuleConfig extracts module configuration from decorators
 func (g *CodeGenerator) getModuleConfig(module *ModuleDeclaration) ModuleConfig {
 	config := ModuleConfig{}
-	
+
 	moduleDecorator := g.getDecorator(module.Decorators, "Module")
 	if moduleDecorator == nil {
 		return config
 	}
-	
+
 	// Extract configuration from decorator arguments
 	// This is simplified - in reality, you'd parse the object syntax
 	for _, arg := range moduleDecorator.Args {
@@ -532,7 +537,7 @@ func (g *CodeGenerator) getModuleConfig(module *ModuleDeclaration) ModuleConfig 
 			}
 		}
 	}
-	
+
 	return config
 }
 
@@ -541,14 +546,14 @@ func (g *CodeGenerator) combineRoutePaths(controllerPath, methodPath string) str
 	if methodPath == "" {
 		methodPath = ""
 	}
-	
+
 	path := strings.TrimSuffix(controllerPath, "/") + "/" + strings.TrimPrefix(methodPath, "/")
 	path = strings.ReplaceAll(path, "//", "/")
-	
+
 	if path == "/" {
 		return "/"
 	}
-	
+
 	return strings.TrimSuffix(path, "/")
 }
 
@@ -589,19 +594,25 @@ func TranspileFile(inputPath string, inputContent string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to parse .gofa file: %w", err)
 	}
-	
-	// Extract package name from file path
-	packageName := filepath.Base(filepath.Dir(inputPath))
-	if packageName == "." {
-		packageName = "main"
+
+	// Use package name from parsed file, fallback to directory name
+	var packageName string
+	if file.Package != nil && file.Package.Name != "" {
+		packageName = file.Package.Name
+	} else {
+		// Fallback to directory-based package name
+		packageName = filepath.Base(filepath.Dir(inputPath))
+		if packageName == "." {
+			packageName = "main"
+		}
 	}
-	
+
 	// Generate Go code
 	generator := NewCodeGenerator(packageName)
 	goCode, err := generator.GenerateGoCode(file)
 	if err != nil {
 		return "", fmt.Errorf("failed to generate Go code: %w", err)
 	}
-	
+
 	return goCode, nil
 }
