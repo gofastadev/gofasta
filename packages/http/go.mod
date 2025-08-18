@@ -8,6 +8,6 @@ require (
 	github.com/healtronlabs/gofasta/packages/core v0.0.0
 )
 
-require golang.org/x/net v0.17.0 // indirect
+require golang.org/x/net v0.27.0 // indirect
 
 replace github.com/healtronlabs/gofasta/packages/core => ../core

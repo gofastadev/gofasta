@@ -18,7 +18,6 @@ use (
 	./packages/logging
 	./packages/orm
 	./packages/testing
-	./packages/transpiler
 	./packages/validation
 	./plugins/compression
 	./plugins/cors
@@ -26,4 +25,5 @@ use (
 	./plugins/rate-limit
 	./plugins/swagger
 	./plugins/tracing
+	./tools/transpiler
 )
