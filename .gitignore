@@ -60,3 +60,4 @@ coverage.html
 generated.go
 *.pb.go
 test_summary.txt
+/tools/transpiler/gofasta
