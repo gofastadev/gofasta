@@ -167,6 +167,11 @@ func (p *Parser) ParseFile() (*GofaFile, error) {
 		return nil, fmt.Errorf("parsing errors: %s", strings.Join(p.errors, "; "))
 	}
 	
+	// Validate that the file has meaningful content
+	if file.Package == nil && len(file.Declarations) == 0 && len(file.Imports) == 0 {
+		return nil, fmt.Errorf("empty .gofa file: file must contain at least a package declaration, imports, or declarations")
+	}
+	
 	return file, nil
 }
 
@@ -616,6 +621,49 @@ func (p *Parser) parseType() string {
 		return typeStr.String()
 	}
 	
+	// Handle anonymous struct types (struct { ... })
+	if p.currToken.Type == STRUCT {
+		typeStr.WriteString("struct")
+		p.nextToken()
+		
+		if p.currToken.Type == LBRACE {
+			typeStr.WriteString(" {")
+			p.nextToken()
+			
+			// Parse struct fields recursively
+			for p.currToken.Type != RBRACE && p.currToken.Type != EOF {
+				// Skip whitespace and newlines by advancing
+				if p.currToken.Type == IDENT {
+					// Field name
+					typeStr.WriteString("\n\t\t")
+					typeStr.WriteString(p.currToken.Literal)
+					p.nextToken()
+					
+					// Field type
+					typeStr.WriteString(" ")
+					fieldType := p.parseType()
+					typeStr.WriteString(fieldType)
+					
+					// Optional struct tag
+					if p.currToken.Type == STRING {
+						typeStr.WriteString(" ")
+						typeStr.WriteString(p.currToken.Literal)
+						p.nextToken()
+					}
+				} else {
+					// Skip unexpected tokens to avoid infinite loop
+					p.nextToken()
+				}
+			}
+			
+			if p.currToken.Type == RBRACE {
+				typeStr.WriteString("\n\t}")
+				p.nextToken()
+			}
+		}
+		return typeStr.String()
+	}
+	
 	// Base type
 	if p.currToken.Type == IDENT || isGoType(p.currToken.Type) {
 		typeStr.WriteString(p.currToken.Literal)
@@ -842,6 +890,9 @@ func (p *Parser) parseFunctionDeclaration() GofaDeclaration {
 	// Skip function name
 	if p.currToken.Type == IDENT {
 		p.nextToken()
+	} else {
+		p.addError("expected function name after 'func'")
+		return nil
 	}
 	
 	// Skip parameter list
@@ -852,6 +903,9 @@ func (p *Parser) parseFunctionDeclaration() GofaDeclaration {
 		}
 		if p.currToken.Type == RPAREN {
 			p.nextToken()
+		} else if p.currToken.Type == EOF {
+			p.addError("unexpected end of file in function parameter list")
+			return nil
 		}
 	}
 	

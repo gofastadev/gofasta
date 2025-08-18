@@ -126,11 +126,11 @@ type UserModule struct {
 
 	// Test edge cases and error paths
 	t.Run("Error paths", func(t *testing.T) {
-		// Test lexer errors
+		// Test lexer errors - standalone @ should be ILLEGAL
 		lexer := NewLexer("@")
 		token := lexer.NextToken()
-		if token.Type != DECORATOR {
-			t.Error("Expected DECORATOR token")
+		if token.Type != ILLEGAL {
+			t.Error("Expected ILLEGAL token for standalone @")
 		}
 
 		// Test invalid characters

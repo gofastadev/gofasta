@@ -251,7 +251,17 @@ func (l *Lexer) NextToken() Token {
 
 	switch l.ch {
 	case '@':
-		tok = Token{Type: DECORATOR, Literal: string(l.ch), Position: pos, Line: line, Column: column}
+		// Check if @ is immediately followed by an identifier (no space)
+		if isLetter(l.peekChar()) {
+			// Valid decorator start - just return the @ symbol
+			tok = Token{Type: DECORATOR, Literal: string(l.ch), Position: pos, Line: line, Column: column}
+		} else if l.peekChar() == ' ' || l.peekChar() == '\t' {
+			// @ followed by whitespace - this is invalid decorator syntax
+			tok = Token{Type: ILLEGAL, Literal: string(l.ch), Position: pos, Line: line, Column: column}
+		} else {
+			// @ followed by something else (like EOF) - invalid
+			tok = Token{Type: ILLEGAL, Literal: string(l.ch), Position: pos, Line: line, Column: column}
+		}
 	case '=':
 		if l.peekChar() == '=' {
 			ch := l.ch

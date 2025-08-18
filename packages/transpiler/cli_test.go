@@ -193,15 +193,15 @@ func TestTranspileCommandErrors(t *testing.T) {
 	}{
 		{
 			name: "non-existent input directory",
-			args: []string{"transpile", "-input", "/non/existent/path", "-dry-run"},
+			args: []string{"-input", "/non/existent/path", "-dry-run"},
 		},
 		{
 			name: "non-existent single file",
-			args: []string{"transpile", "-file", "/non/existent/file.gofa", "-dry-run"},
+			args: []string{"-file", "/non/existent/file.gofa", "-dry-run"},
 		},
 		{
 			name: "invalid file extension",
-			args: []string{"transpile", "-file", "test.go", "-dry-run"},
+			args: []string{"-file", "test.go", "-dry-run"},
 		},
 	}
 

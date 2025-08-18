@@ -525,13 +525,52 @@ func (g *CodeGenerator) getModuleConfig(module *ModuleDeclaration) ModuleConfig 
 	}
 
 	// Extract configuration from decorator arguments
-	// This is simplified - in reality, you'd parse the object syntax
 	for _, arg := range moduleDecorator.Args {
-		if arg.Key == "controllers" {
+		// Handle object literal argument like { controllers: [...], providers: [...] }
+		if objectValue, ok := arg.Value.(map[string]interface{}); ok {
+			if controllersValue, exists := objectValue["controllers"]; exists {
+				if controllers, ok := controllersValue.([]interface{}); ok {
+					for _, controller := range controllers {
+						if controllerStr, ok := controller.(string); ok {
+							config.Controllers = append(config.Controllers, controllerStr)
+						}
+					}
+				}
+			}
+			if providersValue, exists := objectValue["providers"]; exists {
+				if providers, ok := providersValue.([]interface{}); ok {
+					for _, provider := range providers {
+						if providerStr, ok := provider.(string); ok {
+							config.Providers = append(config.Providers, providerStr)
+						}
+					}
+				}
+			}
+			if importsValue, exists := objectValue["imports"]; exists {
+				if imports, ok := importsValue.([]interface{}); ok {
+					for _, imp := range imports {
+						if impStr, ok := imp.(string); ok {
+							config.Imports = append(config.Imports, impStr)
+						}
+					}
+				}
+			}
+			if exportsValue, exists := objectValue["exports"]; exists {
+				if exports, ok := exportsValue.([]interface{}); ok {
+					for _, exp := range exports {
+						if expStr, ok := exp.(string); ok {
+							config.Exports = append(config.Exports, expStr)
+						}
+					}
+				}
+			}
+		} else if arg.Key == "controllers" {
+			// Handle named arguments (fallback)
 			if controllers, ok := arg.Value.([]string); ok {
 				config.Controllers = controllers
 			}
 		} else if arg.Key == "providers" {
+			// Handle named arguments (fallback)
 			if providers, ok := arg.Value.([]string); ok {
 				config.Providers = providers
 			}
@@ -548,7 +587,11 @@ func (g *CodeGenerator) combineRoutePaths(controllerPath, methodPath string) str
 	}
 
 	path := strings.TrimSuffix(controllerPath, "/") + "/" + strings.TrimPrefix(methodPath, "/")
-	path = strings.ReplaceAll(path, "//", "/")
+	
+	// Clean up multiple consecutive slashes
+	for strings.Contains(path, "//") {
+		path = strings.ReplaceAll(path, "//", "/")
+	}
 
 	if path == "/" {
 		return "/"

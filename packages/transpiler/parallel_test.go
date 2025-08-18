@@ -189,8 +189,8 @@ func main() {}`,
 				PreserveStruct: false,
 				Verbose:        false,
 			},
-			expectedFiles:   5, // 5 .gofa files (including empty one)
-			expectedSuccess: 4, // empty.gofa might fail
+			expectedFiles:   6, // 6 .gofa files (including empty one)
+			expectedSuccess: 5, // empty.gofa will fail
 			expectedFails:   1,
 		},
 		{
@@ -201,8 +201,8 @@ func main() {}`,
 				PreserveStruct: true,
 				Verbose:        true,
 			},
-			expectedFiles:   5,
-			expectedSuccess: 4,
+			expectedFiles:   6,
+			expectedSuccess: 5,
 			expectedFails:   1,
 		},
 		{
@@ -213,8 +213,8 @@ func main() {}`,
 				PreserveStruct: false,
 				Verbose:        true,
 			},
-			expectedFiles:   5,
-			expectedSuccess: 4,
+			expectedFiles:   6,
+			expectedSuccess: 5,
 			expectedFails:   1,
 		},
 	}

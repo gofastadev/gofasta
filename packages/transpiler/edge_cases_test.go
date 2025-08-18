@@ -353,7 +353,7 @@ func TestCodeGenerationEdgeCases(t *testing.T) {
 			contains: []string{
 				"func (c *TestController) getUserByID",
 				"func (c *TestController) GETALLCAPS",
-				"server.Get(\"/all\", c.GETALLCAPS)",
+				"server.Get(\"/test/all\", c.GETALLCAPS)",
 			},
 		},
 	}
@@ -750,7 +750,12 @@ func TestTokenTypeConstants(t *testing.T) {
 
 	// Verify keywords mapping
 	for keyword, tokenType := range keywords {
-		if tokenType < PACKAGE {
+		// Special case: "true" and "false" are BOOLEAN tokens, which is valid
+		if keyword == "true" || keyword == "false" {
+			if tokenType != BOOLEAN {
+				t.Errorf("Keyword %s should be BOOLEAN, got %d", keyword, int(tokenType))
+			}
+		} else if tokenType < PACKAGE {
 			t.Errorf("Keyword %s has invalid token type %d", keyword, int(tokenType))
 		}
 	}
