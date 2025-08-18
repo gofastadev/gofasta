@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"sync"
 	"time"
+
+	"github.com/healtronlabs/gofasta/packages/core/decorators"
 )
 
 // ServiceScope defines the lifecycle of a service
@@ -106,10 +108,23 @@ func (c *DIContainer) RegisterProvider(provider Provider) error {
 	// Extract dependencies from struct tags
 	dependencies := c.extractDependencies(providerType)
 
+	// Convert decorators.ServiceScope to core ServiceScope
+	var scope ServiceScope
+	switch metadata.Scope {
+	case decorators.ScopeSingleton:
+		scope = ScopeSingleton
+	case decorators.ScopeTransient:
+		scope = ScopeTransient
+	case decorators.ScopeScoped:
+		scope = ScopeScoped
+	default:
+		scope = ScopeSingleton
+	}
+
 	descriptor := &ServiceDescriptor{
 		ServiceType:  providerType,
 		Factory:      c.createProviderFactory(provider),
-		Scope:        metadata.Scope,
+		Scope:        scope,
 		Dependencies: dependencies,
 		Name:         metadata.Name,
 		Metadata:     metadata,

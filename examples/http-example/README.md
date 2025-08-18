@@ -1,125 +1,223 @@
-# Gofasta HTTP Example
+# Gofasta HTTP Examples
 
-This example demonstrates how to use the Gofasta HTTP package to create a web server with controllers, dependency injection, WebSocket support, and static file serving.
+This directory demonstrates three different approaches to building HTTP servers with the Gofasta framework. Each approach is independent and showcases different decorator patterns.
 
-## Features Demonstrated
-
-- **Dependency Injection**: Services and controllers with `inject:""` tags
-- **HTTP Controllers**: RESTful endpoints with route metadata
-- **WebSocket Support**: Real-time chat functionality
-- **Static File Serving**: Serving HTML, CSS, and other static assets
-- **Service Lifecycle**: Initialize and cleanup methods
-- **Middleware**: CORS, compression, and recovery middleware
-
-## Project Structure
+## 📁 File Structure
 
 ```
 http-example/
-├── main.go           # Main application with HTTP server setup
-├── static/           # Static files directory
-│   ├── index.html    # Interactive demo page
-│   └── style.css     # Styling for the demo
-└── README.md         # This file
+├── main.go                      # Example selector (shows available options)
+├── approach-basic.go           # Basic HTTP server with simple decorators
+├── approach-comments.go        # Comment-based decorator system
+├── approach-programmatic.go    # Modern programmatic decorators (recommended)
+├── static/                     # Static files for web demo
+│   ├── index.html
+│   └── style.css
+└── README.md                   # This file
 ```
 
-## Running the Example
+## 🚀 Running Examples
 
-From the project root:
-
+### Option 1: Basic Approach (Learning)
 ```bash
-# Build and run
-go run examples/http-example/main.go
-
-# Or build first
-go build examples/http-example/main.go
-./main
+go run -tags=basic examples/http-example/.
 ```
+**Features:**
+- Simple controller setup
+- Basic comment decorators
+- Good for learning Gofasta basics
+- WebSocket and static file serving
 
-The server will start on `http://localhost:8080`
+### Option 2: Comment Decorators (Advanced)
+```bash
+go run -tags=comments examples/http-example/.
+```
+**Features:**
+- Advanced comment-based annotations (`@Controller("/path")`)
+- Complex routing with nested resources
+- Comprehensive middleware, guards, and pipes
+- API versioning and role-based access
+- Multiple controller types
 
-## API Endpoints
+### Option 3: Programmatic Approach (Recommended)
+```bash
+go run -tags=programmatic examples/http-example/.
+```
+**Features:**
+- **Modern fluent API** for decorator registration
+- **Type-safe** controller and route configuration
+- **Production-ready** approach
+- Real-time route metadata extraction
+- Advanced validation system
 
-The example includes controllers that register the following routes (via metadata):
+## 📊 Comparison
 
-- **Health Controller**:
-  - `GET /health` - Health check endpoint
-  - `GET /info` - Application information
+| Approach | Build Tag | Complexity | Best For | Port |
+|----------|-----------|------------|----------|------|
+| **Basic** | `basic` | Low | Learning basics | 8080 |
+| **Comments** | `comments` | Medium | Complex routing | 8080 |
+| **Programmatic** | `programmatic` | Medium | Production apps | 8081 |
 
-- **User Controller**:
-  - `GET /users` - Get all users
-  - `GET /users/:id` - Get user by ID
-  - `POST /users` - Create new user
+## 🔧 Testing Endpoints
 
-- **WebSocket**:
-  - `GET /ws` - WebSocket chat endpoint
-
-- **Static Files**:
-  - `GET /static/*` - Serve static files
-
-## Interactive Demo
-
-Visit `http://localhost:8080/static/index.html` for an interactive demo that includes:
-
-- API endpoint testing
-- WebSocket chat functionality
-- Real-time user management
-
-## Example API Calls
-
+### Basic & Comments Examples (Port 8080)
 ```bash
 # Health check
 curl http://localhost:8080/health
 
-# Get all users
-curl http://localhost:8080/users
+# Get users
+curl http://localhost:8080/api/v1/users
 
-# Create a new user
-curl -X POST http://localhost:8080/users \
-  -H "Content-Type: application/json" \
+# Create user
+curl -X POST http://localhost:8080/api/v1/users \
+  -H 'Content-Type: application/json' \
   -d '{"name":"Alice","email":"alice@example.com"}'
 
-# Get user by ID
-curl http://localhost:8080/users/1
+# Get specific user
+curl http://localhost:8080/api/v1/users/123
+
+# Static demo page
+open http://localhost:8080/static/index.html
 ```
 
-## WebSocket Testing
+### Programmatic Example (Port 8081)
+```bash
+# Health endpoints
+curl http://localhost:8081/health
+curl http://localhost:8081/health/detailed
 
-You can test the WebSocket endpoint using the browser demo or with a WebSocket client:
+# User management
+curl http://localhost:8081/api/v1/users
+curl -X POST http://localhost:8081/api/v1/users \
+  -H 'Content-Type: application/json' \
+  -d '{"name":"Bob","email":"bob@example.com"}'
 
-```javascript
-const ws = new WebSocket('ws://localhost:8080/ws');
-ws.onmessage = (event) => console.log(JSON.parse(event.data));
-ws.send('Hello Gofasta!');
+# WebSocket chat
+# Connect to ws://localhost:8081/ws
+
+# Static files
+open http://localhost:8081/static/index.html
 ```
 
-## Key Components
+## 🎯 Key Differences
 
-### Services
-- **Logger**: Simple logging service
-- **UserService**: User management with in-memory storage
+### Basic Approach
+- **Simple setup** with minimal configuration
+- **Comment decorators** in method signatures
+- **Convention-based routing**
+- Perfect for **getting started**
 
-### Controllers
-- **UserController**: RESTful user operations
-- **HealthController**: Health and info endpoints
+```go
+// @Controller("/api/v1/users")
+type UserController struct {
+    UserService *UserService `inject:""`
+}
 
-### WebSocket Handler
-- **ChatWebSocketHandler**: Echo server for real-time messaging
+// @Get("")
+func (c *UserController) GetUsers(ctx *RequestContext) {
+    // Implementation
+}
+```
 
-## Architecture Notes
+### Comment Decorators Approach  
+- **Advanced comment annotations**
+- **Complex middleware composition**
+- **Nested resource routing**
+- **API versioning support**
 
-This example demonstrates:
+```go
+// @Controller("/api/v1/users")
+// @UseMiddleware("auth", "logging")
+// @UseGuards("authenticated")
+type UsersController struct {
+    UserService *UserService `inject:""`
+}
 
-1. **Modular Design**: Clear separation between services, controllers, and handlers
-2. **Dependency Injection**: Automatic wiring of dependencies using struct tags
-3. **Controller Metadata**: Route registration via annotations (comments)
-4. **Service Lifecycle**: Proper initialization and cleanup
-5. **WebSocket Integration**: Real-time communication capabilities
-6. **Static File Serving**: Asset delivery with proper caching headers
+// @Get("/:id/posts")
+// @UseMiddleware("cache")
+func (c *UsersController) GetUserPosts(ctx *RequestContext) {
+    // Generates: GET /api/v1/users/:id/posts
+}
+```
 
-The HTTP package automatically handles:
-- Route registration from controller metadata
-- Request context creation and management
-- Middleware pipeline execution
-- Error handling and recovery
-- CORS headers
-- Gzip compression
+### Programmatic Approach (Recommended)
+- **Type-safe registration**
+- **Fluent API design**
+- **Runtime route metadata**
+- **Production-ready architecture**
+
+```go
+// Register decorators programmatically
+decorators.Controller("/api/v1/users").
+    UseMiddleware("cors", "logging").
+    UseGuards("authenticated").
+    Register(&UserController{}).
+    Get("GetUsers", "").
+    UseMiddleware("cache").
+    Register().
+    Post("CreateUser", "").
+    HttpCode(201).
+    Register()
+```
+
+## 🛡️ Security Features
+
+All approaches demonstrate:
+- **CORS middleware** configuration
+- **Authentication guards**
+- **Input validation**
+- **Error handling**
+- **Request logging**
+
+## 🔌 WebSocket Support
+
+Each approach includes WebSocket functionality:
+- **Real-time chat** implementation
+- **Connection management**  
+- **Message broadcasting**
+- **Graceful disconnection**
+
+## 📱 Interactive Demo
+
+All approaches serve a static demo page at `/static/index.html` featuring:
+- **API testing interface**
+- **WebSocket chat functionality**
+- **Real-time user management**
+- **Responsive design**
+
+## 🚀 Recommended Learning Path
+
+1. **Start with Basic** - Understand core concepts
+2. **Explore Comments** - See advanced routing patterns  
+3. **Use Programmatic** - Adopt for production projects
+
+## 💡 Production Tips
+
+- **Use Programmatic approach** for production applications
+- **Enable CORS** for frontend integration
+- **Implement proper authentication** guards
+- **Add input validation** middleware
+- **Configure proper logging**
+- **Use environment-specific configuration**
+
+## 🐛 Troubleshooting
+
+### Build Tag Issues
+```bash
+# If you get "no Go files" error, make sure to use build tags:
+go run -tags=basic examples/http-example/.
+
+# Or build first:
+go build -tags=basic examples/http-example/.
+```
+
+### Port Conflicts
+- Basic & Comments use port **8080**
+- Programmatic uses port **8081**
+- Make sure ports are available before running
+
+### Import Issues
+All examples use the same Gofasta packages:
+- `github.com/healtronlabs/gofasta/packages/core`
+- `github.com/healtronlabs/gofasta/packages/http`
+- `github.com/healtronlabs/gofasta/packages/core/decorators`
