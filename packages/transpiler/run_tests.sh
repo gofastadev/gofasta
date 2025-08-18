@@ -77,7 +77,7 @@ fi
 
 # Validate test coverage threshold
 COVERAGE_NUM=$(echo $COVERAGE | sed 's/%//')
-THRESHOLD=80
+THRESHOLD=95
 
 if (( $(echo "$COVERAGE_NUM >= $THRESHOLD" | bc -l) )); then
     print_success "Coverage threshold met: $COVERAGE (>= ${THRESHOLD}%)"
@@ -93,14 +93,14 @@ PASSED_TESTS=$(grep "PASS:" "$TEST_OUTPUT" | grep -c "^--- PASS:" | tr -d ' ')
 FAILED_TESTS=$(grep "FAIL:" "$TEST_OUTPUT" | grep -c "^--- FAIL:" | tr -d ' ')
 TOTAL_TESTS=$((PASSED_TESTS + FAILED_TESTS))
 
-# Extract specific test function results
-CLI_TESTS=$(if grep -E "--- (PASS|FAIL): TestCLI" "$TEST_OUTPUT" | grep -q "PASS"; then echo "✅ PASSED"; else echo "❌ FAILED"; fi)
-PARSER_TESTS=$(if grep -E "--- (PASS|FAIL): TestParser" "$TEST_OUTPUT" | grep -q "PASS"; then echo "✅ PASSED"; else echo "❌ FAILED"; fi) 
-LEXER_TESTS=$(if grep -E "--- (PASS|FAIL): TestLexer" "$TEST_OUTPUT" | grep -q "PASS"; then echo "✅ PASSED"; else echo "❌ FAILED"; fi)
-CODEGEN_TESTS=$(if grep -E "--- (PASS|FAIL): TestCodeGeneration" "$TEST_OUTPUT" | grep -q "PASS"; then echo "✅ PASSED"; else echo "❌ FAILED"; fi)
-PARALLEL_TESTS=$(if grep -E "--- (PASS|FAIL): TestParallel" "$TEST_OUTPUT" | grep -q "PASS"; then echo "✅ PASSED"; else echo "❌ FAILED"; fi)
-EDGE_TESTS=$(if grep -E "--- (PASS|FAIL): TestParserEdgeCases" "$TEST_OUTPUT" | grep -q "PASS"; then echo "✅ PASSED"; else echo "❌ FAILED"; fi)
-COMPREHENSIVE_TESTS=$(if grep -E "--- (PASS|FAIL): TestFullCoverage" "$TEST_OUTPUT" | grep -q "PASS"; then echo "✅ PASSED"; else echo "❌ FAILED"; fi)
+# Extract specific test function results using broader patterns
+CLI_TESTS=$(if grep -E "--- (PASS|FAIL): Test.*CLI" "$TEST_OUTPUT" | grep -q "FAIL"; then echo "❌ FAILED"; else echo "✅ PASSED"; fi)
+PARSER_TESTS=$(if grep -E "--- (PASS|FAIL): Test.*Parser" "$TEST_OUTPUT" | grep -q "FAIL"; then echo "❌ FAILED"; else echo "✅ PASSED"; fi) 
+LEXER_TESTS=$(if grep -E "--- (PASS|FAIL): Test.*Lexer" "$TEST_OUTPUT" | grep -q "FAIL"; then echo "❌ FAILED"; else echo "✅ PASSED"; fi)
+CODEGEN_TESTS=$(if grep -E "--- (PASS|FAIL): Test.*CodeGeneration|Test.*CodeGenerator" "$TEST_OUTPUT" | grep -q "FAIL"; then echo "❌ FAILED"; else echo "✅ PASSED"; fi)
+PARALLEL_TESTS=$(if grep -E "--- (PASS|FAIL): Test.*Parallel" "$TEST_OUTPUT" | grep -q "FAIL"; then echo "❌ FAILED"; else echo "✅ PASSED"; fi)
+EDGE_TESTS=$(if grep -E "--- (PASS|FAIL): Test.*(Edge|Error|Corner)" "$TEST_OUTPUT" | grep -q "FAIL"; then echo "❌ FAILED"; else echo "✅ PASSED"; fi)
+COMPREHENSIVE_TESTS=$(if grep -E "--- (PASS|FAIL): Test.*(Coverage|Comprehensive)" "$TEST_OUTPUT" | grep -q "FAIL"; then echo "❌ FAILED"; else echo "✅ PASSED"; fi)
 
 # Get failed test names
 FAILED_TEST_NAMES=$(grep "^--- FAIL:" "$TEST_OUTPUT" | sed 's/^--- FAIL: //' | sort | uniq)
