@@ -1,0 +1,39 @@
+package main
+
+import "github.com/healtronlabs/gofasta/packages/http"
+
+@Controller("/api/v1/users")
+@UseGuards("auth")
+type UserController struct {
+    UserService *UserService `inject:""`
+    Logger      *Logger      `inject:"logger"`
+}
+
+@Get("")
+func GetUsers(ctx *httpPackage.RequestContext) {
+    // Get all users
+}
+
+@Get("/:id")
+@UseGuards("resource-owner")
+func GetUser(@Param("id") id string, ctx *httpPackage.RequestContext) {
+    // Get user by ID
+}
+
+@Post("")
+@HttpCode(201)
+func CreateUser(@Body() createUserDto CreateUserDto, ctx *httpPackage.RequestContext) {
+    // Create new user
+}
+
+@Put("/:id")
+func UpdateUser(@Param("id") id string, @Body() updateUserDto UpdateUserDto, ctx *httpPackage.RequestContext) {
+    // Update user
+}
+
+@Delete("/:id")
+@HttpCode(204)
+@UseGuards("admin")
+func DeleteUser(@Param("id") id string, ctx *httpPackage.RequestContext) {
+    // Delete user
+}

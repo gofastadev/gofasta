@@ -18,6 +18,7 @@ use (
 	./packages/logging
 	./packages/orm
 	./packages/testing
+	./packages/transpiler
 	./packages/validation
 	./plugins/compression
 	./plugins/cors
