@@ -1,0 +1,10 @@
+package main
+
+@Module({
+    controllers: ["UserController", "AuthController"],
+    providers: ["UserService", "AuthService", "EmailService"],
+    imports: ["DatabaseModule", "ConfigModule"],
+    exports: ["UserService"]
+})
+type AppModule struct {
+}
