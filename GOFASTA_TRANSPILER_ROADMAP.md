@@ -47,9 +47,9 @@
   }
   func (e *HttpError) Error() string
   ```
-- [ ] **`BadRequestError`** (400) - Invalid request data, validation failures
-- [ ] **`UnauthorizedError`** (401) - Authentication required or failed
-- [ ] **`ForbiddenError`** (403) - Insufficient permissions/authorization
+- [X] **`BadRequestError`** (400) - Invalid request data, validation failures
+- [X] **`UnauthorizedError`** (401) - Authentication required or failed
+- [X] **`ForbiddenError`** (403) - Insufficient permissions/authorization
 - [ ] **`NotFoundError`** (404) - Resource not found
 - [ ] **`MethodNotAllowedError`** (405) - HTTP method not supported
 - [ ] **`NotAcceptableError`** (406) - Content negotiation failure
