@@ -350,11 +350,7 @@ func (g *CodeGenerator) generateParameterExtraction(method *MethodNode) {
 				g.writeLine(fmt.Sprintf("%s := ctx.GetParam(\"%s\")", param.Name, paramName))
 
 			case "Query":
-				queryName := g.getDecoratorArgValue(decorator, 0)
-				if queryName == "" {
-					queryName = param.Name
-				}
-				g.writeLine(fmt.Sprintf("%s := ctx.GetQuery(\"%s\")", param.Name, queryName))
+				g.generateQueryParameterExtraction(param, decorator)
 
 			case "Headers":
 				headerName := g.getDecoratorArgValue(decorator, 0)
@@ -364,6 +360,193 @@ func (g *CodeGenerator) generateParameterExtraction(method *MethodNode) {
 				g.writeLine(fmt.Sprintf("%s := ctx.GetHeader(\"%s\")", param.Name, headerName))
 			}
 		}
+	}
+}
+
+// generateQueryParameterExtraction generates enhanced query parameter extraction with advanced features
+func (g *CodeGenerator) generateQueryParameterExtraction(param *ParameterNode, decorator *DecoratorNode) {
+	queryName := g.getDecoratorArgValue(decorator, 0)
+	if queryName == "" {
+		queryName = param.Name
+	}
+
+	// Get query parameter options from decorator
+	options := g.getQueryParameterOptions(decorator)
+	
+	// Generate variable declaration
+	g.writeLine(fmt.Sprintf("var %s %s", param.Name, param.Type))
+	
+	// Get raw query value
+	g.writeLine(fmt.Sprintf("queryValue := ctx.GetQuery(\"%s\")", queryName))
+	
+	// Handle default value
+	if options.DefaultValue != "" {
+		g.writeLine(fmt.Sprintf("if queryValue == \"\" {"))
+		g.indent()
+		g.writeLine(fmt.Sprintf("queryValue = \"%s\"", options.DefaultValue))
+		g.unindent()
+		g.writeLine("}")
+	}
+	
+	// Handle required validation
+	if options.Required && options.DefaultValue == "" {
+		g.writeLine("if queryValue == \"\" {")
+		g.indent()
+		g.writeLine(fmt.Sprintf("ctx.JSON(400, map[string]string{\"error\": \"Query parameter '%s' is required\"})", queryName))
+		g.writeLine("return")
+		g.unindent()
+		g.writeLine("}")
+	}
+	
+	// Handle type conversion based on parameter type and options
+	g.generateQueryTypeConversion(param, "queryValue", options)
+	
+	g.writeLine("")
+}
+
+// QueryParameterOptions represents options for query parameter handling
+type QueryParameterOptions struct {
+	DefaultValue string
+	Required     bool
+	Type         string // "string", "int", "bool", "array", "float"
+	Separator    string // for array types, default ","
+	Transform    string // "lowercase", "uppercase", "trim"
+}
+
+// getQueryParameterOptions extracts query parameter options from decorator
+func (g *CodeGenerator) getQueryParameterOptions(decorator *DecoratorNode) QueryParameterOptions {
+	options := QueryParameterOptions{
+		Type:      "string",
+		Separator: ",",
+	}
+	
+	// If there's only one string argument, it's the query name
+	if len(decorator.Args) == 1 {
+		if _, ok := decorator.Args[0].Value.(string); ok {
+			return options
+		}
+	}
+	
+	// Look for object argument with options
+	for _, arg := range decorator.Args {
+		if objValue, ok := arg.Value.(map[string]interface{}); ok {
+			if defaultVal, exists := objValue["defaultValue"]; exists {
+				if defaultStr, ok := defaultVal.(string); ok {
+					options.DefaultValue = defaultStr
+				}
+			}
+			if required, exists := objValue["required"]; exists {
+				if reqBool, ok := required.(bool); ok {
+					options.Required = reqBool
+				}
+			}
+			if typeVal, exists := objValue["type"]; exists {
+				if typeStr, ok := typeVal.(string); ok {
+					options.Type = typeStr
+				}
+			}
+			if separator, exists := objValue["separator"]; exists {
+				if sepStr, ok := separator.(string); ok {
+					options.Separator = sepStr
+				}
+			}
+			if transform, exists := objValue["transform"]; exists {
+				if transformStr, ok := transform.(string); ok {
+					options.Transform = transformStr
+				}
+			}
+		}
+	}
+	
+	return options
+}
+
+// generateQueryTypeConversion generates type conversion code for query parameters
+func (g *CodeGenerator) generateQueryTypeConversion(param *ParameterNode, valueVar string, options QueryParameterOptions) {
+	paramType := strings.ToLower(param.Type)
+	
+	// Apply string transformations first
+	if options.Transform != "" {
+		switch options.Transform {
+		case "lowercase":
+			g.writeLine(fmt.Sprintf("%s = strings.ToLower(%s)", valueVar, valueVar))
+		case "uppercase":
+			g.writeLine(fmt.Sprintf("%s = strings.ToUpper(%s)", valueVar, valueVar))
+		case "trim":
+			g.writeLine(fmt.Sprintf("%s = strings.TrimSpace(%s)", valueVar, valueVar))
+		}
+	}
+	
+	// Handle different parameter types
+	switch {
+	case strings.Contains(paramType, "[]") || options.Type == "array":
+		// Array type
+		g.writeLine(fmt.Sprintf("if %s != \"\" {", valueVar))
+		g.indent()
+		g.writeLine(fmt.Sprintf("%s = strings.Split(%s, \"%s\")", param.Name, valueVar, options.Separator))
+		// Trim whitespace from array elements
+		g.writeLine(fmt.Sprintf("for i, v := range %s {", param.Name))
+		g.indent()
+		g.writeLine(fmt.Sprintf("%s[i] = strings.TrimSpace(v)", param.Name))
+		g.unindent()
+		g.writeLine("}")
+		g.unindent()
+		g.writeLine("}")
+		
+	case paramType == "int" || paramType == "int64" || paramType == "int32":
+		// Integer conversion
+		g.writeLine(fmt.Sprintf("if %s != \"\" {", valueVar))
+		g.indent()
+		g.writeLine(fmt.Sprintf("if parsedInt, err := strconv.Atoi(%s); err == nil {", valueVar))
+		g.indent()
+		g.writeLine(fmt.Sprintf("%s = parsedInt", param.Name))
+		g.unindent()
+		g.writeLine("} else {")
+		g.indent()
+		g.writeLine(fmt.Sprintf("ctx.JSON(400, map[string]string{\"error\": \"Invalid integer value for parameter '%s'\"})", param.Name))
+		g.writeLine("return")
+		g.unindent()
+		g.writeLine("}")
+		g.unindent()
+		g.writeLine("}")
+		
+	case paramType == "float64" || paramType == "float32":
+		// Float conversion
+		g.writeLine(fmt.Sprintf("if %s != \"\" {", valueVar))
+		g.indent()
+		g.writeLine(fmt.Sprintf("if parsedFloat, err := strconv.ParseFloat(%s, 64); err == nil {", valueVar))
+		g.indent()
+		g.writeLine(fmt.Sprintf("%s = parsedFloat", param.Name))
+		g.unindent()
+		g.writeLine("} else {")
+		g.indent()
+		g.writeLine(fmt.Sprintf("ctx.JSON(400, map[string]string{\"error\": \"Invalid float value for parameter '%s'\"})", param.Name))
+		g.writeLine("return")
+		g.unindent()
+		g.writeLine("}")
+		g.unindent()
+		g.writeLine("}")
+		
+	case paramType == "bool":
+		// Boolean conversion
+		g.writeLine(fmt.Sprintf("if %s != \"\" {", valueVar))
+		g.indent()
+		g.writeLine(fmt.Sprintf("if parsedBool, err := strconv.ParseBool(%s); err == nil {", valueVar))
+		g.indent()
+		g.writeLine(fmt.Sprintf("%s = parsedBool", param.Name))
+		g.unindent()
+		g.writeLine("} else {")
+		g.indent()
+		g.writeLine(fmt.Sprintf("ctx.JSON(400, map[string]string{\"error\": \"Invalid boolean value for parameter '%s' (use true/false)\"})", param.Name))
+		g.writeLine("return")
+		g.unindent()
+		g.writeLine("}")
+		g.unindent()
+		g.writeLine("}")
+		
+	default:
+		// String type (default)
+		g.writeLine(fmt.Sprintf("%s = %s", param.Name, valueVar))
 	}
 }
 
@@ -382,6 +565,10 @@ func (g *CodeGenerator) collectImports(file *GofaFile) {
 	// Standard imports for Gofasta
 	g.addImport("github.com/healtronlabs/gofasta/packages/core")
 	g.addImport("github.com/healtronlabs/gofasta/packages/http")
+	
+	// Standard Go library imports for query parameter handling
+	g.addImport("strconv")
+	g.addImport("strings")
 
 	// Check if we need additional imports based on decorators
 	for _, decl := range file.Declarations {
