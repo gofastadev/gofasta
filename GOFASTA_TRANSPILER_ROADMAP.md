@@ -25,8 +25,8 @@
 
 #### 🔥 1.1 Enhanced Parameter Decorators `[HIGH PRIORITY]`
 
-- [ ] `@Query()` - Extract query parameters
-- [ ] `@Headers()` - Extract request headers
+- [X] `@Query()` - Extract query parameters
+- [X] `@Headers()` - Extract request headers
 - [ ] `@Req()` - Access raw request object
 - [ ] `@Res()` - Access raw response object
 - [ ] `@Session()` - Session data access

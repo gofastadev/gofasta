@@ -1,0 +1,162 @@
+package main
+
+@Controller("/api/headers")
+type HeadersExampleController struct {
+    Logger *Logger `inject:"logger"`
+}
+
+@Get("/basic")
+func BasicHeaderExample(
+    @Headers("User-Agent") userAgent string,
+    @Headers("Accept") acceptHeader string,
+    @Headers("Authorization") authToken string
+) {
+    // Basic header extraction
+    // - userAgent: Client user agent string
+    // - acceptHeader: Accepted content types
+    // - authToken: Authorization token
+}
+
+@Get("/required")
+func RequiredHeaderExample(
+    @Headers("X-API-Key", { required: true }) apiKey string,
+    @Headers("X-Client-ID", { required: true }) clientId string,
+    @Headers("Content-Type", { required: true, defaultValue: "application/json" }) contentType string
+) {
+    // Required headers with validation
+    // - apiKey: API key (required)
+    // - clientId: Client identifier (required)
+    // - contentType: Content type (required, with fallback)
+}
+
+@Get("/defaults")
+func DefaultValueExample(
+    @Headers("X-API-Version", { defaultValue: "v1" }) apiVersion string,
+    @Headers("X-Timeout", { defaultValue: "30" }) timeout int,
+    @Headers("X-Retry", { defaultValue: "true" }) enableRetry bool,
+    @Headers("X-Max-Results", { defaultValue: "100" }) maxResults int
+) {
+    // Headers with default values and type conversion
+    // - apiVersion: API version (default: "v1")
+    // - timeout: Request timeout in seconds (default: 30)
+    // - enableRetry: Enable retry logic (default: true)
+    // - maxResults: Maximum results to return (default: 100)
+}
+
+@Get("/transforms")
+func TransformExample(
+    @Headers("X-Service-Name", { transform: "uppercase" }) serviceName string,
+    @Headers("X-Environment", { transform: "lowercase" }) environment string,
+    @Headers("X-Token", { transform: "trim" }) token string,
+    @Headers("X-Mode", { transform: "lowercase", defaultValue: "production" }) mode string
+) {
+    // Headers with string transformations
+    // - serviceName: Service name (converted to uppercase)
+    // - environment: Deployment environment (converted to lowercase)
+    // - token: Authentication token (whitespace trimmed)
+    // - mode: Application mode (lowercase, default: "production")
+}
+
+@Get("/arrays")
+func ArrayHeaderExample(
+    @Headers("Accept", { type: "array" }) acceptTypes []string,
+    @Headers("X-Tags", { type: "array", separator: "|" }) tags []string,
+    @Headers("X-Categories", { type: "array", separator: ";" }) categories []string,
+    @Headers("X-Permissions", { type: "array", defaultValue: "read" }) permissions []string
+) {
+    // Array headers with different separators
+    // - acceptTypes: Accepted content types (comma-separated, default)
+    // - tags: Resource tags (pipe-separated)
+    // - categories: Resource categories (semicolon-separated)
+    // - permissions: User permissions (default: ["read"])
+}
+
+@Get("/numeric")
+func NumericHeaderExample(
+    @Headers("Content-Length") contentLength int,
+    @Headers("X-Rate-Limit") rateLimit int,
+    @Headers("X-Retry-After") retryAfter int,
+    @Headers("X-Timeout") timeout float64,
+    @Headers("X-Priority", { defaultValue: "5" }) priority int
+) {
+    // Numeric header parsing
+    // - contentLength: Request content length
+    // - rateLimit: Rate limit value
+    // - retryAfter: Retry after seconds
+    // - timeout: Timeout in seconds (float)
+    // - priority: Request priority (default: 5)
+}
+
+@Get("/boolean")
+func BooleanHeaderExample(
+    @Headers("X-Debug") debug bool,
+    @Headers("X-Cache-Enabled", { defaultValue: "true" }) cacheEnabled bool,
+    @Headers("X-Compress") compress bool,
+    @Headers("X-Validate", { defaultValue: "false" }) validate bool
+) {
+    // Boolean header parsing
+    // - debug: Debug mode enabled
+    // - cacheEnabled: Cache enabled (default: true)
+    // - compress: Compression enabled
+    // - validate: Validation enabled (default: false)
+}
+
+@Post("/comprehensive")
+func ComprehensiveHeaderExample(
+    @Body() data RequestData,
+    @Headers("Authorization", { required: true, transform: "trim" }) auth string,
+    @Headers("Content-Type", { required: true, defaultValue: "application/json", transform: "lowercase" }) contentType string,
+    @Headers("Content-Length") contentLength int,
+    @Headers("User-Agent", { transform: "lowercase" }) userAgent string,
+    @Headers("X-Request-ID", { defaultValue: "auto-generated" }) requestId string,
+    @Headers("X-Client-Version") clientVersion string,
+    @Headers("X-Features", { type: "array", separator: "|" }) features []string,
+    @Headers("X-Debug", { defaultValue: "false" }) debug bool,
+    @Headers("X-Timeout", { defaultValue: "30" }) timeout int,
+    @Headers("X-Priority", { defaultValue: "5" }) priority int,
+    @Headers("X-Retry-Count", { defaultValue: "3" }) retryCount int,
+    @Headers("Accept", { type: "array", defaultValue: "application/json" }) acceptTypes []string
+) {
+    // Comprehensive example combining all header features:
+    // Required headers:
+    // - auth: JWT token (required, trimmed)
+    // - contentType: Content type (required, lowercase, default: application/json)
+    //
+    // Optional headers with defaults:
+    // - contentLength: Request size in bytes
+    // - userAgent: Client user agent (lowercase)
+    // - requestId: Unique request identifier (default: "auto-generated")
+    // - clientVersion: Client version string
+    // 
+    // Array headers:
+    // - features: Enabled features (pipe-separated)
+    // - acceptTypes: Accepted response types (default: ["application/json"])
+    //
+    // Typed headers:
+    // - debug: Debug mode flag (default: false)
+    // - timeout: Request timeout in seconds (default: 30)
+    // - priority: Request priority level (default: 5)
+    // - retryCount: Maximum retry attempts (default: 3)
+}
+
+@Get("/common-headers")
+func CommonHeadersExample(
+    @Headers("Host") host string,
+    @Headers("Referer") referer string,
+    @Headers("Origin") origin string,
+    @Headers("X-Forwarded-For") forwardedFor string,
+    @Headers("X-Real-IP") realIP string,
+    @Headers("Cache-Control") cacheControl string,
+    @Headers("Connection") connection string,
+    @Headers("Upgrade") upgrade string
+) {
+    // Common HTTP headers demonstration
+    // - host: Host header
+    // - referer: Referer header  
+    // - origin: Origin header (for CORS)
+    // - forwardedFor: Forwarded IP addresses
+    // - realIP: Real client IP
+    // - cacheControl: Cache control directives
+    // - connection: Connection type
+    // - upgrade: Protocol upgrade request
+}

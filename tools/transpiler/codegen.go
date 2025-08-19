@@ -301,16 +301,27 @@ func (g *CodeGenerator) generateMethodSignature(receiverType string, method *Met
 	if isController {
 		// Controllers always get HTTP context as first parameter
 		sig.WriteString("ctx *httpPackage.RequestContext")
-		if len(method.Params) > 0 {
-			sig.WriteString(", ")
+		
+		// For controllers, only include non-decorated parameters in the signature
+		// Decorated parameters are extracted in the method body
+		nonDecoratedParams := []string{}
+		for _, param := range method.Params {
+			if len(param.Decorators) == 0 {
+				nonDecoratedParams = append(nonDecoratedParams, fmt.Sprintf("%s %s", param.Name, param.Type))
+			}
 		}
-	}
-
-	for i, param := range method.Params {
-		if i > 0 {
+		if len(nonDecoratedParams) > 0 {
 			sig.WriteString(", ")
+			sig.WriteString(strings.Join(nonDecoratedParams, ", "))
 		}
-		sig.WriteString(fmt.Sprintf("%s %s", param.Name, param.Type))
+	} else {
+		// For services, include all parameters
+		for i, param := range method.Params {
+			if i > 0 {
+				sig.WriteString(", ")
+			}
+			sig.WriteString(fmt.Sprintf("%s %s", param.Name, param.Type))
+		}
 	}
 	sig.WriteString(")")
 
@@ -353,11 +364,7 @@ func (g *CodeGenerator) generateParameterExtraction(method *MethodNode) {
 				g.generateQueryParameterExtraction(param, decorator)
 
 			case "Headers":
-				headerName := g.getDecoratorArgValue(decorator, 0)
-				if headerName == "" {
-					headerName = param.Name
-				}
-				g.writeLine(fmt.Sprintf("%s := ctx.GetHeader(\"%s\")", param.Name, headerName))
+				g.generateHeaderParameterExtraction(param, decorator)
 			}
 		}
 	}
@@ -404,6 +411,47 @@ func (g *CodeGenerator) generateQueryParameterExtraction(param *ParameterNode, d
 	g.writeLine("")
 }
 
+// generateHeaderParameterExtraction generates enhanced header parameter extraction with advanced features
+func (g *CodeGenerator) generateHeaderParameterExtraction(param *ParameterNode, decorator *DecoratorNode) {
+	headerName := g.getDecoratorArgValue(decorator, 0)
+	if headerName == "" {
+		headerName = param.Name
+	}
+
+	// Get header parameter options from decorator
+	options := g.getHeaderParameterOptions(decorator)
+	
+	// Generate variable declaration
+	g.writeLine(fmt.Sprintf("var %s %s", param.Name, param.Type))
+	
+	// Get raw header value
+	g.writeLine(fmt.Sprintf("headerValue := ctx.GetHeader(\"%s\")", headerName))
+	
+	// Handle default value
+	if options.DefaultValue != "" {
+		g.writeLine(fmt.Sprintf("if headerValue == \"\" {"))
+		g.indent()
+		g.writeLine(fmt.Sprintf("headerValue = \"%s\"", options.DefaultValue))
+		g.unindent()
+		g.writeLine("}")
+	}
+	
+	// Handle required validation
+	if options.Required && options.DefaultValue == "" {
+		g.writeLine("if headerValue == \"\" {")
+		g.indent()
+		g.writeLine(fmt.Sprintf("ctx.JSON(400, map[string]string{\"error\": \"Header '%s' is required\"})", headerName))
+		g.writeLine("return")
+		g.unindent()
+		g.writeLine("}")
+	}
+	
+	// Handle type conversion based on parameter type and options
+	g.generateHeaderTypeConversion(param, "headerValue", options)
+	
+	g.writeLine("")
+}
+
 // QueryParameterOptions represents options for query parameter handling
 type QueryParameterOptions struct {
 	DefaultValue string
@@ -411,6 +459,16 @@ type QueryParameterOptions struct {
 	Type         string // "string", "int", "bool", "array", "float"
 	Separator    string // for array types, default ","
 	Transform    string // "lowercase", "uppercase", "trim"
+}
+
+// HeaderParameterOptions represents options for header parameter handling
+type HeaderParameterOptions struct {
+	DefaultValue string
+	Required     bool
+	Type         string // "string", "int", "bool", "array", "float"
+	Separator    string // for array types, default ","
+	Transform    string // "lowercase", "uppercase", "trim"
+	CaseInsensitive bool // whether header matching should be case insensitive (default: true)
 }
 
 // getQueryParameterOptions extracts query parameter options from decorator
@@ -453,6 +511,60 @@ func (g *CodeGenerator) getQueryParameterOptions(decorator *DecoratorNode) Query
 			if transform, exists := objValue["transform"]; exists {
 				if transformStr, ok := transform.(string); ok {
 					options.Transform = transformStr
+				}
+			}
+		}
+	}
+	
+	return options
+}
+
+// getHeaderParameterOptions extracts header parameter options from decorator
+func (g *CodeGenerator) getHeaderParameterOptions(decorator *DecoratorNode) HeaderParameterOptions {
+	options := HeaderParameterOptions{
+		Type:            "string",
+		Separator:       ",",
+		CaseInsensitive: true, // Headers are case-insensitive by default per HTTP spec
+	}
+	
+	// If there's only one string argument, it's the header name
+	if len(decorator.Args) == 1 {
+		if _, ok := decorator.Args[0].Value.(string); ok {
+			return options
+		}
+	}
+	
+	// Look for object argument with options
+	for _, arg := range decorator.Args {
+		if objValue, ok := arg.Value.(map[string]interface{}); ok {
+			if defaultVal, exists := objValue["defaultValue"]; exists {
+				if defaultStr, ok := defaultVal.(string); ok {
+					options.DefaultValue = defaultStr
+				}
+			}
+			if required, exists := objValue["required"]; exists {
+				if reqBool, ok := required.(bool); ok {
+					options.Required = reqBool
+				}
+			}
+			if typeVal, exists := objValue["type"]; exists {
+				if typeStr, ok := typeVal.(string); ok {
+					options.Type = typeStr
+				}
+			}
+			if separator, exists := objValue["separator"]; exists {
+				if sepStr, ok := separator.(string); ok {
+					options.Separator = sepStr
+				}
+			}
+			if transform, exists := objValue["transform"]; exists {
+				if transformStr, ok := transform.(string); ok {
+					options.Transform = transformStr
+				}
+			}
+			if caseInsensitive, exists := objValue["caseInsensitive"]; exists {
+				if caseBool, ok := caseInsensitive.(bool); ok {
+					options.CaseInsensitive = caseBool
 				}
 			}
 		}
@@ -538,6 +650,95 @@ func (g *CodeGenerator) generateQueryTypeConversion(param *ParameterNode, valueV
 		g.writeLine("} else {")
 		g.indent()
 		g.writeLine(fmt.Sprintf("ctx.JSON(400, map[string]string{\"error\": \"Invalid boolean value for parameter '%s' (use true/false)\"})", param.Name))
+		g.writeLine("return")
+		g.unindent()
+		g.writeLine("}")
+		g.unindent()
+		g.writeLine("}")
+		
+	default:
+		// String type (default)
+		g.writeLine(fmt.Sprintf("%s = %s", param.Name, valueVar))
+	}
+}
+
+// generateHeaderTypeConversion generates type conversion code for header parameters
+func (g *CodeGenerator) generateHeaderTypeConversion(param *ParameterNode, valueVar string, options HeaderParameterOptions) {
+	paramType := strings.ToLower(param.Type)
+	
+	// Apply string transformations first
+	if options.Transform != "" {
+		switch options.Transform {
+		case "lowercase":
+			g.writeLine(fmt.Sprintf("%s = strings.ToLower(%s)", valueVar, valueVar))
+		case "uppercase":
+			g.writeLine(fmt.Sprintf("%s = strings.ToUpper(%s)", valueVar, valueVar))
+		case "trim":
+			g.writeLine(fmt.Sprintf("%s = strings.TrimSpace(%s)", valueVar, valueVar))
+		}
+	}
+	
+	// Handle different parameter types
+	switch {
+	case strings.Contains(paramType, "[]") || options.Type == "array":
+		// Array type - headers can have comma-separated values
+		g.writeLine(fmt.Sprintf("if %s != \"\" {", valueVar))
+		g.indent()
+		g.writeLine(fmt.Sprintf("%s = strings.Split(%s, \"%s\")", param.Name, valueVar, options.Separator))
+		// Trim whitespace from array elements
+		g.writeLine(fmt.Sprintf("for i, v := range %s {", param.Name))
+		g.indent()
+		g.writeLine(fmt.Sprintf("%s[i] = strings.TrimSpace(v)", param.Name))
+		g.unindent()
+		g.writeLine("}")
+		g.unindent()
+		g.writeLine("}")
+		
+	case paramType == "int" || paramType == "int64" || paramType == "int32":
+		// Integer conversion
+		g.writeLine(fmt.Sprintf("if %s != \"\" {", valueVar))
+		g.indent()
+		g.writeLine(fmt.Sprintf("if parsedInt, err := strconv.Atoi(%s); err == nil {", valueVar))
+		g.indent()
+		g.writeLine(fmt.Sprintf("%s = parsedInt", param.Name))
+		g.unindent()
+		g.writeLine("} else {")
+		g.indent()
+		g.writeLine(fmt.Sprintf("ctx.JSON(400, map[string]string{\"error\": \"Invalid integer value for header '%s'\"})", param.Name))
+		g.writeLine("return")
+		g.unindent()
+		g.writeLine("}")
+		g.unindent()
+		g.writeLine("}")
+		
+	case paramType == "float64" || paramType == "float32":
+		// Float conversion
+		g.writeLine(fmt.Sprintf("if %s != \"\" {", valueVar))
+		g.indent()
+		g.writeLine(fmt.Sprintf("if parsedFloat, err := strconv.ParseFloat(%s, 64); err == nil {", valueVar))
+		g.indent()
+		g.writeLine(fmt.Sprintf("%s = parsedFloat", param.Name))
+		g.unindent()
+		g.writeLine("} else {")
+		g.indent()
+		g.writeLine(fmt.Sprintf("ctx.JSON(400, map[string]string{\"error\": \"Invalid float value for header '%s'\"})", param.Name))
+		g.writeLine("return")
+		g.unindent()
+		g.writeLine("}")
+		g.unindent()
+		g.writeLine("}")
+		
+	case paramType == "bool":
+		// Boolean conversion
+		g.writeLine(fmt.Sprintf("if %s != \"\" {", valueVar))
+		g.indent()
+		g.writeLine(fmt.Sprintf("if parsedBool, err := strconv.ParseBool(%s); err == nil {", valueVar))
+		g.indent()
+		g.writeLine(fmt.Sprintf("%s = parsedBool", param.Name))
+		g.unindent()
+		g.writeLine("} else {")
+		g.indent()
+		g.writeLine(fmt.Sprintf("ctx.JSON(400, map[string]string{\"error\": \"Invalid boolean value for header '%s' (use true/false)\"})", param.Name))
 		g.writeLine("return")
 		g.unindent()
 		g.writeLine("}")
