@@ -377,6 +377,9 @@ func (g *CodeGenerator) generateParameterExtraction(method *MethodNode) {
 			
 			case "Ip":
 				g.generateIpParameterExtraction(param, decorator)
+			
+			case "HostParam":
+				g.generateHostParamParameterExtraction(param, decorator)
 			}
 		}
 	}
@@ -609,6 +612,20 @@ func (g *CodeGenerator) generateIpParameterExtraction(param *ParameterNode, deco
 	// 5. Remote address from the connection
 	
 	g.writeLine(fmt.Sprintf("%s := ctx.GetClientIP()", param.Name))
+	
+	g.writeLine("")
+}
+
+// generateHostParamParameterExtraction generates host parameter extraction
+func (g *CodeGenerator) generateHostParamParameterExtraction(param *ParameterNode, decorator *DecoratorNode) {
+	// @HostParam() extracts host information from the request
+	// This can extract various parts of the host header like:
+	// - Full host (host:port)
+	// - Hostname only
+	// - Port only
+	// - Subdomain
+	
+	g.writeLine(fmt.Sprintf("%s := ctx.GetHost()", param.Name))
 	
 	g.writeLine("")
 }
