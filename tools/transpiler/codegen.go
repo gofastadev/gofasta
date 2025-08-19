@@ -365,6 +365,9 @@ func (g *CodeGenerator) generateParameterExtraction(method *MethodNode) {
 
 			case "Headers":
 				g.generateHeaderParameterExtraction(param, decorator)
+			
+			case "Req":
+				g.generateRequestParameterExtraction(param, decorator)
 			}
 		}
 	}
@@ -448,6 +451,26 @@ func (g *CodeGenerator) generateHeaderParameterExtraction(param *ParameterNode, 
 	
 	// Handle type conversion based on parameter type and options
 	g.generateHeaderTypeConversion(param, "headerValue", options)
+	
+	g.writeLine("")
+}
+
+// generateRequestParameterExtraction generates request object parameter extraction
+func (g *CodeGenerator) generateRequestParameterExtraction(param *ParameterNode, decorator *DecoratorNode) {
+	// For @Req(), we simply assign the HTTP context's underlying request
+	// The parameter should be of type *http.Request or *httpPackage.RequestContext
+	paramType := strings.ToLower(param.Type)
+	
+	if strings.Contains(paramType, "requestcontext") || strings.Contains(paramType, "*requestcontext") {
+		// Assign the context directly
+		g.writeLine(fmt.Sprintf("%s := ctx", param.Name))
+	} else if strings.Contains(paramType, "request") || strings.Contains(paramType, "*request") {
+		// Extract the underlying HTTP request from the context
+		g.writeLine(fmt.Sprintf("%s := ctx.GetRequest()", param.Name))
+	} else {
+		// Default to request context if type is unclear
+		g.writeLine(fmt.Sprintf("%s := ctx", param.Name))
+	}
 	
 	g.writeLine("")
 }
@@ -770,6 +793,7 @@ func (g *CodeGenerator) collectImports(file *GofaFile) {
 	// Standard Go library imports for query parameter handling
 	g.addImport("strconv")
 	g.addImport("strings")
+	g.addImport("net/http")
 
 	// Check if we need additional imports based on decorators
 	for _, decl := range file.Declarations {

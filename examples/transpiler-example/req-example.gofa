@@ -1,0 +1,166 @@
+package main
+
+@Controller("/api/requests")
+type RequestExampleController struct {
+    Logger *Logger `inject:"logger"`
+}
+
+@Get("/basic")
+func BasicRequestExample(
+    @Req() req *RequestContext
+) {
+    // Basic request context access
+    // - req: Direct access to the HTTP request context
+    // This gives full access to the underlying request context for advanced operations
+}
+
+@Get("/http-request")
+func HTTPRequestExample(
+    @Req() req *Request
+) {
+    // Access to underlying HTTP request object
+    // - req: Direct access to the underlying http.Request object
+    // Useful for accessing raw HTTP request details
+}
+
+@Get("/mixed-params")
+func MixedParametersExample(
+    @Req() req *Request,
+    @Query("page", { defaultValue: "1" }) page int,
+    @Headers("Authorization", { required: true }) authToken string
+) {
+    // Combined request access with other parameter decorators
+    // - req: Raw HTTP request object
+    // - page: Query parameter with default value
+    // - authToken: Required authorization header
+    // Demonstrates how @Req() works alongside other decorators
+}
+
+@Post("/with-body")
+func RequestWithBodyExample(
+    @Req() req *Request,
+    @Body() createData CreateRequestDto,
+    @Headers("Content-Type", { defaultValue: "application/json" }) contentType string
+) {
+    // Request access combined with body parsing
+    // - req: Raw HTTP request for custom processing
+    // - createData: Parsed JSON body
+    // - contentType: Content type header
+    // Useful for custom request validation or logging
+}
+
+@Put("/advanced")
+func AdvancedRequestExample(
+    @Req() req *Request,
+    @Param("id") id string,
+    @Query("validate", { defaultValue: "true" }) validate bool,
+    @Headers("User-Agent") userAgent string,
+    @Headers("X-Request-ID") requestId string,
+    @Body() updateData UpdateRequestDto
+) {
+    // Advanced example with full request access and multiple decorators
+    // - req: Full HTTP request object for:
+    //   * Custom header processing
+    //   * Request method validation
+    //   * URL inspection
+    //   * Custom middleware integration
+    // - id: URL path parameter
+    // - validate: Query parameter for validation flag
+    // - userAgent: Client identification
+    // - requestId: Request tracking
+    // - updateData: Request body data
+}
+
+@Delete("/with-custom-headers")
+func CustomHeadersExample(
+    @Req() req *RequestContext,
+    @Param("id") id string,
+    @Headers("X-Delete-Reason", { required: true }) reason string,
+    @Headers("X-Confirm-Delete", { required: true, transform: "uppercase" }) confirmation string
+) {
+    // Request context with custom validation
+    // - req: Request context for additional custom processing
+    // - id: Resource ID to delete
+    // - reason: Required deletion reason
+    // - confirmation: Required confirmation (uppercase)
+}
+
+@Get("/inspect-request")
+func InspectRequestExample(
+    @Req() req *Request,
+    @Query("format", { defaultValue: "json" }) format string
+) {
+    // Example showing how to inspect various request properties
+    // - req: Use for accessing:
+    //   * req.Method - HTTP method
+    //   * req.URL - Full URL details
+    //   * req.Proto - HTTP protocol version
+    //   * req.Header - All headers map
+    //   * req.RemoteAddr - Client IP address
+    //   * req.RequestURI - Raw request URI
+    //   * req.Host - Host header
+    // - format: Response format preference
+}
+
+@Post("/file-upload")
+func FileUploadExample(
+    @Req() req *Request,
+    @Headers("Content-Type", { required: true }) contentType string,
+    @Headers("Content-Length") contentLength int
+) {
+    // File upload handling with raw request access
+    // - req: Access to request for:
+    //   * req.ParseMultipartForm()
+    //   * req.MultipartForm
+    //   * req.FormFile()
+    //   * Custom file processing
+    // - contentType: Should be multipart/form-data
+    // - contentLength: Size of upload
+}
+
+@Get("/middleware-integration")
+func MiddlewareIntegrationExample(
+    @Req() req *RequestContext,
+    @Query("trace") enableTrace bool,
+    @Headers("X-Forwarded-For") forwardedFor string
+) {
+    // Integration with custom middleware
+    // - req: Request context for:
+    //   * Custom context values set by middleware
+    //   * Request tracing information
+    //   * Authentication context
+    //   * Rate limiting context
+    // - enableTrace: Debug tracing flag
+    // - forwardedFor: Proxy chain information
+}
+
+@Patch("/conditional")
+func ConditionalUpdateExample(
+    @Req() req *Request,
+    @Param("id") id string,
+    @Body() patchData PatchRequestDto,
+    @Headers("If-Match") ifMatch string,
+    @Headers("If-Unmodified-Since") ifUnmodifiedSince string
+) {
+    // Conditional request processing
+    // - req: Raw request for custom conditional logic
+    // - id: Resource identifier
+    // - patchData: Partial update data
+    // - ifMatch: ETag for optimistic locking
+    // - ifUnmodifiedSince: Date-based conditional update
+}
+
+@Get("/streaming")
+func StreamingExample(
+    @Req() reqCtx *RequestContext,
+    @Query("stream", { defaultValue: "false" }) enableStream bool,
+    @Headers("Accept", { type: "array" }) acceptTypes []string
+) {
+    // Streaming response example
+    // - reqCtx: Request context for:
+    //   * Setting up streaming response
+    //   * Managing connection lifecycle
+    //   * Handling client disconnection
+    // - enableStream: Whether to use streaming response
+    // - acceptTypes: Supported response formats
+}
