@@ -25,4 +25,5 @@ use (
 	./plugins/rate-limit
 	./plugins/swagger
 	./plugins/tracing
+	./tools/transpiler
 )

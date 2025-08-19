@@ -1,0 +1,87 @@
+package main
+
+// User model
+@Injectable()
+type User struct {
+    ID       string `json:"id"`
+    Name     string `json:"name"`
+    Email    string `json:"email"`
+    Age      int    `json:"age"`
+    Active   bool   `json:"active"`
+}
+
+// DTOs for user operations
+@Injectable()
+type CreateUserDto struct {
+    Name  string `json:"name" validate:"required"`
+    Email string `json:"email" validate:"required,email"`
+    Age   int    `json:"age" validate:"min=0,max=120"`
+}
+
+@Injectable()
+type UpdateUserDto struct {
+    Name   string `json:"name,omitempty"`
+    Email  string `json:"email,omitempty"`
+    Age    int    `json:"age,omitempty"`
+    Active bool   `json:"active,omitempty"`
+}
+
+// Repository implementation
+@Injectable()
+type UserRepository struct {
+    Database *Database `inject:"database"`
+    Logger   *Logger   `inject:"logger"`
+}
+
+func GetAll() []User {
+    // Implementation would go here
+}
+
+func GetByID(id string) (*User, error) {
+    // Implementation would go here
+}
+
+func Create(user CreateUserDto) (*User, error) {
+    // Implementation would go here
+}
+
+func Update(id string, user UpdateUserDto) (*User, error) {
+    // Implementation would go here
+}
+
+func Delete(id string) error {
+    // Implementation would go here
+}
+
+// Email service implementation
+@Injectable()
+type EmailService struct {
+    Config *EmailConfig `inject:"emailConfig"`
+    Logger *Logger      `inject:"logger"`
+}
+
+func SendWelcomeEmail(email string) error {
+    // Implementation would go here
+}
+
+func SendNotification(email string, message string) error {
+    // Implementation would go here
+}
+
+// Logger implementation
+@Injectable()
+type Logger struct {
+    Config *LogConfig `inject:"logConfig"`
+}
+
+func Info(message string) {
+    // Implementation would go here
+}
+
+func Error(message string, err error) {
+    // Implementation would go here
+}
+
+func Debug(message string) {
+    // Implementation would go here
+}

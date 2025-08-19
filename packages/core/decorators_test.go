@@ -3,6 +3,8 @@ package core
 import (
 	"reflect"
 	"testing"
+
+	"github.com/healtronlabs/gofasta/packages/core/decorators"
 )
 
 // Test types for decorator testing
@@ -290,7 +292,7 @@ func TestExtractServiceProviderMetadata(t *testing.T) {
 		t.Errorf("Expected service name 'decorated-service', got %s", metadata.Name)
 	}
 	
-	if metadata.Scope != ScopeSingleton {
+	if metadata.Scope != decorators.ScopeSingleton {
 		t.Errorf("Expected scope ScopeSingleton, got %v", metadata.Scope)
 	}
 	
@@ -324,7 +326,7 @@ func TestExtractServiceProviderMetadata_WithDifferentScopes(t *testing.T) {
 		t.Fatalf("ExtractServiceProviderMetadata() failed for transient: %v", err)
 	}
 	
-	if metadata.Scope != ScopeTransient {
+	if metadata.Scope != decorators.ScopeTransient {
 		t.Errorf("Expected scope ScopeTransient, got %v", metadata.Scope)
 	}
 	
@@ -335,7 +337,7 @@ func TestExtractServiceProviderMetadata_WithDifferentScopes(t *testing.T) {
 		t.Fatalf("ExtractServiceProviderMetadata() failed for scoped: %v", err)
 	}
 	
-	if metadata.Scope != ScopeScoped {
+	if metadata.Scope != decorators.ScopeScoped {
 		t.Errorf("Expected scope ScopeScoped, got %v", metadata.Scope)
 	}
 }

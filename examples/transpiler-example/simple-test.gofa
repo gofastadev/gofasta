@@ -1,0 +1,11 @@
+package main
+
+@Controller("/api/test")
+type TestController struct {
+    Logger *Logger `inject:"logger"`
+}
+
+@Get("/hello")
+func SayHello() {
+    // Simple test method
+}

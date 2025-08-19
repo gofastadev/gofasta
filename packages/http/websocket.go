@@ -1,242 +1,357 @@
 package http
 
 import (
-	"encoding/json"
+	"fmt"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/healtronlabs/gofasta/packages/core"
 )
 
-// WebSocketUpgrader configures the websocket upgrader
-var WebSocketUpgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool {
-		return true // Allow all origins in development
-	},
+// WebSocketConnection represents a WebSocket connection
+type WebSocketConnection struct {
+	conn      *websocket.Conn
+	server    *HTTPServer
+	id        string
+	user      interface{}
+	data      map[string]interface{}
+	mutex     sync.RWMutex
+	closed    bool
+	onMessage func(*WebSocketConnection, []byte)
+	onClose   func(*WebSocketConnection)
+	onError   func(*WebSocketConnection, error)
 }
 
-// WebSocketClient represents a connected WebSocket client
-type WebSocketClient struct {
-	ID     string
-	Conn   *websocket.Conn
-	Send   chan []byte
-	Hub    *WebSocketHub
-	mutex  sync.Mutex
+// WebSocketHandler represents a WebSocket handler
+type WebSocketHandler interface {
+	OnConnect(conn *WebSocketConnection) error
+	OnMessage(conn *WebSocketConnection, message []byte) error
+	OnDisconnect(conn *WebSocketConnection) error
 }
 
-// WebSocketHub manages WebSocket connections
-type WebSocketHub struct {
-	clients    map[*WebSocketClient]bool
-	broadcast  chan []byte
-	register   chan *WebSocketClient
-	unregister chan *WebSocketClient
-	mutex      sync.RWMutex
+// WebSocketConfig holds WebSocket configuration
+type WebSocketConfig struct {
+	CheckOrigin     func(*http.Request) bool
+	ReadBufferSize  int
+	WriteBufferSize int
+	EnablePing      bool
+	PingInterval    int // seconds
 }
 
-// NewWebSocketHub creates a new WebSocket hub
-func NewWebSocketHub() *WebSocketHub {
-	return &WebSocketHub{
-		clients:    make(map[*WebSocketClient]bool),
-		broadcast:  make(chan []byte),
-		register:   make(chan *WebSocketClient),
-		unregister: make(chan *WebSocketClient),
+// DefaultWebSocketConfig returns default WebSocket configuration
+func DefaultWebSocketConfig() *WebSocketConfig {
+	return &WebSocketConfig{
+		CheckOrigin: func(r *http.Request) bool {
+			return true // Allow all origins by default
+		},
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+		EnablePing:      true,
+		PingInterval:    30,
 	}
 }
 
-// Run starts the WebSocket hub
-func (h *WebSocketHub) Run() {
-	for {
-		select {
-		case client := <-h.register:
-			h.mutex.Lock()
-			h.clients[client] = true
-			h.mutex.Unlock()
+// WebSocketUpgrade upgrades an HTTP connection to WebSocket
+func (s *HTTPServer) WebSocketUpgrade(path string, handler WebSocketHandler, config ...*WebSocketConfig) {
+	cfg := DefaultWebSocketConfig()
+	if len(config) > 0 && config[0] != nil {
+		cfg = config[0]
+	}
 
-		case client := <-h.unregister:
-			h.mutex.Lock()
-			if _, ok := h.clients[client]; ok {
-				delete(h.clients, client)
-				close(client.Send)
-			}
-			h.mutex.Unlock()
+	// Configure upgrader
+	upgrader := websocket.Upgrader{
+		CheckOrigin:     cfg.CheckOrigin,
+		ReadBufferSize:  cfg.ReadBufferSize,
+		WriteBufferSize: cfg.WriteBufferSize,
+	}
 
-		case message := <-h.broadcast:
-			h.mutex.RLock()
-			for client := range h.clients {
-				select {
-				case client.Send <- message:
-				default:
-					delete(h.clients, client)
-					close(client.Send)
-				}
-			}
-			h.mutex.RUnlock()
+	s.router.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
+		// Upgrade the connection
+		conn, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("WebSocket upgrade failed: %v", err), http.StatusBadRequest)
+			return
 		}
-	}
+
+		// Create WebSocket connection
+		wsConn := &WebSocketConnection{
+			conn:   conn,
+			server: s,
+			id:     generateConnectionID(),
+			data:   make(map[string]interface{}),
+		}
+
+		// Handle connection
+		s.handleWebSocketConnection(wsConn, handler)
+	})
 }
 
-// Broadcast sends a message to all connected clients
-func (h *WebSocketHub) Broadcast(message []byte) {
-	h.broadcast <- message
-}
-
-// GetClients returns all connected clients
-func (h *WebSocketHub) GetClients() []*WebSocketClient {
-	h.mutex.RLock()
-	defer h.mutex.RUnlock()
-	
-	clients := make([]*WebSocketClient, 0, len(h.clients))
-	for client := range h.clients {
-		clients = append(clients, client)
-	}
-	return clients
-}
-
-// ReadPump handles reading messages from the WebSocket connection
-func (c *WebSocketClient) ReadPump() {
+// handleWebSocketConnection handles a WebSocket connection
+func (s *HTTPServer) handleWebSocketConnection(conn *WebSocketConnection, handler WebSocketHandler) {
 	defer func() {
-		c.Hub.unregister <- c
-		c.Conn.Close()
+		conn.Close()
+		if handler != nil {
+			handler.OnDisconnect(conn)
+		}
 	}()
 
+	// Call OnConnect
+	if handler != nil {
+		if err := handler.OnConnect(conn); err != nil {
+			conn.WriteError(err)
+			return
+		}
+	}
+
+	// Start message loop
 	for {
-		_, message, err := c.Conn.ReadMessage()
+		_, message, err := conn.conn.ReadMessage()
 		if err != nil {
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				if handler != nil && conn.onError != nil {
+					conn.onError(conn, err)
+				}
+			}
 			break
 		}
-		
-		// Process message (this would be enhanced with proper message handling)
-		c.Hub.broadcast <- message
+
+		// Handle message
+		if handler != nil {
+			if err := handler.OnMessage(conn, message); err != nil {
+				conn.WriteError(err)
+				break
+			}
+		}
+
+		// Call custom onMessage handler
+		if conn.onMessage != nil {
+			conn.onMessage(conn, message)
+		}
 	}
 }
 
-// WritePump handles writing messages to the WebSocket connection
-func (c *WebSocketClient) WritePump() {
-	defer c.Conn.Close()
+// WriteMessage writes a message to the WebSocket connection
+func (conn *WebSocketConnection) WriteMessage(messageType int, data []byte) error {
+	conn.mutex.Lock()
+	defer conn.mutex.Unlock()
 
-	for {
-		select {
-		case message, ok := <-c.Send:
-			if !ok {
-				c.Conn.WriteMessage(websocket.CloseMessage, []byte{})
-				return
-			}
-
-			c.mutex.Lock()
-			err := c.Conn.WriteMessage(websocket.TextMessage, message)
-			c.mutex.Unlock()
-			
-			if err != nil {
-				return
-			}
-		}
+	if conn.closed {
+		return fmt.Errorf("connection is closed")
 	}
+
+	return conn.conn.WriteMessage(messageType, data)
+}
+
+// WriteText writes a text message to the WebSocket connection
+func (conn *WebSocketConnection) WriteText(text string) error {
+	return conn.WriteMessage(websocket.TextMessage, []byte(text))
+}
+
+// WriteBinary writes a binary message to the WebSocket connection
+func (conn *WebSocketConnection) WriteBinary(data []byte) error {
+	return conn.WriteMessage(websocket.BinaryMessage, data)
+}
+
+// WriteJSON writes a JSON message to the WebSocket connection
+func (conn *WebSocketConnection) WriteJSON(v interface{}) error {
+	conn.mutex.Lock()
+	defer conn.mutex.Unlock()
+
+	if conn.closed {
+		return fmt.Errorf("connection is closed")
+	}
+
+	return conn.conn.WriteJSON(v)
+}
+
+// WriteError writes an error message to the WebSocket connection
+func (conn *WebSocketConnection) WriteError(err error) error {
+	errorMessage := map[string]interface{}{
+		"type":    "error",
+		"message": err.Error(),
+	}
+	return conn.WriteJSON(errorMessage)
+}
+
+// Close closes the WebSocket connection
+func (conn *WebSocketConnection) Close() error {
+	conn.mutex.Lock()
+	defer conn.mutex.Unlock()
+
+	if conn.closed {
+		return nil
+	}
+
+	conn.closed = true
+
+	// Call custom onClose handler
+	if conn.onClose != nil {
+		conn.onClose(conn)
+	}
+
+	return conn.conn.Close()
+}
+
+// GetID returns the connection ID
+func (conn *WebSocketConnection) GetID() string {
+	return conn.id
+}
+
+// GetUser returns the user associated with the connection
+func (conn *WebSocketConnection) GetUser() interface{} {
+	conn.mutex.RLock()
+	defer conn.mutex.RUnlock()
+	return conn.user
+}
+
+// SetUser sets the user associated with the connection
+func (conn *WebSocketConnection) SetUser(user interface{}) {
+	conn.mutex.Lock()
+	defer conn.mutex.Unlock()
+	conn.user = user
+}
+
+// GetData returns connection data
+func (conn *WebSocketConnection) GetData(key string) interface{} {
+	conn.mutex.RLock()
+	defer conn.mutex.RUnlock()
+	return conn.data[key]
+}
+
+// SetData sets connection data
+func (conn *WebSocketConnection) SetData(key string, value interface{}) {
+	conn.mutex.Lock()
+	defer conn.mutex.Unlock()
+	conn.data[key] = value
+}
+
+// OnMessage sets the message handler
+func (conn *WebSocketConnection) OnMessage(handler func(*WebSocketConnection, []byte)) {
+	conn.mutex.Lock()
+	defer conn.mutex.Unlock()
+	conn.onMessage = handler
+}
+
+// OnClose sets the close handler
+func (conn *WebSocketConnection) OnClose(handler func(*WebSocketConnection)) {
+	conn.mutex.Lock()
+	defer conn.mutex.Unlock()
+	conn.onClose = handler
+}
+
+// OnError sets the error handler
+func (conn *WebSocketConnection) OnError(handler func(*WebSocketConnection, error)) {
+	conn.mutex.Lock()
+	defer conn.mutex.Unlock()
+	conn.onError = handler
+}
+
+// IsClosed returns whether the connection is closed
+func (conn *WebSocketConnection) IsClosed() bool {
+	conn.mutex.RLock()
+	defer conn.mutex.RUnlock()
+	return conn.closed
+}
+
+// generateConnectionID generates a unique connection ID
+func generateConnectionID() string {
+	return fmt.Sprintf("ws_%d", time.Now().UnixNano())
 }
 
 // WebSocketGateway represents a WebSocket gateway
 type WebSocketGateway struct {
-	Hub       *WebSocketHub
-	Namespace string
-	Port      int
+	server      *HTTPServer
+	connections map[string]*WebSocketConnection
+	mutex       sync.RWMutex
 }
 
-// WebSocketMessage represents a WebSocket message
-type WebSocketMessage struct {
-	Event string      `json:"event"`
-	Data  interface{} `json:"data"`
-}
-
-// WebSocketResponse represents a WebSocket response
-type WebSocketResponse struct {
-	Event string      `json:"event"`
-	Data  interface{} `json:"data"`
-	Error string      `json:"error,omitempty"`
-}
-
-// HandleWebSocket handles WebSocket connections
-func (s *HTTPServer) HandleWebSocket(w http.ResponseWriter, r *http.Request, gateway *WebSocketGateway) {
-	conn, err := WebSocketUpgrader.Upgrade(w, r, nil)
-	if err != nil {
-		return
+// NewWebSocketGateway creates a new WebSocket gateway
+func NewWebSocketGateway(server *HTTPServer) *WebSocketGateway {
+	return &WebSocketGateway{
+		server:      server,
+		connections: make(map[string]*WebSocketConnection),
 	}
-
-	client := &WebSocketClient{
-		ID:   generateClientID(), // Would implement proper ID generation
-		Conn: conn,
-		Send: make(chan []byte, 256),
-		Hub:  gateway.Hub,
-	}
-
-	gateway.Hub.register <- client
-
-	go client.WritePump()
-	go client.ReadPump()
 }
 
-// generateClientID generates a unique client ID
-func generateClientID() string {
-	// Simplified implementation - would use proper UUID generation
-	return "client_" + "random_id"
+// AddConnection adds a connection to the gateway
+func (gw *WebSocketGateway) AddConnection(conn *WebSocketConnection) {
+	gw.mutex.Lock()
+	defer gw.mutex.Unlock()
+	gw.connections[conn.GetID()] = conn
+
+	// Set close handler to remove from gateway
+	conn.OnClose(func(c *WebSocketConnection) {
+		gw.RemoveConnection(c.GetID())
+	})
 }
 
-// SubscribeMessage decorator interface
-type SubscribeMessage struct {
-	Event string
+// RemoveConnection removes a connection from the gateway
+func (gw *WebSocketGateway) RemoveConnection(id string) {
+	gw.mutex.Lock()
+	defer gw.mutex.Unlock()
+	delete(gw.connections, id)
 }
 
-// ConnectedSocket parameter decorator
-type ConnectedSocket struct{}
-
-// MessageBody parameter decorator
-type MessageBody struct{}
-
-// WebSocketDecorator represents WebSocket gateway metadata
-type WebSocketDecorator struct {
-	Port      int
-	Namespace string
+// GetConnection gets a connection by ID
+func (gw *WebSocketGateway) GetConnection(id string) *WebSocketConnection {
+	gw.mutex.RLock()
+	defer gw.mutex.RUnlock()
+	return gw.connections[id]
 }
 
-// EmitToAll emits a message to all connected clients
-func (gateway *WebSocketGateway) EmitToAll(event string, data interface{}) error {
-	message := WebSocketResponse{
-		Event: event,
-		Data:  data,
-	}
+// GetConnections returns all connections
+func (gw *WebSocketGateway) GetConnections() map[string]*WebSocketConnection {
+	gw.mutex.RLock()
+	defer gw.mutex.RUnlock()
 
-	messageBytes, err := json.Marshal(message)
-	if err != nil {
-		return err
+	// Return a copy to avoid race conditions
+	connections := make(map[string]*WebSocketConnection)
+	for id, conn := range gw.connections {
+		connections[id] = conn
 	}
-
-	gateway.Hub.Broadcast(messageBytes)
-	return nil
+	return connections
 }
 
-// EmitToClient emits a message to a specific client
-func (gateway *WebSocketGateway) EmitToClient(clientID string, event string, data interface{}) error {
-	message := WebSocketResponse{
-		Event: event,
-		Data:  data,
-	}
+// BroadcastText broadcasts a text message to all connections
+func (gw *WebSocketGateway) BroadcastText(message string) {
+	gw.mutex.RLock()
+	defer gw.mutex.RUnlock()
 
-	messageBytes, err := json.Marshal(message)
-	if err != nil {
-		return err
-	}
-
-	// Find client by ID
-	clients := gateway.Hub.GetClients()
-	for _, client := range clients {
-		if client.ID == clientID {
-			select {
-			case client.Send <- messageBytes:
-				return nil
-			default:
-				return core.NewInternalServerException("Failed to send message to client", nil)
-			}
+	for _, conn := range gw.connections {
+		if !conn.IsClosed() {
+			conn.WriteText(message)
 		}
 	}
+}
 
-	return core.NewNotFoundException("Client not found")
+// BroadcastJSON broadcasts a JSON message to all connections
+func (gw *WebSocketGateway) BroadcastJSON(data interface{}) {
+	gw.mutex.RLock()
+	defer gw.mutex.RUnlock()
+
+	for _, conn := range gw.connections {
+		if !conn.IsClosed() {
+			conn.WriteJSON(data)
+		}
+	}
+}
+
+// BroadcastToUser broadcasts a message to a specific user
+func (gw *WebSocketGateway) BroadcastToUser(userID interface{}, data interface{}) {
+	gw.mutex.RLock()
+	defer gw.mutex.RUnlock()
+
+	for _, conn := range gw.connections {
+		if !conn.IsClosed() && conn.GetUser() == userID {
+			conn.WriteJSON(data)
+		}
+	}
+}
+
+// GetConnectionCount returns the number of active connections
+func (gw *WebSocketGateway) GetConnectionCount() int {
+	gw.mutex.RLock()
+	defer gw.mutex.RUnlock()
+	return len(gw.connections)
 }
