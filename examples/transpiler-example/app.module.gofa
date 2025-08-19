@@ -1,10 +1,10 @@
 package main
 
 @Module({
-    controllers: ["UserController", "AuthController"],
-    providers: ["UserService", "AuthService", "EmailService"],
+    controllers: ["UserController", "ProductController", "AuthController"],
+    providers: ["UserService", "ProductService", "AuthService", "EmailService", "UserRepository", "ProductRepository", "Logger"],
     imports: ["DatabaseModule", "ConfigModule"],
-    exports: ["UserService"]
+    exports: ["UserService", "ProductService", "Logger"]
 })
 type AppModule struct {
 }

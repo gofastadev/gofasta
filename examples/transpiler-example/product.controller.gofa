@@ -1,0 +1,144 @@
+package main
+
+@Controller("/api/v1/products")
+@UseGuards("api-key")
+type ProductController struct {
+    ProductService *ProductService `inject:""`
+    Logger         *Logger         `inject:"logger"`
+}
+
+@Get()
+func GetProducts(
+    @Query("page", { defaultValue: "1" }) page int,
+    @Query("limit", { defaultValue: "20" }) limit int,
+    @Query("sort", { defaultValue: "name", transform: "lowercase" }) sortField string,
+    @Query("order", { defaultValue: "asc", transform: "uppercase" }) sortOrder string,
+    @Query("search", { transform: "trim" }) searchQuery string,
+    @Query("category", { required: true, transform: "lowercase" }) category string,
+    @Query("tags", { type: "array", separator: "," }) productTags []string,
+    @Query("brands", { type: "array", separator: "|" }) brandNames []string,
+    @Query("features", { type: "array", separator: ";" }) requiredFeatures []string,
+    @Query("inStock", { defaultValue: "false" }) availableOnly bool,
+    @Query("onSale") onSaleOnly bool,
+    @Query("featured") featuredOnly bool,
+    @Query("minPrice") minPrice float64,
+    @Query("maxPrice") maxPrice float64,
+    @Query("minRating") minRating float64,
+    @Query("createdAfter") createdAfter string,
+    @Query("updatedSince") updatedSince string
+) {
+    // Advanced product search with comprehensive filtering
+    // This endpoint demonstrates all @Query decorator features:
+    // 
+    // PAGINATION:
+    // - page: Page number (default: 1, auto-converted to int)
+    // - limit: Results per page (default: 20, auto-converted to int)
+    //
+    // SORTING:
+    // - sort: Sort field (default: "name", forced to lowercase)  
+    // - order: Sort direction (default: "asc", forced to uppercase)
+    //
+    // TEXT SEARCH:
+    // - search: Search query (whitespace trimmed)
+    // - category: Product category (required, forced to lowercase)
+    //
+    // ARRAY FILTERS (different separators):
+    // - tags: Product tags (comma-separated: "electronics,gadgets,new")
+    // - brands: Brand names (pipe-separated: "apple|samsung|google") 
+    // - features: Required features (semicolon-separated: "wifi;bluetooth;waterproof")
+    //
+    // BOOLEAN FILTERS:
+    // - inStock: Show only available products (default: false)
+    // - onSale: Show only discounted products
+    // - featured: Show only featured products
+    //
+    // NUMERIC FILTERS:
+    // - minPrice: Minimum price (auto-converted to float64)
+    // - maxPrice: Maximum price (auto-converted to float64)
+    // - minRating: Minimum customer rating (auto-converted to float64)
+    //
+    // DATE FILTERS:
+    // - createdAfter: Products created after date (ISO string)
+    // - updatedSince: Products updated since date (ISO string)
+}
+
+@Get("/search")
+func SearchProducts(
+    @Query("q", { required: true, transform: "trim" }) query string,
+    @Query("type", { defaultValue: "fuzzy", transform: "lowercase" }) searchType string,
+    @Query("fields", { type: "array", defaultValue: "name,description" }) searchFields []string
+) {
+    // Text search with required query parameter
+    // - q: Search query (required, whitespace trimmed)
+    // - type: Search type (default: "fuzzy", forced lowercase)
+    // - fields: Fields to search (default: ["name", "description"])
+}
+
+@Get("/:id")
+func GetProduct(
+    @Param("id") productId string,
+    @Query("currency", { defaultValue: "USD", transform: "uppercase" }) currency string,
+    @Query("include", { type: "array", separator: "," }) includeFields []string,
+    @Query("locale", { defaultValue: "en-US" }) locale string
+) {
+    // Get single product with localization options
+    // - id: Product ID (from URL parameter)
+    // - currency: Price currency (default: "USD", forced uppercase)
+    // - include: Additional fields to include (comma-separated)
+    // - locale: Localization (default: "en-US")
+}
+
+@Get("/recommendations")
+func GetRecommendations(
+    @Query("userId") userId string,
+    @Query("productId") basedOnProduct string,
+    @Query("limit", { defaultValue: "5" }) maxResults int,
+    @Query("algorithm", { defaultValue: "collaborative", transform: "lowercase" }) algorithm string,
+    @Query("excludeOwned", { defaultValue: "true" }) excludeOwned bool
+) {
+    // Product recommendations with multiple algorithms
+    // - userId: User ID for personalized recommendations
+    // - productId: Base product for similarity recommendations  
+    // - limit: Maximum results to return (default: 5)
+    // - algorithm: Recommendation algorithm (default: "collaborative")
+    // - excludeOwned: Exclude products user already owns (default: true)
+}
+
+@Get("/analytics")
+func GetProductAnalytics(
+    @Query("metric", { required: true, transform: "lowercase" }) metricType string,
+    @Query("period", { defaultValue: "30d" }) timePeriod string,
+    @Query("productIds", { type: "array", separator: "," }) productIds []string,
+    @Query("groupBy", { type: "array", separator: "|" }) groupByFields []string,
+    @Query("format", { defaultValue: "json", transform: "lowercase" }) responseFormat string
+) {
+    // Product analytics with flexible grouping
+    // - metric: Analytics metric to retrieve (required, lowercase)
+    // - period: Time period for analytics (default: "30d")
+    // - productIds: Specific products to analyze (comma-separated)
+    // - groupBy: Fields to group results by (pipe-separated)
+    // - format: Response format (default: "json", forced lowercase)
+}
+
+@Post()
+@HttpCode(201)
+func CreateProduct(@Body() createProductDto CreateProductDto) {
+    // Create new product
+}
+
+@Put("/:id")
+func UpdateProduct(
+    @Param("id") productId string,
+    @Body() updateProductDto UpdateProductDto,
+    @Query("validateStock", { defaultValue: "true" }) validateStock bool
+) {
+    // Update product with optional stock validation
+    // - id: Product ID (from URL parameter)
+    // - validateStock: Check stock levels during update (default: true)
+}
+
+@Delete("/:id")
+@HttpCode(204)
+func DeleteProduct(@Param("id") productId string) {
+    // Delete product
+}

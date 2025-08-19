@@ -7,7 +7,7 @@ This example demonstrates how to use the Gofasta transpiler to transform decorat
 - **Controller Declaration**: Using `@Controller` with route prefixes
 - **Route Methods**: `@Get`, `@Post`, `@Put`, `@Delete` decorators
 - **Dependency Injection**: Using `inject:""` tags
-- **Parameter Decorators**: `@Param`, `@Body` for request handling
+- **Parameter Decorators**: `@Param`, `@Body`, `@Query` (with advanced features) for request handling
 - **Service Pattern**: `@Injectable` services with DI
 - **Module System**: `@Module` for organizing dependencies
 - **Guards & Middleware**: `@UseGuards`, `@HttpCode` decorators
@@ -20,13 +20,15 @@ transpiler-example/
 ├── go.mod                   # Go module definition
 ├── main.go                  # Demo server to run the example
 ├── *.gofa                   # Source files (decorator-based)
-│   ├── user.controller.gofa # User CRUD controller
+│   ├── user.controller.gofa # User CRUD controller with @Query examples
+│   ├── product.controller.gofa # Product controller showcasing advanced @Query features
 │   ├── user.service.gofa    # User business logic service  
 │   ├── types.gofa           # Data models and DTOs
 │   ├── simple-test.gofa     # Simple test controller
 │   └── app.module.gofa      # Application module configuration
 └── *.go                     # Generated files (standard Go)
     ├── user.controller.go   # Generated from user.controller.gofa
+    ├── product.controller.go # Generated from product.controller.gofa
     ├── user.service.go      # Generated from user.service.gofa
     ├── types.go             # Generated from types.gofa
     ├── simple-test.go       # Generated from simple-test.gofa
@@ -76,13 +78,28 @@ You should see output like:
 🌐 Server starting on http://localhost:8080
 
 📍 Available endpoints:
-  GET  /                     - API information
-  GET  /api/v1/users         - Get all users
-  GET  /api/v1/users/:id     - Get user by ID
-  POST /api/v1/users         - Create new user
-  PUT  /api/v1/users/:id     - Update user
-  DELETE /api/v1/users/:id   - Delete user
-  GET  /api/test/hello       - Simple hello endpoint
+  GET  /                         - API information
+  
+  👥 User Management:
+  GET  /api/v1/users             - Get users (with pagination, search, filters)
+  GET  /api/v1/users/search      - Search users (required query param)
+  GET  /api/v1/users/:id         - Get user by ID (with field selection)
+  POST /api/v1/users             - Create new user
+  PUT  /api/v1/users/:id         - Update user
+  DELETE /api/v1/users/:id       - Delete user
+  
+  🛍️ Product Management:
+  GET  /api/v1/products          - Get products (comprehensive filtering)
+  GET  /api/v1/products/search   - Search products (required query)
+  GET  /api/v1/products/recommendations - Get product recommendations
+  GET  /api/v1/products/analytics - Get product analytics
+  GET  /api/v1/products/:id      - Get product by ID (with localization)
+  POST /api/v1/products          - Create new product
+  PUT  /api/v1/products/:id      - Update product
+  DELETE /api/v1/products/:id    - Delete product
+  
+  🧪 Simple Test:
+  GET  /api/test/hello           - Simple hello endpoint
 
 🔗 Try: curl http://localhost:8080/
 ```
@@ -99,14 +116,88 @@ curl http://localhost:8080/
 curl http://localhost:8080/api/test/hello
 ```
 
-### Test User Endpoints
+### Test Enhanced @Query Parameters
+
+#### 👥 User Endpoints with Advanced Queries
+
 ```bash
-# Get all users
+# Get all users (basic)
 curl http://localhost:8080/api/v1/users
 
-# Get user by ID
-curl http://localhost:8080/api/v1/users/123
+# Get users with pagination and sorting
+curl "http://localhost:8080/api/v1/users?page=2&limit=5&sort=email&active=true"
 
+# Get users with array filters
+curl "http://localhost:8080/api/v1/users?roles=admin,editor&search=john"
+
+# Search users (required query parameter)
+curl "http://localhost:8080/api/v1/users/search?q=developer&minAge=25&maxAge=40&exactMatch=true"
+
+# Search with departments (pipe-separated array)
+curl "http://localhost:8080/api/v1/users/search?q=senior&departments=engineering|design|product"
+
+# Get user by ID with field selection
+curl "http://localhost:8080/api/v1/users/123?include=profile,permissions,stats"
+```
+
+#### 🛍️ Product Endpoints with Comprehensive Filtering
+
+```bash
+# Get products with comprehensive filters (category is required)
+curl "http://localhost:8080/api/v1/products?category=electronics&page=1&limit=10"
+
+# Advanced product filtering
+curl "http://localhost:8080/api/v1/products?category=gadgets&sort=price&order=desc&minPrice=50&maxPrice=500&inStock=true&featured=true"
+
+# Array filters with different separators
+curl "http://localhost:8080/api/v1/products?category=tech&tags=wireless,portable&brands=apple|samsung&features=wifi;bluetooth;waterproof"
+
+# Product search (required query)
+curl "http://localhost:8080/api/v1/products/search?q=smartphone&type=exact&fields=name,description,tags"
+
+# Product recommendations
+curl "http://localhost:8080/api/v1/products/recommendations?userId=123&algorithm=collaborative&limit=5&excludeOwned=true"
+
+# Product analytics (required metric)
+curl "http://localhost:8080/api/v1/products/analytics?metric=sales&period=7d&productIds=1,2,3&groupBy=category|brand"
+
+# Get product with localization
+curl "http://localhost:8080/api/v1/products/456?currency=EUR&locale=de-DE&include=reviews,specs"
+```
+
+#### ⚠️ Error Examples (showcasing validation)
+
+```bash
+# Missing required parameter (will return 400)
+curl "http://localhost:8080/api/v1/users/search"  # Missing required 'q' parameter
+
+# Missing required category for products (will return 400)
+curl "http://localhost:8080/api/v1/products"     # Missing required 'category' parameter
+
+# Invalid type conversion (will return 400)
+curl "http://localhost:8080/api/v1/users?page=invalid"  # Invalid integer value
+```
+
+#### 📊 Default Values and Transformations Demo
+
+```bash
+# Default values applied when parameters are missing
+curl "http://localhost:8080/api/v1/users"
+# Uses: page=1, limit=10, sort="name"
+
+# String transformations (lowercase, uppercase, trim)
+curl "http://localhost:8080/api/v1/products?category=ELECTRONICS&sort=PRICE&search=  smartphone  "
+# Results in: category="electronics", sort="price", search="smartphone"
+
+# Boolean parsing
+curl "http://localhost:8080/api/v1/users?active=true&roles=admin"
+curl "http://localhost:8080/api/v1/users?active=1&roles=admin"      # Also works
+curl "http://localhost:8080/api/v1/users?active=false&roles=admin"
+```
+
+### Test Basic User CRUD
+
+```bash
 # Create user (POST)
 curl -X POST http://localhost:8080/api/v1/users \
   -H "Content-Type: application/json" \
@@ -139,6 +230,118 @@ curl -X DELETE http://localhost:8080/api/v1/users/123
 | `output files already exist` | Use `-force` flag to overwrite existing files |
 | `go: cannot find module` | Run `go mod tidy` to resolve dependencies |
 | `server failed to start` | Check if port 8080 is available or change the port |
+
+## 🔍 Enhanced @Query() Decorator Features
+
+### 🚀 New Advanced Query Parameter Capabilities
+
+The enhanced `@Query()` decorator now supports **NestJS-level parity** with advanced features:
+
+#### 🎯 Basic Usage
+```go
+@Query("paramName") paramValue string
+@Query("page") page int        // Auto-converted from string to int
+@Query("active") active bool   // Supports: true/false, 1/0, yes/no
+```
+
+#### 🎛️ Default Values
+```go
+@Query("page", { defaultValue: "1" }) page int
+@Query("sort", { defaultValue: "name" }) sortBy string
+@Query("limit", { defaultValue: "10" }) limit int
+```
+
+#### ✅ Required Parameters
+```go
+@Query("category", { required: true }) category string
+// Returns 400 error if missing: "Query parameter 'category' is required"
+```
+
+#### 🔄 String Transformations
+```go
+@Query("sort", { transform: "lowercase" }) sortBy string     // "NAME" → "name"
+@Query("currency", { transform: "uppercase" }) currency string // "usd" → "USD" 
+@Query("search", { transform: "trim" }) query string         // "  hello  " → "hello"
+```
+
+#### 🎨 Type Conversion (Auto-detected)
+```go
+@Query("page") page int                    // String → Int with validation
+@Query("price") price float64              // String → Float with validation  
+@Query("active") active bool               // String → Bool (true/false/1/0)
+@Query("tags") tags []string               // String → Array (comma-separated)
+```
+
+#### 📋 Array Parameters
+```go
+// Different separators for arrays
+@Query("tags") tags []string                                    // Default: comma
+@Query("brands", { type: "array", separator: "|" }) brands []string    // Pipe-separated
+@Query("features", { separator: ";" }) features []string       // Semicolon-separated
+
+// Example URLs:
+// ?tags=electronics,gadgets,new
+// ?brands=apple|samsung|google  
+// ?features=wifi;bluetooth;waterproof
+```
+
+#### 🎭 Complex Combined Features
+```go
+@Query("sort", { 
+  defaultValue: "name", 
+  transform: "lowercase" 
+}) sortBy string
+
+@Query("categories", { 
+  type: "array", 
+  separator: "|", 
+  defaultValue: "general" 
+}) categories []string
+
+@Query("query", { 
+  required: true, 
+  transform: "trim" 
+}) searchQuery string
+```
+
+### 🔄 Generated Code Quality
+
+**Before (Basic):**
+```go
+func GetUsers(ctx *httpPackage.RequestContext) {
+    page := ctx.GetQuery("page")  // Always string, no validation
+    // Manual conversion and validation needed
+}
+```
+
+**After (Enhanced):**
+```go
+func GetUsers(ctx *httpPackage.RequestContext) {
+    var page int
+    queryValue := ctx.GetQuery("page")
+    if queryValue == "" {
+        queryValue = "1"  // Default value applied
+    }
+    if queryValue != "" {
+        if parsedInt, err := strconv.Atoi(queryValue); err == nil {
+            page = parsedInt
+        } else {
+            ctx.JSON(400, map[string]string{"error": "Invalid integer value for parameter 'page'"})
+            return
+        }
+    }
+    // page is now properly typed and validated!
+}
+```
+
+### 📊 Error Handling & Validation
+
+The enhanced `@Query` decorator provides comprehensive error handling:
+
+1. **Type Validation**: Automatic conversion with error responses
+2. **Required Validation**: Missing required parameters return 400 errors
+3. **Descriptive Errors**: Clear error messages for debugging
+4. **Graceful Defaults**: Fallback values when parameters are missing
 
 ## 🔍 Detailed Example Analysis
 

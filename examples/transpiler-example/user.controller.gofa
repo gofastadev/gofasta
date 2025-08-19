@@ -8,14 +8,48 @@ type UserController struct {
 }
 
 @Get()
-func GetUsers() {
-    // Get all users
+func GetUsers(
+    @Query("page", { defaultValue: "1" }) page int,
+    @Query("limit", { defaultValue: "10" }) limit int,
+    @Query("sort", { defaultValue: "name", transform: "lowercase" }) sortBy string,
+    @Query("search", { transform: "trim" }) searchQuery string,
+    @Query("active") activeOnly bool,
+    @Query("roles", { type: "array", separator: "," }) userRoles []string
+) {
+    // Get all users with advanced filtering and pagination
+    // - page: Page number (default: 1)
+    // - limit: Items per page (default: 10) 
+    // - sort: Sort field (default: "name", always lowercase)
+    // - search: Search query (trimmed whitespace)
+    // - active: Filter by active status
+    // - roles: Filter by user roles (comma-separated array)
 }
 
 @Get("/:id")
 @UseGuards("resource-owner")
-func GetUser(@Param("id") id string) {
-    // Get user by ID
+func GetUser(
+    @Param("id") id string,
+    @Query("include", { type: "array", defaultValue: "basic" }) includeFields []string
+) {
+    // Get user by ID with optional field inclusion
+    // - id: User ID (from URL parameter)
+    // - include: Fields to include (default: ["basic"])
+}
+
+@Get("/search")
+func SearchUsers(
+    @Query("q", { required: true, transform: "trim" }) searchQuery string,
+    @Query("minAge") minAge int,
+    @Query("maxAge") maxAge int,
+    @Query("exactMatch", { defaultValue: "false" }) exactMatch bool,
+    @Query("departments", { type: "array", separator: "|" }) departments []string
+) {
+    // Search users with required query parameter
+    // - q: Search query (required, trimmed)
+    // - minAge: Minimum age filter
+    // - maxAge: Maximum age filter  
+    // - exactMatch: Use exact matching (default: false)
+    // - departments: Filter by departments (pipe-separated)
 }
 
 @Post()

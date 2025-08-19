@@ -85,3 +85,146 @@ func Error(message string, err error) {
 func Debug(message string) {
     // Implementation would go here
 }
+
+// Product model and types for enhanced @Query examples
+@Injectable()
+type Product struct {
+    ID          string    `json:"id"`
+    Name        string    `json:"name"`
+    Description string    `json:"description"`
+    Price       float64   `json:"price"`
+    Currency    string    `json:"currency"`
+    Category    string    `json:"category"`
+    Brand       string    `json:"brand"`
+    Tags        []string  `json:"tags"`
+    Features    []string  `json:"features"`
+    InStock     bool      `json:"inStock"`
+    OnSale      bool      `json:"onSale"`
+    Featured    bool      `json:"featured"`
+    Rating      float64   `json:"rating"`
+    CreatedAt   string    `json:"createdAt"`
+    UpdatedAt   string    `json:"updatedAt"`
+}
+
+@Injectable()
+type CreateProductDto struct {
+    Name        string    `json:"name" validate:"required"`
+    Description string    `json:"description"`
+    Price       float64   `json:"price" validate:"min=0"`
+    Category    string    `json:"category" validate:"required"`
+    Brand       string    `json:"brand"`
+    Tags        []string  `json:"tags"`
+    Features    []string  `json:"features"`
+}
+
+@Injectable()
+type UpdateProductDto struct {
+    Name        string    `json:"name,omitempty"`
+    Description string    `json:"description,omitempty"`
+    Price       float64   `json:"price,omitempty"`
+    Category    string    `json:"category,omitempty"`
+    Brand       string    `json:"brand,omitempty"`
+    Tags        []string  `json:"tags,omitempty"`
+    Features    []string  `json:"features,omitempty"`
+    InStock     bool      `json:"inStock,omitempty"`
+    OnSale      bool      `json:"onSale,omitempty"`
+    Featured    bool      `json:"featured,omitempty"`
+}
+
+// Product service for business logic
+@Injectable()
+type ProductService struct {
+    ProductRepository *ProductRepository `inject:""`
+    Logger           *Logger            `inject:"logger"`
+}
+
+func GetProducts(filters ProductFilters) ([]Product, error) {
+    // Implementation would go here
+}
+
+func SearchProducts(query string, searchType string, fields []string) ([]Product, error) {
+    // Implementation would go here
+}
+
+func GetProductById(id string, currency string, locale string) (*Product, error) {
+    // Implementation would go here
+}
+
+func GetRecommendations(userId string, productId string, algorithm string, limit int) ([]Product, error) {
+    // Implementation would go here
+}
+
+func GetAnalytics(metric string, period string, productIds []string) (map[string]interface{}, error) {
+    // Implementation would go here
+}
+
+// Filter structs for complex queries
+@Injectable()
+type ProductFilters struct {
+    Page            int      `json:"page"`
+    Limit           int      `json:"limit"`
+    Sort            string   `json:"sort"`
+    Order           string   `json:"order"`
+    Search          string   `json:"search"`
+    Category        string   `json:"category"`
+    Tags            []string `json:"tags"`
+    Brands          []string `json:"brands"`
+    Features        []string `json:"features"`
+    InStock         bool     `json:"inStock"`
+    OnSale          bool     `json:"onSale"`
+    Featured        bool     `json:"featured"`
+    MinPrice        float64  `json:"minPrice"`
+    MaxPrice        float64  `json:"maxPrice"`
+    MinRating       float64  `json:"minRating"`
+    CreatedAfter    string   `json:"createdAfter"`
+    UpdatedSince    string   `json:"updatedSince"`
+}
+
+// Product repository
+@Injectable()
+type ProductRepository struct {
+    Database *Database `inject:"database"`
+    Logger   *Logger   `inject:"logger"`
+}
+
+func FindProducts(filters ProductFilters) ([]Product, error) {
+    // Implementation would go here
+}
+
+func FindProductById(id string) (*Product, error) {
+    // Implementation would go here
+}
+
+func CreateProduct(product CreateProductDto) (*Product, error) {
+    // Implementation would go here
+}
+
+func UpdateProduct(id string, product UpdateProductDto) (*Product, error) {
+    // Implementation would go here
+}
+
+func DeleteProduct(id string) error {
+    // Implementation would go here
+}
+
+// Configuration types
+@Injectable()
+type EmailConfig struct {
+    SMTPHost string `json:"smtpHost"`
+    SMTPPort int    `json:"smtpPort"`
+    Username string `json:"username"`
+    Password string `json:"password"`
+}
+
+@Injectable()
+type LogConfig struct {
+    Level  string `json:"level"`
+    Format string `json:"format"`
+    Output string `json:"output"`
+}
+
+@Injectable()
+type Database struct {
+    ConnectionString string `json:"connectionString"`
+    MaxConnections   int    `json:"maxConnections"`
+}
