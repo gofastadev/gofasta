@@ -11,6 +11,7 @@ This example demonstrates how to use the Gofasta transpiler to transform decorat
 - **Service Pattern**: `@Injectable` services with DI
 - **Module System**: `@Module` for organizing dependencies
 - **Guards & Middleware**: `@UseGuards`, `@HttpCode` decorators
+- **Error Handling**: `@Catch()` decorators for automatic error filtering
 
 ## 📁 File Structure
 
@@ -23,6 +24,7 @@ transpiler-example/
 │   ├── user.controller.gofa # User CRUD controller with @Query and @Headers examples
 │   ├── product.controller.gofa # Product controller showcasing advanced @Query features
 │   ├── headers-example.gofa # Comprehensive @Headers decorator examples
+│   ├── catch-decorator-example.gofa # Error handling with @Catch() decorator
 │   ├── user.service.gofa    # User business logic service  
 │   ├── types.gofa           # Data models and DTOs
 │   ├── simple-test.gofa     # Simple test controller
@@ -482,6 +484,313 @@ The enhanced `@Headers` decorator provides:
 5. **Array Processing**: Split comma-separated (or custom separator) values
 6. **HTTP Spec Compliance**: Case-insensitive header names by default
 7. **Descriptive Errors**: Clear error messages for debugging
+
+### 🚀 @Catch() Decorator Features
+
+The new `@Catch()` decorator provides automatic error handling and filtering with **NestJS-level parity**:
+
+#### 🎯 Basic Usage - Method Level
+```go
+// Handle specific error types in a method
+@Catch(NotFoundError)
+@Get("/:id")
+func GetUser(@Param("id") id string) {
+    // If NotFoundError is thrown, it will be caught and handled automatically
+    if id == "999" {
+        panic(&NotFoundError{Resource: "User", ID: id})
+    }
+}
+```
+
+#### 🏢 Controller Level Error Handling
+```go
+// Handle errors for all methods in the controller
+@Controller("/api/v1/users")
+@Catch(InternalServerError)  // Catches system errors for all methods
+type UserController struct {
+    UserService *UserService `inject:""`
+    Logger      *Logger      `inject:"logger"`
+}
+```
+
+#### 🎭 Multiple Error Types
+```go
+// Handle multiple specific error types
+@Catch(BadRequestError, ValidationError)
+@Post("/")
+func CreateUser(@Body() userData CreateUserDto) {
+    // Both BadRequestError and ValidationError will be caught
+    if userData.Email == "" {
+        panic(&ValidationError{Message: "Email is required"})
+    }
+    if userData.Age < 0 {
+        panic(&BadRequestError{Message: "Invalid age"})
+    }
+}
+```
+
+#### 🌐 Global Error Handlers
+```go
+// Catch ALL error types (global handler)
+@Catch()  // Empty parentheses = catch everything
+@Put("/:id")
+func UpdateUser(@Param("id") id string, @Body() updateData UpdateUserDto) {
+    // Any error thrown will be caught by this global handler
+    switch id {
+    case "auth_error":
+        panic(&UnauthorizedError{Message: "Not authorized"})
+    case "system_error":
+        panic(&InternalServerError{Message: "System failure"})
+    }
+}
+```
+
+#### 🏗️ Complex Nested Error Handling
+```go
+@Controller("/api/v1/orders")
+@Catch(InternalServerError, UnauthorizedError)  // Controller-level handlers
+type OrderController struct {
+    OrderService *OrderService `inject:""`
+}
+
+@Catch(NotFoundError, ValidationError)  // Method-level handlers
+@Get("/:orderId/items/:itemId")
+func GetOrderItem(
+    @Param("orderId") orderId string,
+    @Param("itemId") itemId string,
+) {
+    // Error handling priority:
+    // 1. Method-level @Catch() for NotFoundError, ValidationError
+    // 2. Controller-level @Catch() for InternalServerError, UnauthorizedError
+    
+    if orderId == "" {
+        panic(&ValidationError{Message: "Order ID required"})  // Method handler
+    }
+    if orderId == "unauthorized" {
+        panic(&UnauthorizedError{Message: "Access denied"})     // Controller handler
+    }
+}
+```
+
+### 🔄 Generated Error Handling Code
+
+**Before (Manual Error Handling):**
+```go
+func GetUser(ctx *httpPackage.RequestContext) {
+    // Manual error handling required
+    defer func() {
+        if r := recover(); r != nil {
+            // Manual error type checking and response generation
+            switch e := r.(type) {
+            case *NotFoundError:
+                ctx.JSON(404, map[string]string{"error": e.Error()})
+            default:
+                ctx.JSON(500, map[string]string{"error": "Internal server error"})
+            }
+        }
+    }()
+    
+    // Method logic here...
+}
+```
+
+**After (@Catch() Generated):**
+```go
+// Generated error handler method
+func (c *UserController) handleGetUserError(err error, ctx *httpPackage.RequestContext) {
+    switch e := err.(type) {
+    case *NotFoundError:
+        ctx.JSON(404, map[string]string{"error": e.Error()})
+    default:
+        ctx.JSON(500, map[string]string{"error": "Internal server error"})
+    }
+}
+
+// Generated error filter registration
+func (c *UserController) RegisterRoutes(server *httpPackage.HTTPServer) error {
+    // Register error filters first
+    server.RegisterMethodErrorFilter("GetUser", "NotFoundError", c.handleGetUserError)
+    
+    // Then register routes
+    server.Get("/api/v1/users/:id", c.GetUser)
+    return nil
+}
+
+// Clean method implementation
+func (c *UserController) GetUser(ctx *httpPackage.RequestContext) {
+    id := ctx.GetParam("id")
+    // Method logic - errors are automatically caught and handled
+    if id == "999" {
+        panic(&NotFoundError{Resource: "User", ID: id})  // Automatically handled!
+    }
+}
+```
+
+### 📊 Error Types and HTTP Status Codes
+
+The `@Catch()` decorator automatically maps error types to appropriate HTTP status codes:
+
+| Error Type | HTTP Status | Description |
+|------------|-------------|-------------|
+| `BadRequestError` | 400 | Invalid client request |
+| `UnauthorizedError` | 401 | Authentication required |
+| `ForbiddenError` | 403 | Access forbidden |
+| `NotFoundError` | 404 | Resource not found |
+| `ValidationError` | 422 | Validation failed |
+| `ConflictError` | 409 | Resource conflict |
+| `InternalServerError` | 500 | System error |
+| Custom errors | 500 | Default to server error |
+
+### 🎯 Error Handling Scopes
+
+#### 1. Method Scope
+```go
+@Catch(ValidationError)
+@Post("/users")
+func CreateUser() {
+    // Only handles ValidationError for this specific method
+}
+```
+
+#### 2. Controller Scope  
+```go
+@Controller("/api/users")
+@Catch(UnauthorizedError)  // Applies to ALL methods in controller
+type UserController struct {}
+```
+
+#### 3. Mixed Scope (Priority: Method > Controller)
+```go
+@Controller("/api/orders")
+@Catch(InternalServerError)  // Controller-level: system errors
+type OrderController struct {}
+
+@Catch(ValidationError)      // Method-level: validation errors
+@Post("/")
+func CreateOrder() {
+    // ValidationError → Method handler (priority)
+    // InternalServerError → Controller handler
+    // Other errors → Default 500 response
+}
+```
+
+### 🛡️ Error Handling Best Practices
+
+#### ✅ **Recommended Patterns**
+```go
+// 1. Specific errors at method level
+@Catch(ValidationError, BadRequestError)
+@Post("/users")
+func CreateUser() { /* ... */ }
+
+// 2. System errors at controller level  
+@Controller("/api/users")
+@Catch(InternalServerError, DatabaseError)
+type UserController struct {}
+
+// 3. Global fallback for critical methods
+@Catch()  // Catches everything
+@Delete("/users/:id")
+func DeleteUser() { /* ... */ }
+```
+
+#### ❌ **Anti-Patterns to Avoid**
+```go
+// Don't: Too many error types in one handler
+@Catch(Error1, Error2, Error3, Error4, Error5, Error6)  // Hard to maintain
+
+// Don't: Overly broad controller-level handlers
+@Controller("/api")
+@Catch()  // Catches everything for entire controller - too broad
+
+// Don't: Conflicting error handlers
+@Controller("/api/users")
+@Catch(ValidationError)     // Controller handles ValidationError
+type UserController struct {}
+
+@Catch(ValidationError)     // Method also handles ValidationError - conflict!
+@Post("/")
+func CreateUser() {}
+```
+
+### 🎭 Real-World Error Handling Examples
+
+#### E-commerce Order Processing
+```go
+@Controller("/api/v1/orders")
+@Catch(InternalServerError)  // System-level failures
+type OrderController struct {
+    OrderService    *OrderService    `inject:""`
+    PaymentService  *PaymentService  `inject:""`
+    InventoryService *InventoryService `inject:""`
+}
+
+@Catch(ValidationError, BadRequestError)  // Input validation
+@Post("/")
+func CreateOrder(@Body() orderData CreateOrderDto) {
+    // Validation errors caught automatically
+    if len(orderData.Items) == 0 {
+        panic(&ValidationError{Message: "Order must contain items"})
+    }
+}
+
+@Catch(NotFoundError)  // Resource lookup
+@Get("/:orderId")
+func GetOrder(@Param("orderId") orderId string) {
+    // 404 errors handled automatically
+    if orderId == "nonexistent" {
+        panic(&NotFoundError{Resource: "Order", ID: orderId})
+    }
+}
+
+@Catch(ConflictError)  // Business logic conflicts
+@Put("/:orderId/cancel") 
+func CancelOrder(@Param("orderId") orderId string) {
+    // Conflict errors handled automatically
+    if orderStatus == "shipped" {
+        panic(&ConflictError{Message: "Cannot cancel shipped order"})
+    }
+}
+```
+
+#### User Authentication & Authorization
+```go
+@Controller("/api/v1/admin")
+@Catch(UnauthorizedError, ForbiddenError)  // Auth errors for admin area
+type AdminController struct {}
+
+@Catch(ValidationError)  // Login validation
+@Post("/login")
+func AdminLogin(@Body() credentials LoginDto) {
+    if credentials.Username == "" {
+        panic(&ValidationError{Message: "Username required"})
+    }
+    if !isValidCredentials(credentials) {
+        panic(&UnauthorizedError{Message: "Invalid credentials"})
+    }
+}
+
+@Catch()  // Global handler for sensitive operations
+@Delete("/users/:id")
+func DeleteUser(@Param("id") id string) {
+    // Any error in user deletion is caught and handled securely
+    if !hasAdminPermission() {
+        panic(&ForbiddenError{Message: "Admin access required"})
+    }
+}
+```
+
+### 📈 Performance & Benefits
+
+The `@Catch()` decorator provides:
+
+1. **Automatic Error Handling**: No manual try-catch blocks needed
+2. **Consistent Error Responses**: Standardized HTTP status codes and messages
+3. **Code Cleanliness**: Business logic separated from error handling
+4. **Type Safety**: Compile-time error type checking
+5. **Maintainability**: Centralized error handling logic
+6. **Debugging**: Clear error paths and stack traces
+7. **Performance**: Optimized error filter registration
 
 ## 🔍 Detailed Example Analysis
 

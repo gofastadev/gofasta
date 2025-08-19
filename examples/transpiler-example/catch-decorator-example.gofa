@@ -1,0 +1,390 @@
+package main
+
+// Define custom error types for demonstration
+type BadRequestError struct {
+    Message string
+    Field   string
+}
+
+func (e *BadRequestError) Error() string {
+    return e.Message
+}
+
+type ValidationError struct {
+    Message string
+    Errors  map[string][]string
+}
+
+func (e *ValidationError) Error() string {
+    return e.Message
+}
+
+type NotFoundError struct {
+    Resource string
+    ID       string
+}
+
+func (e *NotFoundError) Error() string {
+    return "Resource not found: " + e.Resource + " with ID " + e.ID
+}
+
+type UnauthorizedError struct {
+    Message string
+    Reason  string
+}
+
+func (e *UnauthorizedError) Error() string {
+    return e.Message
+}
+
+type InternalServerError struct {
+    Message string
+    Cause   error
+}
+
+func (e *InternalServerError) Error() string {
+    return e.Message
+}
+
+// Example 1: Controller-level @Catch() decorator
+// This controller has a global error handler for InternalServerError
+@Controller("/api/v1/users")
+@Catch(InternalServerError)
+type UserController struct {
+    UserService *UserService `inject:""`
+    Logger      *Logger      `inject:"logger"`
+}
+
+// Example 2: Method-level @Catch() decorator with single error type
+@Catch(NotFoundError)
+@Get("/:id")
+func GetUser(@Param("id") id string) {
+    // This method specifically handles NotFoundError
+    // If a NotFoundError is thrown, it will be caught by the generated handler
+    
+    if id == "999" {
+        panic(&NotFoundError{
+            Resource: "User",
+            ID:       id,
+        })
+    }
+    
+    // Simulate normal user retrieval
+    // return user data...
+}
+
+// Example 3: Method-level @Catch() decorator with multiple error types
+@Catch(BadRequestError, ValidationError)
+@Post("/")
+func CreateUser(@Body() userData CreateUserDto) {
+    // This method handles both BadRequestError and ValidationError
+    
+    // Validate user data
+    if userData.Email == "" {
+        panic(&ValidationError{
+            Message: "User validation failed",
+            Errors: map[string][]string{
+                "email": {"Email is required", "Email must be valid format"},
+            },
+        })
+    }
+    
+    if userData.Age < 0 {
+        panic(&BadRequestError{
+            Message: "Invalid age provided",
+            Field:   "age",
+        })
+    }
+    
+    // Simulate user creation
+    // return created user...
+}
+
+// Example 4: Method-level @Catch() with global error handler (no specific types)
+@Catch()
+@Put("/:id")
+func UpdateUser(@Param("id") id string, @Body() updateData UpdateUserDto) {
+    // This method has a global error handler that catches ANY error type
+    
+    // Simulate various errors that could occur
+    switch id {
+    case "auth_error":
+        panic(&UnauthorizedError{
+            Message: "User not authorized to update this profile",
+            Reason:  "insufficient_permissions",
+        })
+    case "system_error":
+        panic(&InternalServerError{
+            Message: "Database connection failed",
+            Cause:   nil, // Would be a real error in production
+        })
+    default:
+        // Normal update logic
+        // return updated user...
+    }
+}
+
+// Example 5: Multiple @Catch() decorators on different methods
+@Catch(UnauthorizedError)
+@Delete("/:id")
+func DeleteUser(@Param("id") id string, @Headers("Authorization") authToken string) {
+    // This method specifically handles authorization errors
+    
+    if authToken == "" {
+        panic(&UnauthorizedError{
+            Message: "Authorization token required",
+            Reason:  "missing_token",
+        })
+    }
+    
+    if authToken == "invalid" {
+        panic(&UnauthorizedError{
+            Message: "Invalid authorization token",
+            Reason:  "token_invalid",
+        })
+    }
+    
+    // Simulate user deletion
+    // return deletion result...
+}
+
+// Example 6: Service with @Catch() decorator
+@Injectable()
+@Catch(InternalServerError)
+type UserService struct {
+    UserRepository *UserRepository `inject:""`
+    Logger         *Logger         `inject:"logger"`
+}
+
+@Catch(NotFoundError, ValidationError)
+func GetUserById(id string) *User {
+    // Service method with multiple error types
+    
+    if id == "" {
+        panic(&ValidationError{
+            Message: "User ID validation failed",
+            Errors: map[string][]string{
+                "id": {"ID is required", "ID must be non-empty"},
+            },
+        })
+    }
+    
+    if id == "404" {
+        panic(&NotFoundError{
+            Resource: "User",
+            ID:       id,
+        })
+    }
+    
+    // Simulate user retrieval from database
+    // return user or error...
+    return nil
+}
+
+// Example 7: Advanced controller with mixed error handling strategies
+@Controller("/api/v1/products")
+@Catch(InternalServerError) // Controller-level handler for system errors
+type ProductController struct {
+    ProductService *ProductService `inject:""`
+    Logger         *Logger         `inject:"logger"`
+}
+
+@Catch(NotFoundError)
+@Get("/:id")
+func GetProduct(@Param("id") id string) {
+    // Method-level handler for specific not found errors
+    
+    if id == "notfound" {
+        panic(&NotFoundError{
+            Resource: "Product",
+            ID:       id,
+        })
+    }
+}
+
+@Catch(BadRequestError, ValidationError)
+@Post("/")
+func CreateProduct(@Body() productData CreateProductDto) {
+    // Method-level handler for client errors
+    
+    if productData.Name == "" {
+        panic(&ValidationError{
+            Message: "Product validation failed",
+            Errors: map[string][]string{
+                "name": {"Name is required"},
+            },
+        })
+    }
+    
+    if productData.Price < 0 {
+        panic(&BadRequestError{
+            Message: "Invalid price value",
+            Field:   "price",
+        })
+    }
+}
+
+@Catch() // Global error handler for this method
+@Post("/bulk")
+func CreateProductsBulk(@Body() products []CreateProductDto) {
+    // This method catches all error types with a global handler
+    
+    if len(products) == 0 {
+        panic(&BadRequestError{
+            Message: "Empty product list provided",
+            Field:   "products",
+        })
+    }
+    
+    if len(products) > 100 {
+        panic(&ValidationError{
+            Message: "Too many products in bulk request",
+            Errors: map[string][]string{
+                "products": {"Maximum 100 products allowed per bulk request"},
+            },
+        })
+    }
+    
+    // Simulate database error
+    if products[0].Name == "error" {
+        panic(&InternalServerError{
+            Message: "Database operation failed",
+            Cause:   nil, // Would be a real error in production
+        })
+    }
+}
+
+// Example 8: Complex nested error handling scenario
+@Controller("/api/v1/orders")
+@Catch(InternalServerError, UnauthorizedError) // Controller handles system and auth errors
+type OrderController struct {
+    OrderService *OrderService `inject:""`
+    UserService  *UserService  `inject:""`
+    Logger       *Logger       `inject:"logger"`
+}
+
+@Catch(NotFoundError, ValidationError)
+@Get("/:orderId/items/:itemId")
+func GetOrderItem(
+    @Param("orderId") orderId string,
+    @Param("itemId") itemId string,
+    @Headers("Authorization") authToken string,
+) {
+    // Method handles business logic errors, controller handles system errors
+    
+    // Authorization check (would be caught by controller-level handler)
+    if authToken == "" {
+        panic(&UnauthorizedError{
+            Message: "Authorization required",
+            Reason:  "missing_token",
+        })
+    }
+    
+    // Validation (would be caught by method-level handler)
+    if orderId == "" || itemId == "" {
+        panic(&ValidationError{
+            Message: "Invalid parameters",
+            Errors: map[string][]string{
+                "orderId": {"Order ID is required"},
+                "itemId":  {"Item ID is required"},
+            },
+        })
+    }
+    
+    // Not found (would be caught by method-level handler)
+    if orderId == "notfound" {
+        panic(&NotFoundError{
+            Resource: "Order",
+            ID:       orderId,
+        })
+    }
+    
+    // System error (would be caught by controller-level handler)
+    if orderId == "system_error" {
+        panic(&InternalServerError{
+            Message: "Order system unavailable",
+            Cause:   nil, // Would be a real error in production
+        })
+    }
+}
+
+// Example 9: Error handling with business logic
+@Catch(ValidationError)
+@Post("/")
+func CreateOrder(@Body() orderData CreateOrderDto, @Headers("X-User-ID") userId string) {
+    // Complex validation that might throw ValidationError
+    
+    validationErrors := make(map[string][]string)
+    
+    if orderData.Items == nil || len(orderData.Items) == 0 {
+        validationErrors["items"] = append(validationErrors["items"], "At least one item is required")
+    }
+    
+    if orderData.Total <= 0 {
+        validationErrors["total"] = append(validationErrors["total"], "Total must be greater than 0")
+    }
+    
+    if userId == "" {
+        validationErrors["userId"] = append(validationErrors["userId"], "User ID is required")
+    }
+    
+    for i, item := range orderData.Items {
+        if item.ProductId == "" {
+            validationErrors["items"] = append(validationErrors["items"], 
+                "Product ID is required for item")
+        }
+        
+        if item.Quantity <= 0 {
+            validationErrors["items"] = append(validationErrors["items"], 
+                "Quantity must be greater than 0 for item")
+        }
+    }
+    
+    if len(validationErrors) > 0 {
+        panic(&ValidationError{
+            Message: "Order validation failed",
+            Errors:  validationErrors,
+        })
+    }
+}
+
+// Data Transfer Objects for examples
+type CreateUserDto struct {
+    Email    string `json:"email"`
+    Name     string `json:"name"`
+    Age      int    `json:"age"`
+    Password string `json:"password"`
+}
+
+type UpdateUserDto struct {
+    Email string `json:"email"`
+    Name  string `json:"name"`
+    Age   int    `json:"age"`
+}
+
+type CreateProductDto struct {
+    Name        string  `json:"name"`
+    Description string  `json:"description"`
+    Price       float64 `json:"price"`
+    CategoryId  string  `json:"categoryId"`
+}
+
+type CreateOrderDto struct {
+    Items  []OrderItemDto `json:"items"`
+    Total  float64        `json:"total"`
+    Notes  string         `json:"notes"`
+}
+
+type OrderItemDto struct {
+    ProductId string  `json:"productId"`
+    Quantity  int     `json:"quantity"`
+    Price     float64 `json:"price"`
+}
+
+type User struct {
+    ID       string `json:"id"`
+    Email    string `json:"email"`
+    Name     string `json:"name"`
+    Age      int    `json:"age"`
+    Active   bool   `json:"active"`
+}
