@@ -198,6 +198,7 @@ const (
 	RequestDecorator
 	ResponseDecorator
 	SessionDecorator
+	IpDecorator
 
 	// Other decorators
 	HttpCodeDecorator
@@ -234,6 +235,7 @@ var DecoratorTypeMap = map[string]DecoratorType{
 	"Req":             RequestDecorator,
 	"Res":             ResponseDecorator,
 	"Session":         SessionDecorator,
+	"Ip":              IpDecorator,
 	"HttpCode":        HttpCodeDecorator,
 	"Version":         VersionDecorator,
 	"Roles":           RolesDecorator,
@@ -256,7 +258,7 @@ func IsRouteDecorator(decoratorType DecoratorType) bool {
 
 // IsParameterDecorator checks if a decorator type is a parameter decorator
 func IsParameterDecorator(decoratorType DecoratorType) bool {
-	return decoratorType >= BodyDecorator && decoratorType <= SessionDecorator
+	return decoratorType >= BodyDecorator && decoratorType <= IpDecorator
 }
 
 // IsClassDecorator checks if a decorator type is a class-level decorator

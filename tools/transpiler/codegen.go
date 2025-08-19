@@ -374,6 +374,9 @@ func (g *CodeGenerator) generateParameterExtraction(method *MethodNode) {
 			
 			case "Session":
 				g.generateSessionParameterExtraction(param, decorator)
+			
+			case "Ip":
+				g.generateIpParameterExtraction(param, decorator)
 			}
 		}
 	}
@@ -589,6 +592,23 @@ func (g *CodeGenerator) generateSessionParameterExtraction(param *ParameterNode,
 			g.writeLine(fmt.Sprintf("%s := ctx.GetSessionStore()", param.Name))
 		}
 	}
+	
+	g.writeLine("")
+}
+
+// generateIpParameterExtraction generates client IP address parameter extraction
+func (g *CodeGenerator) generateIpParameterExtraction(param *ParameterNode, decorator *DecoratorNode) {
+	// For @Ip(), we extract the client's IP address from the request
+	// This handles various scenarios like proxies, load balancers, and direct connections
+	
+	// The implementation should try multiple sources in order:
+	// 1. X-Forwarded-For header (most common with proxies/load balancers)
+	// 2. X-Real-IP header (nginx and others)
+	// 3. X-Client-IP header (some proxies)
+	// 4. CF-Connecting-IP header (Cloudflare)
+	// 5. Remote address from the connection
+	
+	g.writeLine(fmt.Sprintf("%s := ctx.GetClientIP()", param.Name))
 	
 	g.writeLine("")
 }

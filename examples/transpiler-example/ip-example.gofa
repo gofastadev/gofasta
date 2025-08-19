@@ -1,0 +1,289 @@
+package main
+
+@Controller("/api/ip")
+type IpExampleController struct {
+    Logger *Logger `inject:"logger"`
+}
+
+@Get("/basic")
+func BasicIpExample(
+    @Ip() clientIP string
+) {
+    // Basic IP address access
+    // - clientIP: Client's IP address from request context
+    // Returns the client's IP address for logging or security checks
+}
+
+@Post("/login")
+func LoginWithIpTracking(
+    @Ip() clientIP string,
+    @Body() credentials LoginDto
+) {
+    // Login with IP tracking for security
+    // - clientIP: IP address for security logging
+    // - credentials: User login data
+    // Useful for fraud detection and security monitoring
+}
+
+@Get("/user-info")
+func UserInfoWithLocation(
+    @Ip() clientIP string,
+    @Query("includeLocation", { defaultValue: "false" }) includeLocation bool,
+    @Session("userId") userId string
+) {
+    // User information with optional location data
+    // - clientIP: Client IP for geolocation services
+    // - includeLocation: Whether to include location in response
+    // - userId: Current user from session
+    // Combines IP data with user context
+}
+
+@Post("/rate-limit")
+func RateLimitedEndpoint(
+    @Ip() clientIP string,
+    @Headers("User-Agent") userAgent string,
+    @Query("action") action string
+) {
+    // Rate limiting based on IP address
+    // - clientIP: IP for rate limiting logic
+    // - userAgent: Client identification
+    // - action: Action being rate limited
+    // Essential for API rate limiting implementations
+}
+
+@Get("/analytics")
+func AnalyticsTracking(
+    @Ip() clientIP string,
+    @Query("event") eventName string,
+    @Headers("Referer") referer string,
+    @Session("userId") userId string
+) {
+    // Analytics event tracking with IP
+    // - clientIP: IP for geographic analytics
+    // - eventName: Event being tracked
+    // - referer: Source page for navigation tracking
+    // - userId: User context for personalized analytics
+}
+
+@Post("/security-check")
+func SecurityValidation(
+    @Ip() clientIP string,
+    @Headers("Authorization", { required: true }) authToken string,
+    @Session("trustedIPs") trustedIPs []string,
+    @Body() secureData SecureDto
+) {
+    // Security validation with IP verification
+    // - clientIP: IP for security checks
+    // - authToken: Authentication token
+    // - trustedIPs: List of trusted IP addresses from session
+    // - secureData: Sensitive data requiring IP validation
+}
+
+@Delete("/admin/:resourceId")
+func AdminActionWithAudit(
+    @Ip() clientIP string,
+    @Param("resourceId") resourceId string,
+    @Session("adminId") adminId string,
+    @Headers("X-Audit-Reason", { required: true }) auditReason string
+) {
+    // Admin action with IP audit logging
+    // - clientIP: IP for audit trail
+    // - resourceId: Resource being deleted
+    // - adminId: Admin performing action
+    // - auditReason: Justification for action
+    // Critical for administrative audit trails
+}
+
+@Get("/geolocation")
+func GeolocationService(
+    @Ip() clientIP string,
+    @Query("precision", { defaultValue: "city" }) precision string,
+    @Headers("Accept-Language") language string
+) {
+    // IP-based geolocation service
+    // - clientIP: IP for geolocation lookup
+    // - precision: Geolocation precision level
+    // - language: Preferred language for location names
+    // Useful for location-based services
+}
+
+@Post("/fraud-detection")
+func FraudDetection(
+    @Ip() clientIP string,
+    @Body() transaction TransactionDto,
+    @Session("userHistory") userHistory UserHistoryDto,
+    @Headers("X-Device-ID") deviceId string
+) {
+    // Fraud detection with IP analysis
+    // - clientIP: IP for risk assessment
+    // - transaction: Transaction data to validate
+    // - userHistory: Historical user behavior
+    // - deviceId: Device identifier
+    // Essential for financial security systems
+}
+
+@Get("/access-control")
+func AccessControl(
+    @Ip() clientIP string,
+    @Session("userRole") userRole string,
+    @Headers("Authorization", { required: true }) authToken string,
+    @Query("resource") resource string
+) {
+    // IP-based access control
+    // - clientIP: IP for geographic restrictions
+    // - userRole: User's role for authorization
+    // - authToken: Authentication token
+    // - resource: Resource being accessed
+    // Implements location-based access policies
+}
+
+@Post("/multi-factor")
+func MultiFactorAuth(
+    @Ip() clientIP string,
+    @Body() mfaData MfaDto,
+    @Session("pendingAuth") pendingAuth PendingAuthDto,
+    @Headers("User-Agent") userAgent string
+) {
+    // Multi-factor authentication with IP verification
+    // - clientIP: IP for device/location verification
+    // - mfaData: Multi-factor authentication data
+    // - pendingAuth: Pending authentication state
+    // - userAgent: Device fingerprinting
+}
+
+@Get("/load-balancer")
+func LoadBalancerInfo(
+    @Ip() clientIP string,
+    @Headers("X-Forwarded-For") forwardedFor string,
+    @Headers("X-Real-IP") realIP string,
+    @Query("debug", { defaultValue: "false" }) debug bool
+) {
+    // Load balancer and proxy IP handling
+    // - clientIP: Direct client IP (may be load balancer)
+    // - forwardedFor: X-Forwarded-For header chain
+    // - realIP: Real IP from reverse proxy
+    // - debug: Include debug information
+    // Handles complex proxy/load balancer scenarios
+}
+
+@Post("/ddos-protection")
+func DdosProtection(
+    @Ip() clientIP string,
+    @Headers("User-Agent") userAgent string,
+    @Query("challenge") challengeResponse string,
+    @Session("requestCount") requestCount int
+) {
+    // DDoS protection with IP monitoring
+    // - clientIP: IP for rate limiting and blocking
+    // - userAgent: Client identification
+    // - challengeResponse: Anti-bot challenge response
+    // - requestCount: Recent request count from session
+    // Implements DDoS mitigation strategies
+}
+
+@Get("/regional-content")
+func RegionalContent(
+    @Ip() clientIP string,
+    @Query("locale") locale string,
+    @Headers("Accept-Language") acceptLanguage string,
+    @Session("preferences") preferences UserPreferencesDto
+) {
+    // Regional content delivery based on IP
+    // - clientIP: IP for region detection
+    // - locale: Requested locale
+    // - acceptLanguage: Browser language preferences
+    // - preferences: User's saved preferences
+    // Delivers region-appropriate content
+}
+
+@Post("/compliance-check")
+func ComplianceValidation(
+    @Ip() clientIP string,
+    @Body() requestData ComplianceDto,
+    @Headers("X-Compliance-Region") complianceRegion string,
+    @Session("complianceStatus") complianceStatus string
+) {
+    // Regulatory compliance based on IP location
+    // - clientIP: IP for jurisdiction determination
+    // - requestData: Data requiring compliance validation
+    // - complianceRegion: Explicit compliance region
+    // - complianceStatus: Current compliance status
+    // Ensures regulatory compliance by geography
+}
+
+@Get("/network-diagnostics")
+func NetworkDiagnostics(
+    @Ip() clientIP string,
+    @Headers("X-Network-Type") networkType string,
+    @Query("trace", { defaultValue: "false" }) enableTrace bool,
+    @Req() req *Request
+) {
+    // Network diagnostics and troubleshooting
+    // - clientIP: IP for network analysis
+    // - networkType: Type of network connection
+    // - enableTrace: Enable network tracing
+    // - req: Full request context for diagnostics
+    // Provides network troubleshooting capabilities
+}
+
+@Post("/session-security")
+func SessionSecurity(
+    @Ip() clientIP string,
+    @Session("sessionIP") sessionIP string,
+    @Session("trustedDevices") trustedDevices []string,
+    @Headers("X-Session-Token") sessionToken string
+) {
+    // Session security with IP validation
+    // - clientIP: Current request IP
+    // - sessionIP: IP address from session creation
+    // - trustedDevices: List of trusted device IDs
+    // - sessionToken: Session security token
+    // Validates session consistency and security
+}
+
+@Get("/cdn-routing")
+func CdnRouting(
+    @Ip() clientIP string,
+    @Query("resource") resourcePath string,
+    @Headers("Accept-Encoding") acceptEncoding string,
+    @Session("cdnPreference") cdnPreference string
+) {
+    // CDN routing based on client IP
+    // - clientIP: IP for optimal CDN selection
+    // - resourcePath: Resource to serve via CDN
+    // - acceptEncoding: Supported encoding formats
+    // - cdnPreference: User's CDN preference
+    // Optimizes content delivery based on location
+}
+
+@Post("/threat-detection")
+func ThreatDetection(
+    @Ip() clientIP string,
+    @Body() requestPayload interface{},
+    @Headers("User-Agent") userAgent string,
+    @Session("threatLevel") threatLevel string,
+    @Headers("X-Threat-Score") threatScore string
+) {
+    // Advanced threat detection using IP analysis
+    // - clientIP: IP for threat intelligence lookup
+    // - requestPayload: Request data to analyze
+    // - userAgent: Client fingerprinting
+    // - threatLevel: Current threat assessment
+    // - threatScore: External threat scoring
+    // Implements advanced security threat detection
+}
+
+@Get("/bandwidth-optimization")
+func BandwidthOptimization(
+    @Ip() clientIP string,
+    @Query("quality", { defaultValue: "auto" }) quality string,
+    @Headers("Connection") connectionType string,
+    @Session("bandwidthProfile") bandwidthProfile string
+) {
+    // Bandwidth optimization based on IP location
+    // - clientIP: IP for network speed estimation
+    // - quality: Requested content quality
+    // - connectionType: HTTP connection type
+    // - bandwidthProfile: User's bandwidth profile
+    // Optimizes content delivery for network conditions
+}

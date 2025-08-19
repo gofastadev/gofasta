@@ -29,8 +29,8 @@
 - [X] `@Headers()` - Extract request headers
 - [X] `@Req()` - Access raw request object
 - [X] `@Res()` - Access raw response object
-- [ ] `@Session()` - Session data access
-- [ ] `@Ip()` - Client IP address
+- [X] `@Session()` - Session data access
+- [X] `@Ip()` - Client IP address
 - [ ] `@HostParam()` - Host parameter extraction
 
 #### 🔥 1.2 Exception Handling System `[HIGH PRIORITY]`
