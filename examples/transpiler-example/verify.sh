@@ -98,24 +98,32 @@ print_error() {
 echo "🧪 Gofasta Transpiler Example Verification"
 echo "=========================================="
 
-# Step 1: Check if transpiler exists
+# Step 1: Check if transpiler exists and build if needed
 print_step "Checking if Gofasta transpiler is built..."
 TRANSPILER_PATH="../../tools/transpiler/gofasta"
 
 if [ ! -f "$TRANSPILER_PATH" ]; then
     print_warning "Transpiler not found at $TRANSPILER_PATH"
     print_step "Building transpiler..."
-    cd ../../packages/transpiler
-    go build -o gofasta ./cmd/gofasta-transpiler
-    cd - > /dev/null
     
-    if [ ! -f "$TRANSPILER_PATH" ]; then
+    # Navigate to transpiler directory and build
+    cd ../../tools/transpiler
+    if ! go build -o gofasta ./cmd; then
         print_error "Failed to build transpiler"
         exit 1
     fi
+    cd - > /dev/null
+    
+    # Verify the binary was created
+    if [ ! -f "$TRANSPILER_PATH" ]; then
+        print_error "Transpiler binary not found after build"
+        exit 1
+    fi
+    
+    print_success "Transpiler built successfully"
+else
+    print_success "Transpiler binary found, skipping build"
 fi
-
-print_success "Transpiler found/built successfully"
 
 # Step 2: Clean up any previous generated files
 print_step "Cleaning up previous generated files..."
