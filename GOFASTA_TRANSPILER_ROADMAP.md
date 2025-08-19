@@ -27,8 +27,8 @@
 
 - [X] `@Query()` - Extract query parameters
 - [X] `@Headers()` - Extract request headers
-- [ ] `@Req()` - Access raw request object
-- [ ] `@Res()` - Access raw response object
+- [X] `@Req()` - Access raw request object
+- [X] `@Res()` - Access raw response object
 - [ ] `@Session()` - Session data access
 - [ ] `@Ip()` - Client IP address
 - [ ] `@HostParam()` - Host parameter extraction

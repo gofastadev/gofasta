@@ -1,0 +1,207 @@
+package main
+
+@Controller("/api/responses")
+type ResponseExampleController struct {
+    Logger *Logger `inject:"logger"`
+}
+
+@Get("/basic")
+func BasicResponseExample(
+    @Res() res *RequestContext
+) {
+    // Basic response context access
+    // - res: Direct access to the HTTP response context
+    // This gives full access to response methods like JSON(), Status(), SetHeader(), etc.
+}
+
+@Get("/response-writer")
+func ResponseWriterExample(
+    @Res() res *ResponseWriter
+) {
+    // Access to underlying HTTP response writer
+    // - res: Direct access to the underlying http.ResponseWriter object  
+    // Useful for direct HTTP response writing and header manipulation
+}
+
+@Get("/mixed-params")
+func MixedParametersExample(
+    @Res() res *ResponseWriter,
+    @Query("format", { defaultValue: "json" }) format string,
+    @Headers("Accept") acceptType string
+) {
+    // Combined response access with other parameter decorators
+    // - res: Raw HTTP response writer
+    // - format: Response format preference 
+    // - acceptType: Client's accepted content types
+    // Demonstrates how @Res() works alongside other decorators
+}
+
+@Post("/with-body")
+func ResponseWithBodyExample(
+    @Res() res *RequestContext,
+    @Body() createData CreateResponseDto,
+    @Headers("Content-Type", { defaultValue: "application/json" }) contentType string
+) {
+    // Response handling combined with request body processing
+    // - res: Response context for sending custom responses
+    // - createData: Parsed JSON body
+    // - contentType: Content type header
+    // Useful for custom response formatting based on input
+}
+
+@Get("/custom-headers")
+func CustomHeadersExample(
+    @Res() res *RequestContext,
+    @Query("cors", { defaultValue: "false" }) enableCors bool,
+    @Headers("Origin") origin string
+) {
+    // Custom response headers example
+    // - res: Response context for:
+    //   * res.SetHeader() - Set custom response headers
+    //   * res.Status() - Set custom status codes
+    //   * res.JSON() - Send JSON responses
+    // - enableCors: Whether to enable CORS headers
+    // - origin: Request origin for CORS handling
+}
+
+@Get("/streaming")
+func StreamingResponseExample(
+    @Res() res *ResponseWriter,
+    @Query("chunk-size", { defaultValue: "1024" }) chunkSize int,
+    @Headers("Accept-Encoding") encoding string
+) {
+    // Streaming response example
+    // - res: Raw response writer for:
+    //   * Direct writing with res.Write()
+    //   * Header manipulation with res.Header()
+    //   * Flushing with res.(http.Flusher).Flush()
+    // - chunkSize: Size of each data chunk
+    // - encoding: Supported encodings (gzip, deflate, etc.)
+}
+
+@Get("/conditional")
+func ConditionalResponseExample(
+    @Res() res *RequestContext,
+    @Headers("If-None-Match") ifNoneMatch string,
+    @Headers("If-Modified-Since") ifModifiedSince string
+) {
+    // Conditional response handling
+    // - res: Response context for:
+    //   * Setting ETag headers
+    //   * Returning 304 Not Modified
+    //   * Custom caching headers
+    // - ifNoneMatch: ETag from client
+    // - ifModifiedSince: Last modified date from client
+}
+
+@Get("/error-handling")
+func ErrorHandlingExample(
+    @Res() res *RequestContext,
+    @Query("simulate-error", { defaultValue: "false" }) simulateError bool,
+    @Headers("Accept", { type: "array" }) acceptTypes []string
+) {
+    // Error response handling
+    // - res: Response context for:
+    //   * res.Status(404) - Set error status codes
+    //   * res.JSON({error: "message"}) - Error response formatting
+    //   * Custom error headers
+    // - simulateError: Whether to simulate an error condition
+    // - acceptTypes: Supported response formats for errors
+}
+
+@Post("/file-download")
+func FileDownloadExample(
+    @Res() res *ResponseWriter,
+    @Param("filename") filename string,
+    @Headers("Range") rangeHeader string
+) {
+    // File download with custom response handling
+    // - res: Raw response writer for:
+    //   * Setting Content-Disposition headers
+    //   * Handling byte range requests
+    //   * Direct file streaming
+    // - filename: File to download
+    // - rangeHeader: HTTP Range header for partial downloads
+}
+
+@Get("/req-res-combo")
+func RequestResponseComboExample(
+    @Req() req *Request,
+    @Res() res *RequestContext,
+    @Query("debug", { defaultValue: "false" }) debug bool
+) {
+    // Combined request and response access
+    // - req: Raw HTTP request for:
+    //   * Reading request details
+    //   * Custom request processing
+    //   * Request logging
+    // - res: Response context for:
+    //   * Custom response formatting
+    //   * Conditional responses based on request
+    //   * Request/response correlation
+    // - debug: Enable debug response headers
+}
+
+@Put("/async-response")
+func AsyncResponseExample(
+    @Res() res *ResponseWriter,
+    @Body() asyncData AsyncRequestDto,
+    @Headers("X-Callback-URL") callbackUrl string
+) {
+    // Async response handling
+    // - res: Response writer for:
+    //   * Immediate acknowledgment responses
+    //   * Setting up async processing headers
+    //   * Connection management
+    // - asyncData: Data for async processing
+    // - callbackUrl: URL for async completion notification
+}
+
+@Get("/content-negotiation")
+func ContentNegotiationExample(
+    @Res() res *RequestContext,
+    @Headers("Accept", { type: "array" }) acceptTypes []string,
+    @Headers("Accept-Language", { type: "array" }) languages []string,
+    @Query("format") formatOverride string
+) {
+    // Content negotiation example
+    // - res: Response context for:
+    //   * Setting appropriate Content-Type
+    //   * Formatting response based on client preferences
+    //   * Handling multiple response formats
+    // - acceptTypes: Client's accepted content types
+    // - languages: Client's preferred languages
+    // - formatOverride: Query parameter to override content negotiation
+}
+
+@Get("/performance-headers")
+func PerformanceHeadersExample(
+    @Res() res *RequestContext,
+    @Headers("X-Forwarded-For") clientIp string,
+    @Query("cache-duration", { defaultValue: "3600" }) cacheDuration int
+) {
+    // Performance and caching headers
+    // - res: Response context for:
+    //   * Cache-Control headers
+    //   * ETag generation
+    //   * Performance timing headers
+    // - clientIp: Client IP for rate limiting headers
+    // - cacheDuration: Cache duration in seconds
+}
+
+@Post("/webhook-response")
+func WebhookResponseExample(
+    @Res() res *ResponseWriter,
+    @Body() webhookData WebhookPayload,
+    @Headers("X-Webhook-Signature") signature string,
+    @Headers("Content-Type", { required: true }) contentType string
+) {
+    // Webhook response handling
+    // - res: Raw response writer for:
+    //   * Immediate webhook acknowledgment
+    //   * Security response headers
+    //   * Custom webhook response format
+    // - webhookData: Incoming webhook payload
+    // - signature: Webhook signature for verification
+    // - contentType: Webhook content type (required)
+}
