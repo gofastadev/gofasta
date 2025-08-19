@@ -35,11 +35,154 @@
 
 #### 🔥 1.2 Exception Handling System `[HIGH PRIORITY]`
 
-- [ ] Custom exception types (`BadRequestException`, `NotFoundException`, etc.)
-- [ ] `@Catch()` decorator for exception filters
-- [ ] Global exception filter support
-- [ ] HTTP status code mapping
-- [ ] Error response formatting
+**🎯 Goal**: Comprehensive exception handling system with NestJS parity for robust error management
+
+##### 🔥 Core Exception Types `[CRITICAL]`
+- [ ] **`HttpError`** - Base error struct with status code and message
+  ```go
+  type HttpError struct {
+      StatusCode int
+      Message    string
+      Cause      error
+  }
+  func (e *HttpError) Error() string
+  ```
+- [ ] **`BadRequestError`** (400) - Invalid request data, validation failures
+- [ ] **`UnauthorizedError`** (401) - Authentication required or failed
+- [ ] **`ForbiddenError`** (403) - Insufficient permissions/authorization
+- [ ] **`NotFoundError`** (404) - Resource not found
+- [ ] **`MethodNotAllowedError`** (405) - HTTP method not supported
+- [ ] **`NotAcceptableError`** (406) - Content negotiation failure
+- [ ] **`RequestTimeoutError`** (408) - Request processing timeout
+- [ ] **`ConflictError`** (409) - Resource conflict (duplicate data)
+- [ ] **`GoneError`** (410) - Resource permanently unavailable
+- [ ] **`PayloadTooLargeError`** (413) - Request body too large
+- [ ] **`UnsupportedMediaTypeError`** (415) - Unsupported content type
+- [ ] **`UnprocessableEntityError`** (422) - Validation errors, business logic failures
+- [ ] **`TooManyRequestsError`** (429) - Rate limiting exceeded
+- [ ] **`InternalServerError`** (500) - Server errors, unexpected failures
+- [ ] **`NotImplementedError`** (501) - Feature not implemented
+- [ ] **`BadGatewayError`** (502) - Upstream service failure
+- [ ] **`ServiceUnavailableError`** (503) - Service temporarily down
+- [ ] **`GatewayTimeoutError`** (504) - Upstream timeout
+
+##### 🔥 Error Filter System `[CRITICAL]`
+- [ ] **`@Catch()` decorator** - Error filter registration
+  - Catch specific error types: `@Catch(BadRequestError)`
+  - Catch multiple types: `@Catch(BadRequestError, NotFoundError)`
+  - Catch all errors: `@Catch()` (global handler)
+  - Error type hierarchy support (catch parent types)
+- [ ] **Custom Error Filters** - User-defined error handling
+  ```go
+  type ErrorFilter interface {
+      Catch(err error, ctx *RequestContext) error
+  }
+  ```
+  - `ErrorFilter` interface implementation
+  - Access to `RequestContext` and response handling
+  - Custom error response formatting
+  - Logging and metrics integration
+- [ ] **Error Filter Hierarchy** - Ordered error handling
+  - Method-level filters (highest priority)
+  - Controller-level filters
+  - Global filters (lowest priority)
+  - Error type specificity ordering
+
+##### 🔥 Global Error Handling `[CRITICAL]`
+- [ ] **Global Error Filter** - Default system-wide error handler
+  - Catch unhandled errors automatically
+  - Default error response format standardization
+  - Security headers for error responses
+  - Error logging and monitoring integration
+- [ ] **Built-in Error Responses** - Standardized error formats
+  ```go
+  type ErrorResponse struct {
+      StatusCode int    `json:"statusCode"`
+      Message    string `json:"message"`
+      Error      string `json:"error"`
+      Timestamp  string `json:"timestamp,omitempty"`
+      Path       string `json:"path,omitempty"`
+  }
+  ```
+  - Custom error response templates
+  - Development vs. production error details
+  - Error stack trace handling (dev only)
+
+##### 🔥 HTTP Status Code Management `[HIGH PRIORITY]`
+- [ ] **Automatic Status Code Mapping** - Error to HTTP status
+  - Built-in mapping for standard error types
+  - Custom error status codes
+  - Override status codes per error instance
+- [ ] **`@HttpCode()` decorator enhancement** - Custom status codes
+  - Method-level status code override
+  - Success response codes (200, 201, 204)
+  - Integration with error handling
+- [ ] **Response Status Validation** - Ensure proper HTTP semantics
+  - Validate status codes match response content
+  - Warning for non-standard status usage
+
+##### 🔥 Error Response Formatting `[HIGH PRIORITY]`
+- [ ] **Standardized Error Structure** - Consistent error responses
+  ```go
+  type ErrorResponse struct {
+      StatusCode    int      `json:"statusCode"`
+      Message       string   `json:"message"`
+      Error         string   `json:"error"`
+      Timestamp     string   `json:"timestamp,omitempty"`
+      Path          string   `json:"path,omitempty"`
+      CorrelationId string   `json:"correlationId,omitempty"`
+  }
+  ```
+- [ ] **Custom Error Messages** - User-friendly error descriptions
+  - Localization support for error messages
+  - Field-specific validation errors
+  - Business rule violation messages
+- [ ] **Error Context Enhancement** - Additional error information
+  - Request path and method in error response
+  - Correlation IDs for request tracing
+  - Timestamp for error occurrence
+  - User-friendly error codes
+
+##### 🔥 Integration & Advanced Features `[HIGH PRIORITY]`
+- [ ] **Validation Integration** - Error handling for validation errors
+  - `ValidationError` struct for DTO validation failures
+  - Field-level error details
+  - Multiple validation error aggregation
+- [ ] **Logging Integration** - Error logging and monitoring
+  - Automatic error logging with context
+  - Log levels based on error severity
+  - Structured logging for error analysis
+- [ ] **Security Features** - Secure error handling
+  - Sanitize error messages in production
+  - Prevent information leakage through errors
+  - Rate limiting for error-prone endpoints
+- [ ] **Performance Monitoring** - Error tracking and metrics
+  - Error rate monitoring per endpoint
+  - Error type frequency tracking
+  - Performance impact of error handling
+
+##### 🔥 Developer Experience `[HIGH PRIORITY]`
+- [ ] **IDE Support** - Enhanced development workflow
+  - Auto-completion for error types
+  - Error handler code generation
+  - Error response preview
+- [ ] **Testing Support** - Error testing utilities
+  - Error assertion helpers
+  - Mock error scenarios
+  - Error handling test patterns
+- [ ] **Documentation Generation** - Automatic error documentation
+  - API documentation with error responses
+  - Error type documentation
+  - Error handling examples
+
+##### 📋 Implementation Order
+1. **Core Error Types** - Base `HttpError` struct and common error types
+2. **`@Catch()` Decorator** - Basic error filter registration
+3. **Global Error Filter** - System-wide error handling
+4. **Error Response Formatting** - Standardized error structure
+5. **Advanced Error Types** - Specialized errors (rate limiting, etc.)
+6. **Integration Features** - Validation, logging, monitoring
+7. **Developer Tools** - Testing support, documentation generation
 
 #### 🔥 1.3 Async/Error Pattern Improvements `[HIGH PRIORITY]`
 
