@@ -35,7 +35,7 @@
 
 #### 🔥 1.2 Error Handling Decorators `[HIGH PRIORITY]`
 
-- [ ] **`@Catch()` decorator transpilation** - Generate error filter registration
+- [X] **`@Catch()` decorator transpilation** - Generate error filter registration
   ```gofa
   @Catch(BadRequestError, ValidationError)
   func handleValidationErrors(err error, ctx *RequestContext) {

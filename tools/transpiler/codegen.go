@@ -112,6 +112,9 @@ func (g *CodeGenerator) generateControllerDeclaration(controller *ControllerDecl
 		g.writeLine("")
 	}
 
+	// Generate error filter handlers for controller-level @Catch() decorators
+	g.generateCatchHandlers(controller)
+
 	return nil
 }
 
@@ -175,6 +178,9 @@ func (g *CodeGenerator) generateControllerRouteRegistration(controller *Controll
 
 	controllerPath := g.getControllerPath(controller)
 
+	// Register error filters first
+	g.generateErrorFilterRegistration(controller)
+
 	for _, method := range controller.Methods {
 		routeInfo := g.getRouteInfo(method)
 		if routeInfo.Method != "" {
@@ -191,6 +197,56 @@ func (g *CodeGenerator) generateControllerRouteRegistration(controller *Controll
 	g.writeLine("return nil")
 	g.unindent()
 	g.writeLine("}")
+}
+
+// generateErrorFilterRegistration generates error filter registration code
+func (g *CodeGenerator) generateErrorFilterRegistration(controller *ControllerDeclaration) {
+	// Check for controller-level @Catch() decorators
+	hasControllerFilters := false
+	for _, decorator := range controller.Decorators {
+		if decorator.Name == "Catch" {
+			hasControllerFilters = true
+			config := g.getCatchFilterConfig(decorator, "controller")
+			
+			// Generate filter registration
+			if len(config.ErrorTypes) > 0 {
+				for _, errorType := range config.ErrorTypes {
+					handlerName := fmt.Sprintf("handle%sError", strings.Title(errorType))
+					g.writeLine(fmt.Sprintf("server.RegisterErrorFilter(\"%s\", c.%s)", errorType, handlerName))
+				}
+			} else {
+				// Global error filter
+				g.writeLine("server.RegisterGlobalErrorFilter(c.handleError)")
+			}
+		}
+	}
+
+	// Check for method-level @Catch() decorators
+	hasMethodFilters := false
+	for _, method := range controller.Methods {
+		for _, decorator := range method.Decorators {
+			if decorator.Name == "Catch" {
+				hasMethodFilters = true
+				config := g.getCatchFilterConfig(decorator, "method")
+				handlerName := fmt.Sprintf("handle%sError", strings.Title(method.Name))
+				
+				if len(config.ErrorTypes) > 0 {
+					for _, errorType := range config.ErrorTypes {
+						g.writeLine(fmt.Sprintf("server.RegisterMethodErrorFilter(\"%s\", \"%s\", c.%s)", 
+							method.Name, errorType, handlerName))
+					}
+				} else {
+					// Method-level global filter
+					g.writeLine(fmt.Sprintf("server.RegisterMethodErrorFilter(\"%s\", \"*\", c.%s)", 
+						method.Name, handlerName))
+				}
+			}
+		}
+	}
+
+	if hasControllerFilters || hasMethodFilters {
+		g.writeLine("")
+	}
 }
 
 // generateControllerMethod generates a controller method with HTTP context
@@ -1082,6 +1138,13 @@ type ModuleConfig struct {
 	Exports     []string
 }
 
+// CatchFilterConfig represents configuration for @Catch() decorators
+type CatchFilterConfig struct {
+	ErrorTypes []string // The error types this filter catches
+	Scope      string   // "method", "controller", or "global"
+	Handler    string   // The handler method name
+}
+
 // getModuleConfig extracts module configuration from decorators
 func (g *CodeGenerator) getModuleConfig(module *ModuleDeclaration) ModuleConfig {
 	config := ModuleConfig{}
@@ -1165,6 +1228,111 @@ func (g *CodeGenerator) combineRoutePaths(controllerPath, methodPath string) str
 	}
 
 	return strings.TrimSuffix(path, "/")
+}
+
+// generateCatchHandlers generates error filter handlers for controllers
+func (g *CodeGenerator) generateCatchHandlers(controller *ControllerDeclaration) {
+	// Generate handlers for controller-level @Catch() decorators
+	for _, decorator := range controller.Decorators {
+		if decorator.Name == "Catch" {
+			g.generateCatchHandler(controller, decorator, "controller")
+		}
+	}
+
+	// Generate handlers for method-level @Catch() decorators
+	for _, method := range controller.Methods {
+		for _, decorator := range method.Decorators {
+			if decorator.Name == "Catch" {
+				g.generateCatchHandler(controller, decorator, "method", method.Name)
+			}
+		}
+	}
+}
+
+// generateCatchHandler generates a single catch handler method
+func (g *CodeGenerator) generateCatchHandler(controller *ControllerDeclaration, decorator *DecoratorNode, scope string, methodName ...string) {
+	config := g.getCatchFilterConfig(decorator, scope)
+	
+	// Generate handler method name
+	var handlerName string
+	if scope == "method" && len(methodName) > 0 {
+		handlerName = fmt.Sprintf("handle%sError", strings.Title(methodName[0]))
+	} else {
+		if len(config.ErrorTypes) > 0 {
+			handlerName = fmt.Sprintf("handle%sError", strings.Title(config.ErrorTypes[0]))
+		} else {
+			handlerName = "handleError"
+		}
+	}
+
+	// Generate handler method signature
+	g.writeLine(fmt.Sprintf("func (c *%s) %s(err error, ctx *httpPackage.RequestContext) {", controller.Name, handlerName))
+	g.indent()
+
+	// Generate error type checking and handling
+	if len(config.ErrorTypes) > 0 {
+		g.writeLine("switch e := err.(type) {")
+		for _, errorType := range config.ErrorTypes {
+			g.writeLine(fmt.Sprintf("case *%s:", errorType))
+			g.indent()
+			g.generateErrorHandlingCode(errorType)
+			g.unindent()
+		}
+		g.writeLine("default:")
+		g.indent()
+		g.writeLine("// Handle unmatched error types")
+		g.writeLine("ctx.JSON(500, map[string]string{\"error\": \"Internal server error\"})")
+		g.unindent()
+		g.writeLine("}")
+	} else {
+		// Global error handler (catches all errors)
+		g.writeLine("// Global error handler - catches all errors")
+		g.generateErrorHandlingCode("error")
+	}
+
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+}
+
+// generateErrorHandlingCode generates error handling code based on error type
+func (g *CodeGenerator) generateErrorHandlingCode(errorType string) {
+	switch strings.ToLower(errorType) {
+	case "badrequesterror", "*badrequesterror":
+		g.writeLine("ctx.JSON(400, map[string]string{\"error\": e.Error()})")
+	case "unauthorizederror", "*unauthorizederror":
+		g.writeLine("ctx.JSON(401, map[string]string{\"error\": \"Unauthorized\"})")
+	case "forbiddenerror", "*forbiddenerror":
+		g.writeLine("ctx.JSON(403, map[string]string{\"error\": \"Forbidden\"})")
+	case "notfounderror", "*notfounderror":
+		g.writeLine("ctx.JSON(404, map[string]string{\"error\": \"Not found\"})")
+	case "validationerror", "*validationerror":
+		g.writeLine("ctx.JSON(422, map[string]string{\"error\": \"Validation failed\", \"details\": e.Error()})")
+	case "conflicterror", "*conflicterror":
+		g.writeLine("ctx.JSON(409, map[string]string{\"error\": \"Conflict\"})")
+	case "internalservererror", "*internalservererror":
+		g.writeLine("ctx.JSON(500, map[string]string{\"error\": \"Internal server error\"})")
+	default:
+		// Default error handling
+		g.writeLine("ctx.JSON(500, map[string]string{\"error\": err.Error()})")
+	}
+}
+
+// getCatchFilterConfig extracts configuration from @Catch() decorator
+func (g *CodeGenerator) getCatchFilterConfig(decorator *DecoratorNode, scope string) CatchFilterConfig {
+	config := CatchFilterConfig{
+		ErrorTypes: []string{},
+		Scope:      scope,
+	}
+
+	// Extract error types from decorator arguments
+	for _, arg := range decorator.Args {
+		if errorType, ok := arg.Value.(string); ok {
+			config.ErrorTypes = append(config.ErrorTypes, errorType)
+		}
+	}
+
+	return config
 }
 
 // Writing helper methods

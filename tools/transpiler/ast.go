@@ -201,6 +201,9 @@ const (
 	IpDecorator
 	HostParamDecorator
 
+	// Error handling decorators
+	CatchDecorator
+
 	// Other decorators
 	HttpCodeDecorator
 	VersionDecorator
@@ -238,6 +241,7 @@ var DecoratorTypeMap = map[string]DecoratorType{
 	"Session":         SessionDecorator,
 	"Ip":              IpDecorator,
 	"HostParam":       HostParamDecorator,
+	"Catch":           CatchDecorator,
 	"HttpCode":        HttpCodeDecorator,
 	"Version":         VersionDecorator,
 	"Roles":           RolesDecorator,
@@ -271,6 +275,11 @@ func IsClassDecorator(decoratorType DecoratorType) bool {
 // IsCrossCuttingDecorator checks if a decorator type is a cross-cutting concern decorator
 func IsCrossCuttingDecorator(decoratorType DecoratorType) bool {
 	return decoratorType >= UseGuardsDecorator && decoratorType <= UseInterceptorsDecorator
+}
+
+// IsErrorHandlingDecorator checks if a decorator type is an error handling decorator
+func IsErrorHandlingDecorator(decoratorType DecoratorType) bool {
+	return decoratorType == CatchDecorator
 }
 
 // Visitor interface for traversing the AST
