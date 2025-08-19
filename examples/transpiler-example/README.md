@@ -7,7 +7,7 @@ This example demonstrates how to use the Gofasta transpiler to transform decorat
 - **Controller Declaration**: Using `@Controller` with route prefixes
 - **Route Methods**: `@Get`, `@Post`, `@Put`, `@Delete` decorators
 - **Dependency Injection**: Using `inject:""` tags
-- **Parameter Decorators**: `@Param`, `@Body`, `@Query` (with advanced features) for request handling
+- **Parameter Decorators**: `@Param`, `@Body`, `@Query`, `@Headers` (with advanced features) for request handling
 - **Service Pattern**: `@Injectable` services with DI
 - **Module System**: `@Module` for organizing dependencies
 - **Guards & Middleware**: `@UseGuards`, `@HttpCode` decorators
@@ -20,8 +20,9 @@ transpiler-example/
 ├── go.mod                   # Go module definition
 ├── main.go                  # Demo server to run the example
 ├── *.gofa                   # Source files (decorator-based)
-│   ├── user.controller.gofa # User CRUD controller with @Query examples
+│   ├── user.controller.gofa # User CRUD controller with @Query and @Headers examples
 │   ├── product.controller.gofa # Product controller showcasing advanced @Query features
+│   ├── headers-example.gofa # Comprehensive @Headers decorator examples
 │   ├── user.service.gofa    # User business logic service  
 │   ├── types.gofa           # Data models and DTOs
 │   ├── simple-test.gofa     # Simple test controller
@@ -231,11 +232,11 @@ curl -X DELETE http://localhost:8080/api/v1/users/123
 | `go: cannot find module` | Run `go mod tidy` to resolve dependencies |
 | `server failed to start` | Check if port 8080 is available or change the port |
 
-## 🔍 Enhanced @Query() Decorator Features
+## 🔍 Enhanced Parameter Decorators
 
-### 🚀 New Advanced Query Parameter Capabilities
+### 🚀 @Query() Decorator Features
 
-The enhanced `@Query()` decorator now supports **NestJS-level parity** with advanced features:
+The enhanced `@Query()` decorator supports **NestJS-level parity** with advanced features:
 
 #### 🎯 Basic Usage
 ```go
@@ -342,6 +343,145 @@ The enhanced `@Query` decorator provides comprehensive error handling:
 2. **Required Validation**: Missing required parameters return 400 errors
 3. **Descriptive Errors**: Clear error messages for debugging
 4. **Graceful Defaults**: Fallback values when parameters are missing
+
+### 🚀 @Headers() Decorator Features
+
+The new `@Headers()` decorator provides powerful HTTP header extraction with **NestJS-level parity**:
+
+#### 🎯 Basic Usage
+```go
+@Headers("Authorization") authToken string
+@Headers("User-Agent") userAgent string
+@Headers("Content-Type") contentType string
+```
+
+#### ✅ Required Headers
+```go
+@Headers("X-API-Key", { required: true }) apiKey string
+@Headers("Authorization", { required: true }) authToken string
+// Returns 400 error if missing: "Header 'Authorization' is required"
+```
+
+#### 🎛️ Default Values
+```go
+@Headers("X-API-Version", { defaultValue: "v1" }) apiVersion string
+@Headers("Content-Type", { defaultValue: "application/json" }) contentType string
+@Headers("X-Timeout", { defaultValue: "30" }) timeout int
+```
+
+#### 🔄 String Transformations
+```go
+@Headers("User-Agent", { transform: "lowercase" }) userAgent string     // Case-insensitive processing
+@Headers("X-Service", { transform: "uppercase" }) service string        // Force uppercase
+@Headers("X-Token", { transform: "trim" }) token string                 // Remove whitespace
+```
+
+#### 🎨 Type Conversion (Auto-detected)
+```go
+@Headers("Content-Length") contentLength int              // String → Int with validation
+@Headers("X-Rate-Limit") rateLimit float64               // String → Float with validation  
+@Headers("X-Debug") debug bool                           // String → Bool (true/false/1/0)
+@Headers("Accept") acceptTypes []string                  // String → Array (comma-separated)
+```
+
+#### 📋 Array Headers (Comma-Separated Values)
+```go
+// Different separators for array headers
+@Headers("Accept") acceptTypes []string                                    // Default: comma
+@Headers("X-Tags", { type: "array", separator: "|" }) tags []string      // Pipe-separated
+@Headers("X-Features", { separator: ";" }) features []string             // Semicolon-separated
+
+// Example headers:
+// Accept: application/json, application/xml, text/html
+// X-Tags: electronics|gadgets|new  
+// X-Features: wifi;bluetooth;waterproof
+```
+
+#### 🎭 Complex Combined Features
+```go
+@Headers("Authorization", { 
+  required: true, 
+  transform: "trim" 
+}) authToken string
+
+@Headers("Content-Type", { 
+  required: true,
+  defaultValue: "application/json", 
+  transform: "lowercase" 
+}) contentType string
+
+@Headers("X-Custom-Headers", { 
+  type: "array", 
+  separator: ";",
+  defaultValue: "default"
+}) customHeaders []string
+```
+
+#### 🌐 Common HTTP Headers Examples
+```go
+// Standard HTTP headers
+@Headers("Host") host string
+@Headers("Referer") referer string
+@Headers("Origin") origin string                        // CORS
+@Headers("User-Agent") userAgent string
+@Headers("Accept-Language") acceptLanguage string
+@Headers("Cache-Control") cacheControl string
+@Headers("Connection") connection string
+
+// Custom application headers
+@Headers("X-Forwarded-For") forwardedFor string        // Proxy headers
+@Headers("X-Real-IP") realIP string
+@Headers("X-Request-ID") requestId string              // Request tracing
+@Headers("X-Client-Version") clientVersion string      // Client information
+```
+
+### 🔄 Generated Header Processing Code
+
+**Before (Basic):**
+```go
+func CreateUser(ctx *httpPackage.RequestContext) {
+    auth := ctx.GetHeader("Authorization")  // Always string, no validation
+    // Manual validation and conversion needed
+}
+```
+
+**After (Enhanced):**
+```go
+func CreateUser(ctx *httpPackage.RequestContext) {
+    var auth string
+    headerValue := ctx.GetHeader("Authorization")
+    if headerValue == "" {
+        ctx.JSON(400, map[string]string{"error": "Header 'Authorization' is required"})
+        return
+    }
+    headerValue = strings.TrimSpace(headerValue)
+    auth = headerValue
+
+    var contentLength int
+    headerValue := ctx.GetHeader("Content-Length")
+    if headerValue != "" {
+        if parsedInt, err := strconv.Atoi(headerValue); err == nil {
+            contentLength = parsedInt
+        } else {
+            ctx.JSON(400, map[string]string{"error": "Invalid integer value for header 'contentLength'"})
+            return
+        }
+    }
+    // Headers are now properly typed and validated!
+}
+```
+
+### 📊 Header Processing Features
+
+The enhanced `@Headers` decorator provides:
+
+1. **Type Validation**: Automatic conversion with error responses for int, float, bool types
+2. **Required Validation**: Missing required headers return 400 errors  
+3. **Default Values**: Fallback values when headers are missing
+4. **String Transformations**: lowercase, uppercase, trim operations
+5. **Array Processing**: Split comma-separated (or custom separator) values
+6. **HTTP Spec Compliance**: Case-insensitive header names by default
+7. **Descriptive Errors**: Clear error messages for debugging
 
 ## 🔍 Detailed Example Analysis
 

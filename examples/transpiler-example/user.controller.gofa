@@ -14,7 +14,10 @@ func GetUsers(
     @Query("sort", { defaultValue: "name", transform: "lowercase" }) sortBy string,
     @Query("search", { transform: "trim" }) searchQuery string,
     @Query("active") activeOnly bool,
-    @Query("roles", { type: "array", separator: "," }) userRoles []string
+    @Query("roles", { type: "array", separator: "," }) userRoles []string,
+    @Headers("Authorization", { required: true, transform: "trim" }) authToken string,
+    @Headers("X-Request-ID") requestId string,
+    @Headers("Accept", { type: "array", defaultValue: "application/json" }) acceptTypes []string
 ) {
     // Get all users with advanced filtering and pagination
     // - page: Page number (default: 1)
@@ -23,17 +26,26 @@ func GetUsers(
     // - search: Search query (trimmed whitespace)
     // - active: Filter by active status
     // - roles: Filter by user roles (comma-separated array)
+    // - authToken: JWT token from Authorization header (required)
+    // - requestId: Unique request identifier (optional)
+    // - acceptTypes: Accepted response formats (comma-separated array)
 }
 
 @Get("/:id")
 @UseGuards("resource-owner")
 func GetUser(
     @Param("id") id string,
-    @Query("include", { type: "array", defaultValue: "basic" }) includeFields []string
+    @Query("include", { type: "array", defaultValue: "basic" }) includeFields []string,
+    @Headers("Authorization", { required: true }) authToken string,
+    @Headers("User-Agent", { transform: "lowercase" }) userAgent string,
+    @Headers("X-Client-Version", { defaultValue: "1.0" }) clientVersion string
 ) {
     // Get user by ID with optional field inclusion
     // - id: User ID (from URL parameter)
     // - include: Fields to include (default: ["basic"])
+    // - authToken: JWT token from Authorization header (required)
+    // - userAgent: Client user agent (converted to lowercase)
+    // - clientVersion: Client version (default: "1.0")
 }
 
 @Get("/search")
@@ -54,17 +66,46 @@ func SearchUsers(
 
 @Post()
 @HttpCode(201)
-func CreateUser(@Body() createUserDto CreateUserDto) {
-    // Create new user
+func CreateUser(
+    @Body() createUserDto CreateUserDto,
+    @Headers("Content-Type", { required: true, defaultValue: "application/json", transform: "lowercase" }) contentType string,
+    @Headers("X-API-Key", { required: true }) apiKey string,
+    @Headers("X-Rate-Limit") rateLimit int,
+    @Headers("X-Custom-Headers", { type: "array", separator: ";" }) customHeaders []string
+) {
+    // Create new user with enhanced header validation
+    // - createUserDto: User data from request body
+    // - contentType: Content type header (required, default: application/json, lowercase)
+    // - apiKey: API key for authentication (required)
+    // - rateLimit: Rate limit value (converted to integer)
+    // - customHeaders: Custom headers (semicolon-separated array)
 }
 
 @Put("/:id")
-func UpdateUser(@Param("id") id string, @Body() updateUserDto UpdateUserDto) {
-    // Update user
+func UpdateUser(
+    @Param("id") id string, 
+    @Body() updateUserDto UpdateUserDto,
+    @Headers("Authorization", { required: true }) authToken string,
+    @Headers("If-Match") etag string,
+    @Headers("X-Debug", { transform: "lowercase" }) debugMode bool
+) {
+    // Update user with conditional headers
+    // - id: User ID to update
+    // - updateUserDto: Updated user data
+    // - authToken: Authorization token (required)
+    // - etag: ETag for optimistic locking (optional)
+    // - debugMode: Enable debug mode (boolean, lowercase conversion)
 }
 
 @Delete("/:id")
 @HttpCode(204)
-func DeleteUser(@Param("id") id string) {
-    // Delete user
+func DeleteUser(
+    @Param("id") id string,
+    @Headers("Authorization", { required: true }) authToken string,
+    @Headers("X-Confirm", { required: true, transform: "uppercase" }) confirmation string
+) {
+    // Delete user with confirmation headers
+    // - id: User ID to delete
+    // - authToken: Authorization token (required)
+    // - confirmation: Deletion confirmation (required, uppercase)
 }
