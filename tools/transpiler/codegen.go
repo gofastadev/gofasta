@@ -368,6 +368,9 @@ func (g *CodeGenerator) generateParameterExtraction(method *MethodNode) {
 			
 			case "Req":
 				g.generateRequestParameterExtraction(param, decorator)
+			
+			case "Res":
+				g.generateResponseParameterExtraction(param, decorator)
 			}
 		}
 	}
@@ -469,6 +472,29 @@ func (g *CodeGenerator) generateRequestParameterExtraction(param *ParameterNode,
 		g.writeLine(fmt.Sprintf("%s := ctx.GetRequest()", param.Name))
 	} else {
 		// Default to request context if type is unclear
+		g.writeLine(fmt.Sprintf("%s := ctx", param.Name))
+	}
+	
+	g.writeLine("")
+}
+
+// generateResponseParameterExtraction generates response object parameter extraction
+func (g *CodeGenerator) generateResponseParameterExtraction(param *ParameterNode, decorator *DecoratorNode) {
+	// For @Res(), we provide access to the HTTP response writer and context
+	// The parameter should be of type *http.ResponseWriter, *httpPackage.ResponseContext, or *httpPackage.RequestContext
+	paramType := strings.ToLower(param.Type)
+	
+	if strings.Contains(paramType, "responsewriter") || strings.Contains(paramType, "*responsewriter") {
+		// Assign the response writer from context
+		g.writeLine(fmt.Sprintf("%s := ctx.GetResponseWriter()", param.Name))
+	} else if strings.Contains(paramType, "responsecontext") || strings.Contains(paramType, "*responsecontext") {
+		// For response context, provide the context directly since it handles response operations
+		g.writeLine(fmt.Sprintf("%s := ctx", param.Name))
+	} else if strings.Contains(paramType, "requestcontext") || strings.Contains(paramType, "*requestcontext") {
+		// Also allow RequestContext since it provides response methods
+		g.writeLine(fmt.Sprintf("%s := ctx", param.Name))
+	} else {
+		// Default to request context which has response capabilities
 		g.writeLine(fmt.Sprintf("%s := ctx", param.Name))
 	}
 	
