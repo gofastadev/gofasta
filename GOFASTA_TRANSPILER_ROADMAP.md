@@ -31,7 +31,7 @@
 - [X] `@Res()` - Access raw response object
 - [X] `@Session()` - Session data access
 - [X] `@Ip()` - Client IP address
-- [ ] `@HostParam()` - Host parameter extraction
+- [X] `@HostParam()` - Host parameter extraction
 
 #### 🔥 1.2 Exception Handling System `[HIGH PRIORITY]`
 

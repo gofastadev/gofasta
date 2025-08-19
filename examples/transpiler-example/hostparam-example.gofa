@@ -1,0 +1,304 @@
+package main
+
+@Controller("/api/host")
+type HostParamExampleController struct {
+    Logger *Logger `inject:"logger"`
+}
+
+@Get("/basic")
+func BasicHostExample(
+    @HostParam() host string
+) {
+    // Basic host header access
+    // - host: The Host header value (e.g., "api.example.com:8080")
+    // Returns the host information for domain validation or routing
+}
+
+@Get("/multi-tenant")
+func MultiTenantRouting(
+    @HostParam() host string,
+    @Session("tenantId") tenantId string,
+    @Headers("Authorization", { required: true }) authToken string
+) {
+    // Multi-tenant application with host-based routing
+    // - host: Domain/subdomain for tenant identification
+    // - tenantId: Current tenant from session
+    // - authToken: Authentication for tenant validation
+    // Enables subdomain-based multi-tenancy (tenant1.app.com, tenant2.app.com)
+}
+
+@Get("/subdomain-routing")
+func SubdomainRouting(
+    @HostParam() host string,
+    @Query("service") serviceType string,
+    @Headers("Accept") acceptType string
+) {
+    // Subdomain-based service routing
+    // - host: Full host for subdomain extraction
+    // - serviceType: Additional service routing parameter
+    // - acceptType: Response format preference
+    // Routes requests based on subdomain (api.example.com, admin.example.com)
+}
+
+@Post("/cors-handling")
+func CorsHandling(
+    @HostParam() host string,
+    @Headers("Origin") origin string,
+    @Headers("Access-Control-Request-Method") requestMethod string,
+    @Body() corsData CorsRequestDto
+) {
+    // CORS (Cross-Origin Resource Sharing) handling
+    // - host: Current host for origin validation
+    // - origin: Requesting origin domain
+    // - requestMethod: HTTP method being requested
+    // - corsData: CORS configuration data
+    // Validates CORS requests against allowed origins
+}
+
+@Get("/environment-routing")
+func EnvironmentRouting(
+    @HostParam() host string,
+    @Query("env") environment string,
+    @Headers("X-Environment") envHeader string,
+    @Session("userRole") userRole string
+) {
+    // Environment-based routing and configuration
+    // - host: Host to determine environment (dev.app.com, staging.app.com, app.com)
+    // - environment: Explicit environment parameter
+    // - envHeader: Environment from custom header
+    // - userRole: User permissions for environment access
+}
+
+@Get("/api-versioning")
+func ApiVersioning(
+    @HostParam() host string,
+    @Headers("API-Version") apiVersion string,
+    @Query("version") versionParam string,
+    @Headers("Accept") acceptHeader string
+) {
+    // API versioning with host-based routing
+    // - host: Host for version detection (v1.api.example.com, v2.api.example.com)
+    // - apiVersion: Version from custom header
+    // - versionParam: Version from query parameter
+    // - acceptHeader: Response format with version support
+}
+
+@Get("/load-balancer-info")
+func LoadBalancerInfo(
+    @HostParam() host string,
+    @Headers("X-Forwarded-Host") forwardedHost string,
+    @Headers("X-Forwarded-Proto") forwardedProto string,
+    @Ip() clientIP string
+) {
+    // Load balancer and proxy information
+    // - host: Direct host header
+    // - forwardedHost: Original host from load balancer
+    // - forwardedProto: Original protocol (http/https)
+    // - clientIP: Client IP for complete routing info
+    // Handles load balancer headers for proper host detection
+}
+
+@Get("/ssl-redirect")
+func SslRedirectCheck(
+    @HostParam() host string,
+    @Headers("X-Forwarded-Proto", { defaultValue: "http" }) protocol string,
+    @Query("force_ssl", { defaultValue: "true" }) forceSsl bool,
+    @Res() res *ResponseWriter
+) {
+    // SSL/HTTPS redirect handling
+    // - host: Current host for redirect URL construction
+    // - protocol: Current protocol (http/https)
+    // - forceSsl: Whether to enforce HTTPS
+    // - res: Response for redirect headers
+    // Automatically redirects HTTP to HTTPS when required
+}
+
+@Get("/cdn-routing")
+func CdnRouting(
+    @HostParam() host string,
+    @Headers("CF-Connecting-IP") cloudflareIP string,
+    @Headers("X-Edge-Location") edgeLocation string,
+    @Query("resource") resourcePath string
+) {
+    // CDN (Content Delivery Network) routing
+    // - host: CDN edge host information
+    // - cloudflareIP: Original IP from Cloudflare
+    // - edgeLocation: Edge server location
+    // - resourcePath: Resource to serve from appropriate CDN
+    // Optimizes content delivery based on edge location
+}
+
+@Get("/rate-limiting")
+func RateLimiting(
+    @HostParam() host string,
+    @Ip() clientIP string,
+    @Headers("User-Agent") userAgent string,
+    @Session("rateLimitInfo") rateLimitInfo RateLimitDto
+) {
+    // Rate limiting with host-aware policies
+    // - host: Host for different rate limit policies per domain
+    // - clientIP: IP for rate limiting
+    // - userAgent: Client identification
+    // - rateLimitInfo: Current rate limit status
+    // Implements different rate limits per subdomain/host
+}
+
+@Post("/webhook-validation")
+func WebhookValidation(
+    @HostParam() host string,
+    @Headers("X-Hub-Signature", { required: true }) signature string,
+    @Headers("User-Agent") userAgent string,
+    @Body() webhookPayload interface{}
+) {
+    // Webhook validation with host verification
+    // - host: Expected webhook host for validation
+    // - signature: Webhook signature for verification
+    // - userAgent: Webhook client identification
+    // - webhookPayload: Webhook data to process
+    // Validates webhooks are sent to correct hosts
+}
+
+@Get("/health-check")
+func HealthCheck(
+    @HostParam() host string,
+    @Query("deep", { defaultValue: "false" }) deepCheck bool,
+    @Headers("X-Health-Check-Source") healthCheckSource string,
+    @Res() res *ResponseWriter
+) {
+    // Health check with host-specific responses
+    // - host: Host being health checked
+    // - deepCheck: Whether to perform deep health validation
+    // - healthCheckSource: Health check system identifier
+    // - res: Response for custom health check headers
+    // Provides host-specific health status
+}
+
+@Get("/geolocation")
+func GeolocationRouting(
+    @HostParam() host string,
+    @Headers("CF-IPCountry") countryCode string,
+    @Headers("Accept-Language") acceptLanguage string,
+    @Ip() clientIP string
+) {
+    // Geographic routing based on host and location
+    // - host: Regional host (us.example.com, eu.example.com)
+    // - countryCode: Country from CDN headers
+    // - acceptLanguage: Language preferences
+    // - clientIP: IP for geolocation fallback
+    // Routes users to appropriate regional servers
+}
+
+@Get("/maintenance-mode")
+func MaintenanceMode(
+    @HostParam() host string,
+    @Headers("X-Maintenance-Override") maintenanceOverride string,
+    @Session("adminAccess") adminAccess bool,
+    @Query("bypass") bypassToken string
+) {
+    // Maintenance mode with host-specific settings
+    // - host: Host to check maintenance status
+    // - maintenanceOverride: Admin override header
+    // - adminAccess: Admin session for maintenance bypass
+    // - bypassToken: Temporary bypass token
+    // Different hosts can have different maintenance schedules
+}
+
+@Get("/feature-flags")
+func FeatureFlags(
+    @HostParam() host string,
+    @Headers("X-Client-Version") clientVersion string,
+    @Session("userId") userId string,
+    @Query("features") requestedFeatures string
+) {
+    // Feature flags with host-based configuration
+    // - host: Host for environment-specific feature flags
+    // - clientVersion: Client version for compatibility
+    // - userId: User for personalized features
+    // - requestedFeatures: Specific features to check
+    // Different hosts (dev/staging/prod) can have different features enabled
+}
+
+@Post("/security-validation")
+func SecurityValidation(
+    @HostParam() host string,
+    @Headers("X-CSRF-Token", { required: true }) csrfToken string,
+    @Headers("Referer") referer string,
+    @Body() secureData SecurityDto,
+    @Ip() clientIP string
+) {
+    // Security validation with host verification
+    // - host: Expected host for security validation
+    // - csrfToken: CSRF token for request validation
+    // - referer: Referring page for additional validation
+    // - secureData: Security-sensitive data
+    // - clientIP: IP for security logging
+    // Validates requests are from expected hosts
+}
+
+@Get("/analytics")
+func AnalyticsTracking(
+    @HostParam() host string,
+    @Headers("User-Agent") userAgent string,
+    @Headers("Referer") referer string,
+    @Session("sessionId") sessionId string,
+    @Query("event") eventName string
+) {
+    // Analytics with host-based tracking
+    // - host: Host for domain-specific analytics
+    // - userAgent: Client browser/device information
+    // - referer: Traffic source
+    // - sessionId: Session tracking
+    // - eventName: Event being tracked
+    // Tracks analytics separately per domain/subdomain
+}
+
+@Get("/proxy-detection")
+func ProxyDetection(
+    @HostParam() host string,
+    @Headers("X-Forwarded-For") forwardedFor string,
+    @Headers("X-Real-IP") realIP string,
+    @Headers("Via") viaHeader string,
+    @Ip() clientIP string
+) {
+    // Proxy and load balancer detection
+    // - host: Current host (may be load balancer)
+    // - forwardedFor: Chain of forwarded IPs
+    // - realIP: Real client IP from proxy
+    // - viaHeader: Proxy chain information
+    // - clientIP: Direct connection IP
+    // Detects and handles various proxy configurations
+}
+
+@Get("/ab-testing")
+func ABTesting(
+    @HostParam() host string,
+    @Headers("X-Experiment-ID") experimentId string,
+    @Session("abTests") abTests map[string]string,
+    @Query("variant") variant string,
+    @Headers("User-Agent") userAgent string
+) {
+    // A/B testing with host-based experiments
+    // - host: Host for environment-specific experiments
+    // - experimentId: Current experiment identifier
+    // - abTests: User's A/B test assignments
+    // - variant: Requested test variant
+    // - userAgent: Client for device-specific tests
+    // Different hosts can run different experiments
+}
+
+@Post("/content-validation")
+func ContentValidation(
+    @HostParam() host string,
+    @Headers("Content-Type", { required: true }) contentType string,
+    @Headers("Content-Length") contentLength string,
+    @Body() content interface{},
+    @Query("validate", { defaultValue: "true" }) validateContent bool
+) {
+    // Content validation with host-specific rules
+    // - host: Host for content policy rules
+    // - contentType: Content type validation
+    // - contentLength: Content size validation
+    // - content: Content to validate
+    // - validateContent: Whether to perform validation
+    // Different hosts may have different content policies
+}
