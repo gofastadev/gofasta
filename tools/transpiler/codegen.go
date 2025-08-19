@@ -371,6 +371,9 @@ func (g *CodeGenerator) generateParameterExtraction(method *MethodNode) {
 			
 			case "Res":
 				g.generateResponseParameterExtraction(param, decorator)
+			
+			case "Session":
+				g.generateSessionParameterExtraction(param, decorator)
 			}
 		}
 	}
@@ -496,6 +499,95 @@ func (g *CodeGenerator) generateResponseParameterExtraction(param *ParameterNode
 	} else {
 		// Default to request context which has response capabilities
 		g.writeLine(fmt.Sprintf("%s := ctx", param.Name))
+	}
+	
+	g.writeLine("")
+}
+
+// generateSessionParameterExtraction generates session data parameter extraction
+func (g *CodeGenerator) generateSessionParameterExtraction(param *ParameterNode, decorator *DecoratorNode) {
+	// For @Session(), we provide access to session data through the context
+	// The parameter can be a specific session key or the entire session object
+	
+	// Check if a session key is specified in the decorator
+	sessionKey := g.getDecoratorArgValue(decorator, 0)
+	
+	if sessionKey != "" {
+		// Extract specific session value by key
+		paramType := strings.ToLower(param.Type)
+		
+		// Generate variable declaration
+		g.writeLine(fmt.Sprintf("var %s %s", param.Name, param.Type))
+		
+		// Get session value
+		g.writeLine(fmt.Sprintf("if sessionValue := ctx.GetSession(\"%s\"); sessionValue != nil {", sessionKey))
+		g.indent()
+		
+		// Handle type conversion based on parameter type
+		switch {
+		case strings.Contains(paramType, "string"):
+			g.writeLine(fmt.Sprintf("if strValue, ok := sessionValue.(string); ok {"))
+			g.indent()
+			g.writeLine(fmt.Sprintf("%s = strValue", param.Name))
+			g.unindent()
+			g.writeLine("}")
+			
+		case strings.Contains(paramType, "int"):
+			g.writeLine(fmt.Sprintf("if intValue, ok := sessionValue.(int); ok {"))
+			g.indent()
+			g.writeLine(fmt.Sprintf("%s = intValue", param.Name))
+			g.unindent()
+			g.writeLine("} else if strValue, ok := sessionValue.(string); ok {")
+			g.indent()
+			g.writeLine("if parsedInt, err := strconv.Atoi(strValue); err == nil {")
+			g.indent()
+			g.writeLine(fmt.Sprintf("%s = parsedInt", param.Name))
+			g.unindent()
+			g.writeLine("}")
+			g.unindent()
+			g.writeLine("}")
+			
+		case strings.Contains(paramType, "bool"):
+			g.writeLine(fmt.Sprintf("if boolValue, ok := sessionValue.(bool); ok {"))
+			g.indent()
+			g.writeLine(fmt.Sprintf("%s = boolValue", param.Name))
+			g.unindent()
+			g.writeLine("} else if strValue, ok := sessionValue.(string); ok {")
+			g.indent()
+			g.writeLine("if parsedBool, err := strconv.ParseBool(strValue); err == nil {")
+			g.indent()
+			g.writeLine(fmt.Sprintf("%s = parsedBool", param.Name))
+			g.unindent()
+			g.writeLine("}")
+			g.unindent()
+			g.writeLine("}")
+			
+		default:
+			// Handle interface{} or custom types
+			g.writeLine(fmt.Sprintf("if typedValue, ok := sessionValue.(%s); ok {", param.Type))
+			g.indent()
+			g.writeLine(fmt.Sprintf("%s = typedValue", param.Name))
+			g.unindent()
+			g.writeLine("}")
+		}
+		
+		g.unindent()
+		g.writeLine("}")
+		
+	} else {
+		// Extract entire session object
+		paramType := strings.ToLower(param.Type)
+		
+		if strings.Contains(paramType, "session") || strings.Contains(paramType, "*session") {
+			// Assign the session object directly
+			g.writeLine(fmt.Sprintf("%s := ctx.GetSessionStore()", param.Name))
+		} else if strings.Contains(paramType, "map") || strings.Contains(paramType, "interface") {
+			// Assign the session data as map or interface
+			g.writeLine(fmt.Sprintf("%s := ctx.GetAllSessionData()", param.Name))
+		} else {
+			// Default to session store
+			g.writeLine(fmt.Sprintf("%s := ctx.GetSessionStore()", param.Name))
+		}
 	}
 	
 	g.writeLine("")

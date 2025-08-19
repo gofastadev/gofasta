@@ -1,0 +1,219 @@
+package main
+
+@Controller("/api/sessions")
+type SessionExampleController struct {
+    Logger *Logger `inject:"logger"`
+}
+
+@Get("/basic")
+func BasicSessionExample(
+    @Session() session *Session
+) {
+    // Basic session access - entire session store
+    // - session: Direct access to the session store object
+    // This gives full access to session management methods
+}
+
+@Get("/user-id")
+func UserIdSessionExample(
+    @Session("userId") userId string
+) {
+    // Access specific session value by key (string)
+    // - userId: User ID extracted from session["userId"]
+    // Supports automatic type conversion from session storage
+}
+
+@Get("/user-profile")
+func UserProfileSessionExample(
+    @Session("userProfile") profile UserProfile,
+    @Query("format", { defaultValue: "json" }) format string
+) {
+    // Custom type session data with other parameters
+    // - profile: Custom UserProfile object from session
+    // - format: Response format preference
+    // Demonstrates @Session() with complex types and other decorators
+}
+
+@Post("/login")
+func LoginExample(
+    @Body() credentials LoginDto,
+    @Session() sessionStore *Session,
+    @Headers("User-Agent") userAgent string
+) {
+    // Session management during login
+    // - credentials: Login data from request body
+    // - sessionStore: Session store for setting user data
+    // - userAgent: Client identification for session tracking
+    // Useful for creating new sessions and storing user data
+}
+
+@Get("/user-settings")
+func UserSettingsExample(
+    @Session("userId") userId string,
+    @Session("preferences") userPrefs map[string]interface{},
+    @Session("theme") theme string,
+    @Query("section") section string
+) {
+    // Multiple session values with different types
+    // - userId: User identifier (string)
+    // - userPrefs: User preferences (map/object)
+    // - theme: UI theme preference (string)
+    // - section: Settings section to display (query param)
+    // Shows how multiple session values can be extracted simultaneously
+}
+
+@Put("/user-preferences")
+func UpdatePreferencesExample(
+    @Session("userId") userId string,
+    @Body() newPrefs UserPreferencesDto,
+    @Session() sessionStore *Session,
+    @Headers("Authorization", { required: true }) authToken string
+) {
+    // Update session data with validation
+    // - userId: Current user ID for validation
+    // - newPrefs: New preference data
+    // - sessionStore: Session store for updating data
+    // - authToken: Authentication validation
+}
+
+@Get("/shopping-cart")
+func ShoppingCartExample(
+    @Session("cartItems") cartItems []CartItem,
+    @Session("cartTotal") cartTotal int,
+    @Query("currency", { defaultValue: "USD" }) currency string
+) {
+    // Session with array/slice data
+    // - cartItems: Shopping cart items (array/slice)
+    // - cartTotal: Total cart value (integer)
+    // - currency: Display currency
+    // Demonstrates array handling in session data
+}
+
+@Get("/admin-check")
+func AdminCheckExample(
+    @Session("isAdmin") isAdmin bool,
+    @Session("permissions") permissions []string,
+    @Headers("X-Admin-Token") adminToken string
+) {
+    // Boolean and array session data
+    // - isAdmin: Admin status (boolean)
+    // - permissions: User permissions (string array)
+    // - adminToken: Additional admin verification
+    // Shows boolean type conversion from session
+}
+
+@Get("/session-analytics")
+func SessionAnalyticsExample(
+    @Session("loginTime") loginTime int,
+    @Session("pageViews") pageViews int,
+    @Session("lastActivity") lastActivity string,
+    @Req() req *Request,
+    @Headers("Referer") referer string
+) {
+    // Session analytics data with request context
+    // - loginTime: Unix timestamp of login (integer)
+    // - pageViews: Number of page views (integer)
+    // - lastActivity: Last activity timestamp (string)
+    // - req: Request context for additional data
+    // - referer: Previous page for navigation tracking
+}
+
+@Post("/logout")
+func LogoutExample(
+    @Session("userId") userId string,
+    @Session() sessionStore *Session,
+    @Res() res *RequestContext,
+    @Headers("X-Logout-All", { defaultValue: "false" }) logoutAll bool
+) {
+    // Session cleanup during logout
+    // - userId: User to logout
+    // - sessionStore: Session store for cleanup
+    // - res: Response context for setting logout headers
+    // - logoutAll: Whether to logout from all devices
+}
+
+@Get("/guest-session")
+func GuestSessionExample(
+    @Session("guestId") guestId string,
+    @Session("guestPrefs") guestPrefs GuestPreferences,
+    @Query("remember", { defaultValue: "false" }) remember bool
+) {
+    // Guest session handling
+    // - guestId: Anonymous guest identifier
+    // - guestPrefs: Guest preferences object
+    // - remember: Whether to persist guest session
+    // Useful for anonymous user tracking
+}
+
+@Get("/multi-tenant")
+func MultiTenantExample(
+    @Session("tenantId") tenantId string,
+    @Session("orgRole") orgRole string,
+    @Session("permissions") permissions map[string]bool,
+    @Headers("X-Tenant-Context") tenantContext string
+) {
+    // Multi-tenant session data
+    // - tenantId: Current tenant/organization ID
+    // - orgRole: User's role within organization
+    // - permissions: Tenant-specific permissions (map)
+    // - tenantContext: Additional tenant context
+}
+
+@Get("/session-security")
+func SessionSecurityExample(
+    @Session("sessionId") sessionId string,
+    @Session("csrfToken") csrfToken string,
+    @Session("ipAddress") ipAddress string,
+    @Req() req *Request,
+    @Headers("X-CSRF-Token", { required: true }) providedCsrf string
+) {
+    // Session security validation
+    // - sessionId: Unique session identifier
+    // - csrfToken: CSRF token from session
+    // - ipAddress: Original IP address from session
+    // - req: Request for security validation
+    // - providedCsrf: CSRF token from request (required)
+    // Demonstrates security-focused session usage
+}
+
+@Get("/session-expiry")
+func SessionExpiryExample(
+    @Session("expiresAt") expiresAt int,
+    @Session("refreshToken") refreshToken string,
+    @Session() sessionStore *Session,
+    @Query("extend", { defaultValue: "false" }) extendSession bool
+) {
+    // Session expiration management
+    // - expiresAt: Session expiration timestamp
+    // - refreshToken: Token for session renewal
+    // - sessionStore: Session store for extension
+    // - extendSession: Whether to extend session duration
+}
+
+@Get("/all-session-data")
+func AllSessionDataExample(
+    @Session() allData map[string]interface{},
+    @Query("debug", { defaultValue: "false" }) debug bool,
+    @Headers("Accept", { defaultValue: "application/json" }) acceptType string
+) {
+    // Access entire session data as map
+    // - allData: All session data as key-value map
+    // - debug: Whether to include debug information
+    // - acceptType: Response format preference
+    // Useful for debugging or comprehensive session inspection
+}
+
+@Get("/conditional-session")
+func ConditionalSessionExample(
+    @Session("feature_flags") featureFlags map[string]bool,
+    @Session("ab_tests") abTests map[string]string,
+    @Query("feature") requestedFeature string,
+    @Headers("X-Client-Version") clientVersion string
+) {
+    // Feature flags and A/B testing from session
+    // - featureFlags: Feature toggle states
+    // - abTests: A/B test assignments
+    // - requestedFeature: Specific feature to check
+    // - clientVersion: Client version for feature compatibility
+    // Shows session-based feature management
+}
