@@ -78,7 +78,7 @@
 
 #### 🟡 1.4 Dependency Injection Enhancement `[MEDIUM PRIORITY]`
 
-- [ ] **`@Inject()` decorator with tokens** - Generate DI with custom tokens
+- [X] **`@Inject()` decorator with tokens** - Generate DI with custom tokens
   ```gofa
   type UserService struct {
       DB *Database `inject:"database"`
