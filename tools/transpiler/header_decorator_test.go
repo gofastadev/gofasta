@@ -1,599 +1,626 @@
 package transpiler
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 )
 
-func TestHeaderDecoratorBasic(t *testing.T) {
-	input := `
-package main
-
-@Controller("/api/users")
-type UserController struct {
-}
-
-@Get("")
-func GetUsers(@Headers("Authorization") auth string) {
-}
-`
-
-	expected := []string{
-		"var auth string",
-		"headerValue := ctx.GetHeader(\"Authorization\")",
-		"auth = headerValue",
-	}
-
-	testHeaderGeneration(t, input, expected, "basic header parameter")
-}
-
-func TestHeaderDecoratorWithDefaultValue(t *testing.T) {
-	input := `
-package main
-
-@Controller("/api/users") 
-type UserController struct {
-}
-
-@Get("")
-func GetUsers(@Headers("Content-Type", { defaultValue: "application/json" }) contentType string) {
-}
-`
-
-	expected := []string{
-		"var contentType string",
-		"headerValue := ctx.GetHeader(\"Content-Type\")",
-		"if headerValue == \"\" {",
-		"headerValue = \"application/json\"",
-		"contentType = headerValue",
-	}
-
-	testHeaderGeneration(t, input, expected, "header parameter with default value")
-}
-
-func TestHeaderDecoratorRequired(t *testing.T) {
-	input := `
-package main
-
-@Controller("/api/users")
-type UserController struct {
-}
-
-@Get("")
-func GetUsers(@Headers("X-API-Key", { required: true }) apiKey string) {
-}
-`
-
-	expected := []string{
-		"var apiKey string",
-		"headerValue := ctx.GetHeader(\"X-API-Key\")",
-		"if headerValue == \"\" {",
-		"ctx.JSON(400, map[string]string{\"error\": \"Header 'X-API-Key' is required\"})",
-		"return",
-		"apiKey = headerValue",
-	}
-
-	testHeaderGeneration(t, input, expected, "required header parameter")
-}
-
-func TestHeaderDecoratorIntegerType(t *testing.T) {
-	input := `
-package main
-
-@Controller("/api/users")
-type UserController struct {
-}
-
-@Get("")
-func GetUsers(@Headers("X-Request-ID") requestId int) {
-}
-`
-
-	expected := []string{
-		"var requestId int",
-		"headerValue := ctx.GetHeader(\"X-Request-ID\")",
-		"if headerValue != \"\" {",
-		"if parsedInt, err := strconv.Atoi(headerValue); err == nil {",
-		"requestId = parsedInt",
-		"} else {",
-		"ctx.JSON(400, map[string]string{\"error\": \"Invalid integer value for header 'requestId'\"})",
-		"return",
-	}
-
-	testHeaderGeneration(t, input, expected, "integer header parameter")
-}
-
-func TestHeaderDecoratorBooleanType(t *testing.T) {
-	input := `
-package main
-
-@Controller("/api/users")
-type UserController struct {
-}
-
-@Get("")
-func GetUsers(@Headers("X-Debug") debug bool) {
-}
-`
-
-	expected := []string{
-		"var debug bool",
-		"headerValue := ctx.GetHeader(\"X-Debug\")",
-		"if headerValue != \"\" {",
-		"if parsedBool, err := strconv.ParseBool(headerValue); err == nil {",
-		"debug = parsedBool",
-		"} else {",
-		"ctx.JSON(400, map[string]string{\"error\": \"Invalid boolean value for header 'debug' (use true/false)\"})",
-		"return",
-	}
-
-	testHeaderGeneration(t, input, expected, "boolean header parameter")
-}
-
-func TestHeaderDecoratorFloatType(t *testing.T) {
-	input := `
-package main
-
-@Controller("/api/users")
-type UserController struct {
-}
-
-@Get("")
-func GetUsers(@Headers("X-Rate-Limit") rateLimit float64) {
-}
-`
-
-	expected := []string{
-		"var rateLimit float64",
-		"headerValue := ctx.GetHeader(\"X-Rate-Limit\")",
-		"if headerValue != \"\" {",
-		"if parsedFloat, err := strconv.ParseFloat(headerValue, 64); err == nil {",
-		"rateLimit = parsedFloat",
-		"} else {",
-		"ctx.JSON(400, map[string]string{\"error\": \"Invalid float value for header 'rateLimit'\"})",
-		"return",
-	}
-
-	testHeaderGeneration(t, input, expected, "float header parameter")
-}
-
-func TestHeaderDecoratorArrayType(t *testing.T) {
-	input := `
-package main
-
-@Controller("/api/users")
-type UserController struct {
-}
-
-@Get("")
-func GetUsers(@Headers("Accept") acceptTypes []string) {
-}
-`
-
-	expected := []string{
-		"var acceptTypes []string",
-		"headerValue := ctx.GetHeader(\"Accept\")",
-		"if headerValue != \"\" {",
-		"acceptTypes = strings.Split(headerValue, \",\")",
-		"for i, v := range acceptTypes {",
-		"acceptTypes[i] = strings.TrimSpace(v)",
-	}
-
-	testHeaderGeneration(t, input, expected, "array header parameter")
-}
-
-func TestHeaderDecoratorArrayWithCustomSeparator(t *testing.T) {
-	input := `
-package main
-
-@Controller("/api/users")
-type UserController struct {
-}
-
-@Get("")
-func GetUsers(@Headers("X-Tags", { type: "array", separator: "|" }) tags []string) {
-}
-`
-
-	expected := []string{
-		"var tags []string",
-		"headerValue := ctx.GetHeader(\"X-Tags\")",
-		"if headerValue != \"\" {",
-		"tags = strings.Split(headerValue, \"|\")",
-		"for i, v := range tags {",
-		"tags[i] = strings.TrimSpace(v)",
-	}
-
-	testHeaderGeneration(t, input, expected, "array header parameter with custom separator")
-}
-
-func TestHeaderDecoratorWithTransform(t *testing.T) {
-	input := `
-package main
-
-@Controller("/api/users")
-type UserController struct {
-}
-
-@Get("")
-func GetUsers(@Headers("User-Agent", { transform: "lowercase" }) userAgent string) {
-}
-`
-
-	expected := []string{
-		"var userAgent string",
-		"headerValue := ctx.GetHeader(\"User-Agent\")",
-		"headerValue = strings.ToLower(headerValue)",
-		"userAgent = headerValue",
-	}
-
-	testHeaderGeneration(t, input, expected, "header parameter with lowercase transform")
-}
-
-func TestHeaderDecoratorWithUppercaseTransform(t *testing.T) {
-	input := `
-package main
-
-@Controller("/api/users")
-type UserController struct {
-}
-
-@Get("")
-func GetUsers(@Headers("X-Custom", { transform: "uppercase" }) custom string) {
-}
-`
-
-	expected := []string{
-		"var custom string",
-		"headerValue := ctx.GetHeader(\"X-Custom\")",
-		"headerValue = strings.ToUpper(headerValue)",
-		"custom = headerValue",
-	}
-
-	testHeaderGeneration(t, input, expected, "header parameter with uppercase transform")
-}
-
-func TestHeaderDecoratorWithTrimTransform(t *testing.T) {
-	input := `
-package main
-
-@Controller("/api/users")
-type UserController struct {
-}
-
-@Get("")
-func GetUsers(@Headers("X-Token", { transform: "trim" }) token string) {
-}
-`
-
-	expected := []string{
-		"var token string",
-		"headerValue := ctx.GetHeader(\"X-Token\")",
-		"headerValue = strings.TrimSpace(headerValue)",
-		"token = headerValue",
-	}
-
-	testHeaderGeneration(t, input, expected, "header parameter with trim transform")
-}
-
-func TestHeaderDecoratorComplex(t *testing.T) {
-	input := `
-package main
-
-@Controller("/api/users")
-type UserController struct {
-}
-
-@Get("")
-func GetUsers(
-	@Headers("Authorization", { required: true, transform: "trim" }) auth string,
-	@Headers("X-Request-ID", { defaultValue: "0" }) requestId int,
-	@Headers("Content-Type", { defaultValue: "application/json", transform: "lowercase" }) contentType string,
-	@Headers("Accept", { type: "array" }) acceptTypes []string,
-	@Headers("X-Debug") debug bool
-) {
-}
-`
-
-	expected := []string{
-		// auth parameter
-		"var auth string",
-		"headerValue := ctx.GetHeader(\"Authorization\")",
-		"if headerValue == \"\" {",
-		"ctx.JSON(400, map[string]string{\"error\": \"Header 'Authorization' is required\"})",
-		"return",
-		"headerValue = strings.TrimSpace(headerValue)",
-		"auth = headerValue",
-		
-		// requestId parameter  
-		"var requestId int",
-		"headerValue := ctx.GetHeader(\"X-Request-ID\")",
-		"if headerValue == \"\" {",
-		"headerValue = \"0\"",
-		"if parsedInt, err := strconv.Atoi(headerValue); err == nil {",
-		"requestId = parsedInt",
-		
-		// contentType parameter
-		"var contentType string",
-		"headerValue := ctx.GetHeader(\"Content-Type\")",
-		"if headerValue == \"\" {",
-		"headerValue = \"application/json\"",
-		"headerValue = strings.ToLower(headerValue)",
-		"contentType = headerValue",
-		
-		// acceptTypes parameter
-		"var acceptTypes []string",
-		"headerValue := ctx.GetHeader(\"Accept\")",
-		"if headerValue != \"\" {",
-		"acceptTypes = strings.Split(headerValue, \",\")",
-		"for i, v := range acceptTypes {",
-		"acceptTypes[i] = strings.TrimSpace(v)",
-		
-		// debug parameter
-		"var debug bool",
-		"headerValue := ctx.GetHeader(\"X-Debug\")",
-		"if headerValue != \"\" {",
-		"if parsedBool, err := strconv.ParseBool(headerValue); err == nil {",
-		"debug = parsedBool",
-	}
-
-	testHeaderGeneration(t, input, expected, "complex multiple header parameters")
-}
-
-func TestHeaderDecoratorWithoutName(t *testing.T) {
-	input := `
-package main
-
-@Controller("/api/users")
-type UserController struct {
-}
-
-@Get("")
-func GetUsers(@Headers() userAgent string) {
-}
-`
-
-	expected := []string{
-		"var userAgent string",
-		"headerValue := ctx.GetHeader(\"userAgent\")",
-		"userAgent = headerValue",
-	}
-
-	testHeaderGeneration(t, input, expected, "header parameter without explicit name (uses parameter name)")
-}
-
-func TestHeaderDecoratorCaseInsensitiveSupport(t *testing.T) {
-	input := `
-package main
-
-@Controller("/api/users")
-type UserController struct {
-}
-
-@Get("")
-func GetUsers(@Headers("content-type", { caseInsensitive: false }) contentType string) {
-}
-`
-
-	expected := []string{
-		"var contentType string",
-		"headerValue := ctx.GetHeader(\"content-type\")",
-		"contentType = headerValue",
-	}
-
-	testHeaderGeneration(t, input, expected, "header parameter with case sensitivity option")
-}
-
-func testHeaderGeneration(t *testing.T, input string, expectedStrings []string, testName string) {
-	// Parse the input
-	file, err := ParseGofaFile(input)
-	if err != nil {
-		t.Fatalf("Failed to parse .gofa file for %s: %v", testName, err)
-	}
-
-	// Generate code
-	generator := NewCodeGenerator("main")
-	goCode, err := generator.GenerateGoCode(file)
-	if err != nil {
-		t.Fatalf("Failed to generate Go code for %s: %v", testName, err)
-	}
-
-	// Check that all expected strings are present
-	for _, expectedStr := range expectedStrings {
-		if !strings.Contains(goCode, expectedStr) {
-			t.Errorf("Generated code for %s missing expected string: %q", testName, expectedStr)
-			t.Logf("Generated code:\n%s", goCode)
-		}
-	}
-
-	// Ensure necessary imports are included
-	requiredImports := []string{
-		"\"strconv\"",
-		"\"strings\"",
-		"\"github.com/healtronlabs/gofasta/packages/http\"",
-	}
-
-	for _, requiredImport := range requiredImports {
-		if !strings.Contains(goCode, requiredImport) {
-			t.Errorf("Generated code for %s missing required import: %s", testName, requiredImport)
-		}
-	}
-}
-
-func TestHeaderDecoratorErrorCases(t *testing.T) {
+func TestHeaderDecoratorParsing(t *testing.T) {
 	tests := []struct {
-		name     string
-		input    string
-		shouldParse bool
+		name           string
+		input          string
+		expectedName   string
+		expectedValue  string
 	}{
 		{
-			name: "Header parameter without name",
+			name: "Basic @Header with name and value",
 			input: `
 package main
+
 @Controller("/api")
-type TestController struct {}
-@Get("")
-func Test(@Headers() param string) {}
+type UserController struct {}
+
+@Header("Cache-Control", "no-cache")
+@Get("/users")
+func GetUsers() {}
 `,
-			shouldParse: true, // Should parse but use parameter name as header name
+			expectedName:  "Cache-Control",
+			expectedValue: "no-cache",
 		},
 		{
-			name: "Header parameter with empty options",
+			name: "Content-Type header",
 			input: `
 package main
+
 @Controller("/api")
-type TestController struct {}
-@Get("")
-func Test(@Headers("X-Custom", {}) param string) {}
+type FileController struct {}
+
+@Header("Content-Type", "application/pdf")
+@Get("/download")
+func DownloadFile() {}
 `,
-			shouldParse: true,
+			expectedName:  "Content-Type",
+			expectedValue: "application/pdf",
+		},
+		{
+			name: "Custom API header",
+			input: `
+package main
+
+@Controller("/api")
+type APIController struct {}
+
+@Header("X-API-Version", "v2.1")
+@Get("/info")
+func GetAPIInfo() {}
+`,
+			expectedName:  "X-API-Version",
+			expectedValue: "v2.1",
+		},
+		{
+			name: "CORS header",
+			input: `
+package main
+
+@Controller("/api")
+type CORSController struct {}
+
+@Header("Access-Control-Allow-Origin", "*")
+@Get("/public")
+func GetPublicData() {}
+`,
+			expectedName:  "Access-Control-Allow-Origin",
+			expectedValue: "*",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := ParseGofaFile(tt.input)
+			lexer := NewLexer(tt.input)
+			parser := NewParser(lexer)
+			file, err := parser.ParseFile()
+
+			if err != nil {
+				t.Fatalf("Parsing failed: %v", err)
+			}
+
+			if len(file.Declarations) == 0 {
+				t.Fatal("No declarations found")
+			}
+
+			controller := file.Declarations[0].(*ControllerDeclaration)
+			if len(controller.Methods) == 0 {
+				t.Fatal("No methods found")
+			}
+
+			method := controller.Methods[0]
 			
-			if tt.shouldParse && err != nil {
-				t.Errorf("Expected parsing to succeed for %s, but got error: %v", tt.name, err)
-			} else if !tt.shouldParse && err == nil {
-				t.Errorf("Expected parsing to fail for %s, but it succeeded", tt.name)
+			// Check for Header decorator
+			var foundName, foundValue string
+			for _, decorator := range method.Decorators {
+				if decorator.Name == "Header" {
+					if len(decorator.Args) > 0 {
+						if name, ok := decorator.Args[0].Value.(string); ok {
+							foundName = name
+						}
+					}
+					if len(decorator.Args) > 1 {
+						if value, ok := decorator.Args[1].Value.(string); ok {
+							foundValue = value
+						}
+					}
+					break
+				}
+			}
+
+			if foundName != tt.expectedName {
+				t.Errorf("Expected header name %s, got %s", tt.expectedName, foundName)
+			}
+			if foundValue != tt.expectedValue {
+				t.Errorf("Expected header value %s, got %s", tt.expectedValue, foundValue)
 			}
 		})
 	}
 }
 
-func TestHeaderDecoratorInference(t *testing.T) {
-	input := `
-package main
-
-@Controller("/api/auth")
-type AuthController struct {
-}
-
-@Post("")
-func Login(@Headers("Authorization") auth string, @Headers("X-Timestamp") timestamp int, @Headers("X-Secure") secure bool, @Headers("Accept") accept []string) {
-}
-`
-
-	file, err := ParseGofaFile(input)
-	if err != nil {
-		t.Fatalf("Failed to parse .gofa file: %v", err)
-	}
-
-	generator := NewCodeGenerator("main")
-	goCode, err := generator.GenerateGoCode(file)
-	if err != nil {
-		t.Fatalf("Failed to generate Go code: %v", err)
-	}
-
-	// Test type inference from parameter types
-	testCases := []struct {
-		paramName string
-		paramType string
-		shouldContain []string
+func TestHeaderDecoratorCodeGeneration(t *testing.T) {
+	tests := []struct {
+		name            string
+		input           string
+		expectedSnippets []string
 	}{
 		{
-			paramName: "auth",
-			paramType: "string",
-			shouldContain: []string{
-				"var auth string",
-				"auth = headerValue",
+			name: "Single header generates ctx.Header call",
+			input: `
+package main
+
+@Controller("/api")
+type UserController struct {}
+
+@Header("Cache-Control", "no-cache")
+@Get("/users")
+func GetUsers() {}
+`,
+			expectedSnippets: []string{
+				"ctx.Header(\"Cache-Control\", \"no-cache\")",
 			},
 		},
 		{
-			paramName: "timestamp", 
-			paramType: "int",
-			shouldContain: []string{
-				"var timestamp int",
-				"strconv.Atoi(headerValue)",
-				"timestamp = parsedInt",
+			name: "Multiple headers generate multiple ctx.Header calls",
+			input: `
+package main
+
+@Controller("/api")
+type FileController struct {}
+
+@Header("Content-Type", "application/pdf")
+@Header("Content-Disposition", "attachment; filename=report.pdf")
+@Header("Cache-Control", "private")
+@Get("/download")
+func DownloadFile() {}
+`,
+			expectedSnippets: []string{
+				"ctx.Header(\"Content-Type\", \"application/pdf\")",
+				"ctx.Header(\"Content-Disposition\", \"attachment; filename=report.pdf\")",
+				"ctx.Header(\"Cache-Control\", \"private\")",
 			},
 		},
 		{
-			paramName: "secure",
-			paramType: "bool", 
-			shouldContain: []string{
-				"var secure bool",
-				"strconv.ParseBool(headerValue)",
-				"secure = parsedBool",
+			name: "CORS headers",
+			input: `
+package main
+
+@Controller("/api")
+type CORSController struct {}
+
+@Header("Access-Control-Allow-Origin", "*")
+@Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
+@Header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+@Options("/cors")
+func HandleCORS() {}
+`,
+			expectedSnippets: []string{
+				"ctx.Header(\"Access-Control-Allow-Origin\", \"*\")",
+				"ctx.Header(\"Access-Control-Allow-Methods\", \"GET, POST, PUT, DELETE\")",
+				"ctx.Header(\"Access-Control-Allow-Headers\", \"Content-Type, Authorization\")",
 			},
 		},
 		{
-			paramName: "accept",
-			paramType: "[]string",
-			shouldContain: []string{
-				"var accept []string",
-				"accept = strings.Split(headerValue, \",\")",
-				"accept[i] = strings.TrimSpace(v)",
+			name: "API versioning headers",
+			input: `
+package main
+
+@Controller("/api")
+type APIController struct {}
+
+@Header("X-API-Version", "v2.1")
+@Header("X-Rate-Limit", "1000")
+@Header("X-Rate-Limit-Remaining", "995")
+@Get("/data")
+func GetData() {}
+`,
+			expectedSnippets: []string{
+				"ctx.Header(\"X-API-Version\", \"v2.1\")",
+				"ctx.Header(\"X-Rate-Limit\", \"1000\")",
+				"ctx.Header(\"X-Rate-Limit-Remaining\", \"995\")",
+			},
+		},
+		{
+			name: "Security headers",
+			input: `
+package main
+
+@Controller("/api")
+type SecurityController struct {}
+
+@Header("X-Content-Type-Options", "nosniff")
+@Header("X-Frame-Options", "DENY")
+@Header("X-XSS-Protection", "1; mode=block")
+@Header("Strict-Transport-Security", "max-age=31536000")
+@Get("/secure")
+func GetSecureData() {}
+`,
+			expectedSnippets: []string{
+				"ctx.Header(\"X-Content-Type-Options\", \"nosniff\")",
+				"ctx.Header(\"X-Frame-Options\", \"DENY\")",
+				"ctx.Header(\"X-XSS-Protection\", \"1; mode=block\")",
+				"ctx.Header(\"Strict-Transport-Security\", \"max-age=31536000\")",
 			},
 		},
 	}
 
-	for _, tc := range testCases {
-		t.Run(tc.paramName, func(t *testing.T) {
-			for _, expected := range tc.shouldContain {
-				if !strings.Contains(goCode, expected) {
-					t.Errorf("Generated code missing expected string for %s (%s): %q", tc.paramName, tc.paramType, expected)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Parse the input
+			file, err := ParseGofaFile(tt.input)
+			if err != nil {
+				t.Fatalf("Parsing failed: %v", err)
+			}
+
+			// Generate code
+			generator := NewCodeGenerator("main")
+			generatedCode, err := generator.GenerateGoCode(file)
+			if err != nil {
+				t.Fatalf("Code generation failed: %v", err)
+			}
+
+			// Check for expected code snippets
+			for _, snippet := range tt.expectedSnippets {
+				if !strings.Contains(generatedCode, snippet) {
+					t.Errorf("Expected code snippet not found: %s\nGenerated code:\n%s", snippet, generatedCode)
 				}
 			}
 		})
 	}
 }
 
-func TestHeaderDecoratorCommonHeaders(t *testing.T) {
-	input := `
+func TestHeaderDecoratorValidation(t *testing.T) {
+	tests := []struct {
+		name            string
+		input           string
+		shouldError     bool
+		errorMsg        string
+	}{
+		{
+			name: "Valid single header",
+			input: `
+package main
+
+@Controller("/api")
+type UserController struct {}
+
+@Header("Cache-Control", "no-cache")
+@Get("/users")
+func GetUsers() {}
+`,
+			shouldError: false,
+		},
+		{
+			name: "Valid multiple headers",
+			input: `
+package main
+
+@Controller("/api")
+type FileController struct {}
+
+@Header("Content-Type", "application/json")
+@Header("X-API-Version", "v1.0")
+@Header("Cache-Control", "max-age=3600")
+@Get("/data")
+func GetData() {}
+`,
+			shouldError: false,
+		},
+		{
+			name: "Valid security headers",
+			input: `
+package main
+
+@Controller("/api")
+type SecurityController struct {}
+
+@Header("X-Content-Type-Options", "nosniff")
+@Header("X-Frame-Options", "SAMEORIGIN")
+@Header("X-XSS-Protection", "1; mode=block")
+@Get("/secure")
+func GetSecure() {}
+`,
+			shouldError: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			file, err := ParseGofaFile(tt.input)
+
+			if tt.shouldError {
+				if err == nil {
+					t.Errorf("Expected error but parsing succeeded")
+				} else if !strings.Contains(err.Error(), tt.errorMsg) {
+					t.Errorf("Expected error message containing '%s', got '%s'", tt.errorMsg, err.Error())
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("Unexpected parsing error: %v", err)
+			}
+
+			// Generate code to ensure no runtime errors
+			generator := NewCodeGenerator("main")
+			_, err = generator.GenerateGoCode(file)
+			if err != nil {
+				t.Fatalf("Code generation failed: %v", err)
+			}
+		})
+	}
+}
+
+func TestHeaderDecoratorTypeMapping(t *testing.T) {
+	// Test that @Header decorator is properly mapped
+	decoratorType := GetDecoratorType("Header")
+	if decoratorType != HeaderDecorator {
+		t.Errorf("Expected HeaderDecorator, got %v", decoratorType)
+	}
+}
+
+func TestHeaderDecoratorWithOtherDecorators(t *testing.T) {
+	tests := []struct {
+		name            string
+		input           string
+		expectedSnippets []string
+	}{
+		{
+			name: "Header with HttpCode decorator",
+			input: `
+package main
+
+@Controller("/api")
+type UserController struct {}
+
+@HttpCode(201)
+@Header("Location", "/api/users/123")
+@Header("X-Resource-Created", "true")
+@Post("/users")
+func CreateUser() {}
+`,
+			expectedSnippets: []string{
+				"ctx.Status(201)",
+				"ctx.Header(\"Location\", \"/api/users/123\")",
+				"ctx.Header(\"X-Resource-Created\", \"true\")",
+			},
+		},
+		{
+			name: "Header with parameters",
+			input: `
+package main
+
+@Controller("/api")
+type DownloadController struct {}
+
+@Header("Content-Type", "application/octet-stream")
+@Header("Content-Disposition", "attachment")
+@Get("/download/:filename")
+func DownloadFile(@Param("filename") filename string) {}
+`,
+			expectedSnippets: []string{
+				"filename := ctx.GetParam(\"filename\")",
+				"ctx.Header(\"Content-Type\", \"application/octet-stream\")",
+				"ctx.Header(\"Content-Disposition\", \"attachment\")",
+			},
+		},
+		{
+			name: "Header with Catch decorator",
+			input: `
+package main
+
+@Controller("/api")
+type APIController struct {}
+
+@Header("X-API-Version", "v1.0")
+@Catch(NotFoundError)
+@Get("/data/:id")
+func GetData(@Param("id") id string) {}
+`,
+			expectedSnippets: []string{
+				"ctx.Header(\"X-API-Version\", \"v1.0\")",
+				"id := ctx.GetParam(\"id\")",
+				"handleGetDataError",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			file, err := ParseGofaFile(tt.input)
+			if err != nil {
+				t.Fatalf("Parsing failed: %v", err)
+			}
+
+			generator := NewCodeGenerator("main")
+			generatedCode, err := generator.GenerateGoCode(file)
+			if err != nil {
+				t.Fatalf("Code generation failed: %v", err)
+			}
+
+			for _, snippet := range tt.expectedSnippets {
+				if !strings.Contains(generatedCode, snippet) {
+					t.Errorf("Expected code snippet not found: %s\nGenerated code:\n%s", snippet, generatedCode)
+				}
+			}
+		})
+	}
+}
+
+func TestHeaderDecoratorComplexScenarios(t *testing.T) {
+	tests := []struct {
+		name            string
+		input           string
+		expectedSnippets []string
+	}{
+		{
+			name: "File download with comprehensive headers",
+			input: `
 package main
 
 @Controller("/api/files")
-type FileController struct {
+type FileDownloadController struct {}
+
+@Header("Content-Type", "application/pdf")
+@Header("Content-Disposition", "attachment; filename=document.pdf")
+@Header("Content-Length", "1048576")
+@Header("Cache-Control", "private, no-cache")
+@Header("X-Download-Options", "noopen")
+@Get("/download/:id")
+func DownloadPDF(@Param("id") id string) {}
+`,
+			expectedSnippets: []string{
+				"ctx.Header(\"Content-Type\", \"application/pdf\")",
+				"ctx.Header(\"Content-Disposition\", \"attachment; filename=document.pdf\")",
+				"ctx.Header(\"Content-Length\", \"1048576\")",
+				"ctx.Header(\"Cache-Control\", \"private, no-cache\")",
+				"ctx.Header(\"X-Download-Options\", \"noopen\")",
+			},
+		},
+		{
+			name: "REST API with versioning and rate limiting",
+			input: `
+package main
+
+@Controller("/api/v2")
+type APIv2Controller struct {}
+
+@Header("X-API-Version", "2.0")
+@Header("X-Rate-Limit", "1000")
+@Header("X-Rate-Limit-Window", "3600")
+@Header("X-Rate-Limit-Remaining", "999")
+@Get("/users")
+func GetUsers() {}
+
+@Header("X-API-Version", "2.0")
+@Header("X-Rate-Limit", "100")
+@Header("X-Rate-Limit-Window", "3600")
+@Post("/users")
+func CreateUser() {}
+`,
+			expectedSnippets: []string{
+				"ctx.Header(\"X-API-Version\", \"2.0\")",
+				"ctx.Header(\"X-Rate-Limit\", \"1000\")",
+				"ctx.Header(\"X-Rate-Limit\", \"100\")",
+				"ctx.Header(\"X-Rate-Limit-Window\", \"3600\")",
+				"ctx.Header(\"X-Rate-Limit-Remaining\", \"999\")",
+			},
+		},
+		{
+			name: "Security-focused API with all security headers",
+			input: `
+package main
+
+@Controller("/api/secure")
+type SecureController struct {}
+
+@Header("X-Content-Type-Options", "nosniff")
+@Header("X-Frame-Options", "DENY")
+@Header("X-XSS-Protection", "1; mode=block")
+@Header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+@Header("Content-Security-Policy", "default-src 'self'")
+@Header("Referrer-Policy", "strict-origin-when-cross-origin")
+@Get("/data")
+func GetSecureData() {}
+`,
+			expectedSnippets: []string{
+				"ctx.Header(\"X-Content-Type-Options\", \"nosniff\")",
+				"ctx.Header(\"X-Frame-Options\", \"DENY\")",
+				"ctx.Header(\"X-XSS-Protection\", \"1; mode=block\")",
+				"ctx.Header(\"Strict-Transport-Security\", \"max-age=31536000; includeSubDomains\")",
+				"ctx.Header(\"Content-Security-Policy\", \"default-src 'self'\")",
+				"ctx.Header(\"Referrer-Policy\", \"strict-origin-when-cross-origin\")",
+			},
+		},
+		{
+			name: "CORS preflight response",
+			input: `
+package main
+
+@Controller("/api")
+type CORSController struct {}
+
+@Header("Access-Control-Allow-Origin", "https://example.com")
+@Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+@Header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
+@Header("Access-Control-Allow-Credentials", "true")
+@Header("Access-Control-Max-Age", "86400")
+@Options("/users")
+func HandleCORSPreflight() {}
+`,
+			expectedSnippets: []string{
+				"ctx.Header(\"Access-Control-Allow-Origin\", \"https://example.com\")",
+				"ctx.Header(\"Access-Control-Allow-Methods\", \"GET, POST, PUT, DELETE, OPTIONS\")",
+				"ctx.Header(\"Access-Control-Allow-Headers\", \"Content-Type, Authorization, X-Requested-With\")",
+				"ctx.Header(\"Access-Control-Allow-Credentials\", \"true\")",
+				"ctx.Header(\"Access-Control-Max-Age\", \"86400\")",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			file, err := ParseGofaFile(tt.input)
+			if err != nil {
+				t.Fatalf("Parsing failed: %v", err)
+			}
+
+			generator := NewCodeGenerator("main")
+			generatedCode, err := generator.GenerateGoCode(file)
+			if err != nil {
+				t.Fatalf("Code generation failed: %v", err)
+			}
+
+			for _, snippet := range tt.expectedSnippets {
+				if !strings.Contains(generatedCode, snippet) {
+					t.Errorf("Expected code snippet not found: %s", snippet)
+				}
+			}
+		})
+	}
 }
 
-@Post("")
-func Upload(
-	@Headers("Content-Type") contentType string,
-	@Headers("Content-Length") contentLength int,
-	@Headers("Authorization", { required: true }) auth string,
-	@Headers("User-Agent") userAgent string,
-	@Headers("X-Forwarded-For") forwardedFor string
-) {
-}
-`
+func TestHeaderDecoratorOrder(t *testing.T) {
+	tests := []struct {
+		name            string
+		input           string
+		expectedOrder   []string
+	}{
+		{
+			name: "Headers should appear after status code but before parameter extraction",
+			input: `
+package main
 
-	file, err := ParseGofaFile(input)
-	if err != nil {
-		t.Fatalf("Failed to parse .gofa file: %v", err)
+@Controller("/api")
+type OrderController struct {}
+
+@HttpCode(201)
+@Header("X-Custom", "value")
+@Header("Location", "/api/users/123")
+@Post("/users")
+func CreateUser(@Body() userData CreateUserDto) {}
+`,
+			expectedOrder: []string{
+				"ctx.Status(201)",
+				"ctx.Header(\"X-Custom\", \"value\")",
+				"ctx.Header(\"Location\", \"/api/users/123\")",
+				"var userData CreateUserDto",
+			},
+		},
 	}
 
-	generator := NewCodeGenerator("main")
-	goCode, err := generator.GenerateGoCode(file)
-	if err != nil {
-		t.Fatalf("Failed to generate Go code: %v", err)
-	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			file, err := ParseGofaFile(tt.input)
+			if err != nil {
+				t.Fatalf("Parsing failed: %v", err)
+			}
 
-	// Verify common headers are handled correctly
-	commonHeaders := []string{
-		"Content-Type",
-		"Content-Length", 
-		"Authorization",
-		"User-Agent",
-		"X-Forwarded-For",
-	}
+			generator := NewCodeGenerator("main")
+			generatedCode, err := generator.GenerateGoCode(file)
+			if err != nil {
+				t.Fatalf("Code generation failed: %v", err)
+			}
 
-	for _, header := range commonHeaders {
-		if !strings.Contains(goCode, fmt.Sprintf("ctx.GetHeader(\"%s\")", header)) {
-			t.Errorf("Generated code missing header extraction for: %s", header)
-		}
-	}
-
-	// Verify required validation for Authorization
-	if !strings.Contains(goCode, "Header 'Authorization' is required") {
-		t.Error("Generated code missing required validation for Authorization header")
-	}
-
-	// Verify type conversion for Content-Length
-	if !strings.Contains(goCode, "strconv.Atoi(headerValue)") {
-		t.Error("Generated code missing integer conversion for Content-Length header")
+			// Check that the order is correct by finding indices
+			prevIndex := -1
+			for i, expectedSnippet := range tt.expectedOrder {
+				index := strings.Index(generatedCode, expectedSnippet)
+				if index == -1 {
+					t.Errorf("Expected snippet not found: %s", expectedSnippet)
+					continue
+				}
+				if index <= prevIndex {
+					t.Errorf("Expected snippet %d (%s) to appear after snippet %d, but order is wrong", 
+						i, expectedSnippet, i-1)
+				}
+				prevIndex = index
+			}
+		})
 	}
 }

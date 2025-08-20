@@ -268,6 +268,9 @@ func (g *CodeGenerator) generateControllerMethod(controller *ControllerDeclarati
 	// Generate HTTP status code setting if @HttpCode() decorator is present (before any returns)
 	g.generateHttpStatusCode(method)
 
+	// Generate response header setting if @Header() decorators are present
+	g.generateResponseHeaders(method)
+
 	// Generate parameter extraction from HTTP context
 	g.generateParameterExtraction(method)
 
@@ -1428,6 +1431,54 @@ func (g *CodeGenerator) generateRedirectResponse(method *MethodNode) {
 			return
 		}
 	}
+}
+
+// generateResponseHeaders generates response header setting code for @Header() decorators
+func (g *CodeGenerator) generateResponseHeaders(method *MethodNode) {
+	headerDecorators := g.getHeaderDecorators(method)
+	if len(headerDecorators) == 0 {
+		return
+	}
+
+	for _, decorator := range headerDecorators {
+		headerName := ""
+		headerValue := ""
+
+		// Extract header name (first argument)
+		if len(decorator.Args) > 0 {
+			if name, ok := decorator.Args[0].Value.(string); ok {
+				headerName = name
+			}
+		}
+
+		// Extract header value (second argument)
+		if len(decorator.Args) > 1 {
+			if value, ok := decorator.Args[1].Value.(string); ok {
+				headerValue = value
+			}
+		}
+
+		// Generate header setting code
+		if headerName != "" && headerValue != "" {
+			g.writeLine(fmt.Sprintf("ctx.Header(\"%s\", \"%s\")", headerName, headerValue))
+		}
+	}
+
+	// Add empty line after headers if any were generated
+	if len(headerDecorators) > 0 {
+		g.writeLine("")
+	}
+}
+
+// getHeaderDecorators extracts all @Header() decorators from a method
+func (g *CodeGenerator) getHeaderDecorators(method *MethodNode) []*DecoratorNode {
+	var headerDecorators []*DecoratorNode
+	for _, decorator := range method.Decorators {
+		if decorator.Name == "Header" {
+			headerDecorators = append(headerDecorators, decorator)
+		}
+	}
+	return headerDecorators
 }
 
 // Writing helper methods

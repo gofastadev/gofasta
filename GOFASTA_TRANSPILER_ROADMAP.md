@@ -67,7 +67,7 @@
       // Generate: ctx.Redirect(302, "https://example.com")
   }
   ```
-- [ ] **`@Header()` decorator** - Generate custom header setting
+- [X] **`@Header()` decorator** - Generate custom header setting
   ```gofa
   @Header("X-Custom-Header", "value")
   @Get("/api")
