@@ -12,6 +12,7 @@ This example demonstrates how to use the Gofasta transpiler to transform decorat
 - **Module System**: `@Module` for organizing dependencies
 - **Guards & Middleware**: `@UseGuards`, `@HttpCode` decorators
 - **Error Handling**: `@Catch()` decorators for automatic error filtering
+- **HTTP Status Codes**: `@HttpCode()` decorators for custom response status codes
 
 ## 📁 File Structure
 
@@ -25,6 +26,7 @@ transpiler-example/
 │   ├── product.controller.gofa # Product controller showcasing advanced @Query features
 │   ├── headers-example.gofa # Comprehensive @Headers decorator examples
 │   ├── catch-decorator-example.gofa # Error handling with @Catch() decorator
+│   ├── httpcode-example.gofa # HTTP status codes with @HttpCode() decorator
 │   ├── user.service.gofa    # User business logic service  
 │   ├── types.gofa           # Data models and DTOs
 │   ├── simple-test.gofa     # Simple test controller
@@ -791,6 +793,249 @@ The `@Catch()` decorator provides:
 5. **Maintainability**: Centralized error handling logic
 6. **Debugging**: Clear error paths and stack traces
 7. **Performance**: Optimized error filter registration
+
+### 🚀 @HttpCode() Decorator Features
+
+The new `@HttpCode()` decorator provides custom HTTP status code setting with **NestJS-level parity**:
+
+#### 🎯 Basic Usage
+```go
+// Set custom status code for responses
+@HttpCode(201)
+@Post("/users")
+func CreateUser(@Body() userData CreateUserDto) {
+    // Returns 201 Created instead of default 200 OK
+}
+```
+
+#### 🏗️ REST API Status Codes
+```go
+@Controller("/api/v1/users")
+type UserController struct {}
+
+// GET endpoints - use default 200 OK
+@Get("/")
+func GetUsers() {}
+
+// POST endpoints - return 201 Created for new resources
+@HttpCode(201)
+@Post("/")
+func CreateUser(@Body() userData CreateUserDto) {}
+
+// PUT endpoints - use default 200 OK for updates
+@Put("/:id")  
+func UpdateUser(@Param("id") id string, @Body() updateData UpdateUserDto) {}
+
+// DELETE endpoints - return 204 No Content
+@HttpCode(204)
+@Delete("/:id")
+func DeleteUser(@Param("id") id string) {}
+```
+
+#### ⚡ Async Operations
+```go
+@Controller("/api/jobs")
+type JobController struct {}
+
+// Async operations - return 202 Accepted
+@HttpCode(202)
+@Post("/")
+func StartAsyncJob(@Body() jobData JobDto) {}
+
+@HttpCode(202)
+@Put("/:id/restart")
+func RestartJob(@Param("id") id string) {}
+
+// Status check - use default 200 OK
+@Get("/:id/status")
+func GetJobStatus(@Param("id") id string) {}
+```
+
+#### 🗂️ Caching and Special Cases
+```go
+@Controller("/api/cache")
+type CacheController struct {}
+
+// Not Modified responses
+@HttpCode(304)
+@Get("/data")
+func GetCachedData(@Headers("If-Modified-Since") ifModifiedSince string) {}
+
+// Cache operations - No Content
+@HttpCode(204)
+@Delete("/cache")
+func ClearCache() {}
+```
+
+### 🔄 Generated HTTP Status Code
+
+**Before (@HttpCode() decorator):**
+```go
+func (c *UserController) CreateUser(ctx *httpPackage.RequestContext) {
+    // Default behavior - always returns 200
+    ctx.JSON(200, map[string]interface{}{"message": "User created"})
+}
+```
+
+**After (@HttpCode(201) decorator):**
+```go
+func (c *UserController) CreateUser(ctx *httpPackage.RequestContext) {
+    ctx.Status(201)  // Set status code first
+
+    var userData CreateUserDto
+    if err := ctx.ParseJSON(&userData); err != nil {
+        ctx.JSON(400, map[string]string{"error": "Invalid request body"})
+        return
+    }
+    // TODO: Implement method logic
+    ctx.JSON(201, map[string]interface{}{"message": "Not implemented"})  // Use custom status
+}
+```
+
+### 📊 Common HTTP Status Codes
+
+| Status Code | Description | Use Case | Example |
+|-------------|-------------|----------|---------|
+| **200** | OK | Default success | `@Get()` endpoints |
+| **201** | Created | Resource creation | `@HttpCode(201) @Post()` |
+| **202** | Accepted | Async operations | `@HttpCode(202)` for jobs |
+| **204** | No Content | Successful deletion | `@HttpCode(204) @Delete()` |
+| **304** | Not Modified | Cached responses | `@HttpCode(304)` for cache |
+
+### 🎭 Status Code Setting Order
+
+The `@HttpCode()` decorator ensures proper status code setting:
+
+1. **Status Set First**: `ctx.Status(code)` is called immediately after method entry
+2. **Before Parameter Validation**: Status is set before any potential early returns
+3. **Consistent Response**: Final `ctx.JSON()` uses the same status code
+
+```go
+@HttpCode(201)
+@Post("/users")
+func CreateUser(@Body() userData CreateUserDto) {
+    // Generated code order:
+    // 1. ctx.Status(201)           ← Set status first
+    // 2. Parameter validation       ← May return early with 400
+    // 3. Business logic            ← Implementation
+    // 4. ctx.JSON(201, result)     ← Final response with correct status
+}
+```
+
+### 🛡️ Error Handling with HttpCode
+
+The `@HttpCode()` decorator works seamlessly with error handling:
+
+```go
+@HttpCode(201)
+@Catch(ValidationError)
+@Post("/users")
+func CreateUser(@Body() userData CreateUserDto) {
+    // Success case: Returns 201 Created
+    // Error case: ValidationError caught by @Catch() decorator
+    // Validation failure: Returns 400 Bad Request (parameter validation)
+}
+```
+
+### 🎯 Best Practices
+
+#### ✅ **Recommended Usage**
+```go
+// RESTful resource creation
+@HttpCode(201)
+@Post("/users")
+func CreateUser() {}
+
+// Successful deletion
+@HttpCode(204)  
+@Delete("/users/:id")
+func DeleteUser() {}
+
+// Async operations
+@HttpCode(202)
+@Post("/jobs")
+func StartJob() {}
+
+// Conditional responses
+@HttpCode(304)
+@Get("/data")
+func GetCachedData() {}
+```
+
+#### ❌ **Avoid These Patterns**
+```go
+// Don't: Unnecessary HttpCode for default 200
+@HttpCode(200)  // Redundant - 200 is default
+@Get("/users")
+func GetUsers() {}
+
+// Don't: Wrong status for operation type
+@HttpCode(201)  // Wrong - updates should be 200
+@Put("/users/:id")
+func UpdateUser() {}
+
+// Don't: Generic status for specific operations
+@HttpCode(200)  // Should be 204 for deletions
+@Delete("/users/:id")
+func DeleteUser() {}
+```
+
+### 🏗️ Real-World Examples
+
+#### E-commerce API
+```go
+@Controller("/api/v1/orders")
+type OrderController struct {}
+
+@HttpCode(201)  // Created
+@Post("/")
+func CreateOrder(@Body() orderData CreateOrderDto) {}
+
+@HttpCode(202)  // Accepted for processing
+@Post("/:id/ship")
+func ShipOrder(@Param("id") id string) {}
+
+@HttpCode(204)  // No content after cancellation
+@Delete("/:id")
+func CancelOrder(@Param("id") id string) {}
+
+@Get("/:id")    // Default 200 OK
+func GetOrder(@Param("id") id string) {}
+```
+
+#### File Management API
+```go
+@Controller("/api/files")
+type FileController struct {}
+
+@HttpCode(201)  // File created
+@Post("/upload")
+func UploadFile(@Body() fileData FileUploadDto) {}
+
+@HttpCode(202)  // Processing accepted
+@Post("/:id/process")
+func ProcessFile(@Param("id") id string) {}
+
+@HttpCode(204)  // File deleted
+@Delete("/:id")
+func DeleteFile(@Param("id") id string) {}
+
+@HttpCode(304)  // Not modified
+@Get("/:id")
+func GetFile(@Headers("If-Modified-Since") ifModifiedSince string) {}
+```
+
+### 📈 Benefits
+
+The `@HttpCode()` decorator provides:
+
+1. **RESTful Compliance**: Proper HTTP status codes for different operations
+2. **Clear Intent**: Explicit status codes make API behavior obvious
+3. **Client Integration**: Better client-side handling with correct status codes
+4. **Automatic Setting**: No manual `ctx.Status()` calls needed
+5. **Early Setting**: Status set before any potential early returns
+6. **Consistency**: Generated code always uses the specified status
+7. **NestJS Compatibility**: Familiar decorator syntax for NestJS developers
 
 ## 🔍 Detailed Example Analysis
 

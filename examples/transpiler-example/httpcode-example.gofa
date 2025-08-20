@@ -1,0 +1,122 @@
+package main
+
+@Controller("/api/v1/users")
+type UserController struct {
+    UserService *UserService `inject:""`
+    Logger      *Logger      `inject:"logger"`
+}
+
+// Standard GET - uses default 200 OK
+@Get("/")
+func GetUsers() {
+    // Returns list of users with default 200 status
+}
+
+// POST - returns 201 Created for new resources
+@HttpCode(201)
+@Post("/")
+func CreateUser(@Body() userData CreateUserDto) {
+    // Creates a new user and returns 201 Created
+}
+
+// GET by ID - uses default 200 OK
+@Get("/:id")
+func GetUser(@Param("id") id string) {
+    // Returns specific user with default 200 status
+}
+
+// PUT - uses default 200 OK for updates
+@Put("/:id")
+func UpdateUser(@Param("id") id string, @Body() updateData UpdateUserDto) {
+    // Updates user and returns 200 OK
+}
+
+// DELETE - returns 204 No Content for successful deletions
+@HttpCode(204)
+@Delete("/:id")
+func DeleteUser(@Param("id") id string) {
+    // Deletes user and returns 204 No Content (no response body)
+}
+
+@Controller("/api/v1/async")
+type AsyncController struct {
+    JobService *JobService `inject:""`
+}
+
+// Async job creation - returns 202 Accepted
+@HttpCode(202)
+@Post("/jobs")
+func StartAsyncJob(@Body() jobData JobDto) {
+    // Starts async job and returns 202 Accepted
+}
+
+// Async operation restart - returns 202 Accepted
+@HttpCode(202)
+@Put("/jobs/:id/restart")
+func RestartJob(@Param("id") id string) {
+    // Restarts job and returns 202 Accepted
+}
+
+@Controller("/api/v1/cache")
+type CacheController struct {
+    CacheService *CacheService `inject:""`
+}
+
+// Cached data - may return 304 Not Modified
+@HttpCode(304)
+@Get("/data")
+func GetCachedData(@Headers("If-Modified-Since") ifModifiedSince string) {
+    // Returns cached data or 304 if not modified
+}
+
+// Cache invalidation - returns 204 No Content
+@HttpCode(204)
+@Delete("/cache")
+func ClearCache() {
+    // Clears cache and returns 204 No Content
+}
+
+@Controller("/api/v1/files")
+type FileController struct {
+    FileService *FileService `inject:""`
+}
+
+// File upload - returns 201 Created
+@HttpCode(201)
+@Post("/upload")
+func UploadFile(@Body() fileData FileUploadDto) {
+    // Uploads file and returns 201 Created
+}
+
+// File processing - returns 202 Accepted for async processing
+@HttpCode(202)
+@Post("/process/:id")
+func ProcessFile(@Param("id") id string) {
+    // Starts file processing and returns 202 Accepted
+}
+
+// DTOs for the examples
+type CreateUserDto struct {
+    Name     string `json:"name"`
+    Email    string `json:"email"`
+    Password string `json:"password"`
+}
+
+type UpdateUserDto struct {
+    Name  string `json:"name"`
+    Email string `json:"email"`
+}
+
+type JobDto struct {
+    Type        string                 `json:"type"`
+    Parameters  map[string]interface{} `json:"parameters"`
+    Priority    int                    `json:"priority"`
+    ScheduledAt string                 `json:"scheduledAt"`
+}
+
+type FileUploadDto struct {
+    FileName    string `json:"fileName"`
+    ContentType string `json:"contentType"`
+    Size        int64  `json:"size"`
+    Data        []byte `json:"data"`
+}

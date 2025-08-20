@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"go/format"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -256,12 +257,21 @@ func (g *CodeGenerator) generateControllerMethod(controller *ControllerDeclarati
 	g.writeLine(signature + " {")
 	g.indent()
 
+	// Generate HTTP status code setting if @HttpCode() decorator is present (before any returns)
+	g.generateHttpStatusCode(method)
+
 	// Generate parameter extraction from HTTP context
 	g.generateParameterExtraction(method)
 
 	// Generate method body placeholder
 	g.writeLine("// TODO: Implement method logic")
-	g.writeLine("ctx.JSON(200, map[string]interface{}{\"message\": \"Not implemented\"})")
+	
+	// Generate response with appropriate status code
+	statusCode := g.getHttpStatusCode(method)
+	if statusCode == 0 {
+		statusCode = 200 // Default status code
+	}
+	g.writeLine(fmt.Sprintf("ctx.JSON(%d, map[string]interface{}{\"message\": \"Not implemented\"})", statusCode))
 
 	g.unindent()
 	g.writeLine("}")
@@ -1333,6 +1343,33 @@ func (g *CodeGenerator) getCatchFilterConfig(decorator *DecoratorNode, scope str
 	}
 
 	return config
+}
+
+// generateHttpStatusCode generates HTTP status code setting if @HttpCode() decorator is present
+func (g *CodeGenerator) generateHttpStatusCode(method *MethodNode) {
+	statusCode := g.getHttpStatusCode(method)
+	if statusCode > 0 {
+		g.writeLine(fmt.Sprintf("ctx.Status(%d)", statusCode))
+		g.writeLine("")
+	}
+}
+
+// getHttpStatusCode extracts the status code from @HttpCode() decorator
+func (g *CodeGenerator) getHttpStatusCode(method *MethodNode) int {
+	for _, decorator := range method.Decorators {
+		if decorator.Name == "HttpCode" && len(decorator.Args) > 0 {
+			if statusCode, ok := decorator.Args[0].Value.(int); ok {
+				return statusCode
+			}
+			// Try to parse as string if it's not already an int
+			if statusCodeStr, ok := decorator.Args[0].Value.(string); ok {
+				if parsedCode, err := strconv.Atoi(statusCodeStr); err == nil {
+					return parsedCode
+				}
+			}
+		}
+	}
+	return 0 // No @HttpCode decorator found
 }
 
 // Writing helper methods
