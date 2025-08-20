@@ -206,6 +206,7 @@ const (
 
 	// Other decorators
 	HttpCodeDecorator
+	RedirectDecorator
 	VersionDecorator
 	RolesDecorator
 	CacheDecorator
@@ -243,6 +244,7 @@ var DecoratorTypeMap = map[string]DecoratorType{
 	"HostParam":       HostParamDecorator,
 	"Catch":           CatchDecorator,
 	"HttpCode":        HttpCodeDecorator,
+	"Redirect":        RedirectDecorator,
 	"Version":         VersionDecorator,
 	"Roles":           RolesDecorator,
 	"Cache":           CacheDecorator,

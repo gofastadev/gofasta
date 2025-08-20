@@ -257,6 +257,14 @@ func (g *CodeGenerator) generateControllerMethod(controller *ControllerDeclarati
 	g.writeLine(signature + " {")
 	g.indent()
 
+	// Check for @Redirect() decorator first - it takes precedence over other response handling
+	if g.hasRedirectDecorator(method) {
+		g.generateRedirectResponse(method)
+		g.unindent()
+		g.writeLine("}")
+		return nil
+	}
+
 	// Generate HTTP status code setting if @HttpCode() decorator is present (before any returns)
 	g.generateHttpStatusCode(method)
 
@@ -1370,6 +1378,56 @@ func (g *CodeGenerator) getHttpStatusCode(method *MethodNode) int {
 		}
 	}
 	return 0 // No @HttpCode decorator found
+}
+
+// hasRedirectDecorator checks if method has @Redirect() decorator
+func (g *CodeGenerator) hasRedirectDecorator(method *MethodNode) bool {
+	for _, decorator := range method.Decorators {
+		if decorator.Name == "Redirect" {
+			return true
+		}
+	}
+	return false
+}
+
+// generateRedirectResponse generates redirect response code
+func (g *CodeGenerator) generateRedirectResponse(method *MethodNode) {
+	for _, decorator := range method.Decorators {
+		if decorator.Name == "Redirect" {
+			redirectURL := ""
+			statusCode := 302 // Default redirect status code
+
+			// Extract URL (first argument)
+			if len(decorator.Args) > 0 {
+				if url, ok := decorator.Args[0].Value.(string); ok {
+					redirectURL = url
+				}
+			}
+
+			// Extract status code (second argument, optional)
+			if len(decorator.Args) > 1 {
+				if code, ok := decorator.Args[1].Value.(int); ok {
+					statusCode = code
+				} else if codeStr, ok := decorator.Args[1].Value.(string); ok {
+					if parsedCode, err := strconv.Atoi(codeStr); err == nil {
+						statusCode = parsedCode
+					}
+				}
+			}
+
+			// Generate parameter extraction first (in case redirect URL needs to be dynamic)
+			g.generateParameterExtraction(method)
+
+			// Generate redirect call
+			if redirectURL == "" {
+				g.writeLine("// TODO: Set redirect URL")
+				g.writeLine(fmt.Sprintf("ctx.Redirect(%d, \"\")", statusCode))
+			} else {
+				g.writeLine(fmt.Sprintf("ctx.Redirect(%d, \"%s\")", statusCode, redirectURL))
+			}
+			return
+		}
+	}
 }
 
 // Writing helper methods
