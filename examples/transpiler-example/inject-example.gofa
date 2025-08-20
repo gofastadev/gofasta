@@ -1,0 +1,123 @@
+package main
+
+// Example demonstrating @Inject() decorator usage in GOFASTA
+
+// Basic @Injectable service with various @Inject() patterns
+@Injectable()
+type DatabaseService struct {
+    // Basic @Inject() with custom token
+    @Inject("primaryDB")
+    PrimaryDB *Database
+    
+    // @Inject() with no arguments - uses field name as token (lowercase)
+    @Inject()
+    Redis *Redis
+    
+    // @Inject() with optional dependency
+    @Inject({token: "metricsDB", optional: true})
+    MetricsDB *Database
+    
+    // @Inject() with scope specification
+    @Inject({token: "cache", scope: "singleton"})
+    Cache *Cache
+    
+    // @Inject() with both optional and scope
+    @Inject({token: "searchEngine", optional: true, scope: "request"})
+    SearchEngine *SearchEngine
+    
+    // Field without @Inject() decorator - gets default inject tag
+    Config *Config
+}
+
+// Service with complex dependency injection needs
+@Injectable("singleton")
+type UserService struct {
+    @Inject("database")
+    DB *DatabaseService
+    
+    @Inject()
+    EmailService *EmailService
+    
+    @Inject({token: "logger", optional: true})
+    Logger *Logger
+    
+    @Inject({token: "authProvider"})
+    AuthProvider *AuthProvider
+    
+    @Inject({token: "eventBus", optional: false})
+    EventBus *EventBus
+}
+
+// Controller demonstrating @Inject() usage
+@Controller("/api/users")
+type UserController struct {
+    @Inject("userService")
+    UserService *UserService
+    
+    @Inject()
+    ValidationService *ValidationService
+    
+    @Inject({token: "auditLogger", optional: true})
+    AuditLogger *AuditLogger
+    
+    @Inject({token: "rateLimiter", scope: "request"})
+    RateLimiter *RateLimiter
+}
+
+@Get("/")
+func GetUsers(@Query("limit") limit int) {
+    // Implementation would use injected dependencies
+}
+
+@Post("/")
+func CreateUser(@Body() userData CreateUserDto) {
+    // Implementation would use injected dependencies
+}
+
+// Repository demonstrating database injection patterns
+@Injectable()
+type UserRepository struct {
+    @Inject("primaryDatabase")
+    PrimaryDB *Database
+    
+    @Inject({token: "readReplica", optional: true})
+    ReadReplica *Database
+    
+    @Inject({token: "cacheLayer", scope: "singleton"})
+    CacheLayer *Cache
+}
+
+// Complex service with multiple injection patterns
+@Injectable()
+type NotificationService struct {
+    @Inject("emailProvider")
+    EmailProvider *EmailProvider
+    
+    @Inject("smsProvider")
+    SMSProvider *SMSProvider
+    
+    @Inject()
+    PushNotificationService *PushNotificationService
+    
+    @Inject({token: "templateEngine", optional: true})
+    TemplateEngine *TemplateEngine
+    
+    @Inject({token: "analytics", optional: true, scope: "singleton"})
+    Analytics *Analytics
+    
+    @Inject({token: "queueService"})
+    QueueService *QueueService
+}
+
+// Middleware service demonstrating scope usage
+@Injectable("request")
+type RequestContextService struct {
+    @Inject({token: "sessionStore", scope: "singleton"})
+    SessionStore *SessionStore
+    
+    @Inject({token: "requestLogger"})
+    RequestLogger *Logger
+    
+    @Inject({token: "securityProvider", optional: false})
+    SecurityProvider *SecurityProvider
+}

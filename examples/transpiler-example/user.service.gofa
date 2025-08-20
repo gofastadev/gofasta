@@ -2,9 +2,14 @@ package main
 
 @Injectable()
 type UserService struct {
-    UserRepository *UserRepository `inject:""`
-    EmailService   *EmailService   `inject:""`
-    Logger         *Logger         `inject:"logger"`
+    @Inject("userRepository")
+    UserRepository *UserRepository
+    
+    @Inject()
+    EmailService   *EmailService
+    
+    @Inject({token: "logger", optional: true})
+    Logger         *Logger
 }
 
 func GetAllUsers() []User {

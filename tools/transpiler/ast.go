@@ -204,6 +204,9 @@ const (
 	// Error handling decorators
 	CatchDecorator
 
+	// Dependency injection decorators
+	InjectDecorator
+
 	// Other decorators
 	HttpCodeDecorator
 	RedirectDecorator
@@ -244,6 +247,7 @@ var DecoratorTypeMap = map[string]DecoratorType{
 	"Ip":              IpDecorator,
 	"HostParam":       HostParamDecorator,
 	"Catch":           CatchDecorator,
+	"Inject":          InjectDecorator,
 	"HttpCode":        HttpCodeDecorator,
 	"Redirect":        RedirectDecorator,
 	"Header":          HeaderDecorator,
@@ -284,6 +288,11 @@ func IsCrossCuttingDecorator(decoratorType DecoratorType) bool {
 // IsErrorHandlingDecorator checks if a decorator type is an error handling decorator
 func IsErrorHandlingDecorator(decoratorType DecoratorType) bool {
 	return decoratorType == CatchDecorator
+}
+
+// IsDependencyInjectionDecorator checks if a decorator type is a dependency injection decorator
+func IsDependencyInjectionDecorator(decoratorType DecoratorType) bool {
+	return decoratorType == InjectDecorator
 }
 
 // Visitor interface for traversing the AST

@@ -1,0 +1,10 @@
+package main
+
+@Injectable
+type UserService struct {
+    @Inject("database")
+    DB *Database
+    
+    @Inject()
+    Logger *Logger
+}
