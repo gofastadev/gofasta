@@ -1012,8 +1012,84 @@ func (g *CodeGenerator) generateInjectionTag(field *FieldNode) string {
 		return field.Tag
 	}
 
-	// Generate inject tag based on field name/type
+	// Check for @Inject() decorator
+	injectDecorator := g.getInjectDecorator(field)
+	if injectDecorator != nil {
+		return g.generateInjectTag(injectDecorator, field)
+	}
+
+	// Generate inject tag based on field name/type if no decorator is present
 	return `inject:""`
+}
+
+// getInjectDecorator finds @Inject() decorator on a field
+func (g *CodeGenerator) getInjectDecorator(field *FieldNode) *DecoratorNode {
+	for _, decorator := range field.Decorators {
+		if decorator.Name == "Inject" {
+			return decorator
+		}
+	}
+	return nil
+}
+
+// generateInjectTag generates inject struct tag from @Inject() decorator
+func (g *CodeGenerator) generateInjectTag(decorator *DecoratorNode, field *FieldNode) string {
+	// Default inject tag
+	tag := `inject:""`
+	
+	// If no arguments, use field name as token
+	if len(decorator.Args) == 0 {
+		// Convert field name to lowercase for token
+		token := strings.ToLower(field.Name)
+		tag = fmt.Sprintf(`inject:"%s"`, token)
+		return tag
+	}
+	
+	// Process decorator arguments
+	for _, arg := range decorator.Args {
+		// Handle string argument (injection token)
+		if tokenValue, ok := arg.Value.(string); ok {
+			tag = fmt.Sprintf(`inject:"%s"`, tokenValue)
+			break
+		}
+		
+		// Handle object argument with injection configuration
+		if objValue, ok := arg.Value.(map[string]interface{}); ok {
+			var parts []string
+			
+			// Extract token
+			if token, exists := objValue["token"]; exists {
+				if tokenStr, ok := token.(string); ok {
+					parts = append(parts, fmt.Sprintf(`inject:"%s"`, tokenStr))
+				}
+			} else {
+				// Use field name as default token
+				token := strings.ToLower(field.Name)
+				parts = append(parts, fmt.Sprintf(`inject:"%s"`, token))
+			}
+			
+			// Extract optional (for optional injection)
+			if optional, exists := objValue["optional"]; exists {
+				if optBool, ok := optional.(bool); ok && optBool {
+					parts = append(parts, `optional:"true"`)
+				}
+			}
+			
+			// Extract scope
+			if scope, exists := objValue["scope"]; exists {
+				if scopeStr, ok := scope.(string); ok {
+					parts = append(parts, fmt.Sprintf(`scope:"%s"`, scopeStr))
+				}
+			}
+			
+			if len(parts) > 0 {
+				tag = strings.Join(parts, " ")
+			}
+			break
+		}
+	}
+	
+	return tag
 }
 
 // collectImports collects all necessary imports

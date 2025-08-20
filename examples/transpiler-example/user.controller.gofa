@@ -3,8 +3,11 @@ package main
 @Controller("/api/v1/users")
 @UseGuards("auth")
 type UserController struct {
-    UserService *UserService `inject:""`
-    Logger      *Logger      `inject:"logger"`
+    @Inject()
+    UserService *UserService
+    
+    @Inject({token: "logger", optional: true})
+    Logger      *Logger
 }
 
 @Get()

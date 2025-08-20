@@ -259,9 +259,37 @@ func (p *Parser) parseControllerDeclaration(name string) *ControllerDeclaration 
 		Methods:    []*MethodNode{},
 	}
 	
-	// Parse fields
+	// Parse fields (including field decorators)
 	for p.currToken.Type != RBRACE && p.currToken.Type != EOF {
-		if p.currToken.Type == IDENT {
+		if p.currToken.Type == DECORATOR {
+			// Parse field decorators
+			var decorators []*DecoratorNode
+			for p.currToken.Type == DECORATOR {
+				decorator := p.parseDecorator()
+				if decorator != nil {
+					decorators = append(decorators, decorator)
+				} else {
+					p.nextToken()
+					break
+				}
+			}
+			
+			// Parse the field after decorators
+			if p.currToken.Type == IDENT {
+				field := p.parseField()
+				if field != nil {
+					// Attach decorators to field
+					field.Decorators = decorators
+					controller.Fields = append(controller.Fields, field)
+				} else {
+					p.nextToken()
+				}
+			} else {
+				// Invalid field after decorators
+				p.addError("expected field after decorator")
+				p.nextToken()
+			}
+		} else if p.currToken.Type == IDENT {
 			field := p.parseField()
 			if field != nil {
 				controller.Fields = append(controller.Fields, field)
@@ -302,9 +330,37 @@ func (p *Parser) parseServiceDeclaration(name string) *ServiceDeclaration {
 		Methods:    []*MethodNode{},
 	}
 	
-	// Parse fields
+	// Parse fields (including field decorators)
 	for p.currToken.Type != RBRACE && p.currToken.Type != EOF {
-		if p.currToken.Type == IDENT {
+		if p.currToken.Type == DECORATOR {
+			// Parse field decorators
+			var decorators []*DecoratorNode
+			for p.currToken.Type == DECORATOR {
+				decorator := p.parseDecorator()
+				if decorator != nil {
+					decorators = append(decorators, decorator)
+				} else {
+					p.nextToken()
+					break
+				}
+			}
+			
+			// Parse the field after decorators
+			if p.currToken.Type == IDENT {
+				field := p.parseField()
+				if field != nil {
+					// Attach decorators to field
+					field.Decorators = decorators
+					service.Fields = append(service.Fields, field)
+				} else {
+					p.nextToken()
+				}
+			} else {
+				// Invalid field after decorators
+				p.addError("expected field after decorator")
+				p.nextToken()
+			}
+		} else if p.currToken.Type == IDENT {
 			field := p.parseField()
 			if field != nil {
 				service.Fields = append(service.Fields, field)

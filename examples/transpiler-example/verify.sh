@@ -571,9 +571,16 @@ print_success "Route generation verified"
 
 # Step 11: Test dependency injection
 print_step "Verifying dependency injection setup..."
-if ! grep -q 'inject:""' user.controller.go; then
+if ! grep -q 'inject:"' user.controller.go; then
     print_error "Dependency injection tags not found in user.controller.go"
     exit 1
+fi
+
+# Also check for the new @Inject() decorator features
+if grep -q 'inject:"userservice"' user.controller.go && grep -q 'inject:"logger"' user.controller.go; then
+    print_success "✓ Enhanced @Inject() decorator tags found"
+else
+    print_warning "Enhanced @Inject() decorator tags not found"
 fi
 
 print_success "Dependency injection setup verified"
