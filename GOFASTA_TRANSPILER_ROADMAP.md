@@ -51,7 +51,7 @@
 #### 🔥 1.3 HTTP Method & Response Decorators `[HIGH PRIORITY]`
 
 - [X] `@Get()`, `@Post()`, `@Put()`, `@Delete()` - Basic route generation
-- [ ] **`@HttpCode()` decorator** - Generate status code setting
+- [X] **`@HttpCode()` decorator** - Generate status code setting
   ```gofa
   @HttpCode(201)
   @Post("/users")
@@ -59,7 +59,7 @@
       // Generate: ctx.Status(201)
   }
   ```
-- [ ] **`@Redirect()` decorator** - Generate redirect responses
+- [X] **`@Redirect()` decorator** - Generate redirect responses
   ```gofa
   @Redirect("https://example.com", 302)
   @Get("/old-route")

@@ -13,6 +13,7 @@ This example demonstrates how to use the Gofasta transpiler to transform decorat
 - **Guards & Middleware**: `@UseGuards`, `@HttpCode` decorators
 - **Error Handling**: `@Catch()` decorators for automatic error filtering
 - **HTTP Status Codes**: `@HttpCode()` decorators for custom response status codes
+- **Redirects**: `@Redirect()` decorators for URL redirections with custom status codes
 
 ## 📁 File Structure
 
@@ -27,6 +28,7 @@ transpiler-example/
 │   ├── headers-example.gofa # Comprehensive @Headers decorator examples
 │   ├── catch-decorator-example.gofa # Error handling with @Catch() decorator
 │   ├── httpcode-example.gofa # HTTP status codes with @HttpCode() decorator
+│   ├── redirect-example.gofa # URL redirections with @Redirect() decorator
 │   ├── user.service.gofa    # User business logic service  
 │   ├── types.gofa           # Data models and DTOs
 │   ├── simple-test.gofa     # Simple test controller
@@ -1036,6 +1038,189 @@ The `@HttpCode()` decorator provides:
 5. **Early Setting**: Status set before any potential early returns
 6. **Consistency**: Generated code always uses the specified status
 7. **NestJS Compatibility**: Familiar decorator syntax for NestJS developers
+
+### 🚀 @Redirect() Decorator Features
+
+The new `@Redirect()` decorator provides powerful URL redirection capabilities with **NestJS-level parity**:
+
+#### 🎯 Basic Usage
+```go
+// Basic temporary redirect (302) with default status code
+@Redirect("https://newdomain.com/users")
+@Get("/old-users")
+func RedirectUsers() {}
+
+// Permanent redirect (301) for moved resources
+@Redirect("https://newdomain.com/products", 301)
+@Get("/old-products")
+func RedirectProducts() {}
+```
+
+#### 🏗️ HTTP Redirect Status Codes
+```go
+@Controller("/migration")
+type MigrationController struct {}
+
+// Permanent redirect (301) - Moved Permanently
+@Redirect("https://newsite.com/", 301)
+@Get("/")
+func RedirectHomepage() {}
+
+// Temporary redirect (302) - Found (default)
+@Redirect("/maintenance", 302)
+@Get("/admin")
+func RedirectAdmin() {}
+
+// Temporary redirect (307) - Temporary Redirect (preserves method)
+@Redirect("/api/v2/orders", 307)
+@Post("/v1/orders")
+func RedirectCreateOrder() {}
+
+// Permanent redirect (308) - Permanent Redirect (preserves method)
+@Redirect("/api/v2/payments", 308)
+@Put("/v1/payments/:id")
+func RedirectUpdatePayment() {}
+```
+
+#### 🌐 Common Redirect Scenarios
+
+##### API Versioning
+```go
+@Controller("/api/v1")
+type APIVersionController struct {}
+
+// Redirect old API endpoints to new versions
+@Redirect("/api/v2/users", 301)
+@Get("/users")
+func RedirectV1Users() {}
+
+@Redirect("/api/v2/auth/login", 301)
+@Post("/auth/login")
+func RedirectV1Login() {}
+```
+
+##### Domain Migration
+```go
+@Controller("/")
+type DomainMigrationController struct {}
+
+// Permanent domain redirects
+@Redirect("https://app.newcompany.com/", 301)
+@Get("/")
+func RedirectHomepage() {}
+
+@Redirect("https://app.newcompany.com/dashboard", 301)
+@Get("/dashboard")
+func RedirectDashboard() {}
+```
+
+##### SEO-Friendly URL Changes
+```go
+@Controller("/")
+type SEOController struct {}
+
+// SEO redirects for better URL structure
+@Redirect("/blog", 301)
+@Get("/news")
+func RedirectNewsToBlog() {}
+
+@Redirect("/products", 301)
+@Get("/items")
+func RedirectItemsToProducts() {}
+
+@Redirect("/support", 301)
+@Get("/help")
+func RedirectHelpToSupport() {}
+```
+
+### 🔄 Generated Redirect Code
+
+**Before (@Redirect() decorator):**
+```go
+func (c *UserController) RedirectUsers(ctx *httpPackage.RequestContext) {
+    // Manual redirect handling needed
+    ctx.Status(302)
+    ctx.Header("Location", "https://newdomain.com/users")
+    // Manual implementation required
+}
+```
+
+**After (@Redirect("https://newdomain.com/users", 302) decorator):**
+```go
+func (c *UserController) RedirectUsers(ctx *httpPackage.RequestContext) {
+    ctx.Redirect(302, "https://newdomain.com/users")
+}
+```
+
+### 📊 HTTP Redirect Status Codes
+
+| Status Code | Description | Use Case | Example |
+|-------------|-------------|----------|---------|
+| **301** | Moved Permanently | SEO-friendly permanent moves | Domain migration, URL restructuring |
+| **302** | Found (Temporary) | Default temporary redirects | Maintenance mode, temporary moves |
+| **307** | Temporary Redirect | Preserves HTTP method | API versioning with method preservation |
+| **308** | Permanent Redirect | Preserves HTTP method | Permanent API moves with method preservation |
+
+### 🎭 Redirect Decorator Behavior
+
+#### Status Code Priority
+```go
+@Redirect("https://example.com", 301)
+@HttpCode(201)  // Ignored - @Redirect takes precedence
+@Get("/old-route")
+func RedirectRoute() {
+    // Always generates: ctx.Redirect(301, "https://example.com")
+    // HttpCode decorator is ignored when Redirect is present
+}
+```
+
+#### Parameter Support
+```go
+@Redirect("https://example.com", 302)
+@Get("/redirect/:id")
+func RedirectWithParams(@Param("id") id string) {
+    // Parameters are still extracted before redirect
+    // Generated code:
+    // id := ctx.GetParam("id")
+    // ctx.Redirect(302, "https://example.com")
+}
+```
+
+### 🛡️ Best Practices
+
+#### ✅ **Recommended Usage**
+```go
+// Permanent moves for SEO
+@Redirect("/new-path", 301)
+@Get("/old-path")
+func PermanentMove() {}
+
+// Temporary redirects
+@Redirect("/maintenance", 302)
+@Get("/admin")
+func TemporaryMove() {}
+
+// Method-preserving redirects
+@Redirect("/api/v2/endpoint", 307)
+@Post("/api/v1/endpoint")
+func MethodPreservingRedirect() {}
+
+// Default temporary redirect
+@Redirect("/new-location")  // Defaults to 302
+@Get("/old-location")
+func DefaultRedirect() {}
+```
+
+### ⚡ Performance & SEO Benefits
+
+The `@Redirect()` decorator provides:
+
+1. **SEO Preservation**: Proper 301 redirects maintain search rankings
+2. **User Experience**: Seamless redirection without broken links  
+3. **Clean URLs**: Enable URL restructuring without losing traffic
+4. **Method Preservation**: 307/308 status codes maintain HTTP methods
+5. **Cache Control**: Browsers cache permanent redirects appropriately
+6. **Automatic Generation**: No manual redirect logic needed
 
 ## 🔍 Detailed Example Analysis
 
