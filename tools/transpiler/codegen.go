@@ -145,6 +145,12 @@ func (g *CodeGenerator) generateServiceDeclaration(service *ServiceDeclaration) 
 		g.writeLine("")
 	}
 
+	// Generate Provider factory if Injectable
+	if g.hasDecorator(service.Decorators, "Injectable") {
+		g.generateProviderFactory(service)
+		g.writeLine("")
+	}
+
 	// Generate methods
 	for _, method := range service.Methods {
 		if err := g.generateServiceMethod(service, method); err != nil {
@@ -319,6 +325,48 @@ func (g *CodeGenerator) generateServiceInitializeMethod(service *ServiceDeclarat
 	g.writeLine("}")
 }
 
+// generateProviderFactory generates a provider factory function for injectable services
+func (g *CodeGenerator) generateProviderFactory(service *ServiceDeclaration) {
+	factoryName := fmt.Sprintf("New%s", service.Name)
+	
+	// Extract scope from @Injectable decorator
+	scope := g.getInjectableScope(service)
+	
+	// Generate factory function signature
+	g.writeLine(fmt.Sprintf("func %s(container *core.DIContainer) (*%s, error) {", factoryName, service.Name))
+	g.indent()
+	
+	// Create instance
+	g.writeLine(fmt.Sprintf("instance := &%s{}", service.Name))
+	g.writeLine("")
+	
+	// Generate dependency injection for each field
+	for _, field := range service.Fields {
+		g.generateFieldDependencyInjection(field)
+	}
+	
+	// Initialize the service if it has an Initialize method
+	g.writeLine("")
+	g.writeLine("if initializer, ok := interface{}(instance).(interface{ Initialize() error }); ok {")
+	g.indent()
+	g.writeLine("if err := initializer.Initialize(); err != nil {")
+	g.indent()
+	g.writeLine("return nil, err")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
+	
+	g.writeLine("")
+	g.writeLine("return instance, nil")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	
+	// Generate provider registration helper
+	g.generateProviderRegistration(service, factoryName, scope)
+}
+
 // generateModuleConfigureMethod generates Configure method for modules
 func (g *CodeGenerator) generateModuleConfigureMethod(module *ModuleDeclaration) {
 	g.writeLine(fmt.Sprintf("func (m *%s) Configure(container *core.DIContainer) error {", module.Name))
@@ -331,7 +379,9 @@ func (g *CodeGenerator) generateModuleConfigureMethod(module *ModuleDeclaration)
 	if len(moduleConfig.Providers) > 0 {
 		g.writeLine("// Register providers")
 		for _, provider := range moduleConfig.Providers {
-			g.writeLine(fmt.Sprintf("if err := container.RegisterProvider(&%s{}); err != nil {", provider))
+			// Use the generated provider registration function if it exists
+			registrationFunctionName := fmt.Sprintf("Register%sProvider", provider)
+			g.writeLine(fmt.Sprintf("if err := %s(container); err != nil {", registrationFunctionName))
 			g.indent()
 			g.writeLine("return err")
 			g.unindent()
@@ -1092,6 +1142,158 @@ func (g *CodeGenerator) generateInjectTag(decorator *DecoratorNode, field *Field
 	return tag
 }
 
+// getInjectableScope extracts the scope from @Injectable decorator
+func (g *CodeGenerator) getInjectableScope(service *ServiceDeclaration) string {
+	injectableDecorator := g.getDecorator(service.Decorators, "Injectable")
+	if injectableDecorator == nil {
+		return "singleton" // Default scope
+	}
+	
+	// Check for scope in decorator arguments
+	for _, arg := range injectableDecorator.Args {
+		// Handle string argument (scope)
+		if scopeValue, ok := arg.Value.(string); ok {
+			return scopeValue
+		}
+		
+		// Handle object argument with scope property
+		if objValue, ok := arg.Value.(map[string]interface{}); ok {
+			if scope, exists := objValue["scope"]; exists {
+				if scopeStr, ok := scope.(string); ok {
+					return scopeStr
+				}
+			}
+		}
+	}
+	
+	return "singleton" // Default scope
+}
+
+// generateFieldDependencyInjection generates dependency injection code for a field
+func (g *CodeGenerator) generateFieldDependencyInjection(field *FieldNode) {
+	// Get injection configuration from @Inject decorator or default
+	injectionConfig := g.getFieldInjectionConfig(field)
+	
+	g.writeLine(fmt.Sprintf("// Inject %s", field.Name))
+	
+	if injectionConfig.Optional {
+		// Optional dependency - don't fail if not found
+		g.writeLine(fmt.Sprintf("if dep, exists := container.GetOptional(\"%s\"); exists {", injectionConfig.Token))
+		g.indent()
+		g.writeLine(fmt.Sprintf("if typedDep, ok := dep.(%s); ok {", field.Type))
+		g.indent()
+		g.writeLine(fmt.Sprintf("instance.%s = typedDep", field.Name))
+		g.unindent()
+		g.writeLine("}")
+		g.unindent()
+		g.writeLine("}")
+	} else {
+		// Required dependency
+		g.writeLine(fmt.Sprintf("dep, err := container.Get(\"%s\")", injectionConfig.Token))
+		g.writeLine("if err != nil {")
+		g.indent()
+		g.writeLine(fmt.Sprintf("return nil, fmt.Errorf(\"failed to inject %s: %%w\", err)", field.Name))
+		g.unindent()
+		g.writeLine("}")
+		g.writeLine(fmt.Sprintf("if typedDep, ok := dep.(%s); ok {", field.Type))
+		g.indent()
+		g.writeLine(fmt.Sprintf("instance.%s = typedDep", field.Name))
+		g.unindent()
+		g.writeLine("} else {")
+		g.indent()
+		g.writeLine(fmt.Sprintf("return nil, fmt.Errorf(\"dependency %s has wrong type, expected %s\")", injectionConfig.Token, field.Type))
+		g.unindent()
+		g.writeLine("}")
+	}
+	
+	g.writeLine("")
+}
+
+// FieldInjectionConfig represents field injection configuration
+type FieldInjectionConfig struct {
+	Token    string
+	Optional bool
+	Scope    string
+}
+
+// getFieldInjectionConfig extracts injection configuration from field
+func (g *CodeGenerator) getFieldInjectionConfig(field *FieldNode) FieldInjectionConfig {
+	config := FieldInjectionConfig{
+		Token:    strings.ToLower(field.Name), // Default to field name
+		Optional: false,
+		Scope:    "singleton",
+	}
+	
+	// Check for @Inject decorator
+	injectDecorator := g.getInjectDecorator(field)
+	if injectDecorator == nil {
+		return config
+	}
+	
+	// Process decorator arguments
+	for _, arg := range injectDecorator.Args {
+		// Handle string argument (injection token)
+		if tokenValue, ok := arg.Value.(string); ok {
+			config.Token = tokenValue
+			break
+		}
+		
+		// Handle object argument with injection configuration
+		if objValue, ok := arg.Value.(map[string]interface{}); ok {
+			// Extract token
+			if token, exists := objValue["token"]; exists {
+				if tokenStr, ok := token.(string); ok {
+					config.Token = tokenStr
+				}
+			}
+			
+			// Extract optional
+			if optional, exists := objValue["optional"]; exists {
+				if optBool, ok := optional.(bool); ok {
+					config.Optional = optBool
+				}
+			}
+			
+			// Extract scope
+			if scope, exists := objValue["scope"]; exists {
+				if scopeStr, ok := scope.(string); ok {
+					config.Scope = scopeStr
+				}
+			}
+			break
+		}
+	}
+	
+	return config
+}
+
+// generateProviderRegistration generates provider registration helper function
+func (g *CodeGenerator) generateProviderRegistration(service *ServiceDeclaration, factoryName, scope string) {
+	registrationName := fmt.Sprintf("Register%sProvider", service.Name)
+	
+	g.writeLine(fmt.Sprintf("// %s registers the %s provider with the DI container", registrationName, service.Name))
+	g.writeLine(fmt.Sprintf("func %s(container *core.DIContainer) error {", registrationName))
+	g.indent()
+	
+	// Register the provider with the specified scope
+	serviceToken := strings.ToLower(service.Name)
+	
+	switch scope {
+	case "singleton":
+		g.writeLine(fmt.Sprintf("return container.RegisterSingleton(\"%s\", %s)", serviceToken, factoryName))
+	case "transient":
+		g.writeLine(fmt.Sprintf("return container.RegisterTransient(\"%s\", %s)", serviceToken, factoryName))
+	case "request", "scoped":
+		g.writeLine(fmt.Sprintf("return container.RegisterScoped(\"%s\", %s)", serviceToken, factoryName))
+	default:
+		// Default to singleton
+		g.writeLine(fmt.Sprintf("return container.RegisterSingleton(\"%s\", %s)", serviceToken, factoryName))
+	}
+	
+	g.unindent()
+	g.writeLine("}")
+}
+
 // collectImports collects all necessary imports
 func (g *CodeGenerator) collectImports(file *GofaFile) {
 	// Standard imports for Gofasta
@@ -1102,6 +1304,7 @@ func (g *CodeGenerator) collectImports(file *GofaFile) {
 	g.addImport("strconv")
 	g.addImport("strings")
 	g.addImport("net/http")
+	g.addImport("fmt")
 
 	// Check if we need additional imports based on decorators
 	for _, decl := range file.Declarations {

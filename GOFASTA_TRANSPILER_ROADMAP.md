@@ -85,7 +85,7 @@
       Cache *Redis `inject:"redis"`
   }
   ```
-- [ ] **Provider factory generation** - Generate custom provider code
+- [X] **Provider factory generation** - Generate custom provider code
 - [ ] **Scope decorators** - Generate scope-aware DI code
   ```gofa
   @Injectable("singleton")

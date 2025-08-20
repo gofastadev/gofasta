@@ -206,6 +206,7 @@ const (
 
 	// Dependency injection decorators
 	InjectDecorator
+	ProviderDecorator
 
 	// Other decorators
 	HttpCodeDecorator
@@ -248,6 +249,7 @@ var DecoratorTypeMap = map[string]DecoratorType{
 	"HostParam":       HostParamDecorator,
 	"Catch":           CatchDecorator,
 	"Inject":          InjectDecorator,
+	"Provider":        ProviderDecorator,
 	"HttpCode":        HttpCodeDecorator,
 	"Redirect":        RedirectDecorator,
 	"Header":          HeaderDecorator,
@@ -292,7 +294,7 @@ func IsErrorHandlingDecorator(decoratorType DecoratorType) bool {
 
 // IsDependencyInjectionDecorator checks if a decorator type is a dependency injection decorator
 func IsDependencyInjectionDecorator(decoratorType DecoratorType) bool {
-	return decoratorType == InjectDecorator
+	return decoratorType == InjectDecorator || decoratorType == ProviderDecorator
 }
 
 // Visitor interface for traversing the AST

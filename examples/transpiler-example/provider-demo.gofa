@@ -1,0 +1,69 @@
+package main
+
+// Demonstrates Provider Factory Generation feature
+
+// Basic Injectable service
+@Injectable()
+type DatabaseService struct {
+    @Inject("config")
+    Config *Config
+    
+    @Inject()
+    Logger *Logger
+}
+
+func Connect() error {
+    return nil
+}
+
+// Injectable with optional dependencies
+@Injectable("singleton")
+type EmailService struct {
+    @Inject("emailconfig")
+    Config *EmailConfig
+    
+    @Inject({token: "templates", optional: true})
+    Templates *TemplateEngine
+}
+
+func SendEmail(to, subject, body string) error {
+    return nil
+}
+
+// Injectable with transient scope
+@Injectable("transient")
+type RequestHandler struct {
+    @Inject("session")
+    Session *SessionStore
+}
+
+func ProcessRequest() error {
+    return nil
+}
+
+// Module using the injectable services
+@Module({
+    providers: ["DatabaseService", "EmailService", "RequestHandler"]
+})
+type AppModule struct {}
+
+// Supporting types
+type Config struct {
+    DatabaseURL string
+}
+
+type Logger struct {
+    Level string
+}
+
+type EmailConfig struct {
+    SMTPHost string
+}
+
+type TemplateEngine struct {
+    Templates map[string]string
+}
+
+type SessionStore struct {
+    Backend string
+}
