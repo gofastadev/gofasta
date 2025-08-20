@@ -1,0 +1,194 @@
+package main
+
+// @Header() decorator example demonstrating various response header scenarios
+
+@Controller("/api/files")
+type FileController struct {}
+
+// Basic content download with appropriate headers
+@Header("Content-Type", "application/pdf")
+@Header("Content-Disposition", "attachment; filename=document.pdf")
+@Header("Cache-Control", "private, no-cache")
+@Get("/download/:id")
+func DownloadPDF(@Param("id") id string) {}
+
+// Image serving with caching headers
+@Header("Content-Type", "image/jpeg")
+@Header("Cache-Control", "public, max-age=31536000")
+@Header("X-Content-Type-Options", "nosniff")
+@Get("/images/:filename")
+func ServeImage(@Param("filename") filename string) {}
+
+@Controller("/api/v2")
+type APIController struct {}
+
+// REST API with versioning and rate limiting headers
+@Header("X-API-Version", "2.0")
+@Header("X-Rate-Limit", "1000")
+@Header("X-Rate-Limit-Window", "3600")
+@Header("X-Rate-Limit-Remaining", "999")
+@Get("/users")
+func GetUsers() {}
+
+// Resource creation with location header
+@HttpCode(201)
+@Header("Location", "/api/v2/users/123")
+@Header("X-Resource-Created", "true")
+@Header("X-API-Version", "2.0")
+@Post("/users")
+func CreateUser(@Body() userData CreateUserDto) {}
+
+// Data update with timestamp and etag headers
+@Header("Last-Modified", "Wed, 21 Oct 2015 07:28:00 GMT")
+@Header("ETag", "\"33a64df551425fcc55e4d42a148795d9f25f89d4\"")
+@Header("X-API-Version", "2.0")
+@Put("/users/:id")
+func UpdateUser(@Param("id") id string, @Body() updateData UpdateUserDto) {}
+
+@Controller("/api/secure")
+type SecurityController struct {}
+
+// Security-focused endpoint with comprehensive security headers
+@Header("X-Content-Type-Options", "nosniff")
+@Header("X-Frame-Options", "DENY")
+@Header("X-XSS-Protection", "1; mode=block")
+@Header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+@Header("Content-Security-Policy", "default-src 'self'")
+@Header("Referrer-Policy", "strict-origin-when-cross-origin")
+@Header("X-Permitted-Cross-Domain-Policies", "none")
+@Get("/sensitive-data")
+func GetSensitiveData(@Headers("Authorization") authToken string) {}
+
+@Controller("/api/cors")
+type CORSController struct {}
+
+// CORS preflight response with all necessary headers
+@Header("Access-Control-Allow-Origin", "https://trusted-domain.com")
+@Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+@Header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
+@Header("Access-Control-Allow-Credentials", "true")
+@Header("Access-Control-Max-Age", "86400")
+@Header("Vary", "Origin, Access-Control-Request-Method, Access-Control-Request-Headers")
+@Options("/users")
+func HandleCORSPreflight() {}
+
+// Actual CORS endpoint with response headers
+@Header("Access-Control-Allow-Origin", "https://trusted-domain.com")
+@Header("Access-Control-Allow-Credentials", "true")
+@Header("Access-Control-Expose-Headers", "X-Total-Count, X-Page-Count")
+@Header("X-Total-Count", "150")
+@Header("X-Page-Count", "15")
+@Get("/users")
+func GetUsersWithCORS(@Query("page") page int, @Query("limit") limit int) {}
+
+@Controller("/api/cache")
+type CacheController struct {}
+
+// Data with aggressive caching headers
+@Header("Cache-Control", "public, max-age=3600, s-maxage=7200")
+@Header("ETag", "\"v1.0-static-content\"")
+@Header("Vary", "Accept-Encoding")
+@Get("/static-data")
+func GetStaticData() {}
+
+// Data with no-cache headers for dynamic content
+@Header("Cache-Control", "no-cache, no-store, must-revalidate")
+@Header("Pragma", "no-cache")
+@Header("Expires", "0")
+@Header("X-Accel-Expires", "0")
+@Get("/dynamic-data")
+func GetDynamicData() {}
+
+// Conditional caching with validation headers
+@Header("Cache-Control", "private, max-age=300")
+@Header("Last-Modified", "Thu, 22 Oct 2015 08:15:00 GMT")
+@Header("ETag", "\"user-specific-etag\"")
+@Get("/user-data/:id")
+func GetUserData(@Param("id") id string, @Headers("If-Modified-Since") ifModifiedSince string) {}
+
+@Controller("/api/webhooks")
+type WebhookController struct {}
+
+// Webhook response with appropriate headers
+@Header("X-Webhook-Event", "user.created")
+@Header("X-Webhook-Signature", "sha256=abc123")
+@Header("X-Webhook-Delivery", "12345")
+@Header("Content-Type", "application/json")
+@HttpCode(200)
+@Post("/user-created")
+func HandleUserCreated(@Body() webhookData WebhookPayload) {}
+
+@Controller("/api/monitoring")
+type MonitoringController struct {}
+
+// Health check endpoint with monitoring headers
+@Header("X-Health-Check", "ok")
+@Header("X-Service-Version", "1.2.3")
+@Header("X-Build-Hash", "abc123def456")
+@Header("X-Uptime", "1234567")
+@Header("Cache-Control", "no-cache")
+@Get("/health")
+func HealthCheck() {}
+
+// Metrics endpoint with metadata headers
+@Header("Content-Type", "application/json")
+@Header("X-Metrics-Format", "prometheus")
+@Header("X-Collection-Time", "2023-10-22T10:30:00Z")
+@Header("Cache-Control", "no-cache, max-age=60")
+@Get("/metrics")
+func GetMetrics() {}
+
+@Controller("/api/assets")
+type AssetController struct {}
+
+// CSS serving with optimization headers
+@Header("Content-Type", "text/css")
+@Header("Cache-Control", "public, max-age=31536000, immutable")
+@Header("X-Content-Type-Options", "nosniff")
+@Header("Content-Encoding", "gzip")
+@Get("/styles/:filename")
+func ServeCSS(@Param("filename") filename string) {}
+
+// JavaScript serving with strict headers
+@Header("Content-Type", "application/javascript")
+@Header("Cache-Control", "public, max-age=31536000, immutable")
+@Header("X-Content-Type-Options", "nosniff")
+@Header("Strict-Transport-Security", "max-age=31536000")
+@Get("/scripts/:filename")
+func ServeJS(@Param("filename") filename string) {}
+
+// Font serving with cross-origin headers
+@Header("Content-Type", "font/woff2")
+@Header("Cache-Control", "public, max-age=31536000")
+@Header("Access-Control-Allow-Origin", "*")
+@Header("Cross-Origin-Resource-Policy", "cross-origin")
+@Get("/fonts/:filename")
+func ServeFont(@Param("filename") filename string) {}
+
+@Controller("/api/reports")
+type ReportController struct {}
+
+// Excel report download
+@Header("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+@Header("Content-Disposition", "attachment; filename=report.xlsx")
+@Header("Cache-Control", "private, no-cache")
+@Header("X-Report-Generated", "2023-10-22T10:30:00Z")
+@Get("/excel/:reportId")
+func DownloadExcelReport(@Param("reportId") reportId string) {}
+
+// CSV export with streaming headers
+@Header("Content-Type", "text/csv; charset=utf-8")
+@Header("Content-Disposition", "attachment; filename=data.csv")
+@Header("Transfer-Encoding", "chunked")
+@Header("Cache-Control", "no-cache")
+@Get("/csv/:datasetId")
+func ExportCSV(@Param("datasetId") datasetId string) {}
+
+// Combined decorators example showing @Header() with other decorators
+@HttpCode(201)
+@Header("Location", "/api/reports/123")
+@Header("X-Report-Status", "processing")
+@Header("X-Estimated-Time", "300")
+@Catch(ValidationError)
+@Post("/generate")
+func GenerateReport(@Body() reportRequest ReportRequest) {}
