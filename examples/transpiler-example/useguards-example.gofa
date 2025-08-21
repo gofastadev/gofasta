@@ -1,0 +1,206 @@
+package main
+
+// Example demonstrating @UseGuards() decorator usage in GOFASTA
+
+// Basic authentication-protected controller
+@Controller("/auth")
+@UseGuards(AuthGuard)
+type AuthController struct {
+	@Inject()
+	userService *UserService
+}
+
+// Simple protected endpoint - inherits AuthGuard from controller
+@Get("/profile")
+func getProfile(@Session("userId") userId string) User {
+	// This method is automatically protected by AuthGuard
+	return userService.GetUser(userId)
+}
+
+// Method with additional role-based protection
+@UseGuards(RoleGuard)
+@Get("/admin")
+func getAdminData(@Session("userId") userId string) AdminData {
+	// This method is protected by both AuthGuard (from controller) and RoleGuard (from method)
+	return userService.GetAdminData(userId)
+}
+
+// Admin controller with multiple guards at controller level
+@Controller("/admin")
+@UseGuards(AuthGuard, RoleGuard)
+type AdminController struct {
+	@Inject()
+	adminService *AdminService
+}
+
+// Method inherits both guards from controller
+@Get("/users")
+func getAllUsers(@Query("page") page int) []User {
+	return adminService.GetAllUsers(page)
+}
+
+// Method with additional permission-based protection
+@UseGuards(PermissionGuard)
+@Delete("/user/:id")
+func deleteUser(@Param("id") userId string) {
+	// This method is protected by AuthGuard + RoleGuard (from controller) + PermissionGuard (from method)
+	adminService.DeleteUser(userId)
+}
+
+// Public API controller with selective protection
+@Controller("/api/v1")
+type ApiController struct {
+	@Inject()
+	dataService *DataService
+}
+
+// Public endpoint - no guards
+@Get("/health")
+func getHealth() HealthStatus {
+	return HealthStatus{Status: "OK", Timestamp: time.Now()}
+}
+
+// Protected endpoint with custom guard
+@UseGuards(ApiKeyGuard)
+@Get("/data")
+func getData(@Headers("X-API-Key") apiKey string, @Query("limit") limit int) []DataItem {
+	return dataService.GetData(limit)
+}
+
+// Highly secured endpoint with multiple custom guards
+@UseGuards(AuthGuard, RoleGuard, RateLimitGuard, AuditGuard)
+@Post("/sensitive")
+func processSensitiveData(@Body() data SensitiveRequest) ProcessResult {
+	// This method is protected by multiple guards:
+	// - AuthGuard: Validates authentication token
+	// - RoleGuard: Checks user role permissions
+	// - RateLimitGuard: Enforces rate limiting
+	// - AuditGuard: Logs access attempts
+	return dataService.ProcessSensitive(data)
+}
+
+// Mixed authentication patterns
+@Controller("/mixed")
+type MixedController struct {
+	@Inject()
+	service *MixedService
+}
+
+// JWT-based authentication
+@UseGuards(JWTGuard)
+@Get("/jwt-protected")
+func jwtProtected(@Headers("Authorization") token string) JWTData {
+	return service.GetJWTData()
+}
+
+// Session-based authentication
+@UseGuards(SessionGuard)
+@Get("/session-protected")
+func sessionProtected(@Session() session SessionData) UserData {
+	return service.GetSessionData(session)
+}
+
+// OAuth2 protection
+@UseGuards(OAuth2Guard)
+@Get("/oauth-protected")
+func oauthProtected(@Headers("Authorization") bearer string) OAuthData {
+	return service.GetOAuthData()
+}
+
+// Type definitions for the examples
+type User struct {
+	ID       string `json:"id"`
+	Username string `json:"username"`
+	Email    string `json:"email"`
+	Role     string `json:"role"`
+}
+
+type AdminData struct {
+	Summary    string `json:"summary"`
+	UserCount  int    `json:"userCount"`
+	SystemInfo string `json:"systemInfo"`
+}
+
+type HealthStatus struct {
+	Status    string    `json:"status"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
+type DataItem struct {
+	ID        string            `json:"id"`
+	Data      map[string]string `json:"data"`
+	Timestamp time.Time         `json:"timestamp"`
+}
+
+type SensitiveRequest struct {
+	Operation string                 `json:"operation"`
+	Payload   map[string]interface{} `json:"payload"`
+	Context   RequestContext         `json:"context"`
+}
+
+type ProcessResult struct {
+	Success   bool   `json:"success"`
+	ResultID  string `json:"resultId"`
+	Message   string `json:"message"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
+type JWTData struct {
+	Claims    map[string]interface{} `json:"claims"`
+	ExpiresAt time.Time             `json:"expiresAt"`
+}
+
+type SessionData struct {
+	UserID    string            `json:"userId"`
+	SessionID string            `json:"sessionId"`
+	Data      map[string]string `json:"data"`
+}
+
+type UserData struct {
+	ID          string `json:"id"`
+	DisplayName string `json:"displayName"`
+	Preferences map[string]interface{} `json:"preferences"`
+}
+
+type OAuthData struct {
+	AccessToken  string            `json:"accessToken"`
+	RefreshToken string            `json:"refreshToken"`
+	Scopes       []string          `json:"scopes"`
+	UserInfo     map[string]string `json:"userInfo"`
+}
+
+type RequestContext struct {
+	RequestID string            `json:"requestId"`
+	UserAgent string            `json:"userAgent"`
+	IP        string            `json:"ip"`
+	Headers   map[string]string `json:"headers"`
+}
+
+// Service declarations (would be implemented elsewhere)
+@Injectable()
+type UserService struct {
+	@Inject()
+	db *Database
+}
+
+@Injectable()
+type AdminService struct {
+	@Inject()
+	db *Database
+}
+
+@Injectable()
+type DataService struct {
+	@Inject()
+	cache *Cache
+	@Inject()
+	db *Database
+}
+
+@Injectable()
+type MixedService struct {
+	@Inject()
+	db *Database
+	@Inject()
+	cache *Cache
+}

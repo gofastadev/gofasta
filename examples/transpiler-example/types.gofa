@@ -29,8 +29,10 @@ type UpdateUserDto struct {
 // Repository implementation
 @Injectable()
 type UserRepository struct {
-    Database *Database `inject:"database"`
-    Logger   *Logger   `inject:"logger"`
+    @Inject("database")
+    Database *Database
+    @Inject("logger")
+    Logger *Logger
 }
 
 func GetAll() []User {
@@ -56,8 +58,10 @@ func Delete(id string) error {
 // Email service implementation
 @Injectable()
 type EmailService struct {
-    Config *EmailConfig `inject:"emailConfig"`
-    Logger *Logger      `inject:"logger"`
+    @Inject("emailConfig")
+    Config *EmailConfig
+    @Inject("logger")
+    Logger *Logger
 }
 
 func SendWelcomeEmail(email string) error {
@@ -71,7 +75,8 @@ func SendNotification(email string, message string) error {
 // Logger implementation
 @Injectable()
 type Logger struct {
-    Config *LogConfig `inject:"logConfig"`
+    @Inject("logConfig")
+    Config *LogConfig
 }
 
 func Info(message string) {
@@ -134,8 +139,10 @@ type UpdateProductDto struct {
 // Product service for business logic
 @Injectable()
 type ProductService struct {
-    ProductRepository *ProductRepository `inject:""`
-    Logger           *Logger            `inject:"logger"`
+    @Inject()
+    ProductRepository *ProductRepository
+    @Inject("logger")
+    Logger *Logger
 }
 
 func GetProducts(filters ProductFilters) ([]Product, error) {
@@ -183,8 +190,10 @@ type ProductFilters struct {
 // Product repository
 @Injectable()
 type ProductRepository struct {
-    Database *Database `inject:"database"`
-    Logger   *Logger   `inject:"logger"`
+    @Inject("database")
+    Database *Database
+    @Inject("logger")
+    Logger *Logger
 }
 
 func FindProducts(filters ProductFilters) ([]Product, error) {

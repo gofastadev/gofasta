@@ -2,7 +2,8 @@ package main
 
 @Controller("/api/test")
 type TestController struct {
-    Logger *Logger `inject:"logger"`
+    @Inject("logger")
+    Logger *Logger
 }
 
 @Get("/hello")

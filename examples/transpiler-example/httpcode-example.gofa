@@ -2,8 +2,10 @@ package main
 
 @Controller("/api/v1/users")
 type UserController struct {
-    UserService *UserService `inject:""`
-    Logger      *Logger      `inject:"logger"`
+    @Inject()
+    UserService *UserService
+    @Inject("logger")
+    Logger *Logger
 }
 
 // Standard GET - uses default 200 OK
@@ -40,7 +42,8 @@ func DeleteUser(@Param("id") id string) {
 
 @Controller("/api/v1/async")
 type AsyncController struct {
-    JobService *JobService `inject:""`
+    @Inject()
+    JobService *JobService
 }
 
 // Async job creation - returns 202 Accepted
@@ -59,7 +62,8 @@ func RestartJob(@Param("id") id string) {
 
 @Controller("/api/v1/cache")
 type CacheController struct {
-    CacheService *CacheService `inject:""`
+    @Inject()
+    CacheService *CacheService
 }
 
 // Cached data - may return 304 Not Modified
@@ -78,7 +82,8 @@ func ClearCache() {
 
 @Controller("/api/v1/files")
 type FileController struct {
-    FileService *FileService `inject:""`
+    @Inject()
+    FileService *FileService
 }
 
 // File upload - returns 201 Created
