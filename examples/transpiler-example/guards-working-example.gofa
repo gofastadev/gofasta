@@ -6,7 +6,8 @@ package example
 
 @Controller("/api/auth")
 type AuthController struct {
-	userService *UserService `inject:"userService"`
+	@Inject()
+	userService *UserService
 }
 
 // Example method that would be protected by guards
@@ -16,7 +17,8 @@ type AuthController struct {
 
 @Controller("/api/admin")
 type AdminController struct {
-	adminService *AdminService `inject:"adminService"`
+	@Inject()
+	adminService *AdminService
 }
 
 // Multiple guards example
@@ -25,10 +27,12 @@ type AdminController struct {
 
 @Injectable()
 type UserService struct {
-	db *Database `inject:"database"`
+	@Inject()
+	db *Database
 }
 
 @Injectable()
 type AdminService struct {
-	db *Database `inject:"database"`
+	@Inject()
+	db *Database
 }

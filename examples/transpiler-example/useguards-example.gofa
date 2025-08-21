@@ -6,7 +6,8 @@ package main
 @Controller("/auth")
 @UseGuards(AuthGuard)
 type AuthController struct {
-	userService *UserService `inject:"userService"`
+	@Inject()
+	userService *UserService
 }
 
 // Simple protected endpoint - inherits AuthGuard from controller
@@ -28,7 +29,8 @@ func getAdminData(@Session("userId") userId string) AdminData {
 @Controller("/admin")
 @UseGuards(AuthGuard, RoleGuard)
 type AdminController struct {
-	adminService *AdminService `inject:"adminService"`
+	@Inject()
+	adminService *AdminService
 }
 
 // Method inherits both guards from controller
@@ -48,7 +50,8 @@ func deleteUser(@Param("id") userId string) {
 // Public API controller with selective protection
 @Controller("/api/v1")
 type ApiController struct {
-	dataService *DataService `inject:"dataService"`
+	@Inject()
+	dataService *DataService
 }
 
 // Public endpoint - no guards
@@ -79,7 +82,8 @@ func processSensitiveData(@Body() data SensitiveRequest) ProcessResult {
 // Mixed authentication patterns
 @Controller("/mixed")
 type MixedController struct {
-	service *MixedService `inject:"mixedService"`
+	@Inject()
+	service *MixedService
 }
 
 // JWT-based authentication
@@ -175,22 +179,28 @@ type RequestContext struct {
 // Service declarations (would be implemented elsewhere)
 @Injectable()
 type UserService struct {
-	db *Database `inject:"database"`
+	@Inject()
+	db *Database
 }
 
 @Injectable()
 type AdminService struct {
-	db *Database `inject:"database"`
+	@Inject()
+	db *Database
 }
 
 @Injectable()
 type DataService struct {
-	cache *Cache `inject:"cache"`
-	db    *Database `inject:"database"`
+	@Inject()
+	cache *Cache
+	@Inject()
+	db *Database
 }
 
 @Injectable()
 type MixedService struct {
-	db    *Database `inject:"database"`
-	cache *Cache    `inject:"cache"`
+	@Inject()
+	db *Database
+	@Inject()
+	cache *Cache
 }
