@@ -523,6 +523,42 @@ func (c *DataController) createTest(@Body() data DataDto) {
 				"isISBN13",
 			},
 		},
+		{
+			name: "IsBase64 validation decorator",
+			input: `package main
+
+@Injectable()
+type DataDto struct {
+	@IsBase64()
+	EncodedData string
+	
+	@IsBase64()
+	Image string
+	
+	@IsBase64()
+	Document string
+}
+
+@Controller("/data")
+type DataController struct {
+}
+
+@Post("/")
+func (c *DataController) createTest(@Body() data DataDto) {
+}`,
+			expected: []string{
+				"ValidationError",
+				"ValidateDataDto",
+				"func isBase64(value interface{}) bool",
+				"IsBase64 validation",
+				"if !isBase64(dto.EncodedData) {",
+				"if !isBase64(dto.Image) {",
+				"if !isBase64(dto.Document) {",
+				"must be valid Base64",
+				"IS_BASE64",
+				"base64.StdEncoding.DecodeString",
+			},
+		},
 	}
 
 	for _, tt := range tests {

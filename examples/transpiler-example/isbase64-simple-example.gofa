@@ -1,0 +1,32 @@
+package main
+
+@Injectable()
+type FileService struct {
+}
+
+func (s *FileService) uploadFile(dto FileDto) {
+    // Body parameter validation will be generated automatically
+    // The dto will be validated using the @IsBase64() decorators
+}
+
+@Injectable()
+type FileDto struct {
+    @IsBase64()
+    ImageData string         // Must be valid Base64 encoded data (e.g., "SGVsbG8gV29ybGQ=")
+    
+    @IsBase64()
+    DocumentContent string   // Validates Base64 format with proper padding
+    
+    @IsBase64()
+    AttachmentData string    // Checks character set and length requirements
+}
+
+@Controller("/api/files")
+type FileController struct {
+    service *FileService `inject:""`
+}
+
+@Post("/upload")
+func (c *FileController) uploadFile(@Body() file FileDto) {
+    c.service.uploadFile(file)
+}

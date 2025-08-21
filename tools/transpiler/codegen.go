@@ -2969,6 +2969,8 @@ func (g *CodeGenerator) getValidationMessage(ruleType string, args []interface{}
 		return "must be a valid credit card number"
 	case "IsISBN":
 		return "must be a valid ISBN"
+	case "IsBase64":
+		return "must be valid Base64"
 	case "IsPositive":
 		return "must be a positive number"
 	case "IsNegative":
@@ -3537,6 +3539,67 @@ func (g *CodeGenerator) generateValidationHelperFunctions() {
 	g.writeLine("return sum%10 == 0")
 	g.unindent()
 	g.writeLine("}")
+	g.writeLine("")
+	
+	// Base64 validation
+	g.writeLine("func isBase64(value interface{}) bool {")
+	g.indent()
+	g.writeLine("str, ok := value.(string)")
+	g.writeLine("if !ok {")
+	g.indent()
+	g.writeLine("return false")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	g.writeLine("// Empty string is not valid base64")
+	g.writeLine("if len(str) == 0 {")
+	g.indent()
+	g.writeLine("return false")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	g.writeLine("// Check if length is multiple of 4")
+	g.writeLine("if len(str)%4 != 0 {")
+	g.indent()
+	g.writeLine("return false")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	g.writeLine("// Check for valid base64 characters")
+	g.writeLine("for i, char := range str {")
+	g.indent()
+	g.writeLine("if !((char >= 'A' && char <= 'Z') || (char >= 'a' && char <= 'z') || (char >= '0' && char <= '9') || char == '+' || char == '/') {")
+	g.indent()
+	g.writeLine("// Allow padding characters only at the end")
+	g.writeLine("if char == '=' {")
+	g.indent()
+	g.writeLine("// Check if padding is at the end")
+	g.writeLine("for j := i; j < len(str); j++ {")
+	g.indent()
+	g.writeLine("if str[j] != '=' {")
+	g.indent()
+	g.writeLine("return false")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("break")
+	g.unindent()
+	g.writeLine("} else {")
+	g.indent()
+	g.writeLine("return false")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	g.writeLine("// Additional validation using Go's base64 decoder")
+	g.writeLine("_, err := base64.StdEncoding.DecodeString(str)")
+	g.writeLine("return err == nil")
+	g.unindent()
+	g.writeLine("}")
 }
 
 // generateDTOValidationFunction generates validation function for a DTO
@@ -3712,6 +3775,12 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 		g.generateValidationError(field.Name, fieldName, rule)
 		g.writeLine("}")
 		
+	case "IsBase64":
+		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+		g.writeLine(fmt.Sprintf("if !isBase64(%s) {", fieldName))
+		g.generateValidationError(field.Name, fieldName, rule)
+		g.writeLine("}")
+		
 	case "IsPositive":
 		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
 		g.writeLine(fmt.Sprintf("if %s <= 0 {", fieldName))
@@ -3790,6 +3859,12 @@ func (g *CodeGenerator) addValidationImportsIfNeeded(file *GofaFile) {
 		if needsJSONImport {
 			g.addImport("encoding/json")
 		}
+		
+		// Check if Base64 validation is used
+		needsBase64Import := g.usesBase64Validation(dtoStructs)
+		if needsBase64Import {
+			g.addImport("encoding/base64")
+		}
 	}
 }
 
@@ -3852,6 +3927,20 @@ func (g *CodeGenerator) usesJSONValidation(dtoStructs map[string]*ValidationStru
 		for _, field := range dto.Fields {
 			for _, rule := range field.Validators {
 				if rule.Type == "IsJSON" {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+// usesBase64Validation checks if any validation rules use Base64 validation
+func (g *CodeGenerator) usesBase64Validation(dtoStructs map[string]*ValidationStructInfo) bool {
+	for _, dto := range dtoStructs {
+		for _, field := range dto.Fields {
+			for _, rule := range field.Validators {
+				if rule.Type == "IsBase64" {
 					return true
 				}
 			}
