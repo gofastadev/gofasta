@@ -701,6 +701,40 @@ func (c *DataController) createTest(@Body() data DataDto) {
 				"ARRAY_NOT_EMPTY",
 			},
 		},
+		{
+			name: "IsEmpty validation decorator",
+			input: `package main
+
+@Injectable()
+type DataDto struct {
+	@IsEmpty()
+	OptionalDescription string
+	
+	@IsEmpty()
+	UnusedTags []string
+	
+	@IsEmpty()
+	DeprecatedField string
+}
+
+@Controller("/data")
+type DataController struct {
+}
+
+@Post("/")
+func (c *DataController) createTest(@Body() data DataDto) {
+}`,
+			expected: []string{
+				"ValidationError",
+				"ValidateDataDto",
+				"IsEmpty validation",
+				"if strings.TrimSpace(dto.OptionalDescription) != \"\" {",
+				"if dto.UnusedTags != nil && len(dto.UnusedTags) > 0 {",
+				"if strings.TrimSpace(dto.DeprecatedField) != \"\" {",
+				"must be empty",
+				"IS_EMPTY",
+			},
+		},
 	}
 
 	for _, tt := range tests {

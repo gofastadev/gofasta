@@ -2947,6 +2947,8 @@ func (g *CodeGenerator) getValidationMessage(ruleType string, args []interface{}
 		return "array too large"
 	case "ArrayNotEmpty":
 		return "must not be empty"
+	case "IsEmpty":
+		return "must be empty"
 	case "IsString":
 		return "must be a string"
 	case "IsNumber":
@@ -3020,6 +3022,8 @@ func (g *CodeGenerator) getValidationCode(ruleType string) string {
 		return "ARRAY_MAX_SIZE"
 	case "ArrayNotEmpty":
 		return "ARRAY_NOT_EMPTY"
+	case "IsEmpty":
+		return "IS_EMPTY"
 	case "IsURL":
 		return "IS_URL"
 	case "IsNumeric":
@@ -3722,6 +3726,20 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 		g.generateValidationError(field.Name, fieldName, rule)
 		g.writeLine("}")
 		
+	case "IsEmpty":
+		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+		// Check if the field type starts with [] (slice) or contains [] 
+		if strings.HasPrefix(field.Type, "[]") {
+			g.writeLine(fmt.Sprintf("if %s != nil && len(%s) > 0 {", fieldName, fieldName))
+		} else if field.Type == "string" {
+			g.writeLine(fmt.Sprintf("if strings.TrimSpace(%s) != \"\" {", fieldName))
+		} else {
+			// For other types, check if they're not nil/zero value
+			g.writeLine(fmt.Sprintf("if %s != nil {", fieldName))
+		}
+		g.generateValidationError(field.Name, fieldName, rule)
+		g.writeLine("}")
+		
 	case "IsString":
 		// Type validation is typically handled at compile time in Go, but we can add runtime checks
 		g.writeLine(fmt.Sprintf("// %s validation (compile-time type check)", rule.Type))
@@ -3868,6 +3886,11 @@ func (g *CodeGenerator) generateValidationError(fieldName, fieldValue string, ru
 // isStringType checks if a type is a string type
 func (g *CodeGenerator) isStringType(typeName string) bool {
 	return typeName == "string" || strings.Contains(typeName, "string")
+}
+
+// isSliceType checks if a type is a slice/array type
+func (g *CodeGenerator) isSliceType(typeName string) bool {
+	return strings.HasPrefix(typeName, "[]") || strings.Contains(typeName, "[]")
 }
 
 // addValidationImportsIfNeeded adds validation imports if needed
