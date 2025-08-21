@@ -1,0 +1,74 @@
+package main
+
+// Simple example demonstrating @UseInterceptors() decorator usage in GOFASTA
+
+// Basic logging-enabled controller
+@Controller("/api")
+@UseInterceptors(LoggingInterceptor)
+type ApiController struct {}
+
+// Simple endpoint - inherits LoggingInterceptor from controller
+@Get("/data")
+func getData() string {
+	return "Hello from API"
+}
+
+// Method with additional caching
+@UseInterceptors(CacheInterceptor)
+@Get("/cached")
+func getCachedData() string {
+	return "Cached response"
+}
+
+// User controller with validation
+@Controller("/users")
+@UseInterceptors(ValidationInterceptor)
+type UserController struct {}
+
+// Method inherits validation from controller
+@Get("/profile")
+func getUserProfile() User {
+	return User{ID: "123", Name: "John Doe"}
+}
+
+// Method with additional interceptors
+@UseInterceptors(LoggingInterceptor, TransformInterceptor)
+@Post("/create")
+func createUser() User {
+	return User{ID: "456", Name: "Jane Smith"}
+}
+
+// Mixed interceptors and guards example
+@Controller("/secure")
+@UseInterceptors(LoggingInterceptor)
+@UseGuards(AuthGuard)
+type SecureController struct {}
+
+// Endpoint with both interceptors and guards
+@UseInterceptors(CacheInterceptor)
+@UseGuards(RoleGuard)
+@Get("/data")
+func getSecureData() SecureData {
+	return SecureData{Data: "classified", Level: "high"}
+}
+
+// Custom interceptor example
+@Controller("/custom")
+type CustomController struct {}
+
+@UseInterceptors(MyCustomInterceptor)
+@Get("/special")
+func getSpecialData() string {
+	return "Special response"
+}
+
+// Type definitions
+type User struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+type SecureData struct {
+	Data  string `json:"data"`
+	Level string `json:"level"`
+}

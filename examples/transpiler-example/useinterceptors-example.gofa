@@ -1,0 +1,396 @@
+package main
+
+// Example demonstrating @UseInterceptors() decorator usage in GOFASTA
+// Interceptors provide cross-cutting functionality like logging, caching, validation, and transformation
+
+// Basic logging-enabled controller
+@Controller("/api")
+@UseInterceptors(LoggingInterceptor)
+type ApiController struct {
+	@Inject()
+	dataService *DataService
+}
+
+// Simple endpoint - inherits LoggingInterceptor from controller
+@Get("/data")
+func getData(@Query("limit") limit int) []DataItem {
+	// This method is automatically logged by LoggingInterceptor
+	return dataService.GetData(limit)
+}
+
+// Method with additional caching
+@UseInterceptors(CacheInterceptor)
+@Get("/cached-data")
+func getCachedData(@Query("category") category string) []DataItem {
+	// This method uses both LoggingInterceptor (from controller) and CacheInterceptor (from method)
+	return dataService.GetDataByCategory(category)
+}
+
+// User management controller with multiple interceptors at controller level
+@Controller("/users")
+@UseInterceptors(LoggingInterceptor, ValidationInterceptor)
+type UserController struct {
+	@Inject()
+	userService *UserService
+}
+
+// Method inherits both interceptors from controller
+@Get("/profile/:id")
+func getUserProfile(@Param("id") userId string) User {
+	// Automatically logged and validated
+	return userService.GetUser(userId)
+}
+
+// Method with additional transformation and caching
+@UseInterceptors(TransformInterceptor, CacheInterceptor)
+@Put("/profile/:id")
+func updateUserProfile(@Param("id") userId string, @Body() userData UpdateUserRequest) User {
+	// This method uses:
+	// - LoggingInterceptor (from controller): Logs request/response
+	// - ValidationInterceptor (from controller): Validates request structure
+	// - TransformInterceptor (from method): Transforms request/response data
+	// - CacheInterceptor (from method): Caches the response
+	return userService.UpdateUser(userId, userData)
+}
+
+// High-performance data controller with comprehensive interceptor pipeline
+@Controller("/analytics")
+@UseInterceptors(LoggingInterceptor)
+type AnalyticsController struct {
+	@Inject()
+	analyticsService *AnalyticsService
+}
+
+// Public analytics endpoint with basic logging
+@Get("/public-stats")
+func getPublicStats() PublicStats {
+	return analyticsService.GetPublicStats()
+}
+
+// Premium analytics with caching and validation
+@UseInterceptors(ValidationInterceptor, CacheInterceptor)
+@Get("/premium-stats")
+func getPremiumStats(@Headers("Authorization") token string, @Query("timeRange") timeRange string) PremiumStats {
+	// Uses logging from controller + validation and caching from method
+	return analyticsService.GetPremiumStats(timeRange)
+}
+
+// Heavy computation with all interceptors
+@UseInterceptors(ValidationInterceptor, CacheInterceptor, TransformInterceptor)
+@Post("/compute")
+func computeAnalytics(@Body() request AnalyticsRequest) AnalyticsResult {
+	// Full interceptor pipeline:
+	// 1. LoggingInterceptor (controller): Logs the request
+	// 2. ValidationInterceptor (method): Validates request structure and headers
+	// 3. CacheInterceptor (method): Checks cache for existing results
+	// 4. TransformInterceptor (method): Transforms input/output data formats
+	return analyticsService.ComputeAnalytics(request)
+}
+
+// File processing controller with custom interceptors
+@Controller("/files")
+type FileController struct {
+	@Inject()
+	fileService *FileService
+}
+
+// File upload with transformation and validation
+@UseInterceptors(ValidationInterceptor, TransformInterceptor)
+@Post("/upload")
+func uploadFile(@Body() fileData FileUploadRequest) FileUploadResponse {
+	// Validates file format and transforms data as needed
+	return fileService.ProcessUpload(fileData)
+}
+
+// File download with caching and logging
+@UseInterceptors(LoggingInterceptor, CacheInterceptor)
+@Get("/download/:id")
+func downloadFile(@Param("id") fileId string, @Headers("Accept") acceptType string) FileDownloadResponse {
+	// Logs download requests and caches file metadata
+	return fileService.GetFile(fileId)
+}
+
+// Complex file processing with all interceptors
+@UseInterceptors(LoggingInterceptor, ValidationInterceptor, CacheInterceptor, TransformInterceptor)
+@Post("/process")
+func processFile(@Body() request FileProcessRequest) FileProcessResponse {
+	// Complete interceptor chain for file processing:
+	// - Logging: Tracks processing requests and performance
+	// - Validation: Ensures proper file format and parameters
+	// - Cache: Caches processing results for similar requests
+	// - Transform: Converts between different file formats
+	return fileService.ProcessFile(request)
+}
+
+// Real-time controller with custom interceptors
+@Controller("/realtime")
+@UseInterceptors(LoggingInterceptor)
+type RealtimeController struct {
+	@Inject()
+	realtimeService *RealtimeService
+}
+
+// Stream endpoint with caching for metadata
+@UseInterceptors(CacheInterceptor)
+@Get("/stream/:channel")
+func getStream(@Param("channel") channel string) StreamInfo {
+	return realtimeService.GetStreamInfo(channel)
+}
+
+// Custom interceptor usage example
+@UseInterceptors(MyCustomInterceptor)
+@Post("/custom-operation")
+func customOperation(@Body() request CustomRequest) CustomResponse {
+	// Demonstrates using custom interceptors
+	return realtimeService.ProcessCustom(request)
+}
+
+// Mixed interceptors and guards example
+@Controller("/secure-api")
+@UseInterceptors(LoggingInterceptor)
+@UseGuards(AuthGuard)
+type SecureApiController struct {
+	@Inject()
+	secureService *SecureService
+}
+
+// Endpoint with both interceptors and guards
+@UseInterceptors(ValidationInterceptor, CacheInterceptor)
+@UseGuards(RoleGuard, PermissionGuard)
+@Get("/secure-data")
+func getSecureData(@Headers("Authorization") token string, @Query("dataType") dataType string) SecureData {
+	// Execution order:
+	// 1. Interceptors run first: LoggingInterceptor, ValidationInterceptor, CacheInterceptor
+	// 2. Guards run second: AuthGuard, RoleGuard, PermissionGuard
+	// 3. Finally the actual method executes
+	return secureService.GetSecureData(dataType)
+}
+
+// Type definitions for the examples
+
+type DataItem struct {
+	ID          string            `json:"id"`
+	Name        string            `json:"name"`
+	Category    string            `json:"category"`
+	Data        map[string]string `json:"data"`
+	Timestamp   time.Time         `json:"timestamp"`
+	MetricValue float64           `json:"metricValue"`
+}
+
+type User struct {
+	ID          string                 `json:"id"`
+	Username    string                 `json:"username"`
+	Email       string                 `json:"email"`
+	Profile     map[string]interface{} `json:"profile"`
+	LastLogin   time.Time              `json:"lastLogin"`
+	Preferences UserPreferences        `json:"preferences"`
+}
+
+type UserPreferences struct {
+	Theme        string            `json:"theme"`
+	Language     string            `json:"language"`
+	Notifications map[string]bool   `json:"notifications"`
+	CustomFields map[string]string `json:"customFields"`
+}
+
+type UpdateUserRequest struct {
+	Username    *string                `json:"username,omitempty"`
+	Email       *string                `json:"email,omitempty"`
+	Profile     map[string]interface{} `json:"profile,omitempty"`
+	Preferences *UserPreferences       `json:"preferences,omitempty"`
+}
+
+type PublicStats struct {
+	TotalUsers      int64     `json:"totalUsers"`
+	ActiveUsers     int64     `json:"activeUsers"`
+	DataPoints      int64     `json:"dataPoints"`
+	LastUpdated     time.Time `json:"lastUpdated"`
+	SystemStatus    string    `json:"systemStatus"`
+}
+
+type PremiumStats struct {
+	PublicStats
+	DetailedMetrics  map[string]float64 `json:"detailedMetrics"`
+	TrendAnalysis    []TrendPoint       `json:"trendAnalysis"`
+	PredictiveData   map[string]float64 `json:"predictiveData"`
+	ComparisonData   map[string]float64 `json:"comparisonData"`
+}
+
+type TrendPoint struct {
+	Timestamp time.Time `json:"timestamp"`
+	Value     float64   `json:"value"`
+	Category  string    `json:"category"`
+}
+
+type AnalyticsRequest struct {
+	TimeRange    string            `json:"timeRange"`
+	Metrics      []string          `json:"metrics"`
+	Filters      map[string]string `json:"filters"`
+	GroupBy      []string          `json:"groupBy"`
+	Aggregations []string          `json:"aggregations"`
+}
+
+type AnalyticsResult struct {
+	RequestID    string                 `json:"requestId"`
+	Results      map[string]interface{} `json:"results"`
+	Metadata     ResultMetadata         `json:"metadata"`
+	ProcessingTime time.Duration          `json:"processingTime"`
+}
+
+type ResultMetadata struct {
+	TotalRecords   int64     `json:"totalRecords"`
+	ProcessedTime  time.Time `json:"processedTime"`
+	CacheHit       bool      `json:"cacheHit"`
+	ComputeTime    time.Duration `json:"computeTime"`
+}
+
+type FileUploadRequest struct {
+	FileName    string            `json:"fileName"`
+	ContentType string            `json:"contentType"`
+	Size        int64             `json:"size"`
+	Data        []byte            `json:"data"`
+	Metadata    map[string]string `json:"metadata"`
+}
+
+type FileUploadResponse struct {
+	FileID      string    `json:"fileId"`
+	UploadedAt  time.Time `json:"uploadedAt"`
+	ProcessedAt time.Time `json:"processedAt"`
+	URL         string    `json:"url"`
+	Status      string    `json:"status"`
+}
+
+type FileDownloadResponse struct {
+	FileID      string            `json:"fileId"`
+	FileName    string            `json:"fileName"`
+	ContentType string            `json:"contentType"`
+	Size        int64             `json:"size"`
+	Data        []byte            `json:"data"`
+	Metadata    map[string]string `json:"metadata"`
+	DownloadURL string            `json:"downloadUrl"`
+}
+
+type FileProcessRequest struct {
+	FileID       string            `json:"fileId"`
+	Operation    string            `json:"operation"`
+	Parameters   map[string]string `json:"parameters"`
+	OutputFormat string            `json:"outputFormat"`
+	Options      ProcessOptions    `json:"options"`
+}
+
+type ProcessOptions struct {
+	Quality     string `json:"quality"`
+	Compression bool   `json:"compression"`
+	Watermark   bool   `json:"watermark"`
+	Async       bool   `json:"async"`
+}
+
+type FileProcessResponse struct {
+	ProcessID    string                 `json:"processId"`
+	Status       string                 `json:"status"`
+	ResultFileID string                 `json:"resultFileId"`
+	Progress     int                    `json:"progress"`
+	Metadata     map[string]interface{} `json:"metadata"`
+	EstimatedCompletion time.Time       `json:"estimatedCompletion"`
+}
+
+type StreamInfo struct {
+	ChannelID     string            `json:"channelId"`
+	ChannelName   string            `json:"channelName"`
+	IsLive        bool              `json:"isLive"`
+	ViewerCount   int64             `json:"viewerCount"`
+	StreamURL     string            `json:"streamUrl"`
+	Metadata      map[string]string `json:"metadata"`
+	Quality       []QualityOption   `json:"quality"`
+}
+
+type QualityOption struct {
+	Label      string `json:"label"`
+	Resolution string `json:"resolution"`
+	Bitrate    int    `json:"bitrate"`
+	URL        string `json:"url"`
+}
+
+type CustomRequest struct {
+	Operation   string                 `json:"operation"`
+	Parameters  map[string]interface{} `json:"parameters"`
+	Context     map[string]string      `json:"context"`
+	Async       bool                   `json:"async"`
+}
+
+type CustomResponse struct {
+	OperationID string                 `json:"operationId"`
+	Status      string                 `json:"status"`
+	Result      map[string]interface{} `json:"result"`
+	Metadata    map[string]string      `json:"metadata"`
+	Links       map[string]string      `json:"links"`
+}
+
+type SecureData struct {
+	ID            string            `json:"id"`
+	DataType      string            `json:"dataType"`
+	Classification string            `json:"classification"`
+	Data          map[string]string `json:"data"`
+	AccessLevel   int               `json:"accessLevel"`
+	Owner         string            `json:"owner"`
+	CreatedAt     time.Time         `json:"createdAt"`
+	ExpiresAt     *time.Time        `json:"expiresAt,omitempty"`
+}
+
+// Service declarations (would be implemented elsewhere)
+
+@Injectable()
+type DataService struct {
+	@Inject()
+	db    *Database
+	@Inject()
+	cache *Cache
+}
+
+@Injectable()
+type UserService struct {
+	@Inject()
+	db    *Database
+	@Inject()
+	cache *Cache
+	@Inject()
+	validator *Validator
+}
+
+@Injectable()
+type AnalyticsService struct {
+	@Inject()
+	db           *Database
+	@Inject()
+	cache        *Cache
+	@Inject()
+	computeEngine *ComputeEngine
+}
+
+@Injectable()
+type FileService struct {
+	@Inject()
+	storage      *Storage
+	@Inject()
+	processor    *FileProcessor
+	@Inject()
+	validator    *Validator
+}
+
+@Injectable()
+type RealtimeService struct {
+	@Inject()
+	streamManager *StreamManager
+	@Inject()
+	cache         *Cache
+}
+
+@Injectable()
+type SecureService struct {
+	@Inject()
+	db          *Database
+	@Inject()
+	encryption  *EncryptionService
+	@Inject()
+	audit       *AuditLogger
+}

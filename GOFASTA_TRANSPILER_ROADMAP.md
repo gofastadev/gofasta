@@ -114,7 +114,7 @@
       // Generate guard middleware chain
   }
   ```
-- [ ] **`@UseInterceptors()` transpilation** - Generate interceptor chains
+- [X] **`@UseInterceptors()` transpilation** - Generate interceptor chains
   ```gofa
   @UseInterceptors(LoggingInterceptor, CacheInterceptor)
   @Get("/data")
