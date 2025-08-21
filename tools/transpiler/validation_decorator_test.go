@@ -631,6 +631,42 @@ func (c *DataController) createTest(@Body() data DataDto) {
 				"MAX_LENGTH",
 			},
 		},
+		{
+			name: "ArrayMaxSize validation decorator",
+			input: `package main
+
+@Injectable()
+type DataDto struct {
+	@ArrayMaxSize(10)
+	Tags []string
+	
+	@ArrayMaxSize(5)
+	Categories []string
+	
+	@ArrayMaxSize(3)
+	Labels []string
+}
+
+@Controller("/data")
+type DataController struct {
+}
+
+@Post("/")
+func (c *DataController) createTest(@Body() data DataDto) {
+}`,
+			expected: []string{
+				"ValidationError",
+				"ValidateDataDto",
+				"ArrayMaxSize validation",
+				"if dto.Tags != nil && len(dto.Tags) > 10 {",
+				"if dto.Categories != nil && len(dto.Categories) > 5 {",
+				"if dto.Labels != nil && len(dto.Labels) > 3 {",
+				"must contain at most 10 item(s)",
+				"must contain at most 5 item(s)",
+				"must contain at most 3 item(s)",
+				"ARRAY_MAX_SIZE",
+			},
+		},
 	}
 
 	for _, tt := range tests {

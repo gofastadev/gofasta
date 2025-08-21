@@ -190,9 +190,9 @@
 - [X] `@Max(value)` - Validate maximum value (numbers) or length (strings/arrays)
 - [X] `@Length(min, max)` - Validate string/array length range
 - [X] `@MinLength(length)` - Validate minimum string/array length
-- [ ] `@MaxLength(length)` - Validate maximum string/array length
+- [X] `@MaxLength(length)` - Validate maximum string/array length
 - [X] `@ArrayMinSize(size)` - Validate minimum array size
-- [ ] `@ArrayMaxSize(size)` - Validate maximum array size
+- [X] `@ArrayMaxSize(size)` - Validate maximum array size
 - [ ] `@ArrayNotEmpty()` - Validate array is not empty
 
 **🔍 Content Validation Decorators**

@@ -3704,6 +3704,14 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 			g.writeLine("}")
 		}
 		
+	case "ArrayMaxSize":
+		if len(rule.Args) > 0 {
+			g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+			g.writeLine(fmt.Sprintf("if %s != nil && len(%s) > %v {", fieldName, fieldName, rule.Args[0]))
+			g.generateValidationError(field.Name, fieldName, rule)
+			g.writeLine("}")
+		}
+		
 	case "IsString":
 		// Type validation is typically handled at compile time in Go, but we can add runtime checks
 		g.writeLine(fmt.Sprintf("// %s validation (compile-time type check)", rule.Type))
