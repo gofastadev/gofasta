@@ -121,6 +121,9 @@ func (g *CodeGenerator) generateControllerDeclaration(controller *ControllerDecl
 	
 	// Generate interceptor middleware functions
 	g.generateInterceptorMiddlewareFunctions(controller)
+	
+	// Generate pipe middleware functions
+	g.generatePipeMiddlewareFunctions(controller)
 
 	return nil
 }
@@ -2020,18 +2023,25 @@ func (g *CodeGenerator) generateGenericGuardLogic(guardName string) {
 	g.writeLine("")
 }
 
-// generateMiddlewareChain generates combined middleware chain for guards and interceptors
+// generateMiddlewareChain generates combined middleware chain for pipes, interceptors, and guards
 func (g *CodeGenerator) generateMiddlewareChain(controller *ControllerDeclaration, method *MethodNode) string {
 	var middleware []string
 	
-	// Collect interceptors first (they run before guards in the pipeline)
+	// Collect pipes first (they run before interceptors and guards in the pipeline)
+	controllerPipes := g.getPipeDecorators(controller.Decorators)
+	middleware = append(middleware, controllerPipes...)
+	
+	methodPipes := g.getPipeDecorators(method.Decorators)
+	middleware = append(middleware, methodPipes...)
+	
+	// Collect interceptors second (they run after pipes but before guards)
 	controllerInterceptors := g.getInterceptorDecorators(controller.Decorators)
 	middleware = append(middleware, controllerInterceptors...)
 	
 	methodInterceptors := g.getInterceptorDecorators(method.Decorators)
 	middleware = append(middleware, methodInterceptors...)
 	
-	// Collect guards (they run after interceptors)
+	// Collect guards last (they run after pipes and interceptors)
 	controllerGuards := g.getGuardDecorators(controller.Decorators)
 	middleware = append(middleware, controllerGuards...)
 	
@@ -2276,6 +2286,304 @@ func (g *CodeGenerator) generateGenericInterceptorLogic(interceptorName string) 
 	g.writeLine("//     fmt.Printf(\"Request completed: %s %s\\n\", ctx.GetMethod(), ctx.GetPath())")
 	g.writeLine("// })")
 	g.writeLine("")
+}
+
+// getPipeDecorators extracts pipe names from @UsePipes() decorators
+func (g *CodeGenerator) getPipeDecorators(decorators []*DecoratorNode) []string {
+	var pipes []string
+	
+	for _, decorator := range decorators {
+		if decorator.Name == "UsePipes" {
+			// Extract pipe names from decorator arguments
+			for _, arg := range decorator.Args {
+				if pipeName, ok := arg.Value.(string); ok {
+					pipes = append(pipes, pipeName)
+				}
+			}
+		}
+	}
+	
+	return pipes
+}
+
+// generatePipeMiddlewareFunctions generates pipe middleware function implementations
+func (g *CodeGenerator) generatePipeMiddlewareFunctions(controller *ControllerDeclaration) {
+	allPipes := make(map[string]bool)
+	
+	// Collect all unique pipes from controller and methods
+	controllerPipes := g.getPipeDecorators(controller.Decorators)
+	for _, pipe := range controllerPipes {
+		allPipes[pipe] = true
+	}
+	
+	for _, method := range controller.Methods {
+		methodPipes := g.getPipeDecorators(method.Decorators)
+		for _, pipe := range methodPipes {
+			allPipes[pipe] = true
+		}
+	}
+	
+	if len(allPipes) == 0 {
+		return
+	}
+	
+	// Generate pipe middleware methods for the controller
+	g.writeLine("// Pipe middleware methods")
+	
+	for pipe := range allPipes {
+		g.generateControllerPipeMethod(controller.Name, pipe)
+		g.writeLine("")
+	}
+}
+
+// generateControllerPipeMethod generates a pipe middleware method for the controller
+func (g *CodeGenerator) generateControllerPipeMethod(controllerName, pipeName string) {
+	g.writeLine(fmt.Sprintf("// %s implements the %s pipe middleware", pipeName, pipeName))
+	g.writeLine(fmt.Sprintf("func (c *%s) %s(ctx *httpPackage.RequestContext) {", controllerName, pipeName))
+	g.indent()
+	
+	// Generate pipe logic based on pipe name
+	switch pipeName {
+	case "ValidationPipe":
+		g.generateValidationPipeLogic()
+	case "TransformPipe":
+		g.generateTransformPipeLogic()
+	case "ParseIntPipe":
+		g.generateParseIntPipeLogic()
+	case "ParseBoolPipe":
+		g.generateParseBoolPipeLogic()
+	case "ParseArrayPipe":
+		g.generateParseArrayPipeLogic()
+	case "DefaultValuePipe":
+		g.generateDefaultValuePipeLogic()
+	default:
+		g.generateGenericPipeLogic(pipeName)
+	}
+	
+	g.unindent()
+	g.writeLine("}")
+}
+
+// generateValidationPipeLogic generates validation pipe logic
+func (g *CodeGenerator) generateValidationPipeLogic() {
+	g.writeLine("// Validation pipe logic")
+	g.writeLine("// Validate request body structure and data types")
+	g.writeLine("")
+	g.writeLine("// Get request body")
+	g.writeLine("requestBody := ctx.GetRequestBody()")
+	g.writeLine("if requestBody == nil {")
+	g.indent()
+	g.writeLine("ctx.JSON(400, map[string]string{\"error\": \"Request body is required\"})")
+	g.writeLine("ctx.Abort()")
+	g.writeLine("return")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	g.writeLine("// Validate content type")
+	g.writeLine("contentType := ctx.GetHeader(\"Content-Type\")")
+	g.writeLine("if !strings.Contains(contentType, \"application/json\") {")
+	g.indent()
+	g.writeLine("ctx.JSON(400, map[string]string{\"error\": \"Content-Type must be application/json\"})")
+	g.writeLine("ctx.Abort()")
+	g.writeLine("return")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	g.writeLine("// Perform validation (implement your validation logic)")
+	g.writeLine("if err := validateRequestBody(requestBody); err != nil {")
+	g.indent()
+	g.writeLine("ctx.JSON(400, map[string]string{\"error\": fmt.Sprintf(\"Validation failed: %s\", err.Error())})")
+	g.writeLine("ctx.Abort()")
+	g.writeLine("return")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	g.writeLine("// Continue to next middleware/handler")
+	g.writeLine("ctx.Next()")
+}
+
+// generateTransformPipeLogic generates transform pipe logic
+func (g *CodeGenerator) generateTransformPipeLogic() {
+	g.writeLine("// Transform pipe logic")
+	g.writeLine("// Transform incoming data before processing")
+	g.writeLine("")
+	g.writeLine("// Get request data")
+	g.writeLine("requestData := ctx.GetRequestData()")
+	g.writeLine("if requestData != nil {")
+	g.indent()
+	g.writeLine("// Apply transformations (implement your transformation logic)")
+	g.writeLine("transformedData := transformRequestData(requestData)")
+	g.writeLine("ctx.SetRequestData(transformedData)")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	g.writeLine("// Transform query parameters")
+	g.writeLine("queryParams := ctx.GetQueryParams()")
+	g.writeLine("for key, value := range queryParams {")
+	g.indent()
+	g.writeLine("// Example: Convert string values to appropriate types")
+	g.writeLine("transformedValue := transformQueryValue(key, value)")
+	g.writeLine("ctx.SetQueryParam(key, transformedValue)")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	g.writeLine("// Continue to next middleware/handler")
+	g.writeLine("ctx.Next()")
+}
+
+// generateParseIntPipeLogic generates parse int pipe logic
+func (g *CodeGenerator) generateParseIntPipeLogic() {
+	g.writeLine("// ParseInt pipe logic")
+	g.writeLine("// Parse string parameters to integers")
+	g.writeLine("")
+	g.writeLine("// Parse path parameters")
+	g.writeLine("pathParams := ctx.GetPathParams()")
+	g.writeLine("for key, value := range pathParams {")
+	g.indent()
+	g.writeLine("if strValue, ok := value.(string); ok {")
+	g.indent()
+	g.writeLine("if intValue, err := strconv.Atoi(strValue); err == nil {")
+	g.indent()
+	g.writeLine("ctx.SetPathParam(key, intValue)")
+	g.unindent()
+	g.writeLine("} else {")
+	g.indent()
+	g.writeLine("ctx.JSON(400, map[string]string{\"error\": fmt.Sprintf(\"Invalid integer value for parameter %s: %s\", key, strValue)})")
+	g.writeLine("ctx.Abort()")
+	g.writeLine("return")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	g.writeLine("// Parse query parameters")
+	g.writeLine("queryParams := ctx.GetQueryParams()")
+	g.writeLine("for key, value := range queryParams {")
+	g.indent()
+	g.writeLine("if strValue, ok := value.(string); ok {")
+	g.indent()
+	g.writeLine("if intValue, err := strconv.Atoi(strValue); err == nil {")
+	g.indent()
+	g.writeLine("ctx.SetQueryParam(key, intValue)")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	g.writeLine("// Continue to next middleware/handler")
+	g.writeLine("ctx.Next()")
+}
+
+// generateParseBoolPipeLogic generates parse bool pipe logic  
+func (g *CodeGenerator) generateParseBoolPipeLogic() {
+	g.writeLine("// ParseBool pipe logic")
+	g.writeLine("// Parse string parameters to booleans")
+	g.writeLine("")
+	g.writeLine("// Parse query parameters")
+	g.writeLine("queryParams := ctx.GetQueryParams()")
+	g.writeLine("for key, value := range queryParams {")
+	g.indent()
+	g.writeLine("if strValue, ok := value.(string); ok {")
+	g.indent()
+	g.writeLine("if boolValue, err := strconv.ParseBool(strValue); err == nil {")
+	g.indent()
+	g.writeLine("ctx.SetQueryParam(key, boolValue)")
+	g.unindent()
+	g.writeLine("} else if strings.ToLower(strValue) == \"true\" || strings.ToLower(strValue) == \"false\" {")
+	g.indent()
+	g.writeLine("ctx.SetQueryParam(key, strings.ToLower(strValue) == \"true\")")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	g.writeLine("// Continue to next middleware/handler")
+	g.writeLine("ctx.Next()")
+}
+
+// generateParseArrayPipeLogic generates parse array pipe logic
+func (g *CodeGenerator) generateParseArrayPipeLogic() {
+	g.writeLine("// ParseArray pipe logic")
+	g.writeLine("// Parse comma-separated strings to arrays")
+	g.writeLine("")
+	g.writeLine("// Parse query parameters")
+	g.writeLine("queryParams := ctx.GetQueryParams()")
+	g.writeLine("for key, value := range queryParams {")
+	g.indent()
+	g.writeLine("if strValue, ok := value.(string); ok && strings.Contains(strValue, \",\") {")
+	g.indent()
+	g.writeLine("arrayValue := strings.Split(strValue, \",\")")
+	g.writeLine("// Trim whitespace from each element")
+	g.writeLine("for i, item := range arrayValue {")
+	g.indent()
+	g.writeLine("arrayValue[i] = strings.TrimSpace(item)")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("ctx.SetQueryParam(key, arrayValue)")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	g.writeLine("// Continue to next middleware/handler")
+	g.writeLine("ctx.Next()")
+}
+
+// generateDefaultValuePipeLogic generates default value pipe logic
+func (g *CodeGenerator) generateDefaultValuePipeLogic() {
+	g.writeLine("// DefaultValue pipe logic")
+	g.writeLine("// Set default values for missing parameters")
+	g.writeLine("")
+	g.writeLine("// Set default query parameters")
+	g.writeLine("queryParams := ctx.GetQueryParams()")
+	g.writeLine("defaultValues := map[string]interface{}{")
+	g.indent()
+	g.writeLine("\"limit\":  10,")
+	g.writeLine("\"offset\": 0,")
+	g.writeLine("\"sort\":   \"created_at\",")
+	g.writeLine("\"order\":  \"desc\",")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	g.writeLine("for key, defaultValue := range defaultValues {")
+	g.indent()
+	g.writeLine("if _, exists := queryParams[key]; !exists {")
+	g.indent()
+	g.writeLine("ctx.SetQueryParam(key, defaultValue)")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	g.writeLine("// Continue to next middleware/handler")
+	g.writeLine("ctx.Next()")
+}
+
+// generateGenericPipeLogic generates generic pipe logic for custom pipes
+func (g *CodeGenerator) generateGenericPipeLogic(pipeName string) {
+	g.writeLine(fmt.Sprintf("// %s pipe logic", pipeName))
+	g.writeLine("// TODO: Implement your custom pipe logic here")
+	g.writeLine("")
+	g.writeLine("// Example: Data validation")
+	g.writeLine("// requestData := ctx.GetRequestData()")
+	g.writeLine("// if err := validateData(requestData); err != nil {")
+	g.writeLine("//     ctx.JSON(400, map[string]string{\"error\": err.Error()})")
+	g.writeLine("//     ctx.Abort()")
+	g.writeLine("//     return")
+	g.writeLine("// }")
+	g.writeLine("")
+	g.writeLine("// Example: Data transformation")
+	g.writeLine("// transformedData := transformData(requestData)")
+	g.writeLine("// ctx.SetRequestData(transformedData)")
+	g.writeLine("")
+	g.writeLine("// Continue to next middleware/handler")
+	g.writeLine("ctx.Next()")
 }
 
 // TranspileFile is the main entry point for transpiling a .gofa file to .go
