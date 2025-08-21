@@ -1,0 +1,35 @@
+package main
+
+@Injectable()
+type PostService struct {
+}
+
+func (s *PostService) createPost(dto PostDto) {
+    // Body parameter validation will be generated automatically
+    // The dto will be validated using the @MaxLength() decorators
+}
+
+@Injectable()
+type PostDto struct {
+    @MaxLength(100)
+    Title string             // Must be at most 100 characters long
+    
+    @MaxLength(500)
+    Description string       // Must be at most 500 characters long
+    
+    @MaxLength(50)
+    Author string            // Must be at most 50 characters long
+    
+    @MaxLength(20)
+    Category string          // Must be at most 20 characters long
+}
+
+@Controller("/api/posts")
+type PostController struct {
+    service *PostService `inject:""`
+}
+
+@Post("/create")
+func (c *PostController) createPost(@Body() post PostDto) {
+    c.service.createPost(post)
+}

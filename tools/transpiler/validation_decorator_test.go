@@ -595,6 +595,42 @@ func (c *DataController) createTest(@Body() data DataDto) {
 				"MIN_LENGTH",
 			},
 		},
+		{
+			name: "MaxLength validation decorator",
+			input: `package main
+
+@Injectable()
+type DataDto struct {
+	@MaxLength(20)
+	Username string
+	
+	@MaxLength(100)
+	Description string
+	
+	@MaxLength(50)
+	Title string
+}
+
+@Controller("/data")
+type DataController struct {
+}
+
+@Post("/")
+func (c *DataController) createTest(@Body() data DataDto) {
+}`,
+			expected: []string{
+				"ValidationError",
+				"ValidateDataDto",
+				"MaxLength validation",
+				"if len(dto.Username) > 20 {",
+				"if len(dto.Description) > 100 {",
+				"if len(dto.Title) > 50 {",
+				"must be at most 20 characters long",
+				"must be at most 100 characters long",
+				"must be at most 50 characters long",
+				"MAX_LENGTH",
+			},
+		},
 	}
 
 	for _, tt := range tests {
