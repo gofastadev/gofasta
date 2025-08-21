@@ -3095,6 +3095,47 @@ func (g *CodeGenerator) generateValidationHelperFunctions() {
 	g.writeLine("return matched")
 	g.unindent()
 	g.writeLine("}")
+	g.writeLine("")
+	
+	// Integer validation
+	g.writeLine("func isInt(value interface{}) bool {")
+	g.indent()
+	g.writeLine("switch v := value.(type) {")
+	g.writeLine("case int, int8, int16, int32, int64:")
+	g.indent()
+	g.writeLine("return true")
+	g.unindent()
+	g.writeLine("case uint, uint8, uint16, uint32, uint64:")
+	g.indent()
+	g.writeLine("return true")
+	g.unindent()
+	g.writeLine("case string:")
+	g.indent()
+	g.writeLine("_, err := strconv.Atoi(v)")
+	g.writeLine("return err == nil")
+	g.unindent()
+	g.writeLine("case float32, float64:")
+	g.indent()
+	g.writeLine("// Check if float is actually an integer (no decimal part)")
+	g.writeLine("if f, ok := value.(float64); ok {")
+	g.indent()
+	g.writeLine("return f == float64(int64(f))")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("if f, ok := value.(float32); ok {")
+	g.indent()
+	g.writeLine("return f == float32(int32(f))")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("return false")
+	g.unindent()
+	g.writeLine("default:")
+	g.indent()
+	g.writeLine("return false")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
 }
 
 // generateDTOValidationFunction generates validation function for a DTO
@@ -3202,6 +3243,18 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 		g.generateValidationError(field.Name, fieldName, rule)
 		g.writeLine("}")
 		g.unindent()
+		g.writeLine("}")
+		
+	case "IsInt":
+		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+		// Check if field is interface{} type, otherwise assume compile-time type safety
+		if field.Type == "interface{}" {
+			g.writeLine(fmt.Sprintf("if !isInt(%s) {", fieldName))
+		} else {
+			// For typed fields, we can use reflection to check for interface{} conversion
+			g.writeLine(fmt.Sprintf("if !isInt(%s) {", fieldName))
+		}
+		g.generateValidationError(field.Name, fieldName, rule)
 		g.writeLine("}")
 		
 	case "IsPositive":

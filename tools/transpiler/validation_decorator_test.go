@@ -166,6 +166,37 @@ func (c *ProductController) createProduct(@Body() data ProductDto) {
 				"MAX_VALUE",
 			},
 		},
+		{
+			name: "IsInt validation decorator",
+			input: `package main
+
+@Injectable()
+type TestDto struct {
+	@IsInt()
+	Age int
+	
+	@IsInt()
+	ID interface{}
+}
+
+@Controller("/test")
+type TestController struct {
+}
+
+@Post("/")
+func (c *TestController) createTest(@Body() data TestDto) {
+}`,
+			expected: []string{
+				"ValidationError",
+				"ValidateTestDto",
+				"func isInt(value interface{}) bool",
+				"IsInt validation",
+				"if !isInt(dto.Age) {",
+				"if !isInt(dto.ID) {",
+				"must be an integer",
+				"IS_INT",
+			},
+		},
 	}
 
 	for _, tt := range tests {
