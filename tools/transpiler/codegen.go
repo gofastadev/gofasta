@@ -3166,6 +3166,36 @@ func (g *CodeGenerator) generateValidationHelperFunctions() {
 	g.writeLine("}")
 	g.unindent()
 	g.writeLine("}")
+	g.writeLine("")
+	
+	// Boolean validation
+	g.writeLine("func isBoolean(value interface{}) bool {")
+	g.indent()
+	g.writeLine("switch v := value.(type) {")
+	g.writeLine("case bool:")
+	g.indent()
+	g.writeLine("return true")
+	g.unindent()
+	g.writeLine("case string:")
+	g.indent()
+	g.writeLine("_, err := strconv.ParseBool(v)")
+	g.writeLine("return err == nil")
+	g.unindent()
+	g.writeLine("case int, int8, int16, int32, int64:")
+	g.indent()
+	g.writeLine("return v == 0 || v == 1 // Only 0 and 1 are valid boolean integers")
+	g.unindent()
+	g.writeLine("case uint, uint8, uint16, uint32, uint64:")
+	g.indent()
+	g.writeLine("return v == 0 || v == 1 // Only 0 and 1 are valid boolean integers")
+	g.unindent()
+	g.writeLine("default:")
+	g.indent()
+	g.writeLine("return false")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
 }
 
 // generateDTOValidationFunction generates validation function for a DTO
@@ -3290,6 +3320,12 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 	case "IsFloat":
 		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
 		g.writeLine(fmt.Sprintf("if !isFloat(%s) {", fieldName))
+		g.generateValidationError(field.Name, fieldName, rule)
+		g.writeLine("}")
+		
+	case "IsBoolean":
+		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+		g.writeLine(fmt.Sprintf("if !isBoolean(%s) {", fieldName))
 		g.generateValidationError(field.Name, fieldName, rule)
 		g.writeLine("}")
 		

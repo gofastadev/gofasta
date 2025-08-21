@@ -234,6 +234,41 @@ func (c *FloatTestController) createTest(@Body() data FloatTestDto) {
 				"IS_FLOAT",
 			},
 		},
+		{
+			name: "IsBoolean validation decorator",
+			input: `package main
+
+@Injectable()
+type BooleanTestDto struct {
+	@IsBoolean()
+	IsActive bool
+	
+	@IsBoolean()
+	IsEnabled interface{}
+	
+	@IsBoolean()
+	IsPublished bool
+}
+
+@Controller("/boolean-test")
+type BooleanTestController struct {
+}
+
+@Post("/")
+func (c *BooleanTestController) createTest(@Body() data BooleanTestDto) {
+}`,
+			expected: []string{
+				"ValidationError",
+				"ValidateBooleanTestDto",
+				"func isBoolean(value interface{}) bool",
+				"IsBoolean validation",
+				"if !isBoolean(dto.IsActive) {",
+				"if !isBoolean(dto.IsEnabled) {",
+				"if !isBoolean(dto.IsPublished) {",
+				"must be a boolean",
+				"IS_BOOLEAN",
+			},
+		},
 	}
 
 	for _, tt := range tests {

@@ -168,7 +168,6 @@
 - [X] `@IsFloat()` - Validate value is floating point
 - [ ] `@IsBoolean()` - Validate value is boolean
 - [X] `@IsArray()` - Validate value is array/slice
-- [ ] `@IsObject()` - Validate value is object/struct
 - [ ] `@IsDate()` - Validate value is valid date
 - [X] `@IsUUID()` - Validate value is valid UUID format
 
