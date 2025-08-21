@@ -735,6 +735,49 @@ func (c *DataController) createTest(@Body() data DataDto) {
 				"IS_EMPTY",
 			},
 		},
+		{
+			name: "IsOptional validation decorator",
+			input: `package main
+
+@Injectable()
+type DataDto struct {
+	@IsOptional()
+	@IsEmail()
+	OptionalEmail string
+	
+	@IsOptional()
+	@MinLength(5)
+	OptionalUsername string
+	
+	@IsOptional()
+	@ArrayMinSize(1)
+	OptionalTags []string
+}
+
+@Controller("/data")
+type DataController struct {
+}
+
+@Post("/")
+func (c *DataController) createTest(@Body() data DataDto) {
+}`,
+			expected: []string{
+				"ValidationError",
+				"ValidateDataDto",
+				"IsEmail validation",
+				"MinLength validation",
+				"ArrayMinSize validation",
+				"if strings.TrimSpace(dto.OptionalEmail) != \"\" {",
+				"if strings.TrimSpace(dto.OptionalUsername) != \"\" {",
+				"if dto.OptionalTags != nil && len(dto.OptionalTags) > 0 {",
+				"if !isValidEmail(dto.OptionalEmail) {",
+				"if len(dto.OptionalUsername) < 5 {",
+				"if dto.OptionalTags != nil && len(dto.OptionalTags) < 1 {",
+				"must be a valid email address",
+				"must be at least 5 characters long",
+				"must contain at least 1 item(s)",
+			},
+		},
 	}
 
 	for _, tt := range tests {

@@ -1,0 +1,47 @@
+package main
+
+@Injectable()
+type UserService struct {
+}
+
+func (s *UserService) createUser(dto UserDto) {
+    // Body parameter validation will be generated automatically
+    // The dto will be validated using the @IsOptional() decorators
+    // Optional fields will only be validated if they contain values
+}
+
+@Injectable()
+type UserDto struct {
+    // Required field - will always be validated
+    @IsEmail()
+    Email string             // Must be a valid email (required)
+
+    // Optional fields - will only be validated if not empty
+    @IsOptional()
+    @IsURL()
+    Website string           // Must be valid URL if provided (optional)
+    
+    @IsOptional()
+    @MinLength(10)
+    @MaxLength(500)
+    Bio string               // Must be 10-500 chars if provided (optional)
+    
+    @IsOptional()
+    @IsPhoneNumber()
+    Phone string             // Must be valid phone if provided (optional)
+    
+    @IsOptional()
+    @ArrayMinSize(1)
+    @ArrayMaxSize(10)
+    Interests []string       // Must have 1-10 items if provided (optional)
+}
+
+@Controller("/api/users")
+type UserController struct {
+    service *UserService `inject:""`
+}
+
+@Post("/create")
+func (c *UserController) createUser(@Body() user UserDto) {
+    c.service.createUser(user)
+}

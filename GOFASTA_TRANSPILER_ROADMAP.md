@@ -198,7 +198,7 @@
 **🔍 Content Validation Decorators**
 - [X] `@IsNotEmpty()` - Validate value is not empty
 - [X] `@IsEmpty()` - Validate value is empty  
-- [ ] `@IsOptional()` - Mark field as optional (skip validation if nil/empty)
+- [X] `@IsOptional()` - Mark field as optional (skip validation if nil/empty)
 - [ ] `@IsDefined()` - Validate value is defined (not nil)
 - [ ] `@NotEquals(value)` - Validate value does not equal specified value
 - [ ] `@Equals(value)` - Validate value equals specified value

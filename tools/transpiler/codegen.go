@@ -3647,18 +3647,55 @@ func (g *CodeGenerator) generateDTOValidationFunction(dto *ValidationStructInfo)
 func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule ValidationRule) {
 	fieldName := "dto." + strings.Title(field.Name) // Use actual field name
 	
+	// Skip @IsOptional() as it's a modifier, not a validator
+	if rule.Type == "IsOptional" {
+		return
+	}
+	
+	// Check if field is optional
+	isOptional := g.isFieldOptional(field)
+	
+	// Helper function to wrap validation with optional guard
+	wrapValidation := func(validationLogic func()) {
+		if isOptional {
+			var optionalGuard string
+			if strings.HasPrefix(field.Type, "[]") {
+				// For slices, check if not nil and not empty
+				optionalGuard = fmt.Sprintf("if %s != nil && len(%s) > 0", fieldName, fieldName)
+			} else if field.Type == "string" {
+				// For strings, check if not empty after trimming
+				optionalGuard = fmt.Sprintf("if strings.TrimSpace(%s) != \"\"", fieldName)
+			} else {
+				// For other types, check if not nil
+				optionalGuard = fmt.Sprintf("if %s != nil", fieldName)
+			}
+			
+			g.writeLine(optionalGuard + " {")
+			g.indent()
+			validationLogic()
+			g.unindent()
+			g.writeLine("}")
+		} else {
+			validationLogic()
+		}
+	}
+	
 	switch rule.Type {
 	case "IsEmail":
 		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
-		g.writeLine(fmt.Sprintf("if !isValidEmail(%s) {", fieldName))
-		g.generateValidationError(field.Name, fieldName, rule)
-		g.writeLine("}")
+		wrapValidation(func() {
+			g.writeLine(fmt.Sprintf("if !isValidEmail(%s) {", fieldName))
+			g.generateValidationError(field.Name, fieldName, rule)
+			g.writeLine("}")
+		})
 		
 	case "IsURL":
 		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
-		g.writeLine(fmt.Sprintf("if !isValidURL(%s) {", fieldName))
-		g.generateValidationError(field.Name, fieldName, rule)
-		g.writeLine("}")
+		wrapValidation(func() {
+			g.writeLine(fmt.Sprintf("if !isValidURL(%s) {", fieldName))
+			g.generateValidationError(field.Name, fieldName, rule)
+			g.writeLine("}")
+		})
 		
 	case "IsNotEmpty":
 		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
@@ -3707,9 +3744,11 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 	case "ArrayMinSize":
 		if len(rule.Args) > 0 {
 			g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
-			g.writeLine(fmt.Sprintf("if %s != nil && len(%s) < %v {", fieldName, fieldName, rule.Args[0]))
-			g.generateValidationError(field.Name, fieldName, rule)
-			g.writeLine("}")
+			wrapValidation(func() {
+				g.writeLine(fmt.Sprintf("if %s != nil && len(%s) < %v {", fieldName, fieldName, rule.Args[0]))
+				g.generateValidationError(field.Name, fieldName, rule)
+				g.writeLine("}")
+			})
 		}
 		
 	case "ArrayMaxSize":
@@ -3830,9 +3869,11 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 	case "MinLength":
 		if len(rule.Args) > 0 {
 			g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
-			g.writeLine(fmt.Sprintf("if len(%s) < %v {", fieldName, rule.Args[0]))
-			g.generateValidationError(field.Name, fieldName, rule)
-			g.writeLine("}")
+			wrapValidation(func() {
+				g.writeLine(fmt.Sprintf("if len(%s) < %v {", fieldName, rule.Args[0]))
+				g.generateValidationError(field.Name, fieldName, rule)
+				g.writeLine("}")
+			})
 		}
 		
 	case "MaxLength":
@@ -3891,6 +3932,16 @@ func (g *CodeGenerator) isStringType(typeName string) bool {
 // isSliceType checks if a type is a slice/array type
 func (g *CodeGenerator) isSliceType(typeName string) bool {
 	return strings.HasPrefix(typeName, "[]") || strings.Contains(typeName, "[]")
+}
+
+// isFieldOptional checks if a field has the @IsOptional() decorator
+func (g *CodeGenerator) isFieldOptional(field *ValidationFieldInfo) bool {
+	for _, rule := range field.Validators {
+		if rule.Type == "IsOptional" {
+			return true
+		}
+	}
+	return false
 }
 
 // addValidationImportsIfNeeded adds validation imports if needed
