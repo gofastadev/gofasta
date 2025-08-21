@@ -2963,6 +2963,8 @@ func (g *CodeGenerator) getValidationMessage(ruleType string, args []interface{}
 		return "must be valid JSON"
 	case "IsHexColor":
 		return "must be a valid hex color"
+	case "IsPhoneNumber":
+		return "must be a valid phone number"
 	case "IsPositive":
 		return "must be a positive number"
 	case "IsNegative":
@@ -3342,6 +3344,44 @@ func (g *CodeGenerator) generateValidationHelperFunctions() {
 	g.writeLine("return true")
 	g.unindent()
 	g.writeLine("}")
+	g.writeLine("")
+	
+	// Phone number validation
+	g.writeLine("func isPhoneNumber(value interface{}) bool {")
+	g.indent()
+	g.writeLine("str, ok := value.(string)")
+	g.writeLine("if !ok {")
+	g.indent()
+	g.writeLine("return false")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	g.writeLine("// Remove all non-digit characters for validation")
+	g.writeLine("digits := strings.Map(func(r rune) rune {")
+	g.indent()
+	g.writeLine("if r >= '0' && r <= '9' {")
+	g.indent()
+	g.writeLine("return r")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("return -1")
+	g.unindent()
+	g.writeLine("}, str)")
+	g.writeLine("")
+	g.writeLine("// Check for valid phone number length (7-15 digits)")
+	g.writeLine("if len(digits) < 7 || len(digits) > 15 {")
+	g.indent()
+	g.writeLine("return false")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	g.writeLine("// Basic phone number pattern validation")
+	g.writeLine("// Accepts formats like: +1234567890, (123) 456-7890, 123-456-7890, etc.")
+	g.writeLine("phoneRegex := `^[\\+]?[1-9]?[0-9]{7,14}$`")
+	g.writeLine("matched, _ := regexp.MatchString(phoneRegex, digits)")
+	g.writeLine("return matched")
+	g.unindent()
+	g.writeLine("}")
 }
 
 // generateDTOValidationFunction generates validation function for a DTO
@@ -3496,6 +3536,12 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 	case "IsHexColor":
 		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
 		g.writeLine(fmt.Sprintf("if !isHexColor(%s) {", fieldName))
+		g.generateValidationError(field.Name, fieldName, rule)
+		g.writeLine("}")
+		
+	case "IsPhoneNumber":
+		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+		g.writeLine(fmt.Sprintf("if !isPhoneNumber(%s) {", fieldName))
 		g.generateValidationError(field.Name, fieldName, rule)
 		g.writeLine("}")
 		

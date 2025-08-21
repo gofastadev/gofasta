@@ -414,6 +414,42 @@ func (c *DataController) createTest(@Body() data DataDto) {
 				"strings.HasPrefix",
 			},
 		},
+		{
+			name: "IsPhoneNumber validation decorator",
+			input: `package main
+
+@Injectable()
+type DataDto struct {
+	@IsPhoneNumber()
+	HomePhone string
+	
+	@IsPhoneNumber()
+	MobilePhone string
+	
+	@IsPhoneNumber()
+	WorkPhone string
+}
+
+@Controller("/data")
+type DataController struct {
+}
+
+@Post("/")
+func (c *DataController) createTest(@Body() data DataDto) {
+}`,
+			expected: []string{
+				"ValidationError",
+				"ValidateDataDto",
+				"func isPhoneNumber(value interface{}) bool",
+				"IsPhoneNumber validation",
+				"if !isPhoneNumber(dto.HomePhone) {",
+				"if !isPhoneNumber(dto.MobilePhone) {",
+				"if !isPhoneNumber(dto.WorkPhone) {",
+				"must be a valid phone number",
+				"IS_PHONE_NUMBER",
+				"strings.Map",
+			},
+		},
 	}
 
 	for _, tt := range tests {

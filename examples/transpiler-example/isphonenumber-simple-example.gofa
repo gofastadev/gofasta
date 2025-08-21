@@ -1,0 +1,32 @@
+package main
+
+@Injectable()
+type ContactService struct {
+}
+
+func (s *ContactService) updateContact(dto ContactDto) {
+    // Body parameter validation will be generated automatically
+    // The dto will be validated using the @IsPhoneNumber() decorators
+}
+
+@Injectable()
+type ContactDto struct {
+    @IsPhoneNumber()
+    HomePhone string       // Accepts formats like: +1234567890, (123) 456-7890, 123-456-7890
+    
+    @IsPhoneNumber()
+    MobilePhone string     // Validates 7-15 digit phone numbers
+    
+    @IsPhoneNumber()
+    WorkPhone string       // Strips formatting and validates digits
+}
+
+@Controller("/api/contact")
+type ContactController struct {
+    service *ContactService `inject:""`
+}
+
+@Post("/update")
+func (c *ContactController) updateContact(@Body() contact ContactDto) {
+    c.service.updateContact(contact)
+}
