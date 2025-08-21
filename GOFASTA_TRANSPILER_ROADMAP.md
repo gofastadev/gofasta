@@ -86,10 +86,16 @@
   }
   ```
 - [X] **Provider factory generation** - Generate custom provider code
-- [ ] **Scope decorators** - Generate scope-aware DI code
+- [X] **Scope decorators** - Generate scope-aware DI code
   ```gofa
-  @Injectable("singleton")
+  @Scope("singleton")
   type UserService struct {}
+  
+  @Scope("transient")
+  type TaskProcessor struct {}
+  
+  @Scope("request")
+  type UserContext struct {}
   ```
 
 ---

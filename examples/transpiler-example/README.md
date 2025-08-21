@@ -10,6 +10,7 @@ This example demonstrates how to use the Gofasta transpiler to transform decorat
 - **Parameter Decorators**: `@Param`, `@Body`, `@Query`, `@Headers` (with advanced features) for request handling
 - **Service Pattern**: `@Injectable` services with DI
 - **Provider Factory Generation**: Automatic factory functions for `@Injectable` services
+- **Scope Decorators**: `@Scope()` for fine-grained service lifecycle management
 - **Module System**: `@Module` for organizing dependencies
 - **Guards & Middleware**: `@UseGuards`, `@HttpCode` decorators
 - **Error Handling**: `@Catch()` decorators for automatic error filtering
@@ -36,6 +37,8 @@ transpiler-example/
 │   ├── provider-demo.gofa   # Provider factory generation demo
 │   ├── provider-factory-example.gofa # Comprehensive provider factory example
 │   ├── PROVIDER_FACTORY_README.md    # Provider factory documentation
+│   ├── scope-demo.gofa      # Scope decorator demonstration  
+│   ├── SCOPE_DECORATOR_README.md     # Scope decorator documentation
 │   └── app.module.gofa      # Application module configuration
 └── *.go                     # Generated files (standard Go)
     ├── user.controller.go   # Generated from user.controller.gofa

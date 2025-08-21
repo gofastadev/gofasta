@@ -145,8 +145,8 @@ func (g *CodeGenerator) generateServiceDeclaration(service *ServiceDeclaration) 
 		g.writeLine("")
 	}
 
-	// Generate Provider factory if Injectable
-	if g.hasDecorator(service.Decorators, "Injectable") {
+	// Generate Provider factory if Injectable or Scope decorator is present
+	if g.hasDecorator(service.Decorators, "Injectable") || g.hasDecorator(service.Decorators, "Scope") {
 		g.generateProviderFactory(service)
 		g.writeLine("")
 	}
@@ -1142,31 +1142,63 @@ func (g *CodeGenerator) generateInjectTag(decorator *DecoratorNode, field *Field
 	return tag
 }
 
-// getInjectableScope extracts the scope from @Injectable decorator
+// getInjectableScope extracts the scope from @Scope or @Injectable decorators
 func (g *CodeGenerator) getInjectableScope(service *ServiceDeclaration) string {
-	injectableDecorator := g.getDecorator(service.Decorators, "Injectable")
-	if injectableDecorator == nil {
-		return "singleton" // Default scope
+	// First, check for dedicated @Scope() decorator - it takes precedence
+	scopeDecorator := g.getDecorator(service.Decorators, "Scope")
+	if scopeDecorator != nil {
+		scope := g.getScopeFromDecorator(scopeDecorator)
+		if scope != "" {
+			return scope
+		}
 	}
 	
+	// Fall back to @Injectable decorator scope
+	injectableDecorator := g.getDecorator(service.Decorators, "Injectable")
+	if injectableDecorator != nil {
+		scope := g.getScopeFromDecorator(injectableDecorator)
+		if scope != "" {
+			return scope
+		}
+	}
+	
+	return "singleton" // Default scope
+}
+
+// getScopeFromDecorator extracts scope value from any decorator (Injectable or Scope)
+func (g *CodeGenerator) getScopeFromDecorator(decorator *DecoratorNode) string {
 	// Check for scope in decorator arguments
-	for _, arg := range injectableDecorator.Args {
+	for _, arg := range decorator.Args {
 		// Handle string argument (scope)
 		if scopeValue, ok := arg.Value.(string); ok {
-			return scopeValue
+			return g.normalizeScopeName(scopeValue)
 		}
 		
 		// Handle object argument with scope property
 		if objValue, ok := arg.Value.(map[string]interface{}); ok {
 			if scope, exists := objValue["scope"]; exists {
 				if scopeStr, ok := scope.(string); ok {
-					return scopeStr
+					return g.normalizeScopeName(scopeStr)
 				}
 			}
 		}
 	}
 	
-	return "singleton" // Default scope
+	return ""
+}
+
+// normalizeScopeName normalizes scope names to standard values
+func (g *CodeGenerator) normalizeScopeName(scope string) string {
+	switch strings.ToLower(scope) {
+	case "singleton", "single":
+		return "singleton"
+	case "transient", "prototype", "instance":
+		return "transient"
+	case "request", "scoped", "req":
+		return "request"
+	default:
+		return scope // Return as-is for custom scopes
+	}
 }
 
 // generateFieldDependencyInjection generates dependency injection code for a field
