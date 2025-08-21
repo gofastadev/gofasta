@@ -164,8 +164,8 @@
 **📝 Type Validation Decorators**
 - [X] `@IsString()` - Validate value is string type
 - [X] `@IsNumber()` - Validate value is numeric (int, float, etc.)
-- [ ] `@IsInt()` - Validate value is integer
-- [ ] `@IsFloat()` - Validate value is floating point
+- [X] `@IsInt()` - Validate value is integer
+- [X] `@IsFloat()` - Validate value is floating point
 - [ ] `@IsBoolean()` - Validate value is boolean
 - [X] `@IsArray()` - Validate value is array/slice
 - [ ] `@IsObject()` - Validate value is object/struct

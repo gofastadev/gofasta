@@ -3136,6 +3136,36 @@ func (g *CodeGenerator) generateValidationHelperFunctions() {
 	g.writeLine("}")
 	g.unindent()
 	g.writeLine("}")
+	g.writeLine("")
+	
+	// Float validation
+	g.writeLine("func isFloat(value interface{}) bool {")
+	g.indent()
+	g.writeLine("switch v := value.(type) {")
+	g.writeLine("case float32, float64:")
+	g.indent()
+	g.writeLine("return true")
+	g.unindent()
+	g.writeLine("case int, int8, int16, int32, int64:")
+	g.indent()
+	g.writeLine("return true // Integers are valid floats")
+	g.unindent()
+	g.writeLine("case uint, uint8, uint16, uint32, uint64:")
+	g.indent()
+	g.writeLine("return true // Unsigned integers are valid floats")
+	g.unindent()
+	g.writeLine("case string:")
+	g.indent()
+	g.writeLine("_, err := strconv.ParseFloat(v, 64)")
+	g.writeLine("return err == nil")
+	g.unindent()
+	g.writeLine("default:")
+	g.indent()
+	g.writeLine("return false")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
 }
 
 // generateDTOValidationFunction generates validation function for a DTO
@@ -3254,6 +3284,12 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 			// For typed fields, we can use reflection to check for interface{} conversion
 			g.writeLine(fmt.Sprintf("if !isInt(%s) {", fieldName))
 		}
+		g.generateValidationError(field.Name, fieldName, rule)
+		g.writeLine("}")
+		
+	case "IsFloat":
+		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+		g.writeLine(fmt.Sprintf("if !isFloat(%s) {", fieldName))
 		g.generateValidationError(field.Name, fieldName, rule)
 		g.writeLine("}")
 		

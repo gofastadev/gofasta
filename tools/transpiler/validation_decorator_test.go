@@ -197,6 +197,43 @@ func (c *TestController) createTest(@Body() data TestDto) {
 				"IS_INT",
 			},
 		},
+		{
+			name: "IsFloat validation decorator",
+			input: `package main
+
+@Injectable()
+type FloatTestDto struct {
+	@IsFloat()
+	Price float64
+	
+	@IsFloat()
+	@Min(0.0)
+	@Max(100.0)
+	Score float32
+	
+	@IsFloat()
+	Value interface{}
+}
+
+@Controller("/float-test")
+type FloatTestController struct {
+}
+
+@Post("/")
+func (c *FloatTestController) createTest(@Body() data FloatTestDto) {
+}`,
+			expected: []string{
+				"ValidationError",
+				"ValidateFloatTestDto",
+				"func isFloat(value interface{}) bool",
+				"IsFloat validation",
+				"if !isFloat(dto.Price) {",
+				"if !isFloat(dto.Score) {",
+				"if !isFloat(dto.Value) {",
+				"must be a floating point number",
+				"IS_FLOAT",
+			},
+		},
 	}
 
 	for _, tt := range tests {

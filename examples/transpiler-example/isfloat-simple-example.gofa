@@ -1,0 +1,24 @@
+package main
+
+// DTO demonstrating @IsFloat() validation decorator
+@Injectable()
+type FloatDto struct {
+    @IsFloat()
+    Price float64
+    
+    @IsFloat()
+    @Min(0.0)
+    @Max(100.0)
+    Score float32
+    
+    @IsFloat()
+    Value interface{}
+}
+
+@Controller("/floats")
+type FloatController struct {}
+
+@Post("/validate")
+func (c *FloatController) validateFloat(@Body() data FloatDto) {
+    // Generated ValidateFloatDto function provides validation
+}
