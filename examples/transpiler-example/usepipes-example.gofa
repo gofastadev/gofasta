@@ -1,0 +1,523 @@
+package main
+
+// Example demonstrating @UsePipes() decorator usage in GOFASTA
+// Pipes provide data validation, transformation, and parsing for incoming requests
+
+// Basic validation-enabled controller
+@Controller("/api")
+@UsePipes(ValidationPipe)
+type ApiController struct {
+	@Inject()
+	dataService *DataService
+}
+
+// Simple endpoint - inherits ValidationPipe from controller
+@Post("/data")
+func createData(@Body() data DataRequest) DataResponse {
+	// This method automatically validates request body structure
+	return dataService.CreateData(data)
+}
+
+// Method with additional transformation
+@UsePipes(TransformPipe)
+@Put("/data/:id")
+func updateData(@Param("id") id string, @Body() data DataRequest) DataResponse {
+	// This method uses both ValidationPipe (from controller) and TransformPipe (from method)
+	return dataService.UpdateData(id, data)
+}
+
+// User management controller with multiple pipes at controller level
+@Controller("/users")
+@UsePipes(ValidationPipe, TransformPipe)
+type UserController struct {
+	@Inject()
+	userService *UserService
+}
+
+// Method inherits both pipes from controller
+@Post("/profile")
+func createUserProfile(@Body() userData CreateUserRequest) User {
+	// Automatically validated and transformed
+	return userService.CreateUser(userData)
+}
+
+// Method with additional parsing for query parameters
+@UsePipes(ParseIntPipe, DefaultValuePipe)
+@Get("/profile/:id")
+func getUserProfile(@Param("id") userId string, @Query("include") include []string, @Query("limit") limit int) User {
+	// This method uses:
+	// - ValidationPipe (from controller): Validates request structure
+	// - TransformPipe (from controller): Transforms request/response data
+	// - ParseIntPipe (from method): Parses string parameters to integers
+	// - DefaultValuePipe (from method): Sets default values for missing parameters
+	return userService.GetUser(userId, include, limit)
+}
+
+// Comprehensive data processing controller with full pipe pipeline
+@Controller("/processing")
+@UsePipes(ValidationPipe)
+type ProcessingController struct {
+	@Inject()
+	processingService *ProcessingService
+}
+
+// Public processing endpoint with basic validation
+@Post("/simple")
+func processSimple(@Body() request ProcessRequest) ProcessResponse {
+	return processingService.ProcessSimple(request)
+}
+
+// Advanced processing with parsing and transformation
+@UsePipes(ParseIntPipe, TransformPipe)
+@Post("/advanced")
+func processAdvanced(@Body() request ProcessRequest, @Query("threads") threads int, @Query("quality") quality string) ProcessResponse {
+	// Uses validation from controller + parsing and transformation from method
+	return processingService.ProcessAdvanced(request, threads, quality)
+}
+
+// Complex processing with all pipes
+@UsePipes(TransformPipe, ParseIntPipe, ParseBoolPipe, DefaultValuePipe)
+@Post("/complex")
+func processComplex(@Body() request ComplexProcessRequest, @Query("parallel") parallel bool, @Query("maxRetries") maxRetries int) ProcessResponse {
+	// Full pipe pipeline:
+	// 1. ValidationPipe (controller): Validates request structure
+	// 2. TransformPipe (method): Transforms input/output data formats
+	// 3. ParseIntPipe (method): Parses string query parameters to integers
+	// 4. ParseBoolPipe (method): Parses string query parameters to booleans
+	// 5. DefaultValuePipe (method): Sets defaults for missing parameters
+	return processingService.ProcessComplex(request, parallel, maxRetries)
+}
+
+// Search controller with parameter parsing and defaults
+@Controller("/search")
+type SearchController struct {
+	@Inject()
+	searchService *SearchService
+}
+
+// Basic search with parameter parsing
+@UsePipes(ParseIntPipe, DefaultValuePipe)
+@Get("/products")
+func searchProducts(@Query("q") query string, @Query("limit") limit int, @Query("offset") offset int, @Query("sort") sort string) SearchResults {
+	// Parses limit/offset to integers and sets defaults
+	return searchService.SearchProducts(query, limit, offset, sort)
+}
+
+// Advanced search with array parsing
+@UsePipes(ParseArrayPipe, ParseBoolPipe, DefaultValuePipe)
+@Get("/advanced")
+func advancedSearch(@Query("categories") categories []string, @Query("tags") tags []string, @Query("includeInactive") includeInactive bool) SearchResults {
+	// Parses comma-separated strings to arrays and booleans
+	return searchService.AdvancedSearch(categories, tags, includeInactive)
+}
+
+// Complex search with all parsing pipes
+@UsePipes(ParseIntPipe, ParseBoolPipe, ParseArrayPipe, DefaultValuePipe, TransformPipe)
+@Post("/complex")
+func complexSearch(@Body() searchRequest SearchRequest, @Query("filters") filters []string, @Query("sortAsc") sortAsc bool, @Query("maxResults") maxResults int) SearchResults {
+	// Demonstrates comprehensive parameter parsing and transformation
+	return searchService.ComplexSearch(searchRequest, filters, sortAsc, maxResults)
+}
+
+// File upload controller with validation and transformation
+@Controller("/files")
+@UsePipes(ValidationPipe)
+type FileController struct {
+	@Inject()
+	fileService *FileService
+}
+
+// File upload with validation and transformation
+@UsePipes(TransformPipe)
+@Post("/upload")
+func uploadFile(@Body() fileData FileUploadRequest) FileUploadResponse {
+	// Validates file format and transforms data as needed
+	return fileService.ProcessUpload(fileData)
+}
+
+// Batch file processing with parsing
+@UsePipes(ParseIntPipe, ParseBoolPipe, DefaultValuePipe)
+@Post("/batch")
+func processBatch(@Body() batchRequest BatchProcessRequest, @Query("parallel") parallel bool, @Query("maxConcurrent") maxConcurrent int) BatchProcessResponse {
+	// Validates request body and parses query parameters
+	return fileService.ProcessBatch(batchRequest, parallel, maxConcurrent)
+}
+
+// Analytics controller with comprehensive parsing
+@Controller("/analytics")
+@UsePipes(ValidationPipe, DefaultValuePipe)
+type AnalyticsController struct {
+	@Inject()
+	analyticsService *AnalyticsService
+}
+
+// Time-based analytics with date parsing
+@UsePipes(ParseArrayPipe, ParseIntPipe)
+@Get("/metrics")
+func getMetrics(@Query("metrics") metrics []string, @Query("days") days int, @Query("granularity") granularity string) AnalyticsResponse {
+	// Parses metric names as array and days as integer
+	return analyticsService.GetMetrics(metrics, days, granularity)
+}
+
+// Custom analytics with all parsing options
+@UsePipes(ParseIntPipe, ParseBoolPipe, ParseArrayPipe, TransformPipe)
+@Post("/custom")
+func customAnalytics(@Body() request CustomAnalyticsRequest, @Query("dimensions") dimensions []string, @Query("realtime") realtime bool, @Query("cacheFor") cacheFor int) AnalyticsResponse {
+	// Complete parsing and transformation pipeline
+	return analyticsService.CustomAnalytics(request, dimensions, realtime, cacheFor)
+}
+
+// API Gateway controller with custom pipes
+@Controller("/gateway")
+type GatewayController struct {
+	@Inject()
+	gatewayService *GatewayService
+}
+
+// Endpoint with custom pipe
+@UsePipes(MyCustomPipe)
+@Post("/proxy")
+func proxyRequest(@Body() request ProxyRequest) ProxyResponse {
+	// Demonstrates using custom pipes
+	return gatewayService.ProxyRequest(request)
+}
+
+// Mixed pipes, interceptors, and guards example
+@Controller("/secure-api")
+@UsePipes(ValidationPipe)
+@UseInterceptors(LoggingInterceptor)
+@UseGuards(AuthGuard)
+type SecureApiController struct {
+	@Inject()
+	secureService *SecureService
+}
+
+// Endpoint with pipes, interceptors, and guards
+@UsePipes(TransformPipe, ParseIntPipe)
+@UseInterceptors(CacheInterceptor)
+@UseGuards(RoleGuard)
+@Post("/secure-data")
+func processSecureData(@Body() request SecureDataRequest, @Headers("Authorization") token string, @Query("version") version int) SecureDataResponse {
+	// Execution order:
+	// 1. Pipes run first: ValidationPipe, TransformPipe, ParseIntPipe
+	// 2. Interceptors run second: LoggingInterceptor, CacheInterceptor
+	// 3. Guards run third: AuthGuard, RoleGuard
+	// 4. Finally the actual method executes
+	return secureService.ProcessSecureData(request, version)
+}
+
+// Type definitions for the examples
+
+type DataRequest struct {
+	Name        string            `json:"name" validate:"required,min=1,max=100"`
+	Category    string            `json:"category" validate:"required,oneof=type1 type2 type3"`
+	Data        map[string]string `json:"data" validate:"required"`
+	Priority    int               `json:"priority" validate:"min=1,max=10"`
+	Active      bool              `json:"active"`
+	Tags        []string          `json:"tags" validate:"dive,min=1,max=50"`
+}
+
+type DataResponse struct {
+	ID          string            `json:"id"`
+	Name        string            `json:"name"`
+	Category    string            `json:"category"`
+	Data        map[string]string `json:"data"`
+	Priority    int               `json:"priority"`
+	Active      bool              `json:"active"`
+	Tags        []string          `json:"tags"`
+	CreatedAt   time.Time         `json:"createdAt"`
+	UpdatedAt   time.Time         `json:"updatedAt"`
+}
+
+type CreateUserRequest struct {
+	Username    string                 `json:"username" validate:"required,min=3,max=30,alphanum"`
+	Email       string                 `json:"email" validate:"required,email"`
+	FullName    string                 `json:"fullName" validate:"required,min=1,max=100"`
+	Age         int                    `json:"age" validate:"min=13,max=120"`
+	Profile     map[string]interface{} `json:"profile" validate:"required"`
+	Preferences UserPreferences        `json:"preferences"`
+	Active      bool                   `json:"active"`
+}
+
+type UserPreferences struct {
+	Theme         string            `json:"theme" validate:"oneof=light dark auto"`
+	Language      string            `json:"language" validate:"required,len=2"`
+	Notifications map[string]bool   `json:"notifications"`
+	CustomFields  map[string]string `json:"customFields" validate:"dive,keys,min=1,endkeys,min=1"`
+}
+
+type User struct {
+	ID          string                 `json:"id"`
+	Username    string                 `json:"username"`
+	Email       string                 `json:"email"`
+	FullName    string                 `json:"fullName"`
+	Age         int                    `json:"age"`
+	Profile     map[string]interface{} `json:"profile"`
+	Preferences UserPreferences        `json:"preferences"`
+	Active      bool                   `json:"active"`
+	CreatedAt   time.Time              `json:"createdAt"`
+	LastLogin   *time.Time             `json:"lastLogin,omitempty"`
+}
+
+type ProcessRequest struct {
+	Operation   string                 `json:"operation" validate:"required,oneof=transform convert optimize"`
+	Input       map[string]interface{} `json:"input" validate:"required"`
+	Options     ProcessOptions         `json:"options"`
+	Priority    int                    `json:"priority" validate:"min=1,max=10"`
+	Async       bool                   `json:"async"`
+}
+
+type ComplexProcessRequest struct {
+	ProcessRequest
+	Dependencies []string          `json:"dependencies" validate:"dive,uuid4"`
+	Callbacks    map[string]string `json:"callbacks" validate:"dive,keys,min=1,endkeys,url"`
+	RetryPolicy  RetryPolicy       `json:"retryPolicy"`
+}
+
+type ProcessOptions struct {
+	Quality     string `json:"quality" validate:"oneof=low medium high"`
+	Compression bool   `json:"compression"`
+	Format      string `json:"format" validate:"oneof=json xml csv"`
+	Timeout     int    `json:"timeout" validate:"min=1,max=300"`
+}
+
+type RetryPolicy struct {
+	MaxRetries int           `json:"maxRetries" validate:"min=0,max=10"`
+	Backoff    time.Duration `json:"backoff" validate:"min=100ms,max=1m"`
+	Strategy   string        `json:"strategy" validate:"oneof=exponential linear constant"`
+}
+
+type ProcessResponse struct {
+	ProcessID   string                 `json:"processId"`
+	Status      string                 `json:"status"`
+	Result      map[string]interface{} `json:"result,omitempty"`
+	Progress    int                    `json:"progress" validate:"min=0,max=100"`
+	StartedAt   time.Time              `json:"startedAt"`
+	CompletedAt *time.Time             `json:"completedAt,omitempty"`
+	Error       *string                `json:"error,omitempty"`
+}
+
+type SearchRequest struct {
+	Query       string            `json:"query" validate:"required,min=1,max=500"`
+	Filters     map[string]string `json:"filters" validate:"dive,keys,min=1,endkeys,min=1"`
+	Sort        []SortCriteria    `json:"sort" validate:"dive"`
+	Pagination  Pagination        `json:"pagination"`
+	Aggregations []string         `json:"aggregations" validate:"dive,min=1"`
+}
+
+type SortCriteria struct {
+	Field string `json:"field" validate:"required,min=1"`
+	Order string `json:"order" validate:"oneof=asc desc"`
+}
+
+type Pagination struct {
+	Limit  int `json:"limit" validate:"min=1,max=1000"`
+	Offset int `json:"offset" validate:"min=0"`
+}
+
+type SearchResults struct {
+	Query       string        `json:"query"`
+	Total       int64         `json:"total"`
+	Results     []interface{} `json:"results"`
+	Facets      interface{}   `json:"facets,omitempty"`
+	Suggestions []string      `json:"suggestions,omitempty"`
+	Took        time.Duration `json:"took"`
+}
+
+type FileUploadRequest struct {
+	FileName    string            `json:"fileName" validate:"required,min=1,max=255"`
+	ContentType string            `json:"contentType" validate:"required"`
+	Size        int64             `json:"size" validate:"min=1,max=104857600"` // 100MB max
+	Data        []byte            `json:"data" validate:"required"`
+	Metadata    map[string]string `json:"metadata" validate:"dive,keys,min=1,endkeys,min=1"`
+	Tags        []string          `json:"tags" validate:"dive,min=1,max=50"`
+}
+
+type FileUploadResponse struct {
+	FileID      string            `json:"fileId"`
+	FileName    string            `json:"fileName"`
+	Size        int64             `json:"size"`
+	ContentType string            `json:"contentType"`
+	URL         string            `json:"url"`
+	Metadata    map[string]string `json:"metadata"`
+	UploadedAt  time.Time         `json:"uploadedAt"`
+	Status      string            `json:"status"`
+}
+
+type BatchProcessRequest struct {
+	Files       []string              `json:"files" validate:"required,min=1,dive,uuid4"`
+	Operation   string                `json:"operation" validate:"required,oneof=resize convert compress"`
+	Options     map[string]interface{} `json:"options" validate:"required"`
+	CallbackURL string                `json:"callbackUrl" validate:"omitempty,url"`
+	Priority    int                   `json:"priority" validate:"min=1,max=10"`
+}
+
+type BatchProcessResponse struct {
+	BatchID     string    `json:"batchId"`
+	Status      string    `json:"status"`
+	TotalFiles  int       `json:"totalFiles"`
+	Processed   int       `json:"processed"`
+	Failed      int       `json:"failed"`
+	StartedAt   time.Time `json:"startedAt"`
+	EstimatedAt time.Time `json:"estimatedAt"`
+}
+
+type CustomAnalyticsRequest struct {
+	Metrics     []MetricDefinition `json:"metrics" validate:"required,min=1,dive"`
+	TimeRange   TimeRange          `json:"timeRange" validate:"required"`
+	GroupBy     []string           `json:"groupBy" validate:"dive,min=1"`
+	Filters     []Filter           `json:"filters" validate:"dive"`
+	Compare     *ComparisonConfig  `json:"compare,omitempty"`
+}
+
+type MetricDefinition struct {
+	Name        string                 `json:"name" validate:"required,min=1"`
+	Aggregation string                 `json:"aggregation" validate:"required,oneof=sum avg min max count"`
+	Field       string                 `json:"field" validate:"required,min=1"`
+	Parameters  map[string]interface{} `json:"parameters,omitempty"`
+}
+
+type TimeRange struct {
+	Start time.Time `json:"start" validate:"required"`
+	End   time.Time `json:"end" validate:"required,gtfield=Start"`
+}
+
+type Filter struct {
+	Field    string      `json:"field" validate:"required,min=1"`
+	Operator string      `json:"operator" validate:"required,oneof=eq ne gt gte lt lte in nin"`
+	Value    interface{} `json:"value" validate:"required"`
+}
+
+type ComparisonConfig struct {
+	Type   string    `json:"type" validate:"required,oneof=previous period custom"`
+	Period string    `json:"period,omitempty" validate:"omitempty,oneof=day week month quarter year"`
+	Start  time.Time `json:"start,omitempty"`
+	End    time.Time `json:"end,omitempty"`
+}
+
+type AnalyticsResponse struct {
+	RequestID   string                 `json:"requestId"`
+	Metrics     map[string]interface{} `json:"metrics"`
+	Breakdown   map[string]interface{} `json:"breakdown,omitempty"`
+	Comparison  map[string]interface{} `json:"comparison,omitempty"`
+	Metadata    AnalyticsMetadata      `json:"metadata"`
+	ComputedAt  time.Time              `json:"computedAt"`
+}
+
+type AnalyticsMetadata struct {
+	TotalRecords    int64         `json:"totalRecords"`
+	ProcessingTime  time.Duration `json:"processingTime"`
+	CacheHit        bool          `json:"cacheHit"`
+	DataFreshness   time.Time     `json:"dataFreshness"`
+	AppliedFilters  []string      `json:"appliedFilters"`
+}
+
+type ProxyRequest struct {
+	Method      string            `json:"method" validate:"required,oneof=GET POST PUT DELETE PATCH"`
+	URL         string            `json:"url" validate:"required,url"`
+	Headers     map[string]string `json:"headers" validate:"dive,keys,min=1,endkeys,min=1"`
+	Body        interface{}       `json:"body,omitempty"`
+	Timeout     int               `json:"timeout" validate:"min=1,max=300"`
+	RetryCount  int               `json:"retryCount" validate:"min=0,max=5"`
+}
+
+type ProxyResponse struct {
+	StatusCode  int               `json:"statusCode"`
+	Headers     map[string]string `json:"headers"`
+	Body        interface{}       `json:"body,omitempty"`
+	Duration    time.Duration     `json:"duration"`
+	RetryCount  int               `json:"retryCount"`
+	ProxiedAt   time.Time         `json:"proxiedAt"`
+}
+
+type SecureDataRequest struct {
+	Operation     string                 `json:"operation" validate:"required,min=1"`
+	Data          map[string]interface{} `json:"data" validate:"required"`
+	Classification string                `json:"classification" validate:"required,oneof=public internal confidential restricted"`
+	AccessLevel   int                   `json:"accessLevel" validate:"min=1,max=10"`
+	Encryption    bool                  `json:"encryption"`
+}
+
+type SecureDataResponse struct {
+	OperationID   string                 `json:"operationId"`
+	Status        string                 `json:"status"`
+	Result        map[string]interface{} `json:"result,omitempty"`
+	Classification string                `json:"classification"`
+	AccessLevel   int                   `json:"accessLevel"`
+	ProcessedAt   time.Time             `json:"processedAt"`
+	ExpiresAt     *time.Time            `json:"expiresAt,omitempty"`
+}
+
+// Service declarations (would be implemented elsewhere)
+
+@Injectable()
+type DataService struct {
+	@Inject()
+	db        *Database
+	@Inject()
+	validator *Validator
+}
+
+@Injectable()
+type UserService struct {
+	@Inject()
+	db        *Database
+	@Inject()
+	validator *Validator
+	@Inject()
+	cache     *Cache
+}
+
+@Injectable()
+type ProcessingService struct {
+	@Inject()
+	processor *DataProcessor
+	@Inject()
+	queue     *JobQueue
+}
+
+@Injectable()
+type SearchService struct {
+	@Inject()
+	searchEngine *SearchEngine
+	@Inject()
+	cache        *Cache
+}
+
+@Injectable()
+type FileService struct {
+	@Inject()
+	storage   *Storage
+	@Inject()
+	processor *FileProcessor
+	@Inject()
+	validator *Validator
+}
+
+@Injectable()
+type AnalyticsService struct {
+	@Inject()
+	db            *Database
+	@Inject()
+	computeEngine *ComputeEngine
+	@Inject()
+	cache         *Cache
+}
+
+@Injectable()
+type GatewayService struct {
+	@Inject()
+	httpClient *HTTPClient
+	@Inject()
+	router     *Router
+}
+
+@Injectable()
+type SecureService struct {
+	@Inject()
+	db         *Database
+	@Inject()
+	encryption *EncryptionService
+	@Inject()
+	audit      *AuditLogger
+}

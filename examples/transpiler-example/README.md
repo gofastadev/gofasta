@@ -12,7 +12,7 @@ This example demonstrates how to use the Gofasta transpiler to transform decorat
 - **Provider Factory Generation**: Automatic factory functions for `@Injectable` services
 - **Scope Decorators**: `@Scope()` for fine-grained service lifecycle management
 - **Module System**: `@Module` for organizing dependencies
-- **Guards & Middleware**: `@UseGuards`, `@HttpCode` decorators
+- **Guards & Middleware**: `@UseGuards`, `@UsePipes`, `@UseInterceptors`, `@HttpCode` decorators
 - **Error Handling**: `@Catch()` decorators for automatic error filtering
 - **HTTP Status Codes**: `@HttpCode()` decorators for custom response status codes
 - **Redirects**: `@Redirect()` decorators for URL redirections with custom status codes
@@ -31,6 +31,7 @@ transpiler-example/
 │   ├── catch-decorator-example.gofa # Error handling with @Catch() decorator
 │   ├── httpcode-example.gofa # HTTP status codes with @HttpCode() decorator
 │   ├── redirect-example.gofa # URL redirections with @Redirect() decorator
+│   ├── usepipes-example.gofa # Pipe validation and transformation examples
 │   ├── user.service.gofa    # User business logic service  
 │   ├── types.gofa           # Data models and DTOs
 │   ├── simple-test.gofa     # Simple test controller
@@ -1228,6 +1229,418 @@ The `@Redirect()` decorator provides:
 4. **Method Preservation**: 307/308 status codes maintain HTTP methods
 5. **Cache Control**: Browsers cache permanent redirects appropriately
 6. **Automatic Generation**: No manual redirect logic needed
+
+### 🚀 @UsePipes() Decorator Features
+
+The new `@UsePipes()` decorator provides powerful data validation, transformation, and parsing capabilities with **NestJS-level parity**:
+
+#### 🎯 Basic Usage
+```go
+// Basic validation pipe
+@UsePipes(ValidationPipe)
+@Post("/users")
+func CreateUser(@Body() userData CreateUserDto) {
+    // Request body is automatically validated before method execution
+}
+
+// Multiple pipes with transformation and validation
+@UsePipes(ValidationPipe, TransformPipe)
+@Put("/users/:id")
+func UpdateUser(@Param("id") id string, @Body() userData UpdateUserDto) {
+    // Data is validated then transformed before method execution
+}
+```
+
+#### 🏗️ Controller-Level Pipes
+```go
+@Controller("/api/v1/data")
+@UsePipes(ValidationPipe)  // Applied to ALL methods in controller
+type DataController struct {
+    DataService *DataService `inject:""`
+}
+
+@Post("/")
+func CreateData(@Body() data CreateDataRequest) {
+    // Inherits ValidationPipe from controller
+}
+
+@UsePipes(TransformPipe)  // Additional method-level pipe
+@Put("/:id")
+func UpdateData(@Param("id") id string, @Body() data UpdateDataRequest) {
+    // Uses both ValidationPipe (controller) and TransformPipe (method)
+}
+```
+
+#### 📝 Built-in Pipe Types
+
+##### ValidationPipe - Request Validation
+```go
+@UsePipes(ValidationPipe)
+@Post("/users")
+func CreateUser(@Body() userData CreateUserDto) {
+    // Generated validation logic:
+    // - Validates Content-Type is application/json
+    // - Validates request body structure
+    // - Validates required fields and data types
+    // - Returns 400 errors for validation failures
+}
+```
+
+##### TransformPipe - Data Transformation
+```go
+@UsePipes(TransformPipe)
+@Post("/data")
+func ProcessData(@Body() request ProcessRequest) {
+    // Generated transformation logic:
+    // - Transforms request data before processing
+    // - Converts string values to appropriate types
+    // - Applies data normalization and formatting
+}
+```
+
+##### ParseIntPipe - Integer Parsing
+```go
+@UsePipes(ParseIntPipe)
+@Get("/items/:id")
+func GetItem(@Param("id") id int, @Query("limit") limit int) {
+    // Generated parsing logic:
+    // - Automatically converts string path/query params to integers
+    // - Returns 400 errors for invalid integer values
+    // - Validates numeric constraints
+}
+```
+
+##### ParseBoolPipe - Boolean Parsing
+```go
+@UsePipes(ParseBoolPipe)
+@Get("/settings")
+func GetSettings(@Query("active") active bool, @Query("verified") verified bool) {
+    // Generated parsing logic:
+    // - Converts string values like "true"/"false", "1"/"0" to booleans
+    // - Handles case-insensitive boolean parsing
+    // - Validates boolean format
+}
+```
+
+##### ParseArrayPipe - Array Parsing
+```go
+@UsePipes(ParseArrayPipe)
+@Get("/search")
+func SearchItems(@Query("categories") categories []string, @Query("tags") tags []string) {
+    // Generated parsing logic:
+    // - Splits comma-separated strings into arrays
+    // - Trims whitespace from array elements
+    // - Handles empty arrays gracefully
+}
+```
+
+##### DefaultValuePipe - Default Values
+```go
+@UsePipes(DefaultValuePipe)
+@Get("/products")
+func GetProducts(@Query("limit") limit int, @Query("offset") offset int, @Query("sort") sort string) {
+    // Generated default value logic:
+    // - Sets limit=10, offset=0, sort="created_at" when missing
+    // - Provides consistent API behavior
+    // - Reduces client-side complexity
+}
+```
+
+#### 🎭 Complex Combined Pipes
+```go
+// Comprehensive pipe pipeline
+@UsePipes(ValidationPipe, ParseIntPipe, DefaultValuePipe, TransformPipe)
+@Post("/advanced")
+func AdvancedProcessing(
+    @Body() request AdvancedRequest, 
+    @Query("retries") retries int,
+    @Query("async") async bool,
+) {
+    // Execution order:
+    // 1. ValidationPipe: Validates request body structure
+    // 2. ParseIntPipe: Converts string "retries" to integer
+    // 3. DefaultValuePipe: Sets default values for missing params
+    // 4. TransformPipe: Transforms and normalizes data
+    // 5. Finally executes the method with validated, parsed data
+}
+```
+
+#### 🔄 Pipe Execution Order
+
+Pipes execute in a specific order within the middleware chain:
+
+```go
+@Controller("/secure")
+@UsePipes(ValidationPipe)           // Controller pipe
+@UseInterceptors(LoggingInterceptor) // Controller interceptor  
+@UseGuards(AuthGuard)               // Controller guard
+type SecureController struct {}
+
+@UsePipes(TransformPipe, ParseIntPipe)        // Method pipes
+@UseInterceptors(CacheInterceptor)            // Method interceptor
+@UseGuards(RoleGuard)                         // Method guard
+@Post("/data")
+func ProcessSecureData(@Body() request SecureRequest, @Query("version") version int) {
+    // Middleware execution order:
+    // 1. ValidationPipe (controller)
+    // 2. TransformPipe, ParseIntPipe (method)
+    // 3. LoggingInterceptor (controller)
+    // 4. CacheInterceptor (method)
+    // 5. AuthGuard (controller)
+    // 6. RoleGuard (method)
+    // 7. Method execution
+}
+```
+
+### 🔄 Generated Pipe Code
+
+**Before (@UsePipes() decorator):**
+```go
+func CreateUser(ctx *httpPackage.RequestContext) {
+    // Manual validation and parsing needed
+    var userData CreateUserDto
+    if err := ctx.ParseJSON(&userData); err != nil {
+        ctx.JSON(400, map[string]string{"error": "Invalid JSON"})
+        return
+    }
+    
+    // Manual validation
+    if userData.Name == "" {
+        ctx.JSON(400, map[string]string{"error": "Name required"})
+        return
+    }
+    
+    // Manual type conversion
+    limitStr := ctx.GetQuery("limit")
+    limit := 10 // default
+    if limitStr != "" {
+        if parsed, err := strconv.Atoi(limitStr); err == nil {
+            limit = parsed
+        }
+    }
+}
+```
+
+**After (@UsePipes(ValidationPipe, ParseIntPipe, DefaultValuePipe) decorator):**
+```go
+// Generated pipe middleware methods
+func (c *UserController) ValidationPipe(ctx *httpPackage.RequestContext) {
+    requestBody := ctx.GetRequestBody()
+    if requestBody == nil {
+        ctx.JSON(400, map[string]string{"error": "Request body is required"})
+        ctx.Abort()
+        return
+    }
+    
+    contentType := ctx.GetHeader("Content-Type")
+    if !strings.Contains(contentType, "application/json") {
+        ctx.JSON(400, map[string]string{"error": "Content-Type must be application/json"})
+        ctx.Abort()
+        return
+    }
+    
+    if err := validateRequestBody(requestBody); err != nil {
+        ctx.JSON(400, map[string]string{"error": fmt.Sprintf("Validation failed: %s", err.Error())})
+        ctx.Abort()
+        return
+    }
+    
+    ctx.Next()
+}
+
+func (c *UserController) ParseIntPipe(ctx *httpPackage.RequestContext) {
+    queryParams := ctx.GetQueryParams()
+    for key, value := range queryParams {
+        if strValue, ok := value.(string); ok {
+            if intValue, err := strconv.Atoi(strValue); err == nil {
+                ctx.SetQueryParam(key, intValue)
+            } else {
+                ctx.JSON(400, map[string]string{"error": fmt.Sprintf("Invalid integer value for parameter %s: %s", key, strValue)})
+                ctx.Abort()
+                return
+            }
+        }
+    }
+    ctx.Next()
+}
+
+func (c *UserController) DefaultValuePipe(ctx *httpPackage.RequestContext) {
+    defaultValues := map[string]interface{}{
+        "limit":  10,
+        "offset": 0,
+        "sort":   "created_at",
+    }
+    
+    for key, defaultValue := range defaultValues {
+        if _, exists := queryParams[key]; !exists {
+            ctx.SetQueryParam(key, defaultValue)
+        }
+    }
+    ctx.Next()
+}
+
+// Route registration with pipe middleware
+func (c *UserController) RegisterRoutes(server *httpPackage.HTTPServer) error {
+    server.Post("/users", c.ValidationPipe, c.ParseIntPipe, c.DefaultValuePipe, c.CreateUser)
+    return nil
+}
+
+// Clean method implementation
+func (c *UserController) CreateUser(ctx *httpPackage.RequestContext) {
+    // Data is already validated, parsed, and has defaults applied!
+    var userData CreateUserDto
+    ctx.ParseJSON(&userData) // Safe - already validated
+    
+    // Query params are already parsed to correct types
+    limit := ctx.GetQuery("limit").(int)    // Already an int
+    offset := ctx.GetQuery("offset").(int)  // Already an int
+    
+    // Method logic here...
+}
+```
+
+### 📊 Pipe Validation Features
+
+The pipe system provides comprehensive validation:
+
+1. **Request Body Validation**: Automatic JSON structure and content validation
+2. **Parameter Type Conversion**: String to int/bool/array conversion with error handling
+3. **Default Value Setting**: Consistent defaults for missing parameters
+4. **Content Type Validation**: Ensures proper Content-Type headers
+5. **Array Processing**: Comma-separated string to array conversion
+6. **Error Standardization**: Consistent 400 Bad Request responses
+
+### 🎯 Custom Pipe Example
+
+```go
+// Using custom pipes
+@UsePipes(MyCustomPipe)
+@Post("/custom")
+func ProcessCustomData(@Body() request CustomRequest) {
+    // Custom pipe logic is generated with TODO implementation
+}
+```
+
+Generated custom pipe:
+```go
+func (c *Controller) MyCustomPipe(ctx *httpPackage.RequestContext) {
+    // MyCustomPipe pipe logic
+    // TODO: Implement your custom pipe logic here
+    
+    // Example: Data validation
+    // requestData := ctx.GetRequestData()
+    // if err := validateData(requestData); err != nil {
+    //     ctx.JSON(400, map[string]string{"error": err.Error()})
+    //     ctx.Abort()
+    //     return
+    // }
+    
+    // Continue to next middleware/handler
+    ctx.Next()
+}
+```
+
+### 🏗️ Real-World Pipe Examples
+
+#### E-commerce Product API
+```go
+@Controller("/api/products")
+@UsePipes(ValidationPipe)  // All endpoints validate input
+type ProductController struct {}
+
+@UsePipes(ParseIntPipe, DefaultValuePipe)
+@Get("/")
+func GetProducts(@Query("page") page int, @Query("limit") limit int, @Query("categoryId") categoryId int) {
+    // page, limit, categoryId are automatically parsed and have defaults
+}
+
+@UsePipes(TransformPipe)
+@Post("/")
+func CreateProduct(@Body() productData CreateProductRequest) {
+    // Request validated and data transformed before method execution
+}
+
+@UsePipes(ParseArrayPipe)
+@Get("/search")
+func SearchProducts(@Query("tags") tags []string, @Query("categories") categories []string) {
+    // Comma-separated strings automatically parsed to arrays
+}
+```
+
+#### User Management with Complex Validation
+```go
+@Controller("/api/users")
+@UsePipes(ValidationPipe)  // Global validation for all user operations
+type UserController struct {}
+
+@UsePipes(TransformPipe, ParseIntPipe, DefaultValuePipe)
+@Get("/")
+func GetUsers(
+    @Query("page") page int,        // Parsed from string, default: 1
+    @Query("limit") limit int,      // Parsed from string, default: 10
+    @Query("active") active bool,   // Parsed from string
+    @Query("roles") roles []string, // Parsed from comma-separated string
+) {
+    // All parameters properly typed and validated
+}
+
+@UsePipes(ParseBoolPipe)
+@Put("/:id/status")
+func UpdateUserStatus(@Param("id") id string, @Query("active") active bool, @Query("verified") verified bool) {
+    // Boolean query parameters properly parsed
+}
+```
+
+### ⚡ Performance & Benefits
+
+The `@UsePipes()` decorator provides:
+
+1. **Type Safety**: Automatic type conversion with validation
+2. **Error Consistency**: Standardized 400 Bad Request responses
+3. **Code Reduction**: Eliminates manual parsing and validation boilerplate
+4. **Request Pipeline**: Clean separation of validation, parsing, and business logic
+5. **Default Handling**: Consistent default values across endpoints
+6. **Array Processing**: Automatic comma-separated string parsing
+7. **Custom Logic**: Easy extension with custom pipe implementations
+
+### 🛡️ Best Practices
+
+#### ✅ **Recommended Usage**
+```go
+// Controller-level validation for consistent input handling
+@Controller("/api/data")
+@UsePipes(ValidationPipe)
+type DataController struct {}
+
+// Method-level parsing for specific parameter needs
+@UsePipes(ParseIntPipe, DefaultValuePipe)
+@Get("/items")
+func GetItems(@Query("limit") limit int) {}
+
+// Combined pipes for complex endpoints
+@UsePipes(ValidationPipe, TransformPipe, ParseArrayPipe)
+@Post("/complex")
+func ProcessComplex(@Body() data ComplexRequest, @Query("tags") tags []string) {}
+```
+
+#### ❌ **Anti-Patterns to Avoid**
+```go
+// Don't: Redundant pipes
+@UsePipes(ValidationPipe)
+@Controller("/api")
+@UsePipes(ValidationPipe)  // Duplicate - ValidationPipe already at controller
+type Controller struct {}
+
+// Don't: Wrong pipe for data type
+@UsePipes(ParseIntPipe)
+@Get("/text")
+func GetText(@Query("message") message string) {}  // No need for ParseIntPipe
+
+// Don't: Over-piping simple endpoints
+@UsePipes(ValidationPipe, TransformPipe, ParseIntPipe, ParseBoolPipe, DefaultValuePipe)
+@Get("/health")
+func HealthCheck() {}  // Simple endpoint doesn't need all pipes
+```
 
 ## 🔍 Detailed Example Analysis
 
