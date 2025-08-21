@@ -180,8 +180,8 @@
 - [X] `@IsAlphanumeric()` - Validate contains only letters and numbers
 - [X] `@IsNumeric()` - Validate contains only numbers
 - [X] `@IsHexColor()` - Validate hex color format
-- [ ] `@IsPhoneNumber()` - Validate phone number format
-- [ ] `@IsCreditCard()` - Validate credit card number format
+- [X] `@IsPhoneNumber()` - Validate phone number format
+- [X] `@IsCreditCard()` - Validate credit card number format
 - [ ] `@IsISBN()` - Validate ISBN format
 - [ ] `@IsBase64()` - Validate base64 encoded string
 

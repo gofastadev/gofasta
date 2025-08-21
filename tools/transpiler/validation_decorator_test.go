@@ -450,6 +450,42 @@ func (c *DataController) createTest(@Body() data DataDto) {
 				"strings.Map",
 			},
 		},
+		{
+			name: "IsCreditCard validation decorator",
+			input: `package main
+
+@Injectable()
+type DataDto struct {
+	@IsCreditCard()
+	CreditCardNumber string
+	
+	@IsCreditCard()
+	BackupCard string
+	
+	@IsCreditCard()
+	BusinessCard string
+}
+
+@Controller("/data")
+type DataController struct {
+}
+
+@Post("/")
+func (c *DataController) createTest(@Body() data DataDto) {
+}`,
+			expected: []string{
+				"ValidationError",
+				"ValidateDataDto",
+				"func isCreditCard(value interface{}) bool",
+				"IsCreditCard validation",
+				"if !isCreditCard(dto.CreditCardNumber) {",
+				"if !isCreditCard(dto.BackupCard) {",
+				"if !isCreditCard(dto.BusinessCard) {",
+				"must be a valid credit card number",
+				"IS_CREDIT_CARD",
+				"Luhn algorithm",
+			},
+		},
 	}
 
 	for _, tt := range tests {

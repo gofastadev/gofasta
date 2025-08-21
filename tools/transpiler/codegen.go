@@ -2965,6 +2965,8 @@ func (g *CodeGenerator) getValidationMessage(ruleType string, args []interface{}
 		return "must be a valid hex color"
 	case "IsPhoneNumber":
 		return "must be a valid phone number"
+	case "IsCreditCard":
+		return "must be a valid credit card number"
 	case "IsPositive":
 		return "must be a positive number"
 	case "IsNegative":
@@ -3382,6 +3384,61 @@ func (g *CodeGenerator) generateValidationHelperFunctions() {
 	g.writeLine("return matched")
 	g.unindent()
 	g.writeLine("}")
+	g.writeLine("")
+	
+	// Credit card validation using Luhn algorithm
+	g.writeLine("func isCreditCard(value interface{}) bool {")
+	g.indent()
+	g.writeLine("str, ok := value.(string)")
+	g.writeLine("if !ok {")
+	g.indent()
+	g.writeLine("return false")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	g.writeLine("// Remove all non-digit characters")
+	g.writeLine("digits := strings.Map(func(r rune) rune {")
+	g.indent()
+	g.writeLine("if r >= '0' && r <= '9' {")
+	g.indent()
+	g.writeLine("return r")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("return -1")
+	g.unindent()
+	g.writeLine("}, str)")
+	g.writeLine("")
+	g.writeLine("// Check for valid credit card length (13-19 digits)")
+	g.writeLine("if len(digits) < 13 || len(digits) > 19 {")
+	g.indent()
+	g.writeLine("return false")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	g.writeLine("// Luhn algorithm validation")
+	g.writeLine("sum := 0")
+	g.writeLine("alternate := false")
+	g.writeLine("for i := len(digits) - 1; i >= 0; i-- {")
+	g.indent()
+	g.writeLine("digit := int(digits[i] - '0')")
+	g.writeLine("if alternate {")
+	g.indent()
+	g.writeLine("digit *= 2")
+	g.writeLine("if digit > 9 {")
+	g.indent()
+	g.writeLine("digit = digit%10 + digit/10")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("sum += digit")
+	g.writeLine("alternate = !alternate")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	g.writeLine("return sum%10 == 0")
+	g.unindent()
+	g.writeLine("}")
 }
 
 // generateDTOValidationFunction generates validation function for a DTO
@@ -3542,6 +3599,12 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 	case "IsPhoneNumber":
 		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
 		g.writeLine(fmt.Sprintf("if !isPhoneNumber(%s) {", fieldName))
+		g.generateValidationError(field.Name, fieldName, rule)
+		g.writeLine("}")
+		
+	case "IsCreditCard":
+		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+		g.writeLine(fmt.Sprintf("if !isCreditCard(%s) {", fieldName))
 		g.generateValidationError(field.Name, fieldName, rule)
 		g.writeLine("}")
 		
