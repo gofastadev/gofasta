@@ -1,0 +1,325 @@
+package main
+
+// Example demonstrating Provider factory generation in GOFASTA
+// This shows how @Injectable services generate factory functions and provider registration code
+
+// Simple Injectable service with basic dependencies
+@Injectable()
+type DatabaseService struct {
+    // @Inject with custom token
+    @Inject("dbconfig")
+    Config *DatabaseConfig
+    
+    // @Inject without arguments - uses field name as token (lowercase)
+    @Inject()
+    Logger *Logger
+    
+    // Field without @Inject - gets default injection behavior
+    Metrics *MetricsCollector
+}
+
+func (d *DatabaseService) Connect() error {
+    // Database connection logic
+    return nil
+}
+
+func (d *DatabaseService) Query(sql string) (*Result, error) {
+    // Query execution logic
+    return nil, nil
+}
+
+// Injectable service with optional dependencies and different scopes
+@Injectable("singleton")
+type EmailService struct {
+    // Required dependency
+    @Inject("emailconfig")
+    Config *EmailConfig
+    
+    // Optional dependency - won't fail if not available
+    @Inject({token: "templates", optional: true})
+    Templates *TemplateEngine
+    
+    // Optional with scope specification
+    @Inject({token: "analytics", optional: true, scope: "singleton"})
+    Analytics *AnalyticsService
+    
+    // Required dependency with explicit configuration
+    @Inject({token: "smtp", optional: false})
+    SMTPClient *SMTPClient
+}
+
+func (e *EmailService) SendEmail(to, subject, body string) error {
+    // Email sending logic
+    return nil
+}
+
+// Injectable service with transient scope
+@Injectable("transient")
+type RequestService struct {
+    // Each request gets a new instance
+    @Inject("session")
+    SessionStore *SessionStore
+    
+    @Inject({token: "requestLogger"})
+    Logger *RequestLogger
+    
+    @Inject({token: "security", optional: true})
+    SecurityProvider *SecurityProvider
+}
+
+func (r *RequestService) ProcessRequest(data interface{}) error {
+    // Request processing logic
+    return nil
+}
+
+// Injectable service with scoped lifetime
+@Injectable("request")
+type UserContextService struct {
+    // Scoped to the request lifecycle
+    @Inject("userstore")
+    UserStore *UserStore
+    
+    @Inject({token: "permissions", optional: true})
+    PermissionService *PermissionService
+    
+    @Inject({token: "audit"})
+    AuditLogger *AuditLogger
+}
+
+func (u *UserContextService) GetCurrentUser() (*User, error) {
+    // User context logic
+    return nil, nil
+}
+
+// Complex Injectable service with multiple dependency patterns
+@Injectable()
+type NotificationService struct {
+    // Required email provider
+    @Inject("emailProvider")
+    EmailProvider *EmailService
+    
+    // Optional SMS provider
+    @Inject({token: "smsProvider", optional: true})
+    SMSProvider *SMSService
+    
+    // Optional push notification service
+    @Inject({token: "pushService", optional: true})
+    PushService *PushNotificationService
+    
+    // Required queue for async processing
+    @Inject({token: "messageQueue"})
+    MessageQueue *MessageQueue
+    
+    // Optional analytics with singleton scope
+    @Inject({token: "notificationAnalytics", optional: true, scope: "singleton"})
+    Analytics *NotificationAnalytics
+    
+    // Template engine for formatting
+    @Inject({token: "templateEngine", optional: true})
+    TemplateEngine *TemplateEngine
+}
+
+func (n *NotificationService) SendNotification(userID string, message Message) error {
+    // Multi-channel notification logic
+    return nil
+}
+
+func (n *NotificationService) SendBulkNotifications(userIDs []string, message Message) error {
+    // Bulk notification logic
+    return nil
+}
+
+// Injectable service that depends on other injectable services
+@Injectable()
+type UserService struct {
+    // Inject another injectable service
+    @Inject("databaseservice")
+    DB *DatabaseService
+    
+    // Inject notification service
+    @Inject("notificationservice")
+    Notifications *NotificationService
+    
+    // Optional caching layer
+    @Inject({token: "cacheService", optional: true})
+    Cache *CacheService
+    
+    // Required audit logging
+    @Inject({token: "auditLogger"})
+    AuditLogger *AuditLogger
+}
+
+func (u *UserService) CreateUser(userData CreateUserRequest) (*User, error) {
+    // User creation logic with database and notifications
+    return nil, nil
+}
+
+func (u *UserService) UpdateUser(userID string, updateData UpdateUserRequest) (*User, error) {
+    // User update logic
+    return nil, nil
+}
+
+func (u *UserService) DeleteUser(userID string) error {
+    // User deletion logic
+    return nil
+}
+
+// Controller that uses injectable services
+@Controller("/api/users")
+type UserController struct {
+    // Inject the user service (which itself has dependencies)
+    @Inject("userservice")
+    UserService *UserService
+    
+    // Inject request-scoped service
+    @Inject("usercontextservice")
+    UserContext *UserContextService
+    
+    // Optional rate limiting
+    @Inject({token: "rateLimiter", optional: true})
+    RateLimiter *RateLimitService
+}
+
+@Get("/")
+func (u *UserController) GetUsers(@Query("limit") limit int, @Query("offset") offset int) {
+    // Get users using injected services
+}
+
+@Post("/")
+func (u *UserController) CreateUser(@Body() userData CreateUserRequest) {
+    // Create user using injected services
+}
+
+@Get("/:id")
+func (u *UserController) GetUser(@Param("id") userID string) {
+    // Get specific user
+}
+
+// Module that registers all the providers
+@Module({
+    controllers: ["UserController"],
+    providers: [
+        "DatabaseService",
+        "EmailService", 
+        "RequestService",
+        "UserContextService",
+        "NotificationService",
+        "UserService"
+    ],
+    imports: ["ConfigModule", "LoggingModule"],
+    exports: ["UserService", "DatabaseService", "EmailService"]
+})
+type AppModule struct {}
+
+// Additional types for the example
+type DatabaseConfig struct {
+    Host     string
+    Port     int
+    Database string
+    Username string
+    Password string
+}
+
+type Logger struct {
+    Level string
+}
+
+type MetricsCollector struct {
+    Enabled bool
+}
+
+type EmailConfig struct {
+    SMTPHost string
+    SMTPPort int
+    Username string
+    Password string
+}
+
+type TemplateEngine struct {
+    TemplateDir string
+}
+
+type AnalyticsService struct {
+    APIKey string
+}
+
+type SMTPClient struct {
+    Host string
+    Port int
+}
+
+type SessionStore struct {
+    Backend string
+}
+
+type RequestLogger struct {
+    Format string
+}
+
+type SecurityProvider struct {
+    Enabled bool
+}
+
+type UserStore struct {
+    Backend string
+}
+
+type PermissionService struct {
+    Rules []string
+}
+
+type AuditLogger struct {
+    Destination string
+}
+
+type SMSService struct {
+    Provider string
+}
+
+type PushNotificationService struct {
+    Platform string
+}
+
+type MessageQueue struct {
+    Backend string
+}
+
+type NotificationAnalytics struct {
+    Enabled bool
+}
+
+type CacheService struct {
+    Backend string
+}
+
+type RateLimitService struct {
+    RequestsPerMinute int
+}
+
+type Message struct {
+    Subject string
+    Body    string
+    Type    string
+}
+
+type User struct {
+    ID       string
+    Name     string
+    Email    string
+    Password string
+}
+
+type CreateUserRequest struct {
+    Name     string
+    Email    string
+    Password string
+}
+
+type UpdateUserRequest struct {
+    Name  string
+    Email string
+}
+
+type Result struct {
+    Data interface{}
+}

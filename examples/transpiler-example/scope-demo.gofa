@@ -1,0 +1,74 @@
+package main
+
+// Simple demonstration of @Scope() decorator patterns
+
+// Singleton: One instance shared across the application
+@Scope("singleton")
+type ConfigService struct {
+    @Inject("appconfig")
+    Config *AppConfig
+}
+
+func LoadConfig() *AppConfig {
+    return nil
+}
+
+// Transient: New instance for every injection
+@Scope("transient")
+type EmailSender struct {
+    @Inject("emailconfig")
+    Config *EmailConfig
+}
+
+func SendEmail(to, message string) error {
+    return nil
+}
+
+// Request: One instance per request/scope
+@Scope("request")
+type UserContext struct {
+    @Inject("userstore")
+    Store *UserStore
+    
+    UserID string
+}
+
+func GetCurrentUser() *User {
+    return nil
+}
+
+// Scope takes precedence over Injectable
+@Injectable("singleton")
+@Scope("transient")
+type HybridService struct {
+    @Inject("data")
+    Data *DataStore
+}
+
+// Module using different scoped services
+@Module({
+    providers: ["ConfigService", "EmailSender", "UserContext", "HybridService"]
+})
+type SimpleModule struct {}
+
+// Supporting types
+type AppConfig struct {
+    Name string
+}
+
+type EmailConfig struct {
+    Host string
+}
+
+type UserStore struct {
+    Backend string
+}
+
+type User struct {
+    ID   string
+    Name string
+}
+
+type DataStore struct {
+    Backend string
+}
