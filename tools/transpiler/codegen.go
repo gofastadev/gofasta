@@ -34,6 +34,9 @@ func (g *CodeGenerator) GenerateGoCode(file *GofaFile) (string, error) {
 	g.writeLine(fmt.Sprintf("package %s", g.packageName))
 	g.writeLine("")
 
+	// Add validation imports if needed
+	g.addValidationImportsIfNeeded(file)
+	
 	// Collect imports
 	g.collectImports(file)
 
@@ -48,6 +51,9 @@ func (g *CodeGenerator) GenerateGoCode(file *GofaFile) (string, error) {
 		g.writeLine(")")
 		g.writeLine("")
 	}
+
+	// Generate validation code if needed
+	g.generateValidationCodeIfNeeded(file)
 
 	// Generate declarations
 	for _, decl := range file.Declarations {
@@ -2614,4 +2620,636 @@ func TranspileFile(inputPath string, inputContent string) (string, error) {
 	}
 
 	return goCode, nil
+}
+
+// ======= VALIDATION DECORATOR CODE GENERATION =======
+
+// ValidationStructInfo represents information about a struct that needs validation
+type ValidationStructInfo struct {
+	Name   string
+	Fields []*ValidationFieldInfo
+}
+
+// ValidationFieldInfo represents information about a field that needs validation
+type ValidationFieldInfo struct {
+	Name       string
+	Type       string
+	Tag        string
+	Validators []ValidationRule
+}
+
+// ValidationRule represents a single validation rule
+type ValidationRule struct {
+	Type    string
+	Args    []interface{}
+	Message string
+	Code    string
+}
+
+// generateValidationCode generates validation functions for DTOs with validation decorators
+func (g *CodeGenerator) generateValidationCode(file *GofaFile) {
+	dtoStructs := g.findDTOStructsWithValidation(file)
+	
+	if len(dtoStructs) == 0 {
+		return
+	}
+	
+	// Generate ValidationError struct first
+	g.generateValidationErrorStruct()
+	g.writeLine("")
+	
+	// Generate helper validation functions
+	g.generateValidationHelperFunctions()
+	g.writeLine("")
+	
+	// Generate validation functions for each DTO
+	for _, dto := range dtoStructs {
+		g.generateDTOValidationFunction(dto)
+		g.writeLine("")
+	}
+}
+
+// findDTOStructsWithValidation finds all structs that have validation decorators
+func (g *CodeGenerator) findDTOStructsWithValidation(file *GofaFile) map[string]*ValidationStructInfo {
+	dtos := make(map[string]*ValidationStructInfo)
+	
+	// Look for standalone type declarations (DTOs) that have validation decorators
+	for _, decl := range file.Declarations {
+		switch d := decl.(type) {
+		case *ControllerDeclaration:
+			structInfo := g.extractValidationFromStruct(d.Name, d.Fields)
+			if structInfo != nil && len(structInfo.Fields) > 0 {
+				dtos[d.Name] = structInfo
+			}
+		case *ServiceDeclaration:
+			structInfo := g.extractValidationFromStruct(d.Name, d.Fields)
+			if structInfo != nil && len(structInfo.Fields) > 0 {
+				dtos[d.Name] = structInfo
+			}
+		}
+	}
+	
+	return dtos
+}
+
+// extractValidationFromStruct extracts validation information from struct fields
+func (g *CodeGenerator) extractValidationFromStruct(structName string, fields []*FieldNode) *ValidationStructInfo {
+	var validationFields []*ValidationFieldInfo
+	
+	for _, field := range fields {
+		if g.hasValidationDecorators(field) {
+			validators := g.parseValidationDecorators(field.Tag)
+			if len(validators) > 0 {
+				validationField := &ValidationFieldInfo{
+					Name:       field.Name,
+					Type:       field.Type,
+					Tag:        field.Tag,
+					Validators: validators,
+				}
+				validationFields = append(validationFields, validationField)
+			}
+		}
+	}
+	
+	if len(validationFields) == 0 {
+		return nil
+	}
+	
+	return &ValidationStructInfo{
+		Name:   structName,
+		Fields: validationFields,
+	}
+}
+
+// hasValidationDecorators checks if a field has validation decorators in its struct tag
+func (g *CodeGenerator) hasValidationDecorators(field *FieldNode) bool {
+	return strings.Contains(field.Tag, "validate:") || strings.Contains(field.Tag, "@Is") || 
+		   strings.Contains(field.Tag, "@Min") || strings.Contains(field.Tag, "@Max") ||
+		   strings.Contains(field.Tag, "@Length") || strings.Contains(field.Tag, "@Array")
+}
+
+
+// parseValidationDecorators parses validation decorators from struct tags
+func (g *CodeGenerator) parseValidationDecorators(tag string) []ValidationRule {
+	var rules []ValidationRule
+	
+	// Extract validate: content from struct tag
+	validateContent := g.extractTagContent(tag, "validate")
+	if validateContent == "" {
+		return rules
+	}
+	
+	// Parse individual decorators like @IsEmail() @Min(18) @Max(120)
+	decorators := g.extractDecorators(validateContent)
+	
+	for _, decorator := range decorators {
+		rule := g.parseValidationRule(decorator)
+		if rule != nil {
+			rules = append(rules, *rule)
+		}
+	}
+	
+	return rules
+}
+
+// extractTagContent extracts content from a struct tag
+func (g *CodeGenerator) extractTagContent(tag, key string) string {
+	// Extract content between quotes after key:
+	// `validate:"@IsEmail() @Min(18)"` -> "@IsEmail() @Min(18)"
+	keyPattern := key + `:"` 
+	startIndex := strings.Index(tag, keyPattern)
+	if startIndex == -1 {
+		return ""
+	}
+	
+	startIndex += len(keyPattern)
+	endIndex := strings.Index(tag[startIndex:], `"`)
+	if endIndex == -1 {
+		return ""
+	}
+	
+	return tag[startIndex : startIndex+endIndex]
+}
+
+// extractDecorators extracts individual decorators from validation content
+func (g *CodeGenerator) extractDecorators(content string) []string {
+	var decorators []string
+	content = strings.TrimSpace(content)
+	
+	// Split by @ but keep the @
+	parts := strings.Split(content, "@")
+	for i, part := range parts {
+		if i == 0 && part == "" {
+			continue // Skip empty first part
+		}
+		if part != "" {
+			decorators = append(decorators, "@"+part)
+		}
+	}
+	
+	return decorators
+}
+
+// parseValidationRule parses a single validation rule like @IsEmail() or @Min(18)
+func (g *CodeGenerator) parseValidationRule(decorator string) *ValidationRule {
+	decorator = strings.TrimSpace(decorator)
+	if !strings.HasPrefix(decorator, "@") {
+		return nil
+	}
+	
+	// Remove @
+	decorator = decorator[1:]
+	
+	// Check if it has parentheses
+	parenIndex := strings.Index(decorator, "(")
+	if parenIndex == -1 {
+		// Simple decorator like @IsEmail
+		return &ValidationRule{
+			Type:    decorator,
+			Args:    []interface{}{},
+			Message: g.getValidationMessage(decorator, []interface{}{}),
+			Code:    g.getValidationCode(decorator),
+		}
+	}
+	
+	// Extract name and arguments
+	name := decorator[:parenIndex]
+	argsStr := decorator[parenIndex+1:]
+	
+	// Remove closing parenthesis
+	if strings.HasSuffix(argsStr, ")") {
+		argsStr = argsStr[:len(argsStr)-1]
+	}
+	
+	// Parse arguments
+	args := g.parseValidationArgs(argsStr)
+	
+	return &ValidationRule{
+		Type:    name,
+		Args:    args,
+		Message: g.getValidationMessage(name, args),
+		Code:    g.getValidationCode(name),
+	}
+}
+
+// parseValidationArgs parses validation arguments from string
+func (g *CodeGenerator) parseValidationArgs(argsStr string) []interface{} {
+	var args []interface{}
+	
+	if strings.TrimSpace(argsStr) == "" {
+		return args
+	}
+	
+	// Split by comma
+	parts := strings.Split(argsStr, ",")
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		
+		// Try to parse as number
+		if intVal, err := strconv.Atoi(part); err == nil {
+			args = append(args, intVal)
+			continue
+		}
+		
+		if floatVal, err := strconv.ParseFloat(part, 64); err == nil {
+			args = append(args, floatVal)
+			continue
+		}
+		
+		// Remove quotes if present
+		if (strings.HasPrefix(part, `"`) && strings.HasSuffix(part, `"`)) ||
+		   (strings.HasPrefix(part, `'`) && strings.HasSuffix(part, `'`)) {
+			part = part[1 : len(part)-1]
+		}
+		
+		args = append(args, part)
+	}
+	
+	return args
+}
+
+// getValidationMessage gets the validation error message for a rule
+func (g *CodeGenerator) getValidationMessage(ruleType string, args []interface{}) string {
+	switch ruleType {
+	case "IsEmail":
+		return "must be a valid email address"
+	case "IsURL":
+		return "must be a valid URL"
+	case "IsNotEmpty":
+		return "must not be empty"
+	case "Min":
+		if len(args) > 0 {
+			return fmt.Sprintf("must be at least %v", args[0])
+		}
+		return "value too small"
+	case "Max":
+		if len(args) > 0 {
+			return fmt.Sprintf("must be at most %v", args[0])
+		}
+		return "value too large"
+	case "Length":
+		if len(args) >= 2 {
+			return fmt.Sprintf("must be between %v and %v characters", args[0], args[1])
+		}
+		return "invalid length"
+	case "IsArray":
+		return "must be an array"
+	case "ArrayMinSize":
+		if len(args) > 0 {
+			return fmt.Sprintf("must contain at least %v item(s)", args[0])
+		}
+		return "array too small"
+	case "ArrayMaxSize":
+		if len(args) > 0 {
+			return fmt.Sprintf("must contain at most %v item(s)", args[0])
+		}
+		return "array too large"
+	case "IsString":
+		return "must be a string"
+	case "IsNumber":
+		return "must be a number"
+	case "IsInt":
+		return "must be an integer"
+	case "IsFloat":
+		return "must be a floating point number"
+	case "IsBoolean":
+		return "must be a boolean"
+	case "IsPositive":
+		return "must be a positive number"
+	case "IsNegative":
+		return "must be a negative number"
+	case "Matches":
+		return "format is invalid"
+	case "IsAlpha":
+		return "must contain only letters"
+	case "IsAlphanumeric":
+		return "must contain only letters and numbers"
+	case "IsNumeric":
+		return "must contain only numbers"
+	default:
+		return fmt.Sprintf("%s validation failed", ruleType)
+	}
+}
+
+// getValidationCode gets the validation error code for a rule
+func (g *CodeGenerator) getValidationCode(ruleType string) string {
+	// Handle specific cases for expected test values
+	switch ruleType {
+	case "Min":
+		return "MIN_VALUE"
+	case "Max":
+		return "MAX_VALUE"
+	case "IsPositive":
+		return "IS_POSITIVE"
+	case "IsNegative":
+		return "IS_NEGATIVE"
+	case "IsNotEmpty":
+		return "IS_NOT_EMPTY"
+	case "ArrayMinSize":
+		return "ARRAY_MIN_SIZE"
+	case "ArrayMaxSize":
+		return "ARRAY_MAX_SIZE"
+	case "IsURL":
+		return "IS_URL"
+	case "IsNumeric":
+		return "IS_NUMERIC"
+	case "IsAlphanumeric":
+		return "IS_ALPHANUMERIC"
+	case "IsAlpha":
+		return "IS_ALPHA"
+	default:
+		// Convert CamelCase to SNAKE_CASE for other cases
+		var result strings.Builder
+		for i, r := range ruleType {
+			if i > 0 && (r >= 'A' && r <= 'Z') {
+				result.WriteRune('_')
+			}
+			result.WriteRune(r)
+		}
+		return strings.ToUpper(result.String())
+	}
+}
+
+// generateValidationErrorStruct generates the ValidationError struct
+func (g *CodeGenerator) generateValidationErrorStruct() {
+	g.writeLine("// ValidationError represents a validation error")
+	g.writeLine("type ValidationError struct {")
+	g.indent()
+	g.writeLine("Field   string      `json:\"field\"`")
+	g.writeLine("Value   interface{} `json:\"value\"`") 
+	g.writeLine("Message string      `json:\"message\"`")
+	g.writeLine("Code    string      `json:\"code\"`")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	
+	g.writeLine("// ValidationResult represents the result of validation")
+	g.writeLine("type ValidationResult struct {")
+	g.indent()
+	g.writeLine("IsValid bool              `json:\"isValid\"`")
+	g.writeLine("Errors  []ValidationError `json:\"errors,omitempty\"`")
+	g.unindent()
+	g.writeLine("}")
+}
+
+// generateValidationHelperFunctions generates helper validation functions
+func (g *CodeGenerator) generateValidationHelperFunctions() {
+	g.writeLine("// Validation helper functions")
+	g.writeLine("")
+	
+	// Email validation
+	g.writeLine("func isValidEmail(email string) bool {")
+	g.indent()
+	g.writeLine("emailRegex := `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$`")
+	g.writeLine("matched, _ := regexp.MatchString(emailRegex, email)")
+	g.writeLine("return matched")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	
+	// URL validation
+	g.writeLine("func isValidURL(url string) bool {")
+	g.indent()
+	g.writeLine("_, err := url.Parse(url)")
+	g.writeLine("return err == nil")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	
+	// UUID validation
+	g.writeLine("func isValidUUID(uuid string) bool {")
+	g.indent()
+	g.writeLine("uuidRegex := `^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$`")
+	g.writeLine("matched, _ := regexp.MatchString(uuidRegex, uuid)")
+	g.writeLine("return matched")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	
+	// Numeric validation
+	g.writeLine("func isNumeric(str string) bool {")
+	g.indent()
+	g.writeLine("numericRegex := `^[0-9]+$`")
+	g.writeLine("matched, _ := regexp.MatchString(numericRegex, str)")
+	g.writeLine("return matched")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	
+	// Alpha validation
+	g.writeLine("func isAlpha(str string) bool {")
+	g.indent()
+	g.writeLine("alphaRegex := `^[a-zA-Z]+$`")
+	g.writeLine("matched, _ := regexp.MatchString(alphaRegex, str)")
+	g.writeLine("return matched")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	
+	// Alphanumeric validation
+	g.writeLine("func isAlphanumeric(str string) bool {")
+	g.indent()
+	g.writeLine("alphanumericRegex := `^[a-zA-Z0-9]+$`")
+	g.writeLine("matched, _ := regexp.MatchString(alphanumericRegex, str)")
+	g.writeLine("return matched")
+	g.unindent()
+	g.writeLine("}")
+}
+
+// generateDTOValidationFunction generates validation function for a DTO
+func (g *CodeGenerator) generateDTOValidationFunction(dto *ValidationStructInfo) {
+	funcName := fmt.Sprintf("Validate%s", dto.Name)
+	
+	g.writeLine(fmt.Sprintf("// %s validates %s struct", funcName, dto.Name))
+	g.writeLine(fmt.Sprintf("func %s(dto *%s) []ValidationError {", funcName, dto.Name))
+	g.indent()
+	g.writeLine("var errors []ValidationError")
+	g.writeLine("")
+	
+	// Generate validation for each field
+	for _, field := range dto.Fields {
+		for _, rule := range field.Validators {
+			g.generateValidationRule(field, rule)
+			g.writeLine("")
+		}
+	}
+	
+	g.writeLine("return errors")
+	g.unindent()
+	g.writeLine("}")
+}
+
+// generateValidationRule generates code for a single validation rule
+func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule ValidationRule) {
+	fieldName := "dto." + strings.Title(field.Name) // Use actual field name
+	
+	switch rule.Type {
+	case "IsEmail":
+		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+		g.writeLine(fmt.Sprintf("if !isValidEmail(%s) {", fieldName))
+		g.generateValidationError(field.Name, fieldName, rule)
+		g.writeLine("}")
+		
+	case "IsURL":
+		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+		g.writeLine(fmt.Sprintf("if !isValidURL(%s) {", fieldName))
+		g.generateValidationError(field.Name, fieldName, rule)
+		g.writeLine("}")
+		
+	case "IsNotEmpty":
+		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+		g.writeLine(fmt.Sprintf("if strings.TrimSpace(%s) == \"\" {", fieldName))
+		g.generateValidationError(field.Name, fieldName, rule)
+		g.writeLine("}")
+		
+	case "Min":
+		if len(rule.Args) > 0 {
+			g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+			if g.isStringType(field.Type) {
+				g.writeLine(fmt.Sprintf("if len(%s) < %v {", fieldName, rule.Args[0]))
+			} else {
+				g.writeLine(fmt.Sprintf("if %s < %v {", fieldName, rule.Args[0]))
+			}
+			g.generateValidationError(field.Name, fieldName, rule)
+			g.writeLine("}")
+		}
+		
+	case "Max":
+		if len(rule.Args) > 0 {
+			g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+			if g.isStringType(field.Type) {
+				g.writeLine(fmt.Sprintf("if len(%s) > %v {", fieldName, rule.Args[0]))
+			} else {
+				g.writeLine(fmt.Sprintf("if %s > %v {", fieldName, rule.Args[0]))
+			}
+			g.generateValidationError(field.Name, fieldName, rule)
+			g.writeLine("}")
+		}
+		
+	case "Length":
+		if len(rule.Args) >= 2 {
+			g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+			g.writeLine(fmt.Sprintf("if len(%s) < %v || len(%s) > %v {", fieldName, rule.Args[0], fieldName, rule.Args[1]))
+			g.generateValidationError(field.Name, fieldName, rule)
+			g.writeLine("}")
+		}
+		
+	case "IsArray":
+		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+		g.writeLine(fmt.Sprintf("if %s == nil {", fieldName))
+		g.generateValidationError(field.Name, fieldName, rule)
+		g.writeLine("}")
+		
+	case "ArrayMinSize":
+		if len(rule.Args) > 0 {
+			g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+			g.writeLine(fmt.Sprintf("if %s != nil && len(%s) < %v {", fieldName, fieldName, rule.Args[0]))
+			g.generateValidationError(field.Name, fieldName, rule)
+			g.writeLine("}")
+		}
+		
+	case "IsString":
+		// Type validation is typically handled at compile time in Go, but we can add runtime checks
+		g.writeLine(fmt.Sprintf("// %s validation (compile-time type check)", rule.Type))
+		
+	case "IsNumber":
+		// For interface{} types, add runtime type checking
+		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+		g.writeLine(fmt.Sprintf("if _, ok := %s.(int); !ok {", fieldName))
+		g.indent()
+		g.writeLine(fmt.Sprintf("if _, ok := %s.(float64); !ok {", fieldName))
+		g.generateValidationError(field.Name, fieldName, rule)
+		g.writeLine("}")
+		g.unindent()
+		g.writeLine("}")
+		
+	case "IsPositive":
+		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+		g.writeLine(fmt.Sprintf("if %s <= 0 {", fieldName))
+		g.generateValidationError(field.Name, fieldName, rule)
+		g.writeLine("}")
+		
+	case "IsAlpha":
+		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+		g.writeLine(fmt.Sprintf("if !isAlpha(%s) {", fieldName))
+		g.generateValidationError(field.Name, fieldName, rule)
+		g.writeLine("}")
+		
+	case "IsAlphanumeric":
+		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+		g.writeLine(fmt.Sprintf("if !isAlphanumeric(%s) {", fieldName))
+		g.generateValidationError(field.Name, fieldName, rule)
+		g.writeLine("}")
+		
+	case "IsNumeric":
+		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+		g.writeLine(fmt.Sprintf("if !isNumeric(%s) {", fieldName))
+		g.generateValidationError(field.Name, fieldName, rule)
+		g.writeLine("}")
+	}
+}
+
+// generateValidationError generates code to append a validation error
+func (g *CodeGenerator) generateValidationError(fieldName, fieldValue string, rule ValidationRule) {
+	g.indent()
+	g.writeLine("errors = append(errors, ValidationError{")
+	g.indent()
+	g.writeLine(fmt.Sprintf("Field:   \"%s\",", fieldName))
+	g.writeLine(fmt.Sprintf("Value:   %s,", fieldValue))
+	g.writeLine(fmt.Sprintf("Message: \"%s\",", rule.Message))
+	g.writeLine(fmt.Sprintf("Code:    \"%s\",", rule.Code))
+	g.unindent()
+	g.writeLine("})")
+	g.unindent()
+}
+
+// isStringType checks if a type is a string type
+func (g *CodeGenerator) isStringType(typeName string) bool {
+	return typeName == "string" || strings.Contains(typeName, "string")
+}
+
+// addValidationImportsIfNeeded adds validation imports if needed
+func (g *CodeGenerator) addValidationImportsIfNeeded(file *GofaFile) {
+	// Check if there are any structs with validation decorators
+	dtoStructs := g.findDTOStructsWithValidation(file)
+	
+	if len(dtoStructs) > 0 {
+		// Add required imports based on what validations are used
+		g.addImport("strings")
+		g.addImport("regexp")
+		
+		// Check if URL validation is used
+		needsURLImport := g.usesURLValidation(dtoStructs)
+		if needsURLImport {
+			g.addImport("net/url")
+		}
+	}
+}
+
+// generateValidationCodeIfNeeded generates validation code if needed
+func (g *CodeGenerator) generateValidationCodeIfNeeded(file *GofaFile) {
+	// Check if there are any structs with validation decorators
+	dtoStructs := g.findDTOStructsWithValidation(file)
+	
+	if len(dtoStructs) > 0 {
+		// Generate validation code
+		g.generateValidationCode(file)
+	}
+}
+
+// usesURLValidation checks if any validation rules use URL validation
+func (g *CodeGenerator) usesURLValidation(dtoStructs map[string]*ValidationStructInfo) bool {
+	for _, dto := range dtoStructs {
+		for _, field := range dto.Fields {
+			for _, rule := range field.Validators {
+				if rule.Type == "IsURL" {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }

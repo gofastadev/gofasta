@@ -1,0 +1,43 @@
+package main
+
+// Simple DTO with email validation
+type UserRegistrationDto struct {
+    Email    string `validate:"@IsEmail()"`
+    Username string `validate:"@IsAlphanumeric()"`
+    Age      int    `validate:"@Min(18) @Max(120)"`
+}
+
+// DTO with multiple validation decorators  
+type ProductDto struct {
+    Name     string  `validate:"@IsNotEmpty() @Length(2,50)"`
+    Price    float64 `validate:"@IsPositive()"`
+    Category string  `validate:"@IsAlpha()"`
+}
+
+// DTO with format validations
+type ContactDto struct {
+    Website     string `validate:"@IsURL()"`
+    PhoneNumber string `validate:"@IsNumeric()"`
+    Bio         string `validate:"@IsAlphanumeric()"`
+}
+
+@Controller("/api")
+type ApiController struct {}
+
+@Post("/register")  
+func (c *ApiController) register(@Body() userData UserRegistrationDto) {
+    // Validation functions are generated:
+    // ValidateUserRegistrationDto(&userData)
+}
+
+@Post("/product")
+func (c *ApiController) createProduct(@Body() productData ProductDto) {
+    // Validation functions are generated:
+    // ValidateProductDto(&productData)  
+}
+
+@Post("/contact")
+func (c *ApiController) updateContact(@Body() contactData ContactDto) {
+    // Validation functions are generated:
+    // ValidateContactDto(&contactData)
+}

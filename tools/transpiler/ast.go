@@ -218,6 +218,69 @@ const (
 	CacheDecorator
 	ThrottleDecorator
 
+	// Validation decorators - Type validation
+	IsStringDecorator
+	IsNumberDecorator
+	IsIntDecorator
+	IsFloatDecorator
+	IsBooleanDecorator
+	IsArrayDecorator
+	IsObjectDecorator
+	IsDateDecorator
+	IsUUIDDecorator
+
+	// Validation decorators - Format validation
+	IsEmailDecorator
+	IsURLDecorator
+	IsIPDecorator
+	IsJSONDecorator
+	IsAlphaDecorator
+	IsAlphanumericDecorator
+	IsNumericDecorator
+	IsHexColorDecorator
+	IsPhoneNumberDecorator
+	IsCreditCardDecorator
+	IsISBNDecorator
+	IsBase64Decorator
+
+	// Validation decorators - Range and length
+	MinDecorator
+	MaxDecorator
+	LengthDecorator
+	MinLengthDecorator
+	MaxLengthDecorator
+	ArrayMinSizeDecorator
+	ArrayMaxSizeDecorator
+	ArrayNotEmptyDecorator
+
+	// Validation decorators - Content validation
+	IsNotEmptyDecorator
+	IsEmptyDecorator
+	IsOptionalDecorator
+	IsDefinedDecorator
+	NotEqualsDecorator
+	EqualsDecorator
+	ContainsDecorator
+	NotContainsDecorator
+	IsInDecorator
+	IsNotInDecorator
+
+	// Validation decorators - Pattern and custom
+	MatchesDecorator
+	IsLowercaseDecorator
+	IsUppercaseDecorator
+	ValidateNestedDecorator
+	ValidateIfDecorator
+	CustomValidatorDecorator
+
+	// Validation decorators - Business logic
+	IsPositiveDecorator
+	IsNegativeDecorator
+	IsPastDateDecorator
+	IsFutureDateDecorator
+	IsUniqueDecorator
+	ExistsDecorator
+
 	// Custom decorators
 	CustomDecorator
 )
@@ -259,6 +322,69 @@ var DecoratorTypeMap = map[string]DecoratorType{
 	"Roles":           RolesDecorator,
 	"Cache":           CacheDecorator,
 	"Throttle":        ThrottleDecorator,
+	
+	// Type validation decorators
+	"IsString":        IsStringDecorator,
+	"IsNumber":        IsNumberDecorator,
+	"IsInt":           IsIntDecorator,
+	"IsFloat":         IsFloatDecorator,
+	"IsBoolean":       IsBooleanDecorator,
+	"IsArray":         IsArrayDecorator,
+	"IsObject":        IsObjectDecorator,
+	"IsDate":          IsDateDecorator,
+	"IsUUID":          IsUUIDDecorator,
+	
+	// Format validation decorators
+	"IsEmail":         IsEmailDecorator,
+	"IsURL":           IsURLDecorator,
+	"IsIP":            IsIPDecorator,
+	"IsJSON":          IsJSONDecorator,
+	"IsAlpha":         IsAlphaDecorator,
+	"IsAlphanumeric":  IsAlphanumericDecorator,
+	"IsNumeric":       IsNumericDecorator,
+	"IsHexColor":      IsHexColorDecorator,
+	"IsPhoneNumber":   IsPhoneNumberDecorator,
+	"IsCreditCard":    IsCreditCardDecorator,
+	"IsISBN":          IsISBNDecorator,
+	"IsBase64":        IsBase64Decorator,
+	
+	// Range and length validation decorators
+	"Min":             MinDecorator,
+	"Max":             MaxDecorator,
+	"Length":          LengthDecorator,
+	"MinLength":       MinLengthDecorator,
+	"MaxLength":       MaxLengthDecorator,
+	"ArrayMinSize":    ArrayMinSizeDecorator,
+	"ArrayMaxSize":    ArrayMaxSizeDecorator,
+	"ArrayNotEmpty":   ArrayNotEmptyDecorator,
+	
+	// Content validation decorators
+	"IsNotEmpty":      IsNotEmptyDecorator,
+	"IsEmpty":         IsEmptyDecorator,
+	"IsOptional":      IsOptionalDecorator,
+	"IsDefined":       IsDefinedDecorator,
+	"NotEquals":       NotEqualsDecorator,
+	"Equals":          EqualsDecorator,
+	"Contains":        ContainsDecorator,
+	"NotContains":     NotContainsDecorator,
+	"IsIn":            IsInDecorator,
+	"IsNotIn":         IsNotInDecorator,
+	
+	// Pattern and custom validation decorators
+	"Matches":         MatchesDecorator,
+	"IsLowercase":     IsLowercaseDecorator,
+	"IsUppercase":     IsUppercaseDecorator,
+	"ValidateNested":  ValidateNestedDecorator,
+	"ValidateIf":      ValidateIfDecorator,
+	"Custom":          CustomValidatorDecorator,
+	
+	// Business logic validation decorators
+	"IsPositive":      IsPositiveDecorator,
+	"IsNegative":      IsNegativeDecorator,
+	"IsPastDate":      IsPastDateDecorator,
+	"IsFutureDate":    IsFutureDateDecorator,
+	"IsUnique":        IsUniqueDecorator,
+	"Exists":          ExistsDecorator,
 }
 
 // GetDecoratorType returns the decorator type for a given name
@@ -297,6 +423,41 @@ func IsErrorHandlingDecorator(decoratorType DecoratorType) bool {
 // IsDependencyInjectionDecorator checks if a decorator type is a dependency injection decorator
 func IsDependencyInjectionDecorator(decoratorType DecoratorType) bool {
 	return decoratorType == InjectDecorator || decoratorType == ProviderDecorator || decoratorType == ScopeDecorator
+}
+
+// IsValidationDecorator checks if a decorator type is a validation decorator
+func IsValidationDecorator(decoratorType DecoratorType) bool {
+	return decoratorType >= IsStringDecorator && decoratorType <= ExistsDecorator
+}
+
+// IsTypeValidationDecorator checks if a decorator type is a type validation decorator
+func IsTypeValidationDecorator(decoratorType DecoratorType) bool {
+	return decoratorType >= IsStringDecorator && decoratorType <= IsUUIDDecorator
+}
+
+// IsFormatValidationDecorator checks if a decorator type is a format validation decorator
+func IsFormatValidationDecorator(decoratorType DecoratorType) bool {
+	return decoratorType >= IsEmailDecorator && decoratorType <= IsBase64Decorator
+}
+
+// IsRangeValidationDecorator checks if a decorator type is a range/length validation decorator
+func IsRangeValidationDecorator(decoratorType DecoratorType) bool {
+	return decoratorType >= MinDecorator && decoratorType <= ArrayNotEmptyDecorator
+}
+
+// IsContentValidationDecorator checks if a decorator type is a content validation decorator
+func IsContentValidationDecorator(decoratorType DecoratorType) bool {
+	return decoratorType >= IsNotEmptyDecorator && decoratorType <= IsNotInDecorator
+}
+
+// IsPatternValidationDecorator checks if a decorator type is a pattern validation decorator
+func IsPatternValidationDecorator(decoratorType DecoratorType) bool {
+	return decoratorType >= MatchesDecorator && decoratorType <= CustomValidatorDecorator
+}
+
+// IsBusinessLogicValidationDecorator checks if a decorator type is a business logic validation decorator
+func IsBusinessLogicValidationDecorator(decoratorType DecoratorType) bool {
+	return decoratorType >= IsPositiveDecorator && decoratorType <= ExistsDecorator
 }
 
 // Visitor interface for traversing the AST

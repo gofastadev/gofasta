@@ -1,0 +1,111 @@
+package main
+
+// DTO with basic validation decorators
+@Injectable()
+type CreateUserDto struct {
+    Email    string   `validate:"@IsEmail()"`
+    Username string   `validate:"@IsAlphanumeric() @Length(3,20)"`
+    Age      int      `validate:"@Min(18) @Max(120)"`
+    Password string   `validate:"@IsNotEmpty() @MinLength(8)"`
+    Website  string   `validate:"@IsURL()"`
+    Tags     []string `validate:"@IsArray() @ArrayMinSize(1) @ArrayMaxSize(5)"`
+}
+
+// DTO with format validation decorators
+@Injectable()
+type UserProfileDto struct {
+    FirstName   string `validate:"@IsAlpha() @Length(2,30)"`
+    LastName    string `validate:"@IsAlpha() @Length(2,30)"`
+    PhoneNumber string `validate:"@IsNumeric() @Length(10,15)"`
+    Bio         string `validate:"@MaxLength(500)"`
+    GitHub      string `validate:"@IsURL()"`
+    PostalCode  string `validate:"@IsAlphanumeric() @Length(5,10)"`
+}
+
+// DTO with business logic validation decorators
+@Injectable()
+type ProductDto struct {
+    Name        string  `validate:"@IsNotEmpty() @Length(3,100)"`
+    Description string  `validate:"@MaxLength(1000)"`
+    Price       float64 `validate:"@IsPositive() @Min(0.01)"`
+    Stock       int     `validate:"@Min(0)"`
+    Category    string  `validate:"@IsAlpha()"`
+    Rating      float64 `validate:"@Min(0) @Max(5)"`
+    SKU         string  `validate:"@IsAlphanumeric() @Length(6,20)"`
+}
+
+// DTO with complex validation combinations
+@Injectable()
+type OrderDto struct {
+    CustomerEmail string   `validate:"@IsEmail()"`
+    Items         []string `validate:"@IsArray() @ArrayMinSize(1)"`
+    TotalAmount   float64  `validate:"@IsPositive()"`
+    Currency      string   `validate:"@IsAlpha() @Length(3,3)"`
+    Notes         string   `validate:"@MaxLength(200)"`
+}
+
+@Controller("/users")
+type UserController struct {
+    userService UserService `inject:"userService"`
+}
+
+@Post("/")
+func (c *UserController) createUser(@Body() userData CreateUserDto) {
+    // The generated ValidateCreateUserDto function can be used like this:
+    // validationErrors := ValidateCreateUserDto(&userData)
+    // if len(validationErrors) > 0 {
+    //     // Handle validation errors
+    //     return
+    // }
+    // Create user logic here...
+}
+
+@Put("/profile")
+func (c *UserController) updateProfile(@Body() profileData UserProfileDto) {
+    // The generated ValidateUserProfileDto function can be used like this:
+    // validationErrors := ValidateUserProfileDto(&profileData) 
+    // if len(validationErrors) > 0 {
+    //     // Handle validation errors
+    //     return
+    // }
+    // Update profile logic here...
+}
+
+@Controller("/products")
+type ProductController struct {
+    productService ProductService `inject:"productService"`
+}
+
+@Post("/")
+func (c *ProductController) createProduct(@Body() productData ProductDto) {
+    // The generated ValidateProductDto function can be used like this:
+    // validationErrors := ValidateProductDto(&productData)
+    // if len(validationErrors) > 0 {
+    //     // Handle validation errors
+    //     return
+    // }
+    // Create product logic here...
+}
+
+@Controller("/orders")
+type OrderController struct {
+    orderService OrderService `inject:"orderService"`
+}
+
+@Post("/")
+func (c *OrderController) createOrder(@Body() orderData OrderDto) {
+    // The generated ValidateOrderDto function can be used like this:
+    // validationErrors := ValidateOrderDto(&orderData)
+    // if len(validationErrors) > 0 {
+    //     // Handle validation errors
+    //     return  
+    // }
+    // Create order logic here...
+}
+
+// Service declarations for dependency injection
+type UserService struct{}
+
+type ProductService struct{}
+
+type OrderService struct{}

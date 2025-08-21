@@ -16,6 +16,7 @@ This example demonstrates how to use the Gofasta transpiler to transform decorat
 - **Error Handling**: `@Catch()` decorators for automatic error filtering
 - **HTTP Status Codes**: `@HttpCode()` decorators for custom response status codes
 - **Redirects**: `@Redirect()` decorators for URL redirections with custom status codes
+- **Validation Decorators**: Built-in validation decorators for DTOs with automatic validation code generation
 
 ## 📁 File Structure
 
@@ -32,6 +33,8 @@ transpiler-example/
 │   ├── httpcode-example.gofa # HTTP status codes with @HttpCode() decorator
 │   ├── redirect-example.gofa # URL redirections with @Redirect() decorator
 │   ├── usepipes-example.gofa # Pipe validation and transformation examples
+│   ├── validation-decorators-example.gofa # Validation decorators comprehensive examples
+│   ├── validation-simple-example.gofa     # Simple validation decorators demo
 │   ├── user.service.gofa    # User business logic service  
 │   ├── types.gofa           # Data models and DTOs
 │   ├── simple-test.gofa     # Simple test controller

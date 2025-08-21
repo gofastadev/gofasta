@@ -122,7 +122,7 @@
       // Generate interceptor pipeline
   }
   ```
-- [ ] **`@UsePipes()` transpilation** - Generate pipe validation
+- [X] **`@UsePipes()` transpilation** - Generate pipe validation
   ```gofa
   @UsePipes(ValidationPipe, TransformPipe)
   @Post("/users")
@@ -140,12 +140,179 @@
       Age      int    `validate:"@Min(18) @Max(120)"`
       Name     string `validate:"@IsNotEmpty() @Length(2,50)"`
       Tags     []string `validate:"@IsArray() @ArrayMinSize(1)"`
+      Profile  UserProfile `validate:"@ValidateNested()"`
   }
   ```
-  - Generate validation code for: `@IsString()`, `@IsNumber()`, `@IsEmail()`
-  - Generate conditional validation: `@IsOptional()`, `@IsNotEmpty()`
-  - Generate range validation: `@Min()`, `@Max()`, `@Length()`
-  - Generate complex validation: `@IsArray()`, `@ValidateNested()`
+
+##### **🎯 Complete Built-in Validation Decorators List**
+
+**📝 Type Validation Decorators**
+- [ ] `@IsString()` - Validate value is string type
+- [ ] `@IsNumber()` - Validate value is numeric (int, float, etc.)
+- [ ] `@IsInt()` - Validate value is integer
+- [ ] `@IsFloat()` - Validate value is floating point
+- [ ] `@IsBoolean()` - Validate value is boolean
+- [ ] `@IsArray()` - Validate value is array/slice
+- [ ] `@IsObject()` - Validate value is object/struct
+- [ ] `@IsDate()` - Validate value is valid date
+- [ ] `@IsUUID()` - Validate value is valid UUID format
+
+**📧 Format Validation Decorators**
+- [ ] `@IsEmail()` - Validate email format
+- [ ] `@IsURL()` - Validate URL format  
+- [ ] `@IsIP()` - Validate IP address format
+- [ ] `@IsJSON()` - Validate JSON format
+- [ ] `@IsAlpha()` - Validate contains only letters
+- [ ] `@IsAlphanumeric()` - Validate contains only letters and numbers
+- [ ] `@IsNumeric()` - Validate contains only numbers
+- [ ] `@IsHexColor()` - Validate hex color format
+- [ ] `@IsPhoneNumber()` - Validate phone number format
+- [ ] `@IsCreditCard()` - Validate credit card number format
+- [ ] `@IsISBN()` - Validate ISBN format
+- [ ] `@IsBase64()` - Validate base64 encoded string
+
+**🔢 Range & Length Validation Decorators**  
+- [ ] `@Min(value)` - Validate minimum value (numbers) or length (strings/arrays)
+- [ ] `@Max(value)` - Validate maximum value (numbers) or length (strings/arrays)
+- [ ] `@Length(min, max)` - Validate string/array length range
+- [ ] `@MinLength(length)` - Validate minimum string/array length
+- [ ] `@MaxLength(length)` - Validate maximum string/array length
+- [ ] `@ArrayMinSize(size)` - Validate minimum array size
+- [ ] `@ArrayMaxSize(size)` - Validate maximum array size
+- [ ] `@ArrayNotEmpty()` - Validate array is not empty
+
+**🔍 Content Validation Decorators**
+- [ ] `@IsNotEmpty()` - Validate value is not empty
+- [ ] `@IsEmpty()` - Validate value is empty  
+- [ ] `@IsOptional()` - Mark field as optional (skip validation if nil/empty)
+- [ ] `@IsDefined()` - Validate value is defined (not nil)
+- [ ] `@NotEquals(value)` - Validate value does not equal specified value
+- [ ] `@Equals(value)` - Validate value equals specified value
+- [ ] `@Contains(substring)` - Validate string contains substring
+- [ ] `@NotContains(substring)` - Validate string does not contain substring
+- [ ] `@IsIn(values...)` - Validate value is in allowed list
+- [ ] `@IsNotIn(values...)` - Validate value is not in forbidden list
+
+**🔄 Pattern & Custom Validation Decorators**
+- [ ] `@Matches(pattern)` - Validate against regex pattern
+- [ ] `@IsLowercase()` - Validate string is lowercase
+- [ ] `@IsUppercase()` - Validate string is uppercase
+- [ ] `@ValidateNested()` - Validate nested object/struct
+- [ ] `@ValidateIf(condition)` - Conditional validation
+- [ ] `@Custom(validatorFunc)` - Custom validation function
+
+**🏢 Business Logic Validation Decorators**
+- [ ] `@IsPositive()` - Validate number is positive
+- [ ] `@IsNegative()` - Validate number is negative
+- [ ] `@IsPastDate()` - Validate date is in the past
+- [ ] `@IsFutureDate()` - Validate date is in the future
+- [ ] `@IsUnique(field)` - Validate field value is unique (requires DB check)
+- [ ] `@Exists(entity, field)` - Validate referenced entity exists (requires DB check)
+
+**📋 Generated Validation Code Structure**
+```go
+// Generated validation function for CreateUserDto
+func ValidateCreateUserDto(dto *CreateUserDto) []ValidationError {
+    var errors []ValidationError
+    
+    // @IsEmail() validation for Email field
+    if !isValidEmail(dto.Email) {
+        errors = append(errors, ValidationError{
+            Field:   "Email",
+            Value:   dto.Email,
+            Message: "Email must be a valid email address",
+            Code:    "IS_EMAIL",
+        })
+    }
+    
+    // @Min(18) @Max(120) validation for Age field
+    if dto.Age < 18 {
+        errors = append(errors, ValidationError{
+            Field:   "Age", 
+            Value:   dto.Age,
+            Message: "Age must be at least 18",
+            Code:    "MIN_VALUE",
+        })
+    }
+    if dto.Age > 120 {
+        errors = append(errors, ValidationError{
+            Field:   "Age",
+            Value:   dto.Age, 
+            Message: "Age must be at most 120",
+            Code:    "MAX_VALUE",
+        })
+    }
+    
+    // @IsNotEmpty() @Length(2,50) validation for Name field
+    if strings.TrimSpace(dto.Name) == "" {
+        errors = append(errors, ValidationError{
+            Field:   "Name",
+            Value:   dto.Name,
+            Message: "Name must not be empty",
+            Code:    "IS_NOT_EMPTY",
+        })
+    }
+    if len(dto.Name) < 2 || len(dto.Name) > 50 {
+        errors = append(errors, ValidationError{
+            Field:   "Name",
+            Value:   dto.Name,
+            Message: "Name must be between 2 and 50 characters",
+            Code:    "LENGTH",
+        })
+    }
+    
+    // @IsArray() @ArrayMinSize(1) validation for Tags field
+    if dto.Tags == nil {
+        errors = append(errors, ValidationError{
+            Field:   "Tags",
+            Value:   dto.Tags,
+            Message: "Tags must be an array",
+            Code:    "IS_ARRAY", 
+        })
+    } else if len(dto.Tags) < 1 {
+        errors = append(errors, ValidationError{
+            Field:   "Tags",
+            Value:   dto.Tags,
+            Message: "Tags must contain at least 1 item",
+            Code:    "ARRAY_MIN_SIZE",
+        })
+    }
+    
+    // @ValidateNested() validation for Profile field
+    if nestedErrors := ValidateUserProfile(&dto.Profile); len(nestedErrors) > 0 {
+        for _, err := range nestedErrors {
+            err.Field = "Profile." + err.Field
+            errors = append(errors, err)
+        }
+    }
+    
+    return errors
+}
+
+// ValidationError represents a validation error
+type ValidationError struct {
+    Field   string      `json:"field"`
+    Value   interface{} `json:"value"`
+    Message string      `json:"message"`
+    Code    string      `json:"code"`
+}
+
+// ValidationResult represents the result of validation
+type ValidationResult struct {
+    IsValid bool              `json:"isValid"`
+    Errors  []ValidationError `json:"errors,omitempty"`
+}
+```
+
+**🔧 Implementation Strategy**
+1. **Parse validation decorators** from struct field tags
+2. **Generate validation functions** for each DTO struct  
+3. **Generate helper validation functions** (isValidEmail, etc.)
+4. **Generate ValidationError struct** and related types
+5. **Integrate with HTTP parameter extraction** (@Body decorator)
+6. **Support nested validation** with @ValidateNested()
+7. **Generate conditional validation** logic for @IsOptional()
+8. **Create validation middleware** for automatic DTO validation
 
 #### 🟡 2.3 Advanced Routing Decorators `[MEDIUM PRIORITY]`
 
