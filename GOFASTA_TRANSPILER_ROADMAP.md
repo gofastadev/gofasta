@@ -166,9 +166,9 @@
 - [X] `@IsNumber()` - Validate value is numeric (int, float, etc.)
 - [X] `@IsInt()` - Validate value is integer
 - [X] `@IsFloat()` - Validate value is floating point
-- [ ] `@IsBoolean()` - Validate value is boolean
+- [X] `@IsBoolean()` - Validate value is boolean
 - [X] `@IsArray()` - Validate value is array/slice
-- [ ] `@IsDate()` - Validate value is valid date
+- [X] `@IsDate()` - Validate value is valid date
 - [X] `@IsUUID()` - Validate value is valid UUID format
 
 **📧 Format Validation Decorators**

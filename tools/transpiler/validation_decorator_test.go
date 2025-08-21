@@ -269,6 +269,43 @@ func (c *BooleanTestController) createTest(@Body() data BooleanTestDto) {
 				"IS_BOOLEAN",
 			},
 		},
+		{
+			name: "IsDate validation decorator",
+			input: `package main
+
+@Injectable()
+type DateTestDto struct {
+	@IsDate()
+	CreatedAt string
+	
+	@IsDate()
+	UpdatedAt interface{}
+	
+	@IsDate()
+	ExpiresAt string
+}
+
+@Controller("/date-test")
+type DateTestController struct {
+}
+
+@Post("/")
+func (c *DateTestController) createTest(@Body() data DateTestDto) {
+}`,
+			expected: []string{
+				"ValidationError",
+				"ValidateDateTestDto",
+				"func isDate(value interface{}) bool",
+				"IsDate validation",
+				"if !isDate(dto.CreatedAt) {",
+				"if !isDate(dto.UpdatedAt) {",
+				"if !isDate(dto.ExpiresAt) {",
+				"must be a valid date",
+				"IS_DATE",
+				"time.RFC3339",
+				"time.Parse",
+			},
+		},
 	}
 
 	for _, tt := range tests {

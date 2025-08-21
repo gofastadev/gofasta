@@ -1,0 +1,25 @@
+package main
+
+// DTO demonstrating @IsDate() validation decorator
+@Injectable()
+type EventDto struct {
+    @IsDate()
+    StartDate string
+    
+    @IsDate()
+    EndDate interface{} // Can be string, time.Time, or Unix timestamp
+    
+    @IsDate()
+    CreatedAt string
+    
+    @IsDate()
+    UpdatedAt interface{} // Runtime date validation for interface{} types
+}
+
+@Controller("/events")
+type EventController struct {}
+
+@Post("/validate")
+func (c *EventController) validateEvent(@Body() data EventDto) {
+    // Generated ValidateEventDto function provides comprehensive date validation
+}

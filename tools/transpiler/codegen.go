@@ -2955,6 +2955,8 @@ func (g *CodeGenerator) getValidationMessage(ruleType string, args []interface{}
 		return "must be a floating point number"
 	case "IsBoolean":
 		return "must be a boolean"
+	case "IsDate":
+		return "must be a valid date"
 	case "IsPositive":
 		return "must be a positive number"
 	case "IsNegative":
@@ -3196,6 +3198,58 @@ func (g *CodeGenerator) generateValidationHelperFunctions() {
 	g.writeLine("}")
 	g.unindent()
 	g.writeLine("}")
+	g.writeLine("")
+	
+	// Date validation
+	g.writeLine("func isDate(value interface{}) bool {")
+	g.indent()
+	g.writeLine("switch v := value.(type) {")
+	g.writeLine("case time.Time:")
+	g.indent()
+	g.writeLine("return !v.IsZero()")
+	g.unindent()
+	g.writeLine("case string:")
+	g.indent()
+	g.writeLine("// Try common date formats")
+	g.writeLine("dateFormats := []string{")
+	g.indent()
+	g.writeLine("time.RFC3339,     // 2006-01-02T15:04:05Z07:00")
+	g.writeLine("time.RFC3339Nano, // 2006-01-02T15:04:05.999999999Z07:00")
+	g.writeLine("\"2006-01-02\",     // YYYY-MM-DD")
+	g.writeLine("\"2006/01/02\",     // YYYY/MM/DD")
+	g.writeLine("\"01/02/2006\",     // MM/DD/YYYY")
+	g.writeLine("\"02-01-2006\",     // DD-MM-YYYY")
+	g.writeLine("\"2006-01-02 15:04:05\", // YYYY-MM-DD HH:MM:SS")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("for _, format := range dateFormats {")
+	g.indent()
+	g.writeLine("if _, err := time.Parse(format, v); err == nil {")
+	g.indent()
+	g.writeLine("return true")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("return false")
+	g.unindent()
+	g.writeLine("case int64:")
+	g.indent()
+	g.writeLine("// Unix timestamp validation")
+	g.writeLine("if v > 0 && v < 4102444800 { // Between 1970 and 2100")
+	g.indent()
+	g.writeLine("return true")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("return false")
+	g.unindent()
+	g.writeLine("default:")
+	g.indent()
+	g.writeLine("return false")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
 }
 
 // generateDTOValidationFunction generates validation function for a DTO
@@ -3329,6 +3383,12 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 		g.generateValidationError(field.Name, fieldName, rule)
 		g.writeLine("}")
 		
+	case "IsDate":
+		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+		g.writeLine(fmt.Sprintf("if !isDate(%s) {", fieldName))
+		g.generateValidationError(field.Name, fieldName, rule)
+		g.writeLine("}")
+		
 	case "IsPositive":
 		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
 		g.writeLine(fmt.Sprintf("if %s <= 0 {", fieldName))
@@ -3389,6 +3449,12 @@ func (g *CodeGenerator) addValidationImportsIfNeeded(file *GofaFile) {
 		if needsURLImport {
 			g.addImport("net/url")
 		}
+		
+		// Check if Date validation is used
+		needsTimeImport := g.usesDateValidation(dtoStructs)
+		if needsTimeImport {
+			g.addImport("time")
+		}
 	}
 }
 
@@ -3409,6 +3475,20 @@ func (g *CodeGenerator) usesURLValidation(dtoStructs map[string]*ValidationStruc
 		for _, field := range dto.Fields {
 			for _, rule := range field.Validators {
 				if rule.Type == "IsURL" {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+// usesDateValidation checks if any validation rules use Date validation
+func (g *CodeGenerator) usesDateValidation(dtoStructs map[string]*ValidationStructInfo) bool {
+	for _, dto := range dtoStructs {
+		for _, field := range dto.Fields {
+			for _, rule := range field.Validators {
+				if rule.Type == "IsDate" {
 					return true
 				}
 			}
