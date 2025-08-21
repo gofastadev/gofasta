@@ -3,8 +3,10 @@ package main
 @Controller("/api/v1/products")
 @UseGuards("api-key")
 type ProductController struct {
-    ProductService *ProductService `inject:""`
-    Logger         *Logger         `inject:"logger"`
+    @Inject()
+    ProductService *ProductService
+    @Inject("logger")
+    Logger *Logger
 }
 
 @Get()

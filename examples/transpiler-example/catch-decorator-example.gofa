@@ -51,8 +51,10 @@ func (e *InternalServerError) Error() string {
 @Controller("/api/v1/users")
 @Catch(InternalServerError)
 type UserController struct {
-    UserService *UserService `inject:""`
-    Logger      *Logger      `inject:"logger"`
+    @Inject()
+    UserService *UserService
+    @Inject("logger")
+    Logger *Logger
 }
 
 // Example 2: Method-level @Catch() decorator with single error type
@@ -152,8 +154,10 @@ func DeleteUser(@Param("id") id string, @Headers("Authorization") authToken stri
 @Injectable()
 @Catch(InternalServerError)
 type UserService struct {
-    UserRepository *UserRepository `inject:""`
-    Logger         *Logger         `inject:"logger"`
+    @Inject()
+    UserRepository *UserRepository
+    @Inject("logger")
+    Logger *Logger
 }
 
 @Catch(NotFoundError, ValidationError)
@@ -185,8 +189,10 @@ func GetUserById(id string) *User {
 @Controller("/api/v1/products")
 @Catch(InternalServerError) // Controller-level handler for system errors
 type ProductController struct {
-    ProductService *ProductService `inject:""`
-    Logger         *Logger         `inject:"logger"`
+    @Inject()
+    ProductService *ProductService
+    @Inject("logger")
+    Logger *Logger
 }
 
 @Catch(NotFoundError)
@@ -258,9 +264,12 @@ func CreateProductsBulk(@Body() products []CreateProductDto) {
 @Controller("/api/v1/orders")
 @Catch(InternalServerError, UnauthorizedError) // Controller handles system and auth errors
 type OrderController struct {
-    OrderService *OrderService `inject:""`
-    UserService  *UserService  `inject:""`
-    Logger       *Logger       `inject:"logger"`
+    @Inject()
+    OrderService *OrderService
+    @Inject()
+    UserService *UserService
+    @Inject("logger")
+    Logger *Logger
 }
 
 @Catch(NotFoundError, ValidationError)

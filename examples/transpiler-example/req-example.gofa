@@ -2,7 +2,8 @@ package main
 
 @Controller("/api/requests")
 type RequestExampleController struct {
-    Logger *Logger `inject:"logger"`
+    @Inject("logger")
+    Logger *Logger
 }
 
 @Get("/basic")
