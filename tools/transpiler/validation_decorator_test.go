@@ -378,6 +378,42 @@ func (c *DataController) createTest(@Body() data DataDto) {
 				"json.Valid",
 			},
 		},
+		{
+			name: "IsHexColor validation decorator",
+			input: `package main
+
+@Injectable()
+type DataDto struct {
+	@IsHexColor()
+	PrimaryColor string
+	
+	@IsHexColor()
+	BackgroundColor string
+	
+	@IsHexColor()
+	BorderColor string
+}
+
+@Controller("/data")
+type DataController struct {
+}
+
+@Post("/")
+func (c *DataController) createTest(@Body() data DataDto) {
+}`,
+			expected: []string{
+				"ValidationError",
+				"ValidateDataDto",
+				"func isHexColor(value interface{}) bool",
+				"IsHexColor validation",
+				"if !isHexColor(dto.PrimaryColor) {",
+				"if !isHexColor(dto.BackgroundColor) {",
+				"if !isHexColor(dto.BorderColor) {",
+				"must be a valid hex color",
+				"IS_HEX_COLOR",
+				"strings.HasPrefix",
+			},
+		},
 	}
 
 	for _, tt := range tests {

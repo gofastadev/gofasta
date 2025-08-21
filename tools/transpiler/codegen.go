@@ -2961,6 +2961,8 @@ func (g *CodeGenerator) getValidationMessage(ruleType string, args []interface{}
 		return "must be a valid IP address"
 	case "IsJSON":
 		return "must be valid JSON"
+	case "IsHexColor":
+		return "must be a valid hex color"
 	case "IsPositive":
 		return "must be a positive number"
 	case "IsNegative":
@@ -3300,6 +3302,46 @@ func (g *CodeGenerator) generateValidationHelperFunctions() {
 	g.writeLine("}")
 	g.unindent()
 	g.writeLine("}")
+	g.writeLine("")
+	
+	// Hex color validation
+	g.writeLine("func isHexColor(value interface{}) bool {")
+	g.indent()
+	g.writeLine("str, ok := value.(string)")
+	g.writeLine("if !ok {")
+	g.indent()
+	g.writeLine("return false")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	g.writeLine("// Remove leading # if present")
+	g.writeLine("if strings.HasPrefix(str, \"#\") {")
+	g.indent()
+	g.writeLine("str = str[1:]")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	g.writeLine("// Check for valid hex color lengths (3 or 6 characters)")
+	g.writeLine("if len(str) != 3 && len(str) != 6 {")
+	g.indent()
+	g.writeLine("return false")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	g.writeLine("// Check if all characters are valid hexadecimal")
+	g.writeLine("for _, char := range str {")
+	g.indent()
+	g.writeLine("if !((char >= '0' && char <= '9') || (char >= 'a' && char <= 'f') || (char >= 'A' && char <= 'F')) {")
+	g.indent()
+	g.writeLine("return false")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	g.writeLine("return true")
+	g.unindent()
+	g.writeLine("}")
 }
 
 // generateDTOValidationFunction generates validation function for a DTO
@@ -3448,6 +3490,12 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 	case "IsJSON":
 		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
 		g.writeLine(fmt.Sprintf("if !isJSON(%s) {", fieldName))
+		g.generateValidationError(field.Name, fieldName, rule)
+		g.writeLine("}")
+		
+	case "IsHexColor":
+		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+		g.writeLine(fmt.Sprintf("if !isHexColor(%s) {", fieldName))
 		g.generateValidationError(field.Name, fieldName, rule)
 		g.writeLine("}")
 		

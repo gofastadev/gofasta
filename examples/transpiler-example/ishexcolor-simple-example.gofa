@@ -1,0 +1,32 @@
+package main
+
+@Injectable()
+type ThemeService struct {
+}
+
+func (s *ThemeService) updateTheme(dto ThemeDto) {
+    // Body parameter validation will be generated automatically
+    // The dto will be validated using the @IsHexColor() decorators
+}
+
+@Injectable()
+type ThemeDto struct {
+    @IsHexColor()
+    PrimaryColor string      // Must be a valid hex color like #FF0000 or #f00
+    
+    @IsHexColor()
+    SecondaryColor string    // Accepts both 3 and 6 character hex colors
+    
+    @IsHexColor()
+    BackgroundColor string   // With or without # prefix
+}
+
+@Controller("/api/theme")
+type ThemeController struct {
+    service *ThemeService `inject:""`
+}
+
+@Post("/update")
+func (c *ThemeController) updateTheme(@Body() theme ThemeDto) {
+    c.service.updateTheme(theme)
+}

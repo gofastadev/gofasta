@@ -179,7 +179,7 @@
 - [X] `@IsAlpha()` - Validate contains only letters
 - [X] `@IsAlphanumeric()` - Validate contains only letters and numbers
 - [X] `@IsNumeric()` - Validate contains only numbers
-- [ ] `@IsHexColor()` - Validate hex color format
+- [X] `@IsHexColor()` - Validate hex color format
 - [ ] `@IsPhoneNumber()` - Validate phone number format
 - [ ] `@IsCreditCard()` - Validate credit card number format
 - [ ] `@IsISBN()` - Validate ISBN format
