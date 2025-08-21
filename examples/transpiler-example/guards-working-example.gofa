@@ -1,0 +1,34 @@
+package example
+
+// This example demonstrates the @UseGuards() decorator implementation
+// Note: The current parser expects methods to be directly attached to controllers
+// rather than standalone functions
+
+@Controller("/api/auth")
+type AuthController struct {
+	userService *UserService `inject:"userService"`
+}
+
+// Example method that would be protected by guards
+// @UseGuards(AuthGuard)
+// @Get("/profile")
+// Note: See test files for working examples of guard generation
+
+@Controller("/api/admin")
+type AdminController struct {
+	adminService *AdminService `inject:"adminService"`
+}
+
+// Multiple guards example
+// @UseGuards(AuthGuard, RoleGuard)
+// @Get("/users")
+
+@Injectable()
+type UserService struct {
+	db *Database `inject:"database"`
+}
+
+@Injectable()
+type AdminService struct {
+	db *Database `inject:"database"`
+}

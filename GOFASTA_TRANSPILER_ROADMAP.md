@@ -106,7 +106,7 @@
 
 #### 🔥 2.1 Middleware Decorators `[HIGH PRIORITY]`
 
-- [ ] **`@UseGuards()` transpilation** - Generate guard middleware
+- [X] **`@UseGuards()` transpilation** - Generate guard middleware
   ```gofa
   @UseGuards(AuthGuard, RoleGuard)
   @Get("/admin")

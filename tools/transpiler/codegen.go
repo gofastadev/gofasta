@@ -115,6 +115,9 @@ func (g *CodeGenerator) generateControllerDeclaration(controller *ControllerDecl
 
 	// Generate error filter handlers for controller-level @Catch() decorators
 	g.generateCatchHandlers(controller)
+	
+	// Generate guard middleware functions
+	g.generateGuardMiddlewareFunctions(controller)
 
 	return nil
 }
@@ -193,11 +196,22 @@ func (g *CodeGenerator) generateControllerRouteRegistration(controller *Controll
 		if routeInfo.Method != "" {
 			fullPath := g.combineRoutePaths(controllerPath, routeInfo.Path)
 
-			// Generate route registration
-			g.writeLine(fmt.Sprintf("server.%s(\"%s\", c.%s)",
-				strings.Title(strings.ToLower(routeInfo.Method)),
-				fullPath,
-				method.Name))
+			// Generate route registration with guards middleware
+			guards := g.generateGuardsMiddleware(controller, method)
+			if guards != "" {
+				// Register route with guards middleware chain
+				g.writeLine(fmt.Sprintf("server.%s(\"%s\", %s, c.%s)",
+					strings.Title(strings.ToLower(routeInfo.Method)),
+					fullPath,
+					guards,
+					method.Name))
+			} else {
+				// Generate route registration without guards
+				g.writeLine(fmt.Sprintf("server.%s(\"%s\", c.%s)",
+					strings.Title(strings.ToLower(routeInfo.Method)),
+					fullPath,
+					method.Name))
+			}
 		}
 	}
 
@@ -1820,6 +1834,187 @@ func (g *CodeGenerator) unindent() {
 	if g.indentLevel > 0 {
 		g.indentLevel--
 	}
+}
+
+// generateGuardsMiddleware generates guard middleware chain for method and controller
+func (g *CodeGenerator) generateGuardsMiddleware(controller *ControllerDeclaration, method *MethodNode) string {
+	var guards []string
+	
+	// Collect controller-level guards first
+	controllerGuards := g.getGuardDecorators(controller.Decorators)
+	guards = append(guards, controllerGuards...)
+	
+	// Collect method-level guards (these take precedence/are applied after controller guards)
+	methodGuards := g.getGuardDecorators(method.Decorators)
+	guards = append(guards, methodGuards...)
+	
+	if len(guards) == 0 {
+		return ""
+	}
+	
+	// Create middleware chain - generate the middleware instance calls
+	var middlewareChain []string
+	for _, guard := range guards {
+		// Convert guard name to middleware function call
+		middlewareChain = append(middlewareChain, fmt.Sprintf("c.%s", guard))
+	}
+	
+	return strings.Join(middlewareChain, ", ")
+}
+
+// getGuardDecorators extracts guard names from @UseGuards() decorators
+func (g *CodeGenerator) getGuardDecorators(decorators []*DecoratorNode) []string {
+	var guards []string
+	
+	for _, decorator := range decorators {
+		if decorator.Name == "UseGuards" {
+			// Extract guard names from decorator arguments
+			for _, arg := range decorator.Args {
+				if guardName, ok := arg.Value.(string); ok {
+					guards = append(guards, guardName)
+				}
+			}
+		}
+	}
+	
+	return guards
+}
+
+// generateGuardMiddlewareFunctions generates guard middleware function implementations
+func (g *CodeGenerator) generateGuardMiddlewareFunctions(controller *ControllerDeclaration) {
+	allGuards := make(map[string]bool)
+	
+	// Collect all unique guards from controller and methods
+	controllerGuards := g.getGuardDecorators(controller.Decorators)
+	for _, guard := range controllerGuards {
+		allGuards[guard] = true
+	}
+	
+	for _, method := range controller.Methods {
+		methodGuards := g.getGuardDecorators(method.Decorators)
+		for _, guard := range methodGuards {
+			allGuards[guard] = true
+		}
+	}
+	
+	if len(allGuards) == 0 {
+		return
+	}
+	
+	// Generate guard middleware methods for the controller
+	g.writeLine("// Guard middleware methods")
+	
+	for guard := range allGuards {
+		g.generateControllerGuardMethod(controller.Name, guard)
+		g.writeLine("")
+	}
+}
+
+// generateControllerGuardMethod generates a guard middleware method for the controller
+func (g *CodeGenerator) generateControllerGuardMethod(controllerName, guardName string) {
+	g.writeLine(fmt.Sprintf("// %s implements the %s guard middleware", guardName, guardName))
+	g.writeLine(fmt.Sprintf("func (c *%s) %s(ctx *httpPackage.RequestContext) {", controllerName, guardName))
+	g.indent()
+	
+	// Generate guard logic based on guard name
+	switch guardName {
+	case "AuthGuard":
+		g.generateAuthGuardLogic()
+	case "RoleGuard":
+		g.generateRoleGuardLogic()
+	case "PermissionGuard":
+		g.generatePermissionGuardLogic()
+	default:
+		g.generateGenericGuardLogic(guardName)
+	}
+	
+	g.writeLine("// If guard passes, continue to next middleware/handler")
+	g.writeLine("ctx.Next()")
+	g.unindent()
+	g.writeLine("}")
+}
+
+// generateAuthGuardLogic generates authentication guard logic
+func (g *CodeGenerator) generateAuthGuardLogic() {
+	g.writeLine("// Authentication guard logic")
+	g.writeLine("token := ctx.GetHeader(\"Authorization\")")
+	g.writeLine("if token == \"\" {")
+	g.indent()
+	g.writeLine("ctx.JSON(401, map[string]string{\"error\": \"Unauthorized: Missing authentication token\"})")
+	g.writeLine("ctx.Abort()")
+	g.writeLine("return")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	g.writeLine("// Validate token (implement your token validation logic)")
+	g.writeLine("if !isValidToken(token) {")
+	g.indent()
+	g.writeLine("ctx.JSON(401, map[string]string{\"error\": \"Unauthorized: Invalid token\"})")
+	g.writeLine("ctx.Abort()")
+	g.writeLine("return")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+}
+
+// generateRoleGuardLogic generates role-based guard logic
+func (g *CodeGenerator) generateRoleGuardLogic() {
+	g.writeLine("// Role-based authorization guard logic")
+	g.writeLine("user := ctx.GetUser() // Implement GetUser() to extract user from context")
+	g.writeLine("if user == nil {")
+	g.indent()
+	g.writeLine("ctx.JSON(401, map[string]string{\"error\": \"Unauthorized: User not authenticated\"})")
+	g.writeLine("ctx.Abort()")
+	g.writeLine("return")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	g.writeLine("// Check user role (implement your role checking logic)")
+	g.writeLine("if !hasRequiredRole(user, \"required_role\") {")
+	g.indent()
+	g.writeLine("ctx.JSON(403, map[string]string{\"error\": \"Forbidden: Insufficient permissions\"})")
+	g.writeLine("ctx.Abort()")
+	g.writeLine("return")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+}
+
+// generatePermissionGuardLogic generates permission-based guard logic
+func (g *CodeGenerator) generatePermissionGuardLogic() {
+	g.writeLine("// Permission-based authorization guard logic")
+	g.writeLine("user := ctx.GetUser() // Implement GetUser() to extract user from context")
+	g.writeLine("if user == nil {")
+	g.indent()
+	g.writeLine("ctx.JSON(401, map[string]string{\"error\": \"Unauthorized: User not authenticated\"})")
+	g.writeLine("ctx.Abort()")
+	g.writeLine("return")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	g.writeLine("// Check user permissions (implement your permission checking logic)")
+	g.writeLine("if !hasPermission(user, \"required_permission\") {")
+	g.indent()
+	g.writeLine("ctx.JSON(403, map[string]string{\"error\": \"Forbidden: Insufficient permissions\"})")
+	g.writeLine("ctx.Abort()")
+	g.writeLine("return")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+}
+
+// generateGenericGuardLogic generates generic guard logic for custom guards
+func (g *CodeGenerator) generateGenericGuardLogic(guardName string) {
+	g.writeLine(fmt.Sprintf("// %s guard logic", guardName))
+	g.writeLine("// TODO: Implement your custom guard logic here")
+	g.writeLine("if !checkGuardCondition() {")
+	g.indent()
+	g.writeLine("ctx.JSON(403, map[string]string{\"error\": \"Forbidden: Guard check failed\"})")
+	g.writeLine("ctx.Abort()")
+	g.writeLine("return")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
 }
 
 // TranspileFile is the main entry point for transpiling a .gofa file to .go
