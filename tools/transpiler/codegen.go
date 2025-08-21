@@ -118,6 +118,9 @@ func (g *CodeGenerator) generateControllerDeclaration(controller *ControllerDecl
 	
 	// Generate guard middleware functions
 	g.generateGuardMiddlewareFunctions(controller)
+	
+	// Generate interceptor middleware functions
+	g.generateInterceptorMiddlewareFunctions(controller)
 
 	return nil
 }
@@ -196,17 +199,17 @@ func (g *CodeGenerator) generateControllerRouteRegistration(controller *Controll
 		if routeInfo.Method != "" {
 			fullPath := g.combineRoutePaths(controllerPath, routeInfo.Path)
 
-			// Generate route registration with guards middleware
-			guards := g.generateGuardsMiddleware(controller, method)
-			if guards != "" {
-				// Register route with guards middleware chain
+			// Generate route registration with middleware chain (guards + interceptors)
+			middlewareChain := g.generateMiddlewareChain(controller, method)
+			if middlewareChain != "" {
+				// Register route with middleware chain
 				g.writeLine(fmt.Sprintf("server.%s(\"%s\", %s, c.%s)",
 					strings.Title(strings.ToLower(routeInfo.Method)),
 					fullPath,
-					guards,
+					middlewareChain,
 					method.Name))
 			} else {
-				// Generate route registration without guards
+				// Generate route registration without middleware
 				g.writeLine(fmt.Sprintf("server.%s(\"%s\", c.%s)",
 					strings.Title(strings.ToLower(routeInfo.Method)),
 					fullPath,
@@ -2014,6 +2017,264 @@ func (g *CodeGenerator) generateGenericGuardLogic(guardName string) {
 	g.writeLine("return")
 	g.unindent()
 	g.writeLine("}")
+	g.writeLine("")
+}
+
+// generateMiddlewareChain generates combined middleware chain for guards and interceptors
+func (g *CodeGenerator) generateMiddlewareChain(controller *ControllerDeclaration, method *MethodNode) string {
+	var middleware []string
+	
+	// Collect interceptors first (they run before guards in the pipeline)
+	controllerInterceptors := g.getInterceptorDecorators(controller.Decorators)
+	middleware = append(middleware, controllerInterceptors...)
+	
+	methodInterceptors := g.getInterceptorDecorators(method.Decorators)
+	middleware = append(middleware, methodInterceptors...)
+	
+	// Collect guards (they run after interceptors)
+	controllerGuards := g.getGuardDecorators(controller.Decorators)
+	middleware = append(middleware, controllerGuards...)
+	
+	methodGuards := g.getGuardDecorators(method.Decorators)
+	middleware = append(middleware, methodGuards...)
+	
+	
+	if len(middleware) == 0 {
+		return ""
+	}
+	
+	// Create middleware chain - generate the middleware instance calls
+	var middlewareChain []string
+	for _, mw := range middleware {
+		middlewareChain = append(middlewareChain, fmt.Sprintf("c.%s", mw))
+	}
+	
+	return strings.Join(middlewareChain, ", ")
+}
+
+// getInterceptorDecorators extracts interceptor names from @UseInterceptors() decorators
+func (g *CodeGenerator) getInterceptorDecorators(decorators []*DecoratorNode) []string {
+	var interceptors []string
+	
+	for _, decorator := range decorators {
+		if decorator.Name == "UseInterceptors" {
+			// Extract interceptor names from decorator arguments
+			for _, arg := range decorator.Args {
+				if interceptorName, ok := arg.Value.(string); ok {
+					interceptors = append(interceptors, interceptorName)
+				}
+			}
+		}
+	}
+	
+	return interceptors
+}
+
+// generateInterceptorMiddlewareFunctions generates interceptor middleware function implementations
+func (g *CodeGenerator) generateInterceptorMiddlewareFunctions(controller *ControllerDeclaration) {
+	allInterceptors := make(map[string]bool)
+	
+	// Collect all unique interceptors from controller and methods
+	controllerInterceptors := g.getInterceptorDecorators(controller.Decorators)
+	for _, interceptor := range controllerInterceptors {
+		allInterceptors[interceptor] = true
+	}
+	
+	for _, method := range controller.Methods {
+		methodInterceptors := g.getInterceptorDecorators(method.Decorators)
+		for _, interceptor := range methodInterceptors {
+			allInterceptors[interceptor] = true
+		}
+	}
+	
+	if len(allInterceptors) == 0 {
+		return
+	}
+	
+	// Generate interceptor middleware methods for the controller
+	g.writeLine("// Interceptor middleware methods")
+	
+	for interceptor := range allInterceptors {
+		g.generateControllerInterceptorMethod(controller.Name, interceptor)
+		g.writeLine("")
+	}
+}
+
+// generateControllerInterceptorMethod generates an interceptor middleware method for the controller
+func (g *CodeGenerator) generateControllerInterceptorMethod(controllerName, interceptorName string) {
+	g.writeLine(fmt.Sprintf("// %s implements the %s interceptor middleware", interceptorName, interceptorName))
+	g.writeLine(fmt.Sprintf("func (c *%s) %s(ctx *httpPackage.RequestContext) {", controllerName, interceptorName))
+	g.indent()
+	
+	// Generate interceptor logic based on interceptor name
+	switch interceptorName {
+	case "LoggingInterceptor":
+		g.generateLoggingInterceptorLogic()
+	case "CacheInterceptor":
+		g.generateCacheInterceptorLogic()
+	case "TransformInterceptor":
+		g.generateTransformInterceptorLogic()
+	case "ValidationInterceptor":
+		g.generateValidationInterceptorLogic()
+	default:
+		g.generateGenericInterceptorLogic(interceptorName)
+	}
+	
+	g.writeLine("// Continue to next middleware/handler")
+	g.writeLine("ctx.Next()")
+	g.unindent()
+	g.writeLine("}")
+}
+
+// generateLoggingInterceptorLogic generates logging interceptor logic
+func (g *CodeGenerator) generateLoggingInterceptorLogic() {
+	g.writeLine("// Logging interceptor logic")
+	g.writeLine("startTime := time.Now()")
+	g.writeLine("method := ctx.GetMethod()")
+	g.writeLine("path := ctx.GetPath()")
+	g.writeLine("clientIP := ctx.GetClientIP()")
+	g.writeLine("")
+	g.writeLine("// Log incoming request")
+	g.writeLine("fmt.Printf(\"[%s] %s %s from %s\\n\", startTime.Format(time.RFC3339), method, path, clientIP)")
+	g.writeLine("")
+	g.writeLine("// Store start time for response logging")
+	g.writeLine("ctx.Set(\"request_start_time\", startTime)")
+	g.writeLine("")
+	g.writeLine("// Add response logging after request completes")
+	g.writeLine("ctx.OnFinished(func() {")
+	g.indent()
+	g.writeLine("duration := time.Since(startTime)")
+	g.writeLine("status := ctx.GetStatusCode()")
+	g.writeLine("fmt.Printf(\"[%s] %s %s %d - %v\\n\", time.Now().Format(time.RFC3339), method, path, status, duration)")
+	g.unindent()
+	g.writeLine("})")
+	g.writeLine("")
+}
+
+// generateCacheInterceptorLogic generates caching interceptor logic
+func (g *CodeGenerator) generateCacheInterceptorLogic() {
+	g.writeLine("// Cache interceptor logic")
+	g.writeLine("cacheKey := fmt.Sprintf(\"%s:%s\", ctx.GetMethod(), ctx.GetPath())")
+	g.writeLine("queryParams := ctx.GetQuery()")
+	g.writeLine("if len(queryParams) > 0 {")
+	g.indent()
+	g.writeLine("cacheKey += \"?\" + queryParams")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	g.writeLine("// Check cache for existing response")
+	g.writeLine("if cachedResponse := getFromCache(cacheKey); cachedResponse != nil {")
+	g.indent()
+	g.writeLine("ctx.JSON(200, cachedResponse)")
+	g.writeLine("return // Skip further processing")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	g.writeLine("// Store cache key for response caching")
+	g.writeLine("ctx.Set(\"cache_key\", cacheKey)")
+	g.writeLine("")
+	g.writeLine("// Cache response after request completes (for successful responses)")
+	g.writeLine("ctx.OnFinished(func() {")
+	g.indent()
+	g.writeLine("status := ctx.GetStatusCode()")
+	g.writeLine("if status >= 200 && status < 300 {")
+	g.indent()
+	g.writeLine("responseData := ctx.GetResponseData()")
+	g.writeLine("cacheResponse(cacheKey, responseData, 300) // Cache for 5 minutes")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("})")
+	g.writeLine("")
+}
+
+// generateTransformInterceptorLogic generates data transformation interceptor logic
+func (g *CodeGenerator) generateTransformInterceptorLogic() {
+	g.writeLine("// Transform interceptor logic")
+	g.writeLine("// Transform request data before processing")
+	g.writeLine("if requestBody := ctx.GetRequestBody(); requestBody != nil {")
+	g.indent()
+	g.writeLine("// Apply request transformations (e.g., data normalization, validation)")
+	g.writeLine("transformedBody := transformRequestData(requestBody)")
+	g.writeLine("ctx.SetRequestBody(transformedBody)")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	g.writeLine("// Set up response transformation")
+	g.writeLine("ctx.OnBeforeResponse(func() {")
+	g.indent()
+	g.writeLine("// Transform response data before sending")
+	g.writeLine("responseData := ctx.GetResponseData()")
+	g.writeLine("if responseData != nil {")
+	g.indent()
+	g.writeLine("transformedResponse := transformResponseData(responseData)")
+	g.writeLine("ctx.SetResponseData(transformedResponse)")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("})")
+	g.writeLine("")
+}
+
+// generateValidationInterceptorLogic generates validation interceptor logic
+func (g *CodeGenerator) generateValidationInterceptorLogic() {
+	g.writeLine("// Validation interceptor logic")
+	g.writeLine("// Validate request headers")
+	g.writeLine("if contentType := ctx.GetHeader(\"Content-Type\"); contentType == \"\" {")
+	g.indent()
+	g.writeLine("ctx.JSON(400, map[string]string{\"error\": \"Content-Type header is required\"})")
+	g.writeLine("ctx.Abort()")
+	g.writeLine("return")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	g.writeLine("// Validate request body structure")
+	g.writeLine("if requestBody := ctx.GetRequestBody(); requestBody != nil {")
+	g.indent()
+	g.writeLine("if !isValidRequestStructure(requestBody) {")
+	g.indent()
+	g.writeLine("ctx.JSON(400, map[string]string{\"error\": \"Invalid request body structure\"})")
+	g.writeLine("ctx.Abort()")
+	g.writeLine("return")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	g.writeLine("// Add response validation")
+	g.writeLine("ctx.OnBeforeResponse(func() {")
+	g.indent()
+	g.writeLine("responseData := ctx.GetResponseData()")
+	g.writeLine("if responseData != nil && !isValidResponseStructure(responseData) {")
+	g.indent()
+	g.writeLine("// Log validation error and send generic error response")
+	g.writeLine("fmt.Printf(\"Warning: Response validation failed for %s %s\\n\", ctx.GetMethod(), ctx.GetPath())")
+	g.writeLine("ctx.JSON(500, map[string]string{\"error\": \"Internal server error\"})")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("})")
+	g.writeLine("")
+}
+
+// generateGenericInterceptorLogic generates generic interceptor logic for custom interceptors
+func (g *CodeGenerator) generateGenericInterceptorLogic(interceptorName string) {
+	g.writeLine(fmt.Sprintf("// %s interceptor logic", interceptorName))
+	g.writeLine("// TODO: Implement your custom interceptor logic here")
+	g.writeLine("")
+	g.writeLine("// Example: Pre-processing")
+	g.writeLine("// requestData := ctx.GetRequestData()")
+	g.writeLine("// if !validateRequest(requestData) {")
+	g.writeLine("//     ctx.JSON(400, map[string]string{\"error\": \"Invalid request\"})")
+	g.writeLine("//     ctx.Abort()")
+	g.writeLine("//     return")
+	g.writeLine("// }")
+	g.writeLine("")
+	g.writeLine("// Example: Post-processing")
+	g.writeLine("// ctx.OnFinished(func() {")
+	g.writeLine("//     // Perform cleanup or logging")
+	g.writeLine("//     fmt.Printf(\"Request completed: %s %s\\n\", ctx.GetMethod(), ctx.GetPath())")
+	g.writeLine("// })")
 	g.writeLine("")
 }
 
