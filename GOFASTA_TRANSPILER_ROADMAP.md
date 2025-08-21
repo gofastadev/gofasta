@@ -11,9 +11,11 @@
 | ✅**Completed**  | ❌**Pending**              |
 | ---------------------- | -------------------------------- |
 | Basic REST API transpilation | Advanced decorator patterns |
-| Parameter decorators   | Error handling decorators |
-| Controller/Service generation | Validation decorators |
-| Dependency injection wiring | Middleware decorators |
+| Parameter decorators   | WebSocket decorators |
+| Controller/Service generation | GraphQL decorators |
+| Dependency injection wiring | Testing decorators |
+| **Validation decorators** | Route versioning |
+| Middleware decorators | Microservices decorators |
 
 ---
 
@@ -133,38 +135,51 @@
 
 #### 🔥 2.2 Validation Decorators `[HIGH PRIORITY]`
 
-- [ ] **Built-in validation decorator transpilation**
+- [🔄] **Built-in validation decorator transpilation (PARTIALLY COMPLETE)**
   ```gofa
+  @Injectable()
   type CreateUserDto struct {
-      Email    string `validate:"@IsEmail()"`
-      Age      int    `validate:"@Min(18) @Max(120)"`
-      Name     string `validate:"@IsNotEmpty() @Length(2,50)"`
-      Tags     []string `validate:"@IsArray() @ArrayMinSize(1)"`
-      Profile  UserProfile `validate:"@ValidateNested()"`
+      @IsEmail()
+      Email    string
+      
+      @Min(18)
+      @Max(120)
+      Age      int
+      
+      @IsNotEmpty()
+      @Length(2,50)
+      Name     string
+      
+      @IsArray()
+      @ArrayMinSize(1)
+      Tags     []string
+      
+      @ValidateNested()
+      Profile  UserProfile
   }
   ```
 
 ##### **🎯 Complete Built-in Validation Decorators List**
 
 **📝 Type Validation Decorators**
-- [ ] `@IsString()` - Validate value is string type
-- [ ] `@IsNumber()` - Validate value is numeric (int, float, etc.)
+- [X] `@IsString()` - Validate value is string type
+- [X] `@IsNumber()` - Validate value is numeric (int, float, etc.)
 - [ ] `@IsInt()` - Validate value is integer
 - [ ] `@IsFloat()` - Validate value is floating point
 - [ ] `@IsBoolean()` - Validate value is boolean
-- [ ] `@IsArray()` - Validate value is array/slice
+- [X] `@IsArray()` - Validate value is array/slice
 - [ ] `@IsObject()` - Validate value is object/struct
 - [ ] `@IsDate()` - Validate value is valid date
-- [ ] `@IsUUID()` - Validate value is valid UUID format
+- [X] `@IsUUID()` - Validate value is valid UUID format
 
 **📧 Format Validation Decorators**
-- [ ] `@IsEmail()` - Validate email format
-- [ ] `@IsURL()` - Validate URL format  
+- [X] `@IsEmail()` - Validate email format
+- [X] `@IsURL()` - Validate URL format  
 - [ ] `@IsIP()` - Validate IP address format
 - [ ] `@IsJSON()` - Validate JSON format
-- [ ] `@IsAlpha()` - Validate contains only letters
-- [ ] `@IsAlphanumeric()` - Validate contains only letters and numbers
-- [ ] `@IsNumeric()` - Validate contains only numbers
+- [X] `@IsAlpha()` - Validate contains only letters
+- [X] `@IsAlphanumeric()` - Validate contains only letters and numbers
+- [X] `@IsNumeric()` - Validate contains only numbers
 - [ ] `@IsHexColor()` - Validate hex color format
 - [ ] `@IsPhoneNumber()` - Validate phone number format
 - [ ] `@IsCreditCard()` - Validate credit card number format
@@ -172,17 +187,17 @@
 - [ ] `@IsBase64()` - Validate base64 encoded string
 
 **🔢 Range & Length Validation Decorators**  
-- [ ] `@Min(value)` - Validate minimum value (numbers) or length (strings/arrays)
-- [ ] `@Max(value)` - Validate maximum value (numbers) or length (strings/arrays)
-- [ ] `@Length(min, max)` - Validate string/array length range
+- [X] `@Min(value)` - Validate minimum value (numbers) or length (strings/arrays)
+- [X] `@Max(value)` - Validate maximum value (numbers) or length (strings/arrays)
+- [X] `@Length(min, max)` - Validate string/array length range
 - [ ] `@MinLength(length)` - Validate minimum string/array length
 - [ ] `@MaxLength(length)` - Validate maximum string/array length
-- [ ] `@ArrayMinSize(size)` - Validate minimum array size
+- [X] `@ArrayMinSize(size)` - Validate minimum array size
 - [ ] `@ArrayMaxSize(size)` - Validate maximum array size
 - [ ] `@ArrayNotEmpty()` - Validate array is not empty
 
 **🔍 Content Validation Decorators**
-- [ ] `@IsNotEmpty()` - Validate value is not empty
+- [X] `@IsNotEmpty()` - Validate value is not empty
 - [ ] `@IsEmpty()` - Validate value is empty  
 - [ ] `@IsOptional()` - Mark field as optional (skip validation if nil/empty)
 - [ ] `@IsDefined()` - Validate value is defined (not nil)
@@ -202,7 +217,7 @@
 - [ ] `@Custom(validatorFunc)` - Custom validation function
 
 **🏢 Business Logic Validation Decorators**
-- [ ] `@IsPositive()` - Validate number is positive
+- [X] `@IsPositive()` - Validate number is positive
 - [ ] `@IsNegative()` - Validate number is negative
 - [ ] `@IsPastDate()` - Validate date is in the past
 - [ ] `@IsFutureDate()` - Validate date is in the future
@@ -304,15 +319,31 @@ type ValidationResult struct {
 }
 ```
 
-**🔧 Implementation Strategy**
-1. **Parse validation decorators** from struct field tags
-2. **Generate validation functions** for each DTO struct  
-3. **Generate helper validation functions** (isValidEmail, etc.)
-4. **Generate ValidationError struct** and related types
-5. **Integrate with HTTP parameter extraction** (@Body decorator)
-6. **Support nested validation** with @ValidateNested()
-7. **Generate conditional validation** logic for @IsOptional()
-8. **Create validation middleware** for automatic DTO validation
+**🔄 Implementation Strategy - PARTIALLY COMPLETED**
+1. ✅ **Parse validation decorators** from field-level decorators (not tags)
+2. ✅ **Generate validation functions** for each DTO struct  
+3. 🔄 **Generate helper validation functions** (isValidEmail, isValidURL, isAlpha, isAlphanumeric, isNumeric, isValidUUID - **only 6 helpers implemented**)
+4. ✅ **Generate ValidationError struct** and related types
+5. ✅ **Integrate with HTTP parameter extraction** (@Body decorator)
+6. ❌ **Support nested validation** with @ValidateNested() - **NOT IMPLEMENTED**
+7. ❌ **Generate conditional validation** logic for @IsOptional() - **NOT IMPLEMENTED**
+8. ✅ **Field-level decorator syntax** for better developer experience
+
+**📊 Current Implementation Status:**
+- **~15 out of 60+ validation decorators** actually implemented
+- **Core validation infrastructure** complete (ValidationError, parsing, generation)
+- **Field-level decorators** working correctly 
+- **Basic validation types** working (email, URL, min/max, length, array checks)
+- **Missing implementations**: Most format validations, content validations, pattern validations, business logic validations
+
+**⚠️ Still Needed:**
+- ~45 more validation decorators to complete the full specification
+- Pattern matching (@Matches, @IsLowercase, @IsUppercase)
+- Content validation (@IsEmpty, @IsOptional, @IsDefined, @Contains, etc.)
+- Advanced format validation (@IsIP, @IsJSON, @IsPhoneNumber, etc.)
+- Business logic validation (@IsNegative, @IsPastDate, @IsFutureDate, etc.)
+- Nested validation (@ValidateNested)
+- Conditional validation (@ValidateIf)
 
 #### 🟡 2.3 Advanced Routing Decorators `[MEDIUM PRIORITY]`
 
@@ -427,8 +458,8 @@ type ValidationResult struct {
 - 🔄 Error handling decorators implemented
 
 ### 🎯 Milestone 2: Advanced Patterns (Phase 2)
-- ⏳ Middleware decorators fully functional
-- ⏳ Validation decorators complete
+- ✅ Middleware decorators fully functional
+- 🔄 **Validation decorators partially complete (~25% done)**
 - ⏳ Complex routing patterns working
 
 ### 🎯 Milestone 3: Full Decorator Parity (Phase 3)
@@ -478,13 +509,13 @@ router.GET("/users/:id", func(ctx *http.RequestContext) {
 **Current Focus**: Transpiler-specific features only
 **Next Phase**: Return to framework development after transpiler completion
 
-| Priority | Feature | Type |
-|----------|---------|------|
-| 1️⃣ | `@Catch()` decorator | Transpiler |
-| 2️⃣ | `@HttpCode()` decorator | Transpiler |
-| 3️⃣ | Validation decorators | Transpiler |
-| 4️⃣ | Middleware decorators | Transpiler |
-| 5️⃣ | AST optimization | Transpiler |
+| Priority | Feature | Type | Status |
+|----------|---------|------|--------|
+| 1️⃣ | `@Catch()` decorator | Transpiler | ✅ Complete |
+| 2️⃣ | `@HttpCode()` decorator | Transpiler | ✅ Complete |
+| 3️⃣ | **Validation decorators** | Transpiler | 🔄 **~25% Complete** |
+| 4️⃣ | Middleware decorators | Transpiler | ✅ Complete |
+| 5️⃣ | AST optimization | Transpiler | ⏳ Pending |
 
 ---
 
