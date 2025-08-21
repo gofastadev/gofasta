@@ -15,8 +15,10 @@ func TestValidationDecoratorTranspilation(t *testing.T) {
 			name: "IsEmail validation decorator",
 			input: `package main
 
+@Injectable()
 type CreateUserDto struct {
-	Email string ` + "`" + `validate:"@IsEmail()"` + "`" + `
+	@IsEmail()
+	Email string
 }
 
 @Controller("/users")
@@ -40,11 +42,22 @@ func (c *UserController) createUser(@Body() data CreateUserDto) User {
 			name: "Multiple validation decorators",
 			input: `package main
 
+@Injectable()
 type CreateUserDto struct {
-	Email    string ` + "`" + `validate:"@IsEmail()"` + "`" + `
-	Age      int    ` + "`" + `validate:"@Min(18) @Max(120)"` + "`" + `
-	Name     string ` + "`" + `validate:"@IsNotEmpty() @Length(2,50)"` + "`" + `
-	Tags     []string ` + "`" + `validate:"@IsArray() @ArrayMinSize(1)"` + "`" + `
+	@IsEmail()
+	Email string
+	
+	@Min(18)
+	@Max(120)
+	Age int
+	
+	@IsNotEmpty()
+	@Length(2,50)
+	Name string
+	
+	@IsArray()
+	@ArrayMinSize(1)
+	Tags []string
 }
 
 @Controller("/users")
@@ -79,11 +92,19 @@ func (c *UserController) createUser(@Body() data CreateUserDto) User {
 			name: "Format validation decorators", 
 			input: `package main
 
+@Injectable()
 type UserProfileDto struct {
-	Website     string ` + "`" + `validate:"@IsURL()"` + "`" + `
-	PhoneNumber string ` + "`" + `validate:"@IsNumeric()"` + "`" + `
-	Username    string ` + "`" + `validate:"@IsAlphanumeric()"` + "`" + `
-	Bio         string ` + "`" + `validate:"@IsAlpha()"` + "`" + `
+	@IsURL()
+	Website string
+	
+	@IsNumeric()
+	PhoneNumber string
+	
+	@IsAlphanumeric()
+	Username string
+	
+	@IsAlpha()
+	Bio string
 }
 
 @Controller("/profiles")
@@ -114,10 +135,17 @@ func (c *ProfileController) updateProfile(@Body() data UserProfileDto) {
 			name: "Business logic validation decorators",
 			input: `package main
 
+@Injectable()
 type ProductDto struct {
-	Price  float64 ` + "`" + `validate:"@IsPositive()"` + "`" + `
-	Stock  int     ` + "`" + `validate:"@Min(0)"` + "`" + `
-	Rating float64 ` + "`" + `validate:"@Min(0) @Max(5)"` + "`" + `
+	@IsPositive()
+	Price float64
+	
+	@Min(0)
+	Stock int
+	
+	@Min(0)
+	@Max(5)
+	Rating float64
 }
 
 @Controller("/products")
@@ -180,8 +208,10 @@ func TestValidationHelperFunctions(t *testing.T) {
 			name: "Email validation helper",
 			input: `package main
 
+@Injectable()
 type UserDto struct {
-	Email string ` + "`" + `validate:"@IsEmail()"` + "`" + `
+	@IsEmail()
+	Email string
 }
 
 @Controller("/users")
@@ -196,8 +226,10 @@ type UserController struct{}`,
 			name: "URL validation helper",
 			input: `package main
 
+@Injectable()
 type LinkDto struct {
-	Website string ` + "`" + `validate:"@IsURL()"` + "`" + `
+	@IsURL()
+	Website string
 }
 
 @Controller("/links")
@@ -211,11 +243,19 @@ type LinkController struct{}`,
 			name: "Multiple validation helpers",
 			input: `package main
 
+@Injectable()
 type ComplexDto struct {
-	Email    string ` + "`" + `validate:"@IsEmail()"` + "`" + `
-	Website  string ` + "`" + `validate:"@IsURL()"` + "`" + `
-	Username string ` + "`" + `validate:"@IsAlphanumeric()"` + "`" + `
-	Code     string ` + "`" + `validate:"@IsNumeric()"` + "`" + `
+	@IsEmail()
+	Email string
+	
+	@IsURL()
+	Website string
+	
+	@IsAlphanumeric()
+	Username string
+	
+	@IsNumeric()
+	Code string
 }
 
 @Controller("/complex")
@@ -261,8 +301,10 @@ type ComplexController struct{}`,
 func TestValidationStructGeneration(t *testing.T) {
 	input := `package main
 
+@Injectable()
 type TestDto struct {
-	Field1 string ` + "`" + `validate:"@IsEmail()"` + "`" + `
+	@IsEmail()
+	Field1 string
 }
 
 @Controller("/test")
@@ -307,42 +349,56 @@ func TestValidationDecoratorParsing(t *testing.T) {
 	
 	tests := []struct {
 		name     string
-		tagContent string
+		decorators []*DecoratorNode
 		expected []ValidationRule
 	}{
 		{
 			name: "Single decorator",
-			tagContent: "@IsEmail()",
+			decorators: []*DecoratorNode{
+				{
+					Name: "IsEmail",
+					Args: []DecoratorArg{},
+				},
+			},
 			expected: []ValidationRule{
 				{
 					Type:    "IsEmail",
 					Args:    []interface{}{},
 					Message: "must be a valid email address", 
-					Code:    "ISEMAIL",
+					Code:    "IS_EMAIL",
 				},
 			},
 		},
 		{
-			name: "Multiple decorators",
-			tagContent: "@Min(18) @Max(120)",
+			name: "Decorator with args",
+			decorators: []*DecoratorNode{
+				{
+					Name: "Min",
+					Args: []DecoratorArg{
+						{Value: 18},
+					},
+				},
+			},
 			expected: []ValidationRule{
 				{
 					Type:    "Min",
 					Args:    []interface{}{18},
 					Message: "must be at least 18",
-					Code:    "MIN",
-				},
-				{
-					Type:    "Max", 
-					Args:    []interface{}{120},
-					Message: "must be at most 120",
-					Code:    "MAX",
+					Code:    "MIN_VALUE",
 				},
 			},
 		},
 		{
 			name: "Decorator with multiple args",
-			tagContent: "@Length(2,50)",
+			decorators: []*DecoratorNode{
+				{
+					Name: "Length",
+					Args: []DecoratorArg{
+						{Value: 2},
+						{Value: 50},
+					},
+				},
+			},
 			expected: []ValidationRule{
 				{
 					Type:    "Length",
@@ -356,7 +412,12 @@ func TestValidationDecoratorParsing(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			rules := generator.parseValidationDecorators(`validate:"` + tt.tagContent + `"`)
+			field := &FieldNode{
+				Name: "TestField",
+				Type: "string",
+				Decorators: tt.decorators,
+			}
+			rules := generator.parseValidationDecoratorsFromField(field)
 			
 			if len(rules) != len(tt.expected) {
 				t.Fatalf("Expected %d rules, got %d", len(tt.expected), len(rules))
@@ -391,9 +452,13 @@ func TestValidationDecoratorParsing(t *testing.T) {
 func TestValidationImportGeneration(t *testing.T) {
 	input := `package main
 
+@Injectable()
 type TestDto struct {
-	Email   string ` + "`" + `validate:"@IsEmail()"` + "`" + `
-	Website string ` + "`" + `validate:"@IsURL()"` + "`" + `
+	@IsEmail()
+	Email string
+	
+	@IsURL()
+	Website string
 }
 
 @Controller("/test")

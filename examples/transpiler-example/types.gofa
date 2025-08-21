@@ -13,9 +13,15 @@ type User struct {
 // DTOs for user operations
 @Injectable()
 type CreateUserDto struct {
-    Name  string `json:"name" validate:"required"`
-    Email string `json:"email" validate:"required,email"`
-    Age   int    `json:"age" validate:"min=0,max=120"`
+    @IsNotEmpty()
+    Name  string `json:"name"`
+    
+    @IsEmail()
+    Email string `json:"email"`
+    
+    @Min(0)
+    @Max(120)
+    Age   int    `json:"age"`
 }
 
 @Injectable()
@@ -113,12 +119,25 @@ type Product struct {
 
 @Injectable()
 type CreateProductDto struct {
-    Name        string    `json:"name" validate:"required"`
+    @IsNotEmpty()
+    Name        string    `json:"name"`
+    
+    @MaxLength(1000)
     Description string    `json:"description"`
-    Price       float64   `json:"price" validate:"min=0"`
-    Category    string    `json:"category" validate:"required"`
+    
+    @Min(0)
+    Price       float64   `json:"price"`
+    
+    @IsNotEmpty()
+    Category    string    `json:"category"`
+    
+    @IsOptional()
     Brand       string    `json:"brand"`
+    
+    @ArrayNotEmpty()
     Tags        []string  `json:"tags"`
+    
+    @ArrayMaxSize(10)
     Features    []string  `json:"features"`
 }
 

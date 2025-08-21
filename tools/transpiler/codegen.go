@@ -2698,7 +2698,7 @@ func (g *CodeGenerator) extractValidationFromStruct(structName string, fields []
 	
 	for _, field := range fields {
 		if g.hasValidationDecorators(field) {
-			validators := g.parseValidationDecorators(field.Tag)
+			validators := g.parseValidationDecoratorsFromField(field)
 			if len(validators) > 0 {
 				validationField := &ValidationFieldInfo{
 					Name:       field.Name,
@@ -2721,13 +2721,51 @@ func (g *CodeGenerator) extractValidationFromStruct(structName string, fields []
 	}
 }
 
-// hasValidationDecorators checks if a field has validation decorators in its struct tag
+// hasValidationDecorators checks if a field has validation decorators
 func (g *CodeGenerator) hasValidationDecorators(field *FieldNode) bool {
-	return strings.Contains(field.Tag, "validate:") || strings.Contains(field.Tag, "@Is") || 
-		   strings.Contains(field.Tag, "@Min") || strings.Contains(field.Tag, "@Max") ||
-		   strings.Contains(field.Tag, "@Length") || strings.Contains(field.Tag, "@Array")
+	for _, decorator := range field.Decorators {
+		if IsValidationDecorator(GetDecoratorType(decorator.Name)) {
+			return true
+		}
+	}
+	return false
 }
 
+// parseValidationDecoratorsFromField parses validation decorators from field decorators
+func (g *CodeGenerator) parseValidationDecoratorsFromField(field *FieldNode) []ValidationRule {
+	var rules []ValidationRule
+	
+	for _, decorator := range field.Decorators {
+		decoratorType := GetDecoratorType(decorator.Name)
+		if IsValidationDecorator(decoratorType) {
+			rule := g.parseValidationRuleFromDecorator(decorator)
+			if rule != nil {
+				rules = append(rules, *rule)
+			}
+		}
+	}
+	
+	return rules
+}
+
+// parseValidationRuleFromDecorator parses a single validation rule from a decorator node
+func (g *CodeGenerator) parseValidationRuleFromDecorator(decorator *DecoratorNode) *ValidationRule {
+	return &ValidationRule{
+		Type:    decorator.Name,
+		Args:    g.convertDecoratorArgsToInterface(decorator.Args),
+		Message: g.getValidationMessage(decorator.Name, g.convertDecoratorArgsToInterface(decorator.Args)),
+		Code:    g.getValidationCode(decorator.Name),
+	}
+}
+
+// convertDecoratorArgsToInterface converts decorator arguments to interface{} slice
+func (g *CodeGenerator) convertDecoratorArgsToInterface(args []DecoratorArg) []interface{} {
+	var result []interface{}
+	for _, arg := range args {
+		result = append(result, arg.Value)
+	}
+	return result
+}
 
 // parseValidationDecorators parses validation decorators from struct tags
 func (g *CodeGenerator) parseValidationDecorators(tag string) []ValidationRule {
