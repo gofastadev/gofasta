@@ -2967,6 +2967,8 @@ func (g *CodeGenerator) getValidationMessage(ruleType string, args []interface{}
 		return "must be a valid phone number"
 	case "IsCreditCard":
 		return "must be a valid credit card number"
+	case "IsISBN":
+		return "must be a valid ISBN"
 	case "IsPositive":
 		return "must be a positive number"
 	case "IsNegative":
@@ -3014,6 +3016,8 @@ func (g *CodeGenerator) getValidationCode(ruleType string) string {
 		return "IS_IP"
 	case "IsJSON":
 		return "IS_JSON"
+	case "IsISBN":
+		return "IS_ISBN"
 	default:
 		// Convert CamelCase to SNAKE_CASE for other cases
 		var result strings.Builder
@@ -3439,6 +3443,100 @@ func (g *CodeGenerator) generateValidationHelperFunctions() {
 	g.writeLine("return sum%10 == 0")
 	g.unindent()
 	g.writeLine("}")
+	g.writeLine("")
+	
+	// ISBN validation (both ISBN-10 and ISBN-13)
+	g.writeLine("func isISBN(value interface{}) bool {")
+	g.indent()
+	g.writeLine("str, ok := value.(string)")
+	g.writeLine("if !ok {")
+	g.indent()
+	g.writeLine("return false")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	g.writeLine("// Remove all non-digit and non-X characters")
+	g.writeLine("isbn := strings.Map(func(r rune) rune {")
+	g.indent()
+	g.writeLine("if (r >= '0' && r <= '9') || r == 'X' || r == 'x' {")
+	g.indent()
+	g.writeLine("return r")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("return -1")
+	g.unindent()
+	g.writeLine("}, str)")
+	g.writeLine("")
+	g.writeLine("// Convert to uppercase for X handling")
+	g.writeLine("isbn = strings.ToUpper(isbn)")
+	g.writeLine("")
+	g.writeLine("// Check length for ISBN-10 or ISBN-13")
+	g.writeLine("if len(isbn) == 10 {")
+	g.indent()
+	g.writeLine("return isISBN10(isbn)")
+	g.unindent()
+	g.writeLine("} else if len(isbn) == 13 {")
+	g.indent()
+	g.writeLine("return isISBN13(isbn)")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	g.writeLine("return false")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	
+	// ISBN-10 validation helper
+	g.writeLine("func isISBN10(isbn string) bool {")
+	g.indent()
+	g.writeLine("sum := 0")
+	g.writeLine("for i := 0; i < 9; i++ {")
+	g.indent()
+	g.writeLine("digit := int(isbn[i] - '0')")
+	g.writeLine("sum += digit * (10 - i)")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	g.writeLine("// Handle check digit (can be X for 10)")
+	g.writeLine("var checkDigit int")
+	g.writeLine("if isbn[9] == 'X' {")
+	g.indent()
+	g.writeLine("checkDigit = 10")
+	g.unindent()
+	g.writeLine("} else {")
+	g.indent()
+	g.writeLine("checkDigit = int(isbn[9] - '0')")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	g.writeLine("sum += checkDigit")
+	g.writeLine("return sum%11 == 0")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	
+	// ISBN-13 validation helper
+	g.writeLine("func isISBN13(isbn string) bool {")
+	g.indent()
+	g.writeLine("sum := 0")
+	g.writeLine("for i := 0; i < 13; i++ {")
+	g.indent()
+	g.writeLine("digit := int(isbn[i] - '0')")
+	g.writeLine("if i%2 == 0 {")
+	g.indent()
+	g.writeLine("sum += digit")
+	g.unindent()
+	g.writeLine("} else {")
+	g.indent()
+	g.writeLine("sum += digit * 3")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	g.writeLine("return sum%10 == 0")
+	g.unindent()
+	g.writeLine("}")
 }
 
 // generateDTOValidationFunction generates validation function for a DTO
@@ -3605,6 +3703,12 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 	case "IsCreditCard":
 		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
 		g.writeLine(fmt.Sprintf("if !isCreditCard(%s) {", fieldName))
+		g.generateValidationError(field.Name, fieldName, rule)
+		g.writeLine("}")
+		
+	case "IsISBN":
+		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+		g.writeLine(fmt.Sprintf("if !isISBN(%s) {", fieldName))
 		g.generateValidationError(field.Name, fieldName, rule)
 		g.writeLine("}")
 		

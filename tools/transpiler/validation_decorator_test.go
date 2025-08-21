@@ -486,6 +486,43 @@ func (c *DataController) createTest(@Body() data DataDto) {
 				"Luhn algorithm",
 			},
 		},
+		{
+			name: "IsISBN validation decorator",
+			input: `package main
+
+@Injectable()
+type DataDto struct {
+	@IsISBN()
+	BookISBN string
+	
+	@IsISBN()
+	Magazine string
+	
+	@IsISBN()
+	Reference string
+}
+
+@Controller("/data")
+type DataController struct {
+}
+
+@Post("/")
+func (c *DataController) createTest(@Body() data DataDto) {
+}`,
+			expected: []string{
+				"ValidationError",
+				"ValidateDataDto",
+				"func isISBN(value interface{}) bool",
+				"IsISBN validation",
+				"if !isISBN(dto.BookISBN) {",
+				"if !isISBN(dto.Magazine) {",
+				"if !isISBN(dto.Reference) {",
+				"must be a valid ISBN",
+				"IS_ISBN",
+				"isISBN10",
+				"isISBN13",
+			},
+		},
 	}
 
 	for _, tt := range tests {

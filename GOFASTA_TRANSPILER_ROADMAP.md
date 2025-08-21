@@ -182,7 +182,7 @@
 - [X] `@IsHexColor()` - Validate hex color format
 - [X] `@IsPhoneNumber()` - Validate phone number format
 - [X] `@IsCreditCard()` - Validate credit card number format
-- [ ] `@IsISBN()` - Validate ISBN format
+- [X] `@IsISBN()` - Validate ISBN format
 - [ ] `@IsBase64()` - Validate base64 encoded string
 
 **🔢 Range & Length Validation Decorators**  
