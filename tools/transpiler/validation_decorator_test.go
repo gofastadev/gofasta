@@ -778,6 +778,103 @@ func (c *DataController) createTest(@Body() data DataDto) {
 				"must contain at least 1 item(s)",
 			},
 		},
+		{
+			name: "Comparison validation decorators",
+			input: `package main
+
+@Injectable()
+type DataDto struct {
+	@IsDefined()
+	RequiredField string
+	
+	@NotEquals("admin")
+	Username string
+	
+	@Equals("confirmed")
+	Status string
+	
+	@Contains("@")
+	Email string
+	
+	@NotContains("password")
+	PublicMessage string
+}
+
+@Controller("/data")
+type DataController struct {
+}
+
+@Post("/")
+func (c *DataController) createTest(@Body() data DataDto) {
+}`,
+			expected: []string{
+				"ValidationError",
+				"ValidateDataDto",
+				"IsDefined validation",
+				"NotEquals validation",
+				"Equals validation",
+				"Contains validation",
+				"NotContains validation",
+				"if dto.RequiredField == \"\" {",
+				"if dto.Username == \"admin\" {",
+				"if dto.Status != \"confirmed\" {",
+				"if !strings.Contains(dto.Email, \"@\") {",
+				"if strings.Contains(dto.PublicMessage, \"password\") {",
+				"must be defined",
+				"must not equal admin",
+				"must equal confirmed",
+				"must contain @",
+				"must not contain password",
+				"IS_DEFINED",
+				"NOT_EQUALS",
+				"EQUALS",
+				"CONTAINS",
+				"NOT_CONTAINS",
+			},
+		},
+		{
+			name: "IsIn and IsNotIn validation decorators",
+			input: `package main
+
+@Injectable()
+type DataDto struct {
+	@IsIn("red", "green", "blue")
+	Color string
+	
+	@IsNotIn("admin", "root", "system")
+	Username string
+	
+	@IsIn(1, 2, 3, 4, 5)
+	Rating int
+}
+
+@Controller("/data")
+type DataController struct {
+}
+
+@Post("/")
+func (c *DataController) createTest(@Body() data DataDto) {
+}`,
+			expected: []string{
+				"ValidationError",
+				"ValidateDataDto",
+				"IsIn validation",
+				"IsNotIn validation",
+				"validValues := []interface{}{\"red\", \"green\", \"blue\"}",
+				"invalidValues := []interface{}{\"admin\", \"root\", \"system\"}",
+				"validValues := []interface{}{1, 2, 3, 4, 5}",
+				"found := false",
+				"for _, v := range validValues {",
+				"for _, v := range invalidValues {",
+				"if dto.Color == v {",
+				"if dto.Username == v {",
+				"if dto.Rating == v {",
+				"must be one of the allowed values",
+				"must not be one of the forbidden values",
+				"IS_IN",
+				"IS_NOT_IN",
+			},
+		},
 	}
 
 	for _, tt := range tests {

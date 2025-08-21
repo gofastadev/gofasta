@@ -2997,6 +2997,32 @@ func (g *CodeGenerator) getValidationMessage(ruleType string, args []interface{}
 		return "must contain only letters and numbers"
 	case "IsNumeric":
 		return "must contain only numbers"
+	case "IsDefined":
+		return "must be defined"
+	case "NotEquals":
+		if len(args) > 0 {
+			return fmt.Sprintf("must not equal %v", args[0])
+		}
+		return "must not equal specified value"
+	case "Equals":
+		if len(args) > 0 {
+			return fmt.Sprintf("must equal %v", args[0])
+		}
+		return "must equal specified value"
+	case "Contains":
+		if len(args) > 0 {
+			return fmt.Sprintf("must contain %v", args[0])
+		}
+		return "must contain specified substring"
+	case "NotContains":
+		if len(args) > 0 {
+			return fmt.Sprintf("must not contain %v", args[0])
+		}
+		return "must not contain specified substring"
+	case "IsIn":
+		return "must be one of the allowed values"
+	case "IsNotIn":
+		return "must not be one of the forbidden values"
 	default:
 		return fmt.Sprintf("%s validation failed", ruleType)
 	}
@@ -3038,6 +3064,20 @@ func (g *CodeGenerator) getValidationCode(ruleType string) string {
 		return "IS_JSON"
 	case "IsISBN":
 		return "IS_ISBN"
+	case "IsDefined":
+		return "IS_DEFINED"
+	case "NotEquals":
+		return "NOT_EQUALS"
+	case "Equals":
+		return "EQUALS"
+	case "Contains":
+		return "CONTAINS"
+	case "NotContains":
+		return "NOT_CONTAINS"
+	case "IsIn":
+		return "IS_IN"
+	case "IsNotIn":
+		return "IS_NOT_IN"
 	default:
 		// Convert CamelCase to SNAKE_CASE for other cases
 		var result strings.Builder
@@ -3904,9 +3944,101 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 		
 	case "IsNumeric":
 		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
-		g.writeLine(fmt.Sprintf("if !isNumeric(%s) {", fieldName))
+		wrapValidation(func() {
+			g.writeLine(fmt.Sprintf("if !isNumeric(%s) {", fieldName))
+			g.generateValidationError(field.Name, fieldName, rule)
+			g.writeLine("}")
+		})
+		
+	case "IsDefined":
+		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+		if strings.HasPrefix(field.Type, "[]") {
+			g.writeLine(fmt.Sprintf("if %s == nil {", fieldName))
+		} else if field.Type == "string" {
+			g.writeLine(fmt.Sprintf("if %s == \"\" {", fieldName))
+		} else {
+			g.writeLine(fmt.Sprintf("if %s == nil {", fieldName))
+		}
 		g.generateValidationError(field.Name, fieldName, rule)
 		g.writeLine("}")
+		
+	case "NotEquals":
+		if len(rule.Args) > 0 {
+			g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+			wrapValidation(func() {
+				g.writeLine(fmt.Sprintf("if %s == %v {", fieldName, g.formatValue(rule.Args[0])))
+				g.generateValidationError(field.Name, fieldName, rule)
+				g.writeLine("}")
+			})
+		}
+		
+	case "Equals":
+		if len(rule.Args) > 0 {
+			g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+			wrapValidation(func() {
+				g.writeLine(fmt.Sprintf("if %s != %v {", fieldName, g.formatValue(rule.Args[0])))
+				g.generateValidationError(field.Name, fieldName, rule)
+				g.writeLine("}")
+			})
+		}
+		
+	case "Contains":
+		if len(rule.Args) > 0 {
+			g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+			wrapValidation(func() {
+				g.writeLine(fmt.Sprintf("if !strings.Contains(%s, %v) {", fieldName, g.formatValue(rule.Args[0])))
+				g.generateValidationError(field.Name, fieldName, rule)
+				g.writeLine("}")
+			})
+		}
+		
+	case "NotContains":
+		if len(rule.Args) > 0 {
+			g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+			wrapValidation(func() {
+				g.writeLine(fmt.Sprintf("if strings.Contains(%s, %v) {", fieldName, g.formatValue(rule.Args[0])))
+				g.generateValidationError(field.Name, fieldName, rule)
+				g.writeLine("}")
+			})
+		}
+		
+	case "IsIn":
+		if len(rule.Args) > 0 {
+			g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+			wrapValidation(func() {
+				g.writeLine(fmt.Sprintf("validValues := []interface{}{%s}", g.formatValueList(rule.Args)))
+				g.writeLine("found := false")
+				g.writeLine("for _, v := range validValues {")
+				g.indent()
+				g.writeLine(fmt.Sprintf("if %s == v {", fieldName))
+				g.indent()
+				g.writeLine("found = true")
+				g.writeLine("break")
+				g.unindent()
+				g.writeLine("}")
+				g.unindent()
+				g.writeLine("}")
+				g.writeLine("if !found {")
+				g.generateValidationError(field.Name, fieldName, rule)
+				g.writeLine("}")
+			})
+		}
+		
+	case "IsNotIn":
+		if len(rule.Args) > 0 {
+			g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+			wrapValidation(func() {
+				g.writeLine(fmt.Sprintf("invalidValues := []interface{}{%s}", g.formatValueList(rule.Args)))
+				g.writeLine("for _, v := range invalidValues {")
+				g.indent()
+				g.writeLine(fmt.Sprintf("if %s == v {", fieldName))
+				g.generateValidationError(field.Name, fieldName, rule)
+				g.writeLine("break")
+				g.writeLine("}")
+				g.unindent()
+				g.writeLine("}")
+			})
+		}
 	}
 }
 
@@ -3942,6 +4074,31 @@ func (g *CodeGenerator) isFieldOptional(field *ValidationFieldInfo) bool {
 		}
 	}
 	return false
+}
+
+// formatValue formats a value for Go code generation
+func (g *CodeGenerator) formatValue(value interface{}) string {
+	switch v := value.(type) {
+	case string:
+		return fmt.Sprintf("\"%s\"", v)
+	case int, int8, int16, int32, int64:
+		return fmt.Sprintf("%d", v)
+	case float32, float64:
+		return fmt.Sprintf("%f", v)
+	case bool:
+		return fmt.Sprintf("%t", v)
+	default:
+		return fmt.Sprintf("%v", v)
+	}
+}
+
+// formatValueList formats a list of values for Go code generation
+func (g *CodeGenerator) formatValueList(values []interface{}) string {
+	var formattedValues []string
+	for _, value := range values {
+		formattedValues = append(formattedValues, g.formatValue(value))
+	}
+	return strings.Join(formattedValues, ", ")
 }
 
 // addValidationImportsIfNeeded adds validation imports if needed

@@ -199,13 +199,13 @@
 - [X] `@IsNotEmpty()` - Validate value is not empty
 - [X] `@IsEmpty()` - Validate value is empty  
 - [X] `@IsOptional()` - Mark field as optional (skip validation if nil/empty)
-- [ ] `@IsDefined()` - Validate value is defined (not nil)
-- [ ] `@NotEquals(value)` - Validate value does not equal specified value
-- [ ] `@Equals(value)` - Validate value equals specified value
-- [ ] `@Contains(substring)` - Validate string contains substring
-- [ ] `@NotContains(substring)` - Validate string does not contain substring
-- [ ] `@IsIn(values...)` - Validate value is in allowed list
-- [ ] `@IsNotIn(values...)` - Validate value is not in forbidden list
+- [X] `@IsDefined()` - Validate value is defined (not nil)
+- [X] `@NotEquals(value)` - Validate value does not equal specified value
+- [X] `@Equals(value)` - Validate value equals specified value
+- [X] `@Contains(substring)` - Validate string contains substring
+- [X] `@NotContains(substring)` - Validate string does not contain substring
+- [X] `@IsIn(values...)` - Validate value is in allowed list
+- [X] `@IsNotIn(values...)` - Validate value is not in forbidden list
 
 **🔄 Pattern & Custom Validation Decorators**
 - [ ] `@Matches(pattern)` - Validate against regex pattern
