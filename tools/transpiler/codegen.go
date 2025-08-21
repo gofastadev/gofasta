@@ -2959,6 +2959,8 @@ func (g *CodeGenerator) getValidationMessage(ruleType string, args []interface{}
 		return "must be a valid date"
 	case "IsIP":
 		return "must be a valid IP address"
+	case "IsJSON":
+		return "must be valid JSON"
 	case "IsPositive":
 		return "must be a positive number"
 	case "IsNegative":
@@ -3004,6 +3006,8 @@ func (g *CodeGenerator) getValidationCode(ruleType string) string {
 		return "IS_ALPHA"
 	case "IsIP":
 		return "IS_IP"
+	case "IsJSON":
+		return "IS_JSON"
 	default:
 		// Convert CamelCase to SNAKE_CASE for other cases
 		var result strings.Builder
@@ -3273,6 +3277,29 @@ func (g *CodeGenerator) generateValidationHelperFunctions() {
 	g.writeLine("}")
 	g.unindent()
 	g.writeLine("}")
+	g.writeLine("")
+	
+	// JSON validation
+	g.writeLine("func isJSON(value interface{}) bool {")
+	g.indent()
+	g.writeLine("switch v := value.(type) {")
+	g.writeLine("case string:")
+	g.indent()
+	g.writeLine("// Parse JSON string using json.Valid")
+	g.writeLine("return json.Valid([]byte(v))")
+	g.unindent()
+	g.writeLine("case []byte:")
+	g.indent()
+	g.writeLine("// Parse JSON bytes using json.Valid")
+	g.writeLine("return json.Valid(v)")
+	g.unindent()
+	g.writeLine("default:")
+	g.indent()
+	g.writeLine("return false")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
 }
 
 // generateDTOValidationFunction generates validation function for a DTO
@@ -3418,6 +3445,12 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 		g.generateValidationError(field.Name, fieldName, rule)
 		g.writeLine("}")
 		
+	case "IsJSON":
+		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+		g.writeLine(fmt.Sprintf("if !isJSON(%s) {", fieldName))
+		g.generateValidationError(field.Name, fieldName, rule)
+		g.writeLine("}")
+		
 	case "IsPositive":
 		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
 		g.writeLine(fmt.Sprintf("if %s <= 0 {", fieldName))
@@ -3490,6 +3523,12 @@ func (g *CodeGenerator) addValidationImportsIfNeeded(file *GofaFile) {
 		if needsNetImport {
 			g.addImport("net")
 		}
+		
+		// Check if JSON validation is used
+		needsJSONImport := g.usesJSONValidation(dtoStructs)
+		if needsJSONImport {
+			g.addImport("encoding/json")
+		}
 	}
 }
 
@@ -3538,6 +3577,20 @@ func (g *CodeGenerator) usesIPValidation(dtoStructs map[string]*ValidationStruct
 		for _, field := range dto.Fields {
 			for _, rule := range field.Validators {
 				if rule.Type == "IsIP" {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+// usesJSONValidation checks if any validation rules use JSON validation
+func (g *CodeGenerator) usesJSONValidation(dtoStructs map[string]*ValidationStructInfo) bool {
+	for _, dto := range dtoStructs {
+		for _, field := range dto.Fields {
+			for _, rule := range field.Validators {
+				if rule.Type == "IsJSON" {
 					return true
 				}
 			}

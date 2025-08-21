@@ -175,7 +175,7 @@
 - [X] `@IsEmail()` - Validate email format
 - [X] `@IsURL()` - Validate URL format  
 - [X] `@IsIP()` - Validate IP address format
-- [ ] `@IsJSON()` - Validate JSON format
+- [X] `@IsJSON()` - Validate JSON format
 - [X] `@IsAlpha()` - Validate contains only letters
 - [X] `@IsAlphanumeric()` - Validate contains only letters and numbers
 - [X] `@IsNumeric()` - Validate contains only numbers

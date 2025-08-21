@@ -342,6 +342,42 @@ func (c *NetworkController) createTest(@Body() data NetworkDto) {
 				"net.ParseIP",
 			},
 		},
+		{
+			name: "IsJSON validation decorator",
+			input: `package main
+
+@Injectable()
+type DataDto struct {
+	@IsJSON()
+	Config string
+	
+	@IsJSON()
+	Metadata interface{}
+	
+	@IsJSON()
+	Settings string
+}
+
+@Controller("/data")
+type DataController struct {
+}
+
+@Post("/")
+func (c *DataController) createTest(@Body() data DataDto) {
+}`,
+			expected: []string{
+				"ValidationError",
+				"ValidateDataDto",
+				"func isJSON(value interface{}) bool",
+				"IsJSON validation",
+				"if !isJSON(dto.Config) {",
+				"if !isJSON(dto.Metadata) {",
+				"if !isJSON(dto.Settings) {",
+				"must be valid JSON",
+				"IS_JSON",
+				"json.Valid",
+			},
+		},
 	}
 
 	for _, tt := range tests {
