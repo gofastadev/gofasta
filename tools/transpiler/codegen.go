@@ -2945,6 +2945,8 @@ func (g *CodeGenerator) getValidationMessage(ruleType string, args []interface{}
 			return fmt.Sprintf("must contain at most %v item(s)", args[0])
 		}
 		return "array too large"
+	case "ArrayNotEmpty":
+		return "must not be empty"
 	case "IsString":
 		return "must be a string"
 	case "IsNumber":
@@ -3016,6 +3018,8 @@ func (g *CodeGenerator) getValidationCode(ruleType string) string {
 		return "ARRAY_MIN_SIZE"
 	case "ArrayMaxSize":
 		return "ARRAY_MAX_SIZE"
+	case "ArrayNotEmpty":
+		return "ARRAY_NOT_EMPTY"
 	case "IsURL":
 		return "IS_URL"
 	case "IsNumeric":
@@ -3711,6 +3715,12 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 			g.generateValidationError(field.Name, fieldName, rule)
 			g.writeLine("}")
 		}
+		
+	case "ArrayNotEmpty":
+		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+		g.writeLine(fmt.Sprintf("if %s == nil || len(%s) == 0 {", fieldName, fieldName))
+		g.generateValidationError(field.Name, fieldName, rule)
+		g.writeLine("}")
 		
 	case "IsString":
 		// Type validation is typically handled at compile time in Go, but we can add runtime checks

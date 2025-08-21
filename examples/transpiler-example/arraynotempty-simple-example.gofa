@@ -1,0 +1,35 @@
+package main
+
+@Injectable()
+type ProductService struct {
+}
+
+func (s *ProductService) createProduct(dto ProductDto) {
+    // Body parameter validation will be generated automatically
+    // The dto will be validated using the @ArrayNotEmpty() decorators
+}
+
+@Injectable()
+type ProductDto struct {
+    @ArrayNotEmpty()
+    Tags []string             // Must not be empty (at least one tag required)
+
+    @ArrayNotEmpty()
+    Categories []string       // Must not be empty (at least one category required)
+    
+    @ArrayNotEmpty()
+    Features []string         // Must not be empty (at least one feature required)
+    
+    @ArrayNotEmpty()
+    Images []string           // Must not be empty (at least one image required)
+}
+
+@Controller("/api/products")
+type ProductController struct {
+    service *ProductService `inject:""`
+}
+
+@Post("/create")
+func (c *ProductController) createProduct(@Body() product ProductDto) {
+    c.service.createProduct(product)
+}

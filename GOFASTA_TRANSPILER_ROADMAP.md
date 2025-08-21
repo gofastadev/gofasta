@@ -193,7 +193,7 @@
 - [X] `@MaxLength(length)` - Validate maximum string/array length
 - [X] `@ArrayMinSize(size)` - Validate minimum array size
 - [X] `@ArrayMaxSize(size)` - Validate maximum array size
-- [ ] `@ArrayNotEmpty()` - Validate array is not empty
+- [X] `@ArrayNotEmpty()` - Validate array is not empty
 
 **🔍 Content Validation Decorators**
 - [X] `@IsNotEmpty()` - Validate value is not empty

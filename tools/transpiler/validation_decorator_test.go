@@ -667,6 +667,40 @@ func (c *DataController) createTest(@Body() data DataDto) {
 				"ARRAY_MAX_SIZE",
 			},
 		},
+		{
+			name: "ArrayNotEmpty validation decorator",
+			input: `package main
+
+@Injectable()
+type DataDto struct {
+	@ArrayNotEmpty()
+	RequiredTags []string
+	
+	@ArrayNotEmpty()
+	MandatoryCategories []string
+	
+	@ArrayNotEmpty()
+	EssentialItems []string
+}
+
+@Controller("/data")
+type DataController struct {
+}
+
+@Post("/")
+func (c *DataController) createTest(@Body() data DataDto) {
+}`,
+			expected: []string{
+				"ValidationError",
+				"ValidateDataDto",
+				"ArrayNotEmpty validation",
+				"if dto.RequiredTags == nil || len(dto.RequiredTags) == 0 {",
+				"if dto.MandatoryCategories == nil || len(dto.MandatoryCategories) == 0 {",
+				"if dto.EssentialItems == nil || len(dto.EssentialItems) == 0 {",
+				"must not be empty",
+				"ARRAY_NOT_EMPTY",
+			},
+		},
 	}
 
 	for _, tt := range tests {
