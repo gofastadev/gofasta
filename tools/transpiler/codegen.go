@@ -2971,6 +2971,11 @@ func (g *CodeGenerator) getValidationMessage(ruleType string, args []interface{}
 		return "must be a valid ISBN"
 	case "IsBase64":
 		return "must be valid Base64"
+	case "MinLength":
+		if len(args) > 0 {
+			return fmt.Sprintf("must be at least %v characters long", args[0])
+		}
+		return "too short"
 	case "IsPositive":
 		return "must be a positive number"
 	case "IsNegative":
@@ -3780,6 +3785,14 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 		g.writeLine(fmt.Sprintf("if !isBase64(%s) {", fieldName))
 		g.generateValidationError(field.Name, fieldName, rule)
 		g.writeLine("}")
+		
+	case "MinLength":
+		if len(rule.Args) > 0 {
+			g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+			g.writeLine(fmt.Sprintf("if len(%s) < %v {", fieldName, rule.Args[0]))
+			g.generateValidationError(field.Name, fieldName, rule)
+			g.writeLine("}")
+		}
 		
 	case "IsPositive":
 		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))

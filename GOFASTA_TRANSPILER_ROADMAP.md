@@ -183,13 +183,13 @@
 - [X] `@IsPhoneNumber()` - Validate phone number format
 - [X] `@IsCreditCard()` - Validate credit card number format
 - [X] `@IsISBN()` - Validate ISBN format
-- [ ] `@IsBase64()` - Validate base64 encoded string
+- [X] `@IsBase64()` - Validate base64 encoded string
 
 **🔢 Range & Length Validation Decorators**  
 - [X] `@Min(value)` - Validate minimum value (numbers) or length (strings/arrays)
 - [X] `@Max(value)` - Validate maximum value (numbers) or length (strings/arrays)
 - [X] `@Length(min, max)` - Validate string/array length range
-- [ ] `@MinLength(length)` - Validate minimum string/array length
+- [X] `@MinLength(length)` - Validate minimum string/array length
 - [ ] `@MaxLength(length)` - Validate maximum string/array length
 - [X] `@ArrayMinSize(size)` - Validate minimum array size
 - [ ] `@ArrayMaxSize(size)` - Validate maximum array size

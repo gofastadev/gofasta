@@ -559,6 +559,42 @@ func (c *DataController) createTest(@Body() data DataDto) {
 				"base64.StdEncoding.DecodeString",
 			},
 		},
+		{
+			name: "MinLength validation decorator",
+			input: `package main
+
+@Injectable()
+type DataDto struct {
+	@MinLength(5)
+	Username string
+	
+	@MinLength(8)
+	Password string
+	
+	@MinLength(3)
+	Name string
+}
+
+@Controller("/data")
+type DataController struct {
+}
+
+@Post("/")
+func (c *DataController) createTest(@Body() data DataDto) {
+}`,
+			expected: []string{
+				"ValidationError",
+				"ValidateDataDto",
+				"MinLength validation",
+				"if len(dto.Username) < 5 {",
+				"if len(dto.Password) < 8 {",
+				"if len(dto.Name) < 3 {",
+				"must be at least 5 characters long",
+				"must be at least 8 characters long",
+				"must be at least 3 characters long",
+				"MIN_LENGTH",
+			},
+		},
 	}
 
 	for _, tt := range tests {
