@@ -1,0 +1,25 @@
+package main
+
+// DTO demonstrating @IsIP() validation decorator
+@Injectable()
+type NetworkConfigDto struct {
+    @IsIP()
+    ServerAddress string
+    
+    @IsIP()
+    ClientAddress interface{} // Can be IPv4 or IPv6 address
+    
+    @IsIP()
+    GatewayAddress string
+    
+    @IsIP()
+    DNSServer interface{} // Runtime IP validation for interface{} types
+}
+
+@Controller("/network")
+type NetworkController struct {}
+
+@Post("/validate")
+func (c *NetworkController) validateNetwork(@Body() data NetworkConfigDto) {
+    // Generated ValidateNetworkConfigDto function provides comprehensive IP validation
+}

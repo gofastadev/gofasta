@@ -306,6 +306,42 @@ func (c *DateTestController) createTest(@Body() data DateTestDto) {
 				"time.Parse",
 			},
 		},
+		{
+			name: "IsIP validation decorator",
+			input: `package main
+
+@Injectable()
+type NetworkDto struct {
+	@IsIP()
+	ServerIP string
+	
+	@IsIP()
+	ClientIP interface{}
+	
+	@IsIP()
+	GatewayIP string
+}
+
+@Controller("/network")
+type NetworkController struct {
+}
+
+@Post("/")
+func (c *NetworkController) createTest(@Body() data NetworkDto) {
+}`,
+			expected: []string{
+				"ValidationError",
+				"ValidateNetworkDto",
+				"func isIP(value interface{}) bool",
+				"IsIP validation",
+				"if !isIP(dto.ServerIP) {",
+				"if !isIP(dto.ClientIP) {",
+				"if !isIP(dto.GatewayIP) {",
+				"must be a valid IP address",
+				"IS_IP",
+				"net.ParseIP",
+			},
+		},
 	}
 
 	for _, tt := range tests {

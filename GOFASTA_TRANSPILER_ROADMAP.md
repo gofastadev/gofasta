@@ -174,7 +174,7 @@
 **📧 Format Validation Decorators**
 - [X] `@IsEmail()` - Validate email format
 - [X] `@IsURL()` - Validate URL format  
-- [ ] `@IsIP()` - Validate IP address format
+- [X] `@IsIP()` - Validate IP address format
 - [ ] `@IsJSON()` - Validate JSON format
 - [X] `@IsAlpha()` - Validate contains only letters
 - [X] `@IsAlphanumeric()` - Validate contains only letters and numbers

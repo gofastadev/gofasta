@@ -2957,6 +2957,8 @@ func (g *CodeGenerator) getValidationMessage(ruleType string, args []interface{}
 		return "must be a boolean"
 	case "IsDate":
 		return "must be a valid date"
+	case "IsIP":
+		return "must be a valid IP address"
 	case "IsPositive":
 		return "must be a positive number"
 	case "IsNegative":
@@ -3000,6 +3002,8 @@ func (g *CodeGenerator) getValidationCode(ruleType string) string {
 		return "IS_ALPHANUMERIC"
 	case "IsAlpha":
 		return "IS_ALPHA"
+	case "IsIP":
+		return "IS_IP"
 	default:
 		// Convert CamelCase to SNAKE_CASE for other cases
 		var result strings.Builder
@@ -3250,6 +3254,25 @@ func (g *CodeGenerator) generateValidationHelperFunctions() {
 	g.writeLine("}")
 	g.unindent()
 	g.writeLine("}")
+	g.writeLine("")
+	
+	// IP validation
+	g.writeLine("func isIP(value interface{}) bool {")
+	g.indent()
+	g.writeLine("switch v := value.(type) {")
+	g.writeLine("case string:")
+	g.indent()
+	g.writeLine("// Parse IP address using net.ParseIP")
+	g.writeLine("ip := net.ParseIP(v)")
+	g.writeLine("return ip != nil")
+	g.unindent()
+	g.writeLine("default:")
+	g.indent()
+	g.writeLine("return false")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
 }
 
 // generateDTOValidationFunction generates validation function for a DTO
@@ -3389,6 +3412,12 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 		g.generateValidationError(field.Name, fieldName, rule)
 		g.writeLine("}")
 		
+	case "IsIP":
+		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+		g.writeLine(fmt.Sprintf("if !isIP(%s) {", fieldName))
+		g.generateValidationError(field.Name, fieldName, rule)
+		g.writeLine("}")
+		
 	case "IsPositive":
 		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
 		g.writeLine(fmt.Sprintf("if %s <= 0 {", fieldName))
@@ -3455,6 +3484,12 @@ func (g *CodeGenerator) addValidationImportsIfNeeded(file *GofaFile) {
 		if needsTimeImport {
 			g.addImport("time")
 		}
+		
+		// Check if IP validation is used
+		needsNetImport := g.usesIPValidation(dtoStructs)
+		if needsNetImport {
+			g.addImport("net")
+		}
 	}
 }
 
@@ -3489,6 +3524,20 @@ func (g *CodeGenerator) usesDateValidation(dtoStructs map[string]*ValidationStru
 		for _, field := range dto.Fields {
 			for _, rule := range field.Validators {
 				if rule.Type == "IsDate" {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+// usesIPValidation checks if any validation rules use IP validation
+func (g *CodeGenerator) usesIPValidation(dtoStructs map[string]*ValidationStructInfo) bool {
+	for _, dto := range dtoStructs {
+		for _, field := range dto.Fields {
+			for _, rule := range field.Validators {
+				if rule.Type == "IsIP" {
 					return true
 				}
 			}
