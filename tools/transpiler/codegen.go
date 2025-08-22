@@ -2990,7 +2990,10 @@ func (g *CodeGenerator) getValidationMessage(ruleType string, args []interface{}
 	case "IsNegative":
 		return "must be a negative number"
 	case "Matches":
-		return "format is invalid"
+		if len(args) > 0 {
+			return fmt.Sprintf("must match pattern %v", args[0])
+		}
+		return "must match specified pattern"
 	case "IsAlpha":
 		return "must contain only letters"
 	case "IsAlphanumeric":
@@ -3023,6 +3026,16 @@ func (g *CodeGenerator) getValidationMessage(ruleType string, args []interface{}
 		return "must be one of the allowed values"
 	case "IsNotIn":
 		return "must not be one of the forbidden values"
+	case "IsLowercase":
+		return "must be lowercase"
+	case "IsUppercase":
+		return "must be uppercase"
+	case "ValidateNested":
+		return "nested validation failed"
+	case "ValidateIf":
+		return "conditional validation failed"
+	case "Custom":
+		return "custom validation failed"
 	default:
 		return fmt.Sprintf("%s validation failed", ruleType)
 	}
@@ -3078,6 +3091,18 @@ func (g *CodeGenerator) getValidationCode(ruleType string) string {
 		return "IS_IN"
 	case "IsNotIn":
 		return "IS_NOT_IN"
+	case "Matches":
+		return "MATCHES"
+	case "IsLowercase":
+		return "IS_LOWERCASE"
+	case "IsUppercase":
+		return "IS_UPPERCASE"
+	case "ValidateNested":
+		return "VALIDATE_NESTED"
+	case "ValidateIf":
+		return "VALIDATE_IF"
+	case "Custom":
+		return "CUSTOM"
 	default:
 		// Convert CamelCase to SNAKE_CASE for other cases
 		var result strings.Builder
@@ -4036,6 +4061,76 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 				g.writeLine("break")
 				g.writeLine("}")
 				g.unindent()
+				g.writeLine("}")
+			})
+		}
+		
+	case "Matches":
+		if len(rule.Args) > 0 {
+			g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+			wrapValidation(func() {
+				g.writeLine(fmt.Sprintf("matched, _ := regexp.MatchString(%v, %s)", g.formatValue(rule.Args[0]), fieldName))
+				g.writeLine("if !matched {")
+				g.generateValidationError(field.Name, fieldName, rule)
+				g.writeLine("}")
+			})
+		}
+		
+	case "IsLowercase":
+		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+		wrapValidation(func() {
+			g.writeLine(fmt.Sprintf("if %s != strings.ToLower(%s) {", fieldName, fieldName))
+			g.generateValidationError(field.Name, fieldName, rule)
+			g.writeLine("}")
+		})
+		
+	case "IsUppercase":
+		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+		wrapValidation(func() {
+			g.writeLine(fmt.Sprintf("if %s != strings.ToUpper(%s) {", fieldName, fieldName))
+			g.generateValidationError(field.Name, fieldName, rule)
+			g.writeLine("}")
+		})
+		
+	case "ValidateNested":
+		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+		wrapValidation(func() {
+			// For nested validation, we need to call the validation function of the nested struct
+			nestedValidationFunc := fmt.Sprintf("Validate%s", strings.Title(strings.TrimSuffix(field.Type, "Dto"))+"Dto")
+			g.writeLine(fmt.Sprintf("if %s != nil {", fieldName))
+			g.indent()
+			g.writeLine(fmt.Sprintf("nestedErrors := %s(%s)", nestedValidationFunc, fieldName))
+			g.writeLine("for _, nestedError := range nestedErrors {")
+			g.indent()
+			g.writeLine(fmt.Sprintf("nestedError.Field = \"%s.\" + nestedError.Field", field.Name))
+			g.writeLine("errors = append(errors, nestedError)")
+			g.unindent()
+			g.writeLine("}")
+			g.unindent()
+			g.writeLine("}")
+		})
+		
+	case "ValidateIf":
+		if len(rule.Args) > 0 {
+			g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+			// ValidateIf is complex - it needs to conditionally apply other validations
+			// For now, we'll implement a simple version that checks a boolean condition
+			conditionField := fmt.Sprintf("dto.%s", rule.Args[0])
+			g.writeLine(fmt.Sprintf("if %s {", conditionField))
+			g.indent()
+			g.writeLine("// Apply conditional validation here")
+			g.writeLine("// Note: ValidateIf requires additional implementation for full functionality")
+			g.unindent()
+			g.writeLine("}")
+		}
+		
+	case "Custom":
+		if len(rule.Args) > 0 {
+			g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+			wrapValidation(func() {
+				validatorFunc := fmt.Sprintf("%v", rule.Args[0])
+				g.writeLine(fmt.Sprintf("if !%s(%s) {", validatorFunc, fieldName))
+				g.generateValidationError(field.Name, fieldName, rule)
 				g.writeLine("}")
 			})
 		}

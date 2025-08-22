@@ -1,0 +1,61 @@
+package main
+
+@Injectable()
+type ValidationService struct {
+}
+
+func (s *ValidationService) validateData(dto PatternValidationDto) {
+    // Body parameter validation will be generated automatically
+    // The dto will be validated using pattern and custom decorators
+}
+
+@Injectable()
+type PatternValidationDto struct {
+    // Matches - validate against regex pattern
+    @Matches("^[a-zA-Z0-9_]{3,20}$")
+    Username string              // Must be alphanumeric with underscore, 3-20 chars
+    
+    @Matches("^\\d{4}-\\d{2}-\\d{2}$")
+    DateOfBirth string          // Must match YYYY-MM-DD format
+    
+    @Matches("^[A-Z]{2,3}$")
+    CountryCode string          // Must be 2-3 uppercase letters
+    
+    // IsLowercase - must be all lowercase
+    @IsLowercase()
+    @Matches("^[a-z]+$")
+    Handle string               // Must be lowercase letters only
+    
+    // IsUppercase - must be all uppercase  
+    @IsUppercase()
+    @MinLength(2)
+    @MaxLength(5)
+    StatusCode string           // Must be uppercase, 2-5 chars
+    
+    // Custom validation function
+    @Custom("isValidSSN")
+    SSN string                  // Custom validation for Social Security Number
+    
+    @Custom("isValidCreditScore")
+    CreditScore int             // Custom validation for credit score range
+    
+    // Optional fields with pattern validation
+    @IsOptional()
+    @Matches("^\\+?[1-9]\\d{1,14}$")
+    PhoneNumber string          // E.164 format if provided
+    
+    @IsOptional()
+    @IsLowercase()
+    @Custom("isValidDomainName")
+    Website string              // Domain name validation if provided
+}
+
+@Controller("/api/validation")
+type ValidationController struct {
+    service *ValidationService `inject:""`
+}
+
+@Post("/validate")
+func (c *ValidationController) validateData(@Body() data PatternValidationDto) {
+    c.service.validateData(data)
+}

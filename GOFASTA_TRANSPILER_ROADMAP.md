@@ -208,10 +208,10 @@
 - [X] `@IsNotIn(values...)` - Validate value is not in forbidden list
 
 **🔄 Pattern & Custom Validation Decorators**
-- [ ] `@Matches(pattern)` - Validate against regex pattern
-- [ ] `@IsLowercase()` - Validate string is lowercase
-- [ ] `@IsUppercase()` - Validate string is uppercase
-- [ ] `@ValidateNested()` - Validate nested object/struct
+- [X] `@Matches(pattern)` - Validate against regex pattern
+- [X] `@IsLowercase()` - Validate string is lowercase
+- [X] `@IsUppercase()` - Validate string is uppercase
+- [X] `@ValidateNested()` - Validate nested object/struct
 - [ ] `@ValidateIf(condition)` - Conditional validation
 - [ ] `@Custom(validatorFunc)` - Custom validation function
 

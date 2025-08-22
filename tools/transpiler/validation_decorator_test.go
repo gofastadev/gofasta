@@ -875,6 +875,100 @@ func (c *DataController) createTest(@Body() data DataDto) {
 				"IS_NOT_IN",
 			},
 		},
+		{
+			name: "Pattern validation decorators",
+			input: `package main
+
+@Injectable()
+type DataDto struct {
+	@Matches("^[a-zA-Z0-9]+$")
+	Username string
+	
+	@IsLowercase()
+	Handle string
+	
+	@IsUppercase()
+	Code string
+	
+	@Custom("isValidCustomField")
+	CustomField string
+}
+
+@Controller("/data")
+type DataController struct {
+}
+
+@Post("/")
+func (c *DataController) createTest(@Body() data DataDto) {
+}`,
+			expected: []string{
+				"ValidationError",
+				"ValidateDataDto",
+				"Matches validation",
+				"IsLowercase validation",
+				"IsUppercase validation",
+				"Custom validation",
+				"matched, _ := regexp.MatchString(\"^[a-zA-Z0-9]+$\", dto.Username)",
+				"if !matched {",
+				"if dto.Handle != strings.ToLower(dto.Handle) {",
+				"if dto.Code != strings.ToUpper(dto.Code) {",
+				"if !isValidCustomField(dto.CustomField) {",
+				"must match pattern ^[a-zA-Z0-9]+$",
+				"must be lowercase",
+				"must be uppercase",
+				"custom validation failed",
+				"MATCHES",
+				"IS_LOWERCASE",
+				"IS_UPPERCASE",
+				"CUSTOM",
+			},
+		},
+		{
+			name: "Nested validation decorator",
+			input: `package main
+
+@Injectable()
+type DataDto struct {
+	@ValidateNested()
+	Address AddressDto
+	
+	@IsOptional()
+	@ValidateNested()
+	BillingAddress AddressDto
+}
+
+@Injectable()
+type AddressDto struct {
+	@IsNotEmpty()
+	Street string
+	
+	@IsNotEmpty()
+	City string
+}
+
+@Controller("/data")
+type DataController struct {
+}
+
+@Post("/")
+func (c *DataController) createTest(@Body() data DataDto) {
+}`,
+			expected: []string{
+				"ValidationError",
+				"ValidateDataDto",
+				"ValidateNested validation",
+				"if dto.Address != nil {",
+				"nestedErrors := ValidateAddressDto(dto.Address)",
+				"for _, nestedError := range nestedErrors {",
+				"nestedError.Field = \"Address.\" + nestedError.Field",
+				"errors = append(errors, nestedError)",
+				"if dto.BillingAddress != nil && len(dto.BillingAddress) > 0 {",
+				"nestedErrors := ValidateAddressDto(dto.BillingAddress)",
+				"nestedError.Field = \"BillingAddress.\" + nestedError.Field",
+				"nested validation failed",
+				"VALIDATE_NESTED",
+			},
+		},
 	}
 
 	for _, tt := range tests {
