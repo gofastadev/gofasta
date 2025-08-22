@@ -1,0 +1,55 @@
+package main
+
+@Injectable()
+type ConfigService struct {
+}
+
+func (s *ConfigService) updateConfig(dto ConfigDto) {
+    // Body parameter validation will be generated automatically
+    // The dto will be validated using @IsIn and @IsNotIn decorators
+}
+
+@Injectable()
+type ConfigDto struct {
+    // IsIn - must be one of allowed values
+    @IsIn("development", "staging", "production")
+    Environment string           // Must be one of the valid environments
+
+    @IsIn("debug", "info", "warn", "error")
+    LogLevel string              // Must be a valid log level
+
+    @IsIn(1, 2, 3, 4, 5)
+    Priority int                 // Must be between 1-5
+
+    @IsIn("red", "green", "blue", "yellow")
+    ThemeColor string            // Must be a valid theme color
+
+    // IsNotIn - must not be one of forbidden values
+    @IsNotIn("admin", "root", "system", "guest")
+    Username string              // Cannot be reserved usernames
+
+    @IsNotIn("password", "123456", "admin", "qwerty")
+    Password string              // Cannot be common passwords
+
+    @IsNotIn(0, 13, 666)
+    LuckyNumber int              // Cannot be unlucky numbers
+
+    // Combination with other decorators
+    @IsOptional()
+    @IsIn("monthly", "yearly")
+    BillingCycle string          // If provided, must be valid billing cycle
+
+    @IsDefined()
+    @IsIn("smtp", "sendgrid", "mailgun")
+    EmailProvider string         // Required and must be valid provider
+}
+
+@Controller("/api/config")
+type ConfigController struct {
+    service *ConfigService `inject:""`
+}
+
+@Post("/update")
+func (c *ConfigController) updateConfig(@Body() config ConfigDto) {
+    c.service.updateConfig(config)
+}

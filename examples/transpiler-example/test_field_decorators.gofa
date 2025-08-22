@@ -1,0 +1,24 @@
+package main
+
+@Injectable()
+type CreateUserDto struct {
+    @IsEmail()
+    Email string `json:"email"`
+    
+    @Min(18)
+    @Max(120) 
+    Age int `json:"age"`
+    
+    @IsNotEmpty()
+    @MaxLength(50)
+    Name string `json:"name"`
+}
+
+@Controller("/users")
+type UserController struct {
+}
+
+@Post("/")
+func (c *UserController) createUser(@Body() data CreateUserDto) User {
+    return User{}
+}

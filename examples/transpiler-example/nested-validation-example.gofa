@@ -1,0 +1,97 @@
+package main
+
+@Injectable()
+type OrderService struct {
+}
+
+func (s *OrderService) createOrder(dto OrderDto) {
+    // Body parameter validation will be generated automatically
+    // The dto will be validated using nested validation
+}
+
+@Injectable()
+type OrderDto struct {
+    // Basic order fields
+    @IsDefined()
+    @MinLength(3)
+    OrderNumber string
+
+    // Nested validation - customer information
+    @ValidateNested()
+    Customer CustomerDto        // Will validate nested CustomerDto
+
+    // Optional nested validation - billing address
+    @IsOptional()
+    @ValidateNested()
+    BillingAddress AddressDto   // Will validate if provided
+
+    // Required nested validation - shipping address
+    @ValidateNested()
+    ShippingAddress AddressDto  // Will always validate
+
+    // Array of nested objects
+    @ArrayMinSize(1)
+    @ValidateNested()
+    Items []OrderItemDto        // Each item will be validated
+}
+
+@Injectable()
+type CustomerDto struct {
+    @IsEmail()
+    Email string
+
+    @IsNotEmpty()
+    @Matches("^[a-zA-Z\\s]{2,50}$")
+    FullName string
+
+    @IsOptional()
+    @IsPhoneNumber()
+    Phone string
+}
+
+@Injectable()
+type AddressDto struct {
+    @IsNotEmpty()
+    @MinLength(5)
+    Street string
+
+    @IsNotEmpty()
+    @MinLength(2)
+    City string
+
+    @Matches("^[A-Z]{2}$")
+    State string
+
+    @Matches("^\\d{5}(-\\d{4})?$")
+    ZipCode string
+
+    @IsOptional()
+    @Matches("^[A-Z]{2,3}$")
+    Country string
+}
+
+@Injectable()
+type OrderItemDto struct {
+    @IsDefined()
+    ProductId string
+
+    @Min(1)
+    Quantity int
+
+    @IsPositive()
+    Price float64
+
+    @IsOptional()
+    @MaxLength(200)
+    Notes string
+}
+
+@Controller("/api/orders")
+type OrderController struct {
+    service *OrderService `inject:""`
+}
+
+@Post("/create")
+func (c *OrderController) createOrder(@Body() order OrderDto) {
+    c.service.createOrder(order)
+}

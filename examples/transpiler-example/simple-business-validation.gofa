@@ -1,0 +1,28 @@
+package main
+
+@Injectable()
+type BusinessDto struct {
+    @IsNegative()
+    Debt float64
+    
+    @IsPastDate()
+    BirthDate string
+    
+    @IsFutureDate()
+    ExpiryDate string
+    
+    @IsUnique("username")
+    Username string
+    
+    @Exists("users", "id")
+    UserID int
+}
+
+@Controller("/api/test")
+type TestController struct {
+}
+
+@Post("/validate")
+func (c *TestController) validateData(@Body() data BusinessDto) {
+    // Validation will be generated automatically
+}

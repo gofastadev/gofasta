@@ -1,0 +1,35 @@
+package main
+
+@Injectable()
+type UserService struct {
+}
+
+func (s *UserService) createUser(dto UserDto) {
+    // Body parameter validation will be generated automatically
+    // The dto will be validated using the @MinLength() decorators
+}
+
+@Injectable()
+type UserDto struct {
+    @MinLength(3)
+    Username string          // Must be at least 3 characters long
+    
+    @MinLength(8)
+    Password string          // Must be at least 8 characters long for security
+    
+    @MinLength(2)
+    FirstName string         // Must be at least 2 characters long
+    
+    @MinLength(2)
+    LastName string          // Must be at least 2 characters long
+}
+
+@Controller("/api/users")
+type UserController struct {
+    service *UserService `inject:""`
+}
+
+@Post("/create")
+func (c *UserController) createUser(@Body() user UserDto) {
+    c.service.createUser(user)
+}

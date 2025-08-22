@@ -1,0 +1,32 @@
+package main
+
+@Injectable()
+type BookService struct {
+}
+
+func (s *BookService) addBook(dto BookDto) {
+    // Body parameter validation will be generated automatically
+    // The dto will be validated using the @IsISBN() decorators
+}
+
+@Injectable()
+type BookDto struct {
+    @IsISBN()
+    ISBN string              // Validates both ISBN-10 and ISBN-13 formats
+    
+    @IsISBN()
+    AlternateISBN string     // Examples: 978-0-596-52068-7, 0-596-52068-9, 9780596520687
+    
+    @IsISBN()
+    SeriesISBN string        // Supports X check digit for ISBN-10
+}
+
+@Controller("/api/books")
+type BookController struct {
+    service *BookService `inject:""`
+}
+
+@Post("/add")
+func (c *BookController) addBook(@Body() book BookDto) {
+    c.service.addBook(book)
+}

@@ -1,0 +1,50 @@
+package main
+
+@Injectable()
+type UserService struct {
+}
+
+func (s *UserService) createUser(dto UserRegistrationDto) {
+    // Body parameter validation will be generated automatically
+    // The dto will be validated using comparison decorators
+}
+
+@Injectable()
+type UserRegistrationDto struct {
+    // IsDefined - must not be empty/nil
+    @IsDefined()
+    Username string              // Must be provided (not empty string)
+
+    // NotEquals - must not equal specific values  
+    @NotEquals("admin")
+    @NotEquals("root")
+    UserRole string              // Cannot be "admin" or "root"
+
+    // Equals - must equal specific value
+    @Equals("active")
+    Status string                // Must be exactly "active"
+
+    // Contains - must contain substring
+    @Contains("@")
+    Email string                 // Must contain "@" symbol
+
+    // NotContains - must not contain substring
+    @NotContains("password")
+    @NotContains("secret")
+    PublicBio string             // Cannot contain sensitive words
+
+    // Combination with optional
+    @IsOptional()
+    @Contains("https://")
+    Website string               // If provided, must be HTTPS URL
+}
+
+@Controller("/api/users")
+type UserController struct {
+    service *UserService `inject:""`
+}
+
+@Post("/register")
+func (c *UserController) registerUser(@Body() user UserRegistrationDto) {
+    c.service.createUser(user)
+}

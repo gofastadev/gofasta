@@ -1,0 +1,24 @@
+package main
+
+// DTO demonstrating @IsInt() validation decorator
+@Injectable()
+type NumberDto struct {
+    @IsInt()
+    Age int
+    
+    @IsInt()
+    @Min(1)
+    @Max(100)
+    Score int
+    
+    @IsInt()
+    ID interface{}
+}
+
+@Controller("/numbers")
+type NumberController struct {}
+
+@Post("/validate")
+func (c *NumberController) validateNumber(@Body() data NumberDto) {
+    // Generated ValidateNumberDto function provides validation
+}

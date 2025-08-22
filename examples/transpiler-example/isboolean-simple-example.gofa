@@ -1,0 +1,25 @@
+package main
+
+// DTO demonstrating @IsBoolean() validation decorator
+@Injectable()
+type ConfigDto struct {
+    @IsBoolean()
+    IsActive bool
+    
+    @IsBoolean()
+    IsEnabled interface{} // Can be bool, string "true"/"false", or int 0/1
+    
+    @IsBoolean()
+    IsPublished bool
+    
+    @IsBoolean()
+    DebugMode interface{} // Runtime boolean validation for interface{} types
+}
+
+@Controller("/config")
+type ConfigController struct {}
+
+@Post("/validate")
+func (c *ConfigController) validateConfig(@Body() data ConfigDto) {
+    // Generated ValidateConfigDto function provides validation
+}

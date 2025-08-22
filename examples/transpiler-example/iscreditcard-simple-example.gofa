@@ -1,0 +1,32 @@
+package main
+
+@Injectable()
+type PaymentService struct {
+}
+
+func (s *PaymentService) processPayment(dto PaymentDto) {
+    // Body parameter validation will be generated automatically
+    // The dto will be validated using the @IsCreditCard() decorators
+}
+
+@Injectable()
+type PaymentDto struct {
+    @IsCreditCard()
+    CreditCardNumber string    // Validates using Luhn algorithm (4532015112830366, 4000000000000002, etc.)
+    
+    @IsCreditCard()
+    BackupCardNumber string    // Accepts Visa, MasterCard, Amex, etc. (13-19 digits)
+    
+    @IsCreditCard()
+    BusinessCardNumber string  // Strips formatting and validates with checksum
+}
+
+@Controller("/api/payment")
+type PaymentController struct {
+    service *PaymentService `inject:""`
+}
+
+@Post("/process")
+func (c *PaymentController) processPayment(@Body() payment PaymentDto) {
+    c.service.processPayment(payment)
+}

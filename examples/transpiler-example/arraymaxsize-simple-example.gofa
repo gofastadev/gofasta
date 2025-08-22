@@ -1,0 +1,35 @@
+package main
+
+@Injectable()
+type PostService struct {
+}
+
+func (s *PostService) createPost(dto PostDto) {
+    // Body parameter validation will be generated automatically
+    // The dto will be validated using the @ArrayMaxSize() decorators
+}
+
+@Injectable()
+type PostDto struct {
+    @ArrayMaxSize(10)
+    Tags []string             // Must contain at most 10 tags
+
+    @ArrayMaxSize(5)
+    Categories []string       // Must contain at most 5 categories
+    
+    @ArrayMaxSize(3)
+    Authors []string          // Must contain at most 3 authors
+    
+    @ArrayMaxSize(20)
+    Keywords []string         // Must contain at most 20 keywords
+}
+
+@Controller("/api/posts")
+type PostController struct {
+    service *PostService `inject:""`
+}
+
+@Post("/create")
+func (c *PostController) createPost(@Body() post PostDto) {
+    c.service.createPost(post)
+}

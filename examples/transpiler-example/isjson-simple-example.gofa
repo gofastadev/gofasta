@@ -1,0 +1,26 @@
+package main
+
+// DTO demonstrating @IsJSON() validation decorator
+@Injectable()
+type ApiConfigDto struct {
+    @IsJSON()
+    Configuration string // Must be valid JSON string
+    
+    @IsJSON()
+    Metadata interface{} // Can be JSON string or byte array
+    
+    @IsJSON()
+    Settings string // Configuration settings as JSON
+    
+    @IsJSON()
+    Payload interface{} // Runtime JSON validation for interface{} types
+}
+
+@Controller("/config")
+type ConfigController struct {}
+
+@Post("/validate")
+func (c *ConfigController) validateConfig(@Body() data ApiConfigDto) {
+    // Generated ValidateApiConfigDto function provides comprehensive JSON validation
+    // Validates both string and []byte JSON formats using json.Valid()
+}

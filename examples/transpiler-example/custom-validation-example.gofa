@@ -1,0 +1,71 @@
+package main
+
+// Custom validation functions would be implemented by the user
+// These functions must return bool and take the field value as parameter
+
+// func isValidSSN(ssn string) bool {
+//     // Remove all non-digit characters
+//     digits := strings.Map(func(r rune) rune {
+//         if r >= '0' && r <= '9' {
+//             return r
+//         }
+//         return -1
+//     }, ssn)
+//     
+//     // SSN should have exactly 9 digits
+//     return len(digits) == 9
+// }
+
+// func isValidCreditScore(score int) bool {
+//     // Credit scores typically range from 300 to 850
+//     return score >= 300 && score <= 850
+// }
+
+// func isValidDomainName(domain string) bool {
+//     // Basic domain validation - should contain at least one dot
+//     // and valid characters (simplified example)
+//     if len(domain) == 0 {
+//         return true // handled by @IsOptional
+//     }
+//     return strings.Contains(domain, ".") && len(domain) >= 4
+// }
+
+@Injectable()
+type UserProfileDto struct {
+    // Custom validation for Social Security Number
+    @Custom(isValidSSN)
+    SSN string
+    
+    // Custom validation for credit score range
+    @Custom(isValidCreditScore) 
+    CreditScore int
+    
+    // Pattern validation combined with custom validation
+    @IsLowercase()
+    @Custom(isValidDomainName)
+    Website string
+    
+    // Optional field with custom validation
+    @IsOptional()
+    @Custom(isValidReferralCode)
+    ReferralCode string
+}
+
+@Injectable()
+type ValidationService struct {
+}
+
+func (s *ValidationService) validateProfile(dto UserProfileDto) {
+    // Body parameter validation will be generated automatically
+    // Custom validation functions must be provided by the user
+}
+
+@Controller("/api/profile")
+type ProfileController struct {
+    service *ValidationService `inject:""`
+}
+
+@Post("/validate")
+func (c *ProfileController) validateProfile(@Body() profile UserProfileDto) {
+    c.service.validateProfile(profile)
+}
