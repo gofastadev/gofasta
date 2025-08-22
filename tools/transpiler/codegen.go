@@ -4117,19 +4117,18 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 	case "ValidateNested":
 		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
 		wrapValidation(func() {
-			// For nested validation, we need to call the validation function of the nested struct
-			nestedValidationFunc := fmt.Sprintf("Validate%s", strings.Title(strings.TrimSuffix(field.Type, "Dto"))+"Dto")
-			g.writeLine(fmt.Sprintf("if %s != nil {", fieldName))
-			g.indent()
-			g.writeLine(fmt.Sprintf("nestedErrors := %s(%s)", nestedValidationFunc, fieldName))
-			g.writeLine("for _, nestedError := range nestedErrors {")
-			g.indent()
-			g.writeLine(fmt.Sprintf("nestedError.Field = \"%s.\" + nestedError.Field", field.Name))
-			g.writeLine("errors = append(errors, nestedError)")
-			g.unindent()
-			g.writeLine("}")
-			g.unindent()
-			g.writeLine("}")
+			// Handle different nested types: struct, pointer to struct, slice of structs
+			switch {
+			case strings.HasPrefix(field.Type, "[]"):
+				// Handle slice of structs: []UserDto, []*UserDto
+				g.generateNestedSliceValidation(field, fieldName)
+			case strings.HasPrefix(field.Type, "*"):
+				// Handle pointer to struct: *UserDto
+				g.generateNestedPointerValidation(field, fieldName)
+			default:
+				// Handle direct struct: UserDto
+				g.generateNestedStructValidation(field, fieldName)
+			}
 		})
 		
 	case "ValidateIf":
@@ -4308,6 +4307,102 @@ func (g *CodeGenerator) formatValueList(values []interface{}) string {
 	return strings.Join(formattedValues, ", ")
 }
 
+// generateNestedStructValidation generates validation for direct struct type
+func (g *CodeGenerator) generateNestedStructValidation(field *ValidationFieldInfo, fieldName string) {
+	nestedValidationFunc := g.getNestedValidationFunctionName(field.Type)
+	
+	// For direct structs, we always validate regardless of @IsOptional()
+	// Direct structs can't be nil, so @IsOptional() doesn't apply in the same way
+	g.writeLine(fmt.Sprintf("if nestedErrors := %s(&%s); len(nestedErrors) > 0 {", nestedValidationFunc, fieldName))
+	g.indent()
+	g.writeLine("for _, nestedError := range nestedErrors {")
+	g.indent()
+	g.writeLine(fmt.Sprintf("nestedError.Field = \"%s.\" + nestedError.Field", field.Name))
+	g.writeLine("errors = append(errors, nestedError)")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
+}
+
+// generateNestedPointerValidation generates validation for pointer to struct type
+func (g *CodeGenerator) generateNestedPointerValidation(field *ValidationFieldInfo, fieldName string) {
+	// Remove * prefix to get the actual struct type
+	structType := strings.TrimPrefix(field.Type, "*")
+	nestedValidationFunc := g.getNestedValidationFunctionName(structType)
+	g.writeLine(fmt.Sprintf("if %s != nil {", fieldName))
+	g.indent()
+	g.writeLine(fmt.Sprintf("if nestedErrors := %s(%s); len(nestedErrors) > 0 {", nestedValidationFunc, fieldName))
+	g.indent()
+	g.writeLine("for _, nestedError := range nestedErrors {")
+	g.indent()
+	g.writeLine(fmt.Sprintf("nestedError.Field = \"%s.\" + nestedError.Field", field.Name))
+	g.writeLine("errors = append(errors, nestedError)")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
+}
+
+// generateNestedSliceValidation generates validation for slice of structs
+func (g *CodeGenerator) generateNestedSliceValidation(field *ValidationFieldInfo, fieldName string) {
+	// Remove [] prefix and handle []*Type or []Type
+	sliceType := strings.TrimPrefix(field.Type, "[]")
+	isPointerSlice := strings.HasPrefix(sliceType, "*")
+	if isPointerSlice {
+		sliceType = strings.TrimPrefix(sliceType, "*")
+	}
+	
+	nestedValidationFunc := g.getNestedValidationFunctionName(sliceType)
+	g.writeLine(fmt.Sprintf("if %s != nil && len(%s) > 0 {", fieldName, fieldName))
+	g.indent()
+	g.writeLine(fmt.Sprintf("for i, item := range %s {", fieldName))
+	g.indent()
+	
+	if isPointerSlice {
+		g.writeLine("if item != nil {")
+		g.indent()
+		g.writeLine(fmt.Sprintf("if nestedErrors := %s(item); len(nestedErrors) > 0 {", nestedValidationFunc))
+	} else {
+		g.writeLine(fmt.Sprintf("if nestedErrors := %s(&item); len(nestedErrors) > 0 {", nestedValidationFunc))
+	}
+	
+	g.indent()
+	g.writeLine("for _, nestedError := range nestedErrors {")
+	g.indent()
+	g.writeLine(fmt.Sprintf("nestedError.Field = fmt.Sprintf(\"%s[%%d].%%s\", i, nestedError.Field)", field.Name))
+	g.writeLine("errors = append(errors, nestedError)")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
+	
+	if isPointerSlice {
+		g.unindent()
+		g.writeLine("}")
+	}
+	
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
+}
+
+// getNestedValidationFunctionName generates the validation function name for a nested type
+func (g *CodeGenerator) getNestedValidationFunctionName(typeName string) string {
+	// Handle different naming conventions
+	if strings.HasSuffix(typeName, "Dto") {
+		return fmt.Sprintf("Validate%s", typeName)
+	}
+	if strings.HasSuffix(typeName, "DTO") {
+		return fmt.Sprintf("Validate%s", typeName)
+	}
+	// Default: add Dto suffix if not present
+	return fmt.Sprintf("Validate%sDto", typeName)
+}
+
 // addValidationImportsIfNeeded adds validation imports if needed
 func (g *CodeGenerator) addValidationImportsIfNeeded(file *GofaFile) {
 	// Check if there are any structs with validation decorators
@@ -4317,6 +4412,7 @@ func (g *CodeGenerator) addValidationImportsIfNeeded(file *GofaFile) {
 		// Add required imports based on what validations are used
 		g.addImport("strings")
 		g.addImport("regexp")
+		g.addImport("fmt") // For nested validation error formatting
 		
 		// Check if URL validation is used
 		needsURLImport := g.usesURLValidation(dtoStructs)

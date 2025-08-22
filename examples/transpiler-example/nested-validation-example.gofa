@@ -1,52 +1,23 @@
 package main
 
-@Injectable()
-type OrderService struct {
-}
-
-func (s *OrderService) createOrder(dto OrderDto) {
-    // Body parameter validation will be generated automatically
-    // The dto will be validated using nested validation
-}
+// Example demonstrating @ValidateNested() for various nested struct scenarios
 
 @Injectable()
-type OrderDto struct {
-    // Basic order fields
-    @IsDefined()
-    @MinLength(3)
-    OrderNumber string
-
-    // Nested validation - customer information
-    @ValidateNested()
-    Customer CustomerDto        // Will validate nested CustomerDto
-
-    // Optional nested validation - billing address
-    @IsOptional()
-    @ValidateNested()
-    BillingAddress AddressDto   // Will validate if provided
-
-    // Required nested validation - shipping address
-    @ValidateNested()
-    ShippingAddress AddressDto  // Will always validate
-
-    // Array of nested objects
-    @ArrayMinSize(1)
-    @ValidateNested()
-    Items []OrderItemDto        // Each item will be validated
-}
-
-@Injectable()
-type CustomerDto struct {
-    @IsEmail()
-    Email string
-
+type UserProfileDto struct {
     @IsNotEmpty()
-    @Matches("^[a-zA-Z\\s]{2,50}$")
-    FullName string
-
-    @IsOptional()
-    @IsPhoneNumber()
-    Phone string
+    @MinLength(2)
+    @MaxLength(50)
+    FirstName string
+    
+    @IsNotEmpty()
+    @MinLength(2)
+    @MaxLength(50)
+    LastName string
+    
+    @IsPositive()
+    @Min(13)
+    @Max(120)
+    Age int
 }
 
 @Injectable()
@@ -54,44 +25,84 @@ type AddressDto struct {
     @IsNotEmpty()
     @MinLength(5)
     Street string
-
+    
     @IsNotEmpty()
     @MinLength(2)
     City string
-
-    @Matches("^[A-Z]{2}$")
-    State string
-
-    @Matches("^\\d{5}(-\\d{4})?$")
+    
+    @IsNotEmpty()
+    @MinLength(2)
+    @MaxLength(10)
     ZipCode string
-
-    @IsOptional()
-    @Matches("^[A-Z]{2,3}$")
+    
+    @IsNotEmpty()
+    @Length(2, 3)
     Country string
 }
 
 @Injectable()
-type OrderItemDto struct {
-    @IsDefined()
-    ProductId string
-
-    @Min(1)
-    Quantity int
-
-    @IsPositive()
-    Price float64
-
+type ContactInfoDto struct {
+    @IsEmail()
+    Email string
+    
     @IsOptional()
-    @MaxLength(200)
-    Notes string
+    @IsPhoneNumber()
+    Phone string
+    
+    @IsOptional()
+    @IsURL()
+    Website string
 }
 
-@Controller("/api/orders")
-type OrderController struct {
-    service *OrderService `inject:""`
+@Injectable()
+type NestedUserDto struct {
+    // Direct nested struct validation
+    @ValidateNested()
+    Profile UserProfileDto
+    
+    // Direct nested struct validation 
+    @ValidateNested()
+    Address AddressDto
+    
+    // Optional nested struct validation
+    @IsOptional()
+    @ValidateNested()
+    Contact ContactInfoDto
+    
+    // Pointer to struct validation
+    @ValidateNested()
+    BillingAddress *AddressDto
+    
+    // Optional pointer to struct validation
+    @IsOptional()
+    @ValidateNested()
+    ShippingAddress *AddressDto
+    
+    // Slice of structs validation
+    @ValidateNested()
+    @ArrayMinSize(1)
+    Addresses []AddressDto
+    
+    // Optional slice validation
+    @IsOptional()
+    @ValidateNested()
+    PreviousAddresses []AddressDto
+    
+    // Slice of pointers validation
+    @ValidateNested()
+    @ArrayMinSize(1)
+    References []*ContactInfoDto
+    
+    // Complex nested validation
+    @ValidateNested()
+    PrimaryContact ContactInfoDto
 }
 
-@Post("/create")
-func (c *OrderController) createOrder(@Body() order OrderDto) {
-    c.service.createOrder(order)
+@Controller("/api/users")
+type UserController struct {
+}
+
+@Post("/nested")
+func (c *UserController) createNestedUser(@Body() user NestedUserDto) {
+    // Generated validation will handle all nested validation automatically
 }
