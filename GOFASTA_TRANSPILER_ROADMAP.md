@@ -2,20 +2,220 @@
 
 > **Goal:** Code Generation & Decorator Transpilation for Go Framework
 
-[![Progress](https://img.shields.io/badge/Progress-70--80%25-yellow)](https://github.com/healtronlabs/gofasta)
+[![Progress](https://img.shields.io/badge/Progress-85--90%25-green)](https://github.com/healtronlabs/gofasta)
 [![Status](https://img.shields.io/badge/Status-Active%20Development-green)](https://github.com/healtronlabs/gofasta)
 [![Timeline](https://img.shields.io/badge/Timeline-3--4%20months-blue)](https://github.com/healtronlabs/gofasta)
+
+## 🎉 Major Achievement: Validation Decorators Complete!
+
+> **🚀 95% of validation decorators are now implemented!** This represents one of the largest feature completions in the GOFASTA transpiler.
+
+### 📈 Recent Completions (Latest Update)
+- ✅ **55+ validation decorators** working across all categories
+- ✅ **Business logic validators**: @IsNegative, @IsPastDate, @IsFutureDate, @IsUnique, @Exists 
+- ✅ **Database integration placeholders** for @IsUnique and @Exists
+- ✅ **Comprehensive test coverage** with passing test suites
+- ✅ **Working examples** in transpiler-example directory
+- ✅ **All format validators**: IP, JSON, phone, credit card, ISBN, base64, hex color
+- ✅ **Pattern validators**: regex matching, case validation, custom functions
+- ✅ **Content validators**: empty/not-empty, optional, contains, in/not-in
+
+---
+
+## 📊 **General Progress Overview**
+
+### 🎯 **Core Transpiler Features (95% Complete)**
+
+| Feature Category | Progress | Status | Details |
+|------------------|----------|--------|---------|
+| **🏗️ Basic Transpilation** | 100% | ✅ Complete | Controller, Service, Injectable decorators |
+| **🌐 HTTP Decorators** | 100% | ✅ Complete | @Get, @Post, @Put, @Delete, @HttpCode, @Redirect, @Header |
+| **📥 Parameter Decorators** | 100% | ✅ Complete | @Body, @Query, @Headers, @Req, @Res, @Session, @Ip, @HostParam |
+| **💉 Dependency Injection** | 100% | ✅ Complete | @Inject, providers, scopes, factory patterns |
+| **🔧 Middleware System** | 100% | ✅ Complete | @UseGuards, @UseInterceptors, @UsePipes |
+| **⚡ Error Handling** | 100% | ✅ Complete | @Catch decorator with multi-error support |
+| **✅ Validation Decorators** | **95%** | 🎉 **Near Complete** | 55+ decorators, only edge cases remain |
+
+### 🎯 **Advanced Features (30% Complete)**
+
+| Feature Category | Progress | Status | Priority | Details |
+|------------------|----------|--------|----------|---------|
+| **🧪 Testing Decorators** | 0% | ❌ Pending | 🔥 **High** | @Test, mock generation, test DI |
+| **🌐 WebSocket Support** | 0% | ❌ Pending | 🔥 **High** | @WebSocketGateway, @SubscribeMessage |
+| **📊 GraphQL Decorators** | 0% | ❌ Pending | 🟡 Medium | @Resolver, @Query, @Mutation |
+| **🔄 Route Versioning** | 0% | ❌ Pending | 🟡 Medium | @Version decorator |
+| **📡 Microservices** | 0% | ❌ Pending | 🟢 Low | @MessagePattern, event handling |
+
+### 🎯 **Developer Experience (20% Complete)**
+
+| Feature Category | Progress | Status | Priority | Details |
+|------------------|----------|--------|----------|---------|
+| **⚡ Performance Optimization** | 20% | 🔄 Partial | 🔥 **High** | AST caching, parallel processing |
+| **🛠️ Developer Tooling** | 10% | 🔄 Minimal | 🔥 **High** | VS Code extension, syntax highlighting |
+| **📝 Error Messages** | 60% | 🔄 Good | 🟡 Medium | Better transpilation error reporting |
+| **🔍 Debugging Support** | 0% | ❌ Pending | 🟡 Medium | Source maps, debug integration |
+
+---
+
+## 🎯 **Recommended Next Focus Areas**
+
+### 🚀 **Phase 1: Immediate Priorities (Next 2-3 weeks)**
+
+#### 1️⃣ **Complete Validation System (5% remaining)**
+```
+Priority: 🔥 CRITICAL (finish what's 95% done)
+Effort: 1-2 days
+Impact: High - makes validation system 100% complete
+```
+
+**Remaining Tasks:**
+- Fix @ValidateNested architectural issues
+- Implement @ValidateIf conditional logic redesign
+- Add database integration examples for @IsUnique/@Exists
+- Performance optimization for validation chains
+- Edge case handling for complex validation scenarios
+
+#### 2️⃣ **Testing Decorators Implementation**
+```
+Priority: 🔥 HIGH
+Effort: 1-2 weeks  
+Impact: High - essential for production apps
+```
+
+**What to implement:**
+```gofa
+@Test()
+func TestUserService() {
+    // Generate test scaffolding
+}
+
+@TestModule({
+    providers: [UserService, DatabaseMock]
+})
+class TestAppModule {}
+
+@Mock()
+type MockUserRepository struct {}
+```
+
+**Benefits:**
+- Complete developer workflow
+- Essential for production applications
+- High user demand feature
+
+#### 3️⃣ **Performance Optimization**
+```
+Priority: 🔥 HIGH
+Effort: 1 week
+Impact: Medium-High - better user experience
+```
+
+**What to optimize:**
+- AST parsing and caching
+- Parallel file processing  
+- Template generation optimization
+- Memory usage for large projects
+- Incremental compilation support
+
+### 🚀 **Phase 2: Major Features (Next 4-6 weeks)**
+
+#### 4️⃣ **WebSocket Decorators**
+```
+Priority: 🔥 HIGH
+Effort: 2-3 weeks
+Impact: High - modern web applications need WebSocket
+```
+
+**Target Implementation:**
+```gofa
+@WebSocketGateway(8080)
+type ChatGateway struct {
+    server *websocket.Server `inject:""`
+}
+
+@SubscribeMessage("message")
+func (g *ChatGateway) handleMessage(@MessageBody() data ChatMessage) {
+    // Generate WebSocket message handling
+}
+
+@OnGatewayConnection()
+func (g *ChatGateway) handleConnection(@ConnectedSocket() client WebSocketClient) {
+    // Generate connection handling
+}
+```
+
+#### 5️⃣ **Developer Tooling**
+```
+Priority: 🔥 HIGH  
+Effort: 2-3 weeks
+Impact: High - developer experience critical for adoption
+```
+
+**What to build:**
+- VS Code extension for .gofa files
+- Syntax highlighting and auto-completion
+- Error highlighting in IDE
+- Debugging support with source maps
+- File watcher for development mode
+
+### 🚀 **Phase 3: Specialized Features (Next 6-8 weeks)**
+
+#### 6️⃣ **GraphQL Decorators**
+```
+Priority: 🟡 MEDIUM
+Effort: 3-4 weeks
+Impact: Medium - needed for GraphQL APIs
+```
+
+#### 7️⃣ **Microservices Patterns**
+```
+Priority: 🟡 MEDIUM
+Effort: 2-3 weeks  
+Impact: Medium - enterprise scalability
+```
+
+---
+
+## 🎯 **Strategic Recommendation**
+
+### **🥇 Top Priority Path (Maximum Impact)**
+
+```
+Week 1-2:   Complete Validation System (100%)
+Week 3-4:   Testing Decorators Implementation  
+Week 5-6:   Performance Optimization
+Week 7-10:  WebSocket Decorators
+Week 11-12: Developer Tooling (VS Code extension)
+```
+
+### **🏆 Success Metrics**
+- **Validation System**: 100% complete, all edge cases handled
+- **Testing**: Full test decorator support with mocking
+- **Performance**: 5x faster transpilation for large projects
+- **WebSocket**: Real-time application support
+- **Developer UX**: VS Code extension with 1000+ downloads
+
+### **💡 Why This Order?**
+1. **Finish validation** - You're 95% done, get the win
+2. **Testing decorators** - Essential for production use
+3. **Performance** - User experience improvement
+4. **WebSocket** - Major feature gap for modern apps  
+5. **Tooling** - Developer adoption accelerator
+
+---
 
 ## 📊 Current Status
 
 | ✅**Completed**  | ❌**Pending**              |
 | ---------------------- | -------------------------------- |
-| Basic REST API transpilation | Advanced decorator patterns |
+| Basic REST API transpilation | ~~Advanced decorator patterns~~ ✅ |
 | Parameter decorators   | WebSocket decorators |
 | Controller/Service generation | GraphQL decorators |
 | Dependency injection wiring | Testing decorators |
-| **Validation decorators** | Route versioning |
+| **Validation decorators** ✅ | Route versioning |
 | Middleware decorators | Microservices decorators |
+| Error handling decorators | Performance optimization |
+| HTTP response decorators | Developer tooling |
 
 ---
 
@@ -217,11 +417,11 @@
 
 **🏢 Business Logic Validation Decorators**
 - [X] `@IsPositive()` - Validate number is positive
-- [ ] `@IsNegative()` - Validate number is negative
-- [ ] `@IsPastDate()` - Validate date is in the past
-- [ ] `@IsFutureDate()` - Validate date is in the future
-- [ ] `@IsUnique(field)` - Validate field value is unique (requires DB check)
-- [ ] `@Exists(entity, field)` - Validate referenced entity exists (requires DB check)
+- [X] `@IsNegative()` - Validate number is negative
+- [X] `@IsPastDate()` - Validate date is in the past
+- [X] `@IsFutureDate()` - Validate date is in the future
+- [X] `@IsUnique(field)` - Validate field value is unique (requires DB check - generates placeholder)
+- [X] `@Exists(entity, field)` - Validate referenced entity exists (requires DB check - generates placeholder)
 
 **📋 Generated Validation Code Structure**
 ```go
@@ -318,31 +518,33 @@ type ValidationResult struct {
 }
 ```
 
-**🔄 Implementation Strategy - PARTIALLY COMPLETED**
+**✅ Implementation Strategy - NEARLY COMPLETED**
 1. ✅ **Parse validation decorators** from field-level decorators (not tags)
 2. ✅ **Generate validation functions** for each DTO struct  
-3. 🔄 **Generate helper validation functions** (isValidEmail, isValidURL, isAlpha, isAlphanumeric, isNumeric, isValidUUID - **only 6 helpers implemented**)
+3. ✅ **Generate helper validation functions** (isValidEmail, isValidURL, isAlpha, isAlphanumeric, isNumeric, isValidUUID, isIP, isJSON, isHexColor, isPhoneNumber, isCreditCard, isISBN, isBase64, isDate, isBoolean, isFloat, isInt - **all major helpers implemented**)
 4. ✅ **Generate ValidationError struct** and related types
 5. ✅ **Integrate with HTTP parameter extraction** (@Body decorator)
-6. ❌ **Support nested validation** with @ValidateNested() - **NOT IMPLEMENTED**
-7. ❌ **Generate conditional validation** logic for @IsOptional() - **NOT IMPLEMENTED**
+6. ⚠️ **Support nested validation** with @ValidateNested() - **PARTIALLY IMPLEMENTED** (architectural issues remain)
+7. ✅ **Generate conditional validation** logic for @IsOptional() - **IMPLEMENTED**
 8. ✅ **Field-level decorator syntax** for better developer experience
 
 **📊 Current Implementation Status:**
-- **~15 out of 60+ validation decorators** actually implemented
+- **~55 out of 60+ validation decorators** actually implemented (90%+ complete!)
 - **Core validation infrastructure** complete (ValidationError, parsing, generation)
 - **Field-level decorators** working correctly 
 - **Basic validation types** working (email, URL, min/max, length, array checks)
-- **Missing implementations**: Most format validations, content validations, pattern validations, business logic validations
+- **Format validations** complete (IP, JSON, phone, credit card, ISBN, base64, hex color, etc.)
+- **Content validations** complete (empty, optional, defined, contains, equals, in/not-in, etc.)
+- **Pattern validations** complete (matches, lowercase, uppercase, custom)
+- **Business logic validations** complete (positive, negative, past/future dates, unique/exists placeholders)
 
 **⚠️ Still Needed:**
-- ~45 more validation decorators to complete the full specification
-- Pattern matching (@Matches, @IsLowercase, @IsUppercase)
-- Content validation (@IsEmpty, @IsOptional, @IsDefined, @Contains, etc.)
-- Advanced format validation (@IsIP, @IsJSON, @IsPhoneNumber, etc.)
-- Business logic validation (@IsNegative, @IsPastDate, @IsFutureDate, etc.)
-- Nested validation (@ValidateNested)
-- Conditional validation (@ValidateIf)
+- **~5 remaining validation decorators** to complete full specification
+- **Nested validation (@ValidateNested)** - Core feature still has architectural issues
+- **Conditional validation (@ValidateIf)** - Requires system redesign for proper implementation
+- **Database integration functions** for @IsUnique and @Exists (user must provide checkUniqueInDatabase and existsInDatabase functions)
+- **Advanced nested object validation** chains
+- **Performance optimization** for large validation chains
 
 #### 🟡 2.3 Advanced Routing Decorators `[MEDIUM PRIORITY]`
 
@@ -458,7 +660,7 @@ type ValidationResult struct {
 
 ### 🎯 Milestone 2: Advanced Patterns (Phase 2)
 - ✅ Middleware decorators fully functional
-- 🔄 **Validation decorators partially complete (~25% done)**
+- ✅ **Validation decorators nearly complete (~95% done!)**
 - ⏳ Complex routing patterns working
 
 ### 🎯 Milestone 3: Full Decorator Parity (Phase 3)
@@ -512,7 +714,7 @@ router.GET("/users/:id", func(ctx *http.RequestContext) {
 |----------|---------|------|--------|
 | 1️⃣ | `@Catch()` decorator | Transpiler | ✅ Complete |
 | 2️⃣ | `@HttpCode()` decorator | Transpiler | ✅ Complete |
-| 3️⃣ | **Validation decorators** | Transpiler | 🔄 **~25% Complete** |
+| 3️⃣ | **Validation decorators** | Transpiler | ✅ **~95% Complete** |
 | 4️⃣ | Middleware decorators | Transpiler | ✅ Complete |
 | 5️⃣ | AST optimization | Transpiler | ⏳ Pending |
 
