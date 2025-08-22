@@ -1004,6 +1004,57 @@ func (c *DataController) createTest(@Body() data DataDto) {
 				"VALIDATE_NESTED",
 			},
 		},
+		{
+			name: "Business logic validation decorators",
+			input: `package main
+
+@Injectable()
+type BusinessDto struct {
+	@IsNegative()
+	Debt float64
+	
+	@IsPastDate()
+	BirthDate string
+	
+	@IsFutureDate()
+	ExpiryDate string
+	
+	@IsUnique("username")
+	Username string
+	
+	@Exists("users", "id")
+	UserID int
+}
+
+@Controller("/business")
+type BusinessController struct {
+}
+
+@Post("/")
+func (c *BusinessController) createData(@Body() data BusinessDto) {
+}`,
+			expected: []string{
+				"ValidationError",
+				"ValidateBusinessDto",
+				"IsNegative validation",
+				"IsPastDate validation",
+				"IsFutureDate validation",
+				"IsUnique validation",
+				"Exists validation",
+				"if dto.Debt >= 0 {",
+				"now := time.Now()",
+				"time.Parse(time.RFC3339",
+				"database integration",
+				"must be a negative number",
+				"must be a date in the past",
+				"must be a date in the future",
+				"checkUniqueInDatabase",
+				"existsInDatabase",
+				"IS_NEGATIVE",
+				"IS_PAST_DATE",
+				"IS_FUTURE_DATE",
+			},
+		},
 	}
 
 	for _, tt := range tests {

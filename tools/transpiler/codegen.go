@@ -3036,6 +3036,20 @@ func (g *CodeGenerator) getValidationMessage(ruleType string, args []interface{}
 		return "conditional validation failed"
 	case "Custom":
 		return "custom validation failed"
+	case "IsPastDate":
+		return "must be a date in the past"
+	case "IsFutureDate":
+		return "must be a date in the future"
+	case "IsUnique":
+		if len(args) > 0 {
+			return fmt.Sprintf("must be unique in %v", args[0])
+		}
+		return "must be unique"
+	case "Exists":
+		if len(args) >= 2 {
+			return fmt.Sprintf("must exist in %v.%v", args[0], args[1])
+		}
+		return "must exist"
 	default:
 		return fmt.Sprintf("%s validation failed", ruleType)
 	}
@@ -3103,6 +3117,14 @@ func (g *CodeGenerator) getValidationCode(ruleType string) string {
 		return "VALIDATE_IF"
 	case "Custom":
 		return "CUSTOM"
+	case "IsPastDate":
+		return "IS_PAST_DATE"
+	case "IsFutureDate":
+		return "IS_FUTURE_DATE"
+	case "IsUnique":
+		return "IS_UNIQUE"
+	case "Exists":
+		return "EXISTS"
 	default:
 		// Convert CamelCase to SNAKE_CASE for other cases
 		var result strings.Builder
@@ -4125,6 +4147,103 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 				g.writeLine(fmt.Sprintf("if !%s(%s) {", validatorFunc, fieldName))
 				g.generateValidationError(field.Name, fieldName, rule)
 				g.writeLine("}")
+			})
+		}
+		
+	case "IsNegative":
+		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+		wrapValidation(func() {
+			// Generate numeric type checking first
+			switch field.Type {
+			case "int", "int8", "int16", "int32", "int64",
+				 "uint", "uint8", "uint16", "uint32", "uint64",
+				 "float32", "float64":
+				g.writeLine(fmt.Sprintf("if %s >= 0 {", fieldName))
+			default:
+				// For interface{} or other types, use runtime checking
+				g.writeLine(fmt.Sprintf("if val, ok := %s.(int); ok && val >= 0 {", fieldName))
+				g.indent()
+				g.generateValidationError(field.Name, fieldName, rule)
+				g.unindent()
+				g.writeLine(fmt.Sprintf("} else if val, ok := %s.(float64); ok && val >= 0 {", fieldName))
+				g.indent()
+				g.generateValidationError(field.Name, fieldName, rule)
+				g.unindent()
+				g.writeLine(fmt.Sprintf("} else if val, ok := %s.(float32); ok && val >= 0 {", fieldName))
+				g.indent()
+				g.generateValidationError(field.Name, fieldName, rule)
+				g.unindent()
+				g.writeLine("}")
+				return
+			}
+			g.generateValidationError(field.Name, fieldName, rule)
+			g.writeLine("}")
+		})
+		
+	case "IsPastDate":
+		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+		wrapValidation(func() {
+			g.writeLine("now := time.Now()")
+			switch field.Type {
+			case "time.Time":
+				g.writeLine(fmt.Sprintf("if !%s.Before(now) {", fieldName))
+			case "string":
+				g.writeLine(fmt.Sprintf("if dateVal, err := time.Parse(time.RFC3339, %s); err != nil || !dateVal.Before(now) {", fieldName))
+			case "*time.Time":
+				g.writeLine(fmt.Sprintf("if %s == nil || !%s.Before(now) {", fieldName, fieldName))
+			default:
+				// For interface{} or other types
+				g.writeLine(fmt.Sprintf("if dateVal, ok := %s.(time.Time); !ok || !dateVal.Before(now) {", fieldName))
+			}
+			g.generateValidationError(field.Name, fieldName, rule)
+			g.writeLine("}")
+		})
+		
+	case "IsFutureDate":
+		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+		wrapValidation(func() {
+			g.writeLine("now := time.Now()")
+			switch field.Type {
+			case "time.Time":
+				g.writeLine(fmt.Sprintf("if !%s.After(now) {", fieldName))
+			case "string":
+				g.writeLine(fmt.Sprintf("if dateVal, err := time.Parse(time.RFC3339, %s); err != nil || !dateVal.After(now) {", fieldName))
+			case "*time.Time":
+				g.writeLine(fmt.Sprintf("if %s == nil || !%s.After(now) {", fieldName, fieldName))
+			default:
+				// For interface{} or other types
+				g.writeLine(fmt.Sprintf("if dateVal, ok := %s.(time.Time); !ok || !dateVal.After(now) {", fieldName))
+			}
+			g.generateValidationError(field.Name, fieldName, rule)
+			g.writeLine("}")
+		})
+		
+	case "IsUnique":
+		if len(rule.Args) > 0 {
+			g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+			g.writeLine("// Note: @IsUnique() requires database integration")
+			wrapValidation(func() {
+				fieldToCheck := fmt.Sprintf("%v", rule.Args[0])
+				g.writeLine(fmt.Sprintf("// TODO: Implement database uniqueness check for field '%s'", fieldToCheck))
+				g.writeLine(fmt.Sprintf("// Example: if isDuplicate := checkUniqueInDatabase(\"%s\", %s); isDuplicate {", fieldToCheck, fieldName))
+				g.writeLine("//     [generate validation error]")
+				g.writeLine("// }")
+				g.writeLine("// For now, this validation is skipped (requires DB connection)")
+			})
+		}
+		
+	case "Exists":
+		if len(rule.Args) >= 2 {
+			g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
+			g.writeLine("// Note: @Exists() requires database integration")
+			wrapValidation(func() {
+				entity := fmt.Sprintf("%v", rule.Args[0])
+				field := fmt.Sprintf("%v", rule.Args[1])
+				g.writeLine(fmt.Sprintf("// TODO: Implement database existence check for entity '%s', field '%s'", entity, field))
+				g.writeLine(fmt.Sprintf("// Example: if !existsInDatabase(\"%s\", \"%s\", %s) {", entity, field, fieldName))
+				g.writeLine("//     [generate validation error]")
+				g.writeLine("// }")
+				g.writeLine("// For now, this validation is skipped (requires DB connection)")
 			})
 		}
 	}
