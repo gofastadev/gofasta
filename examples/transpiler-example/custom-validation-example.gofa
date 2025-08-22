@@ -33,21 +33,21 @@ package main
 @Injectable()
 type UserProfileDto struct {
     // Custom validation for Social Security Number
-    @Custom("isValidSSN")
+    @Custom(isValidSSN)
     SSN string
     
     // Custom validation for credit score range
-    @Custom("isValidCreditScore") 
+    @Custom(isValidCreditScore) 
     CreditScore int
     
     // Pattern validation combined with custom validation
     @IsLowercase()
-    @Custom("isValidDomainName")
+    @Custom(isValidDomainName)
     Website string
     
     // Optional field with custom validation
     @IsOptional()
-    @Custom("isValidReferralCode")
+    @Custom(isValidReferralCode)
     ReferralCode string
 }
 

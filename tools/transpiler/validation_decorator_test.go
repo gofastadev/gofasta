@@ -929,14 +929,14 @@ func (c *DataController) createTest(@Body() data DataDto) {
 
 @Injectable()
 type DataDto struct {
-	@Custom("isValidSSN")
+	@Custom(isValidSSN)
 	SSN string
 	
-	@Custom("isValidCreditScore")
+	@Custom(isValidCreditScore)
 	CreditScore int
 	
 	@IsOptional()
-	@Custom("isValidDomainName")
+	@Custom(isValidDomainName)
 	Website string
 }
 

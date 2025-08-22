@@ -33,10 +33,10 @@ type PatternValidationDto struct {
     StatusCode string           // Must be uppercase, 2-5 chars
     
     // Custom validation functions
-    @Custom("isValidSSN")
+    @Custom(isValidSSN)
     SSN string                  // Custom validation for Social Security Number format
     
-    @Custom("isValidCreditScore")
+    @Custom(isValidCreditScore)
     CreditScore int             // Custom validation for credit score range (300-850)
     
     // Optional fields with pattern validation
@@ -46,7 +46,7 @@ type PatternValidationDto struct {
     
     @IsOptional()
     @IsLowercase()
-    @Custom("isValidDomainName")
+    @Custom(isValidDomainName)
     Website string              // Domain name validation if provided
 }
 
