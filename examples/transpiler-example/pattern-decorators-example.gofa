@@ -32,12 +32,12 @@ type PatternValidationDto struct {
     @MaxLength(5)
     StatusCode string           // Must be uppercase, 2-5 chars
     
-    // Custom validation function
+    // Custom validation functions
     @Custom("isValidSSN")
-    SSN string                  // Custom validation for Social Security Number
+    SSN string                  // Custom validation for Social Security Number format
     
     @Custom("isValidCreditScore")
-    CreditScore int             // Custom validation for credit score range
+    CreditScore int             // Custom validation for credit score range (300-850)
     
     // Optional fields with pattern validation
     @IsOptional()

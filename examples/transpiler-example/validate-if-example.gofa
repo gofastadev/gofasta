@@ -1,0 +1,64 @@
+package main
+
+// NOTE: @ValidateIf is not yet fully implemented
+// It requires architectural changes to conditionally apply other validation decorators
+// The current implementation generates placeholder comments
+
+@Injectable()
+type ConditionalValidationDto struct {
+    // Required field
+    @IsNotEmpty()
+    UserType string             // "individual" or "business"
+    
+    // These fields would ideally be validated conditionally:
+    // @ValidateIf("dto.UserType == \"individual\"")
+    // @IsNotEmpty()
+    // PersonalName string
+    
+    // @ValidateIf("dto.UserType == \"business\"") 
+    // @IsNotEmpty()
+    // CompanyName string
+    
+    // For now, use standard validation:
+    @IsOptional()
+    @IsNotEmpty()
+    PersonalName string         // Only for individual users
+    
+    @IsOptional()
+    @IsNotEmpty()
+    CompanyName string          // Only for business users
+    
+    // Age validation only for individuals
+    // @ValidateIf("dto.UserType == \"individual\"")
+    // @Min(18)
+    // Age int
+    
+    // For now:
+    @IsOptional()
+    @Min(18)
+    Age int                     // Only for individual users
+}
+
+@Injectable()
+type ValidationService struct {
+}
+
+func (s *ValidationService) validateUser(dto ConditionalValidationDto) {
+    // Manual conditional validation would need to be implemented here:
+    // if dto.UserType == "individual" && dto.PersonalName == "" {
+    //     // Return validation error
+    // }
+    // if dto.UserType == "business" && dto.CompanyName == "" {
+    //     // Return validation error  
+    // }
+}
+
+@Controller("/api/users")
+type UserController struct {
+    service *ValidationService `inject:""`
+}
+
+@Post("/validate")
+func (c *UserController) validateUser(@Body() user ConditionalValidationDto) {
+    c.service.validateUser(user)
+}

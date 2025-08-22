@@ -924,6 +924,41 @@ func (c *DataController) createTest(@Body() data DataDto) {
 			},
 		},
 		{
+			name: "Custom validation decorator",
+			input: `package main
+
+@Injectable()
+type DataDto struct {
+	@Custom("isValidSSN")
+	SSN string
+	
+	@Custom("isValidCreditScore")
+	CreditScore int
+	
+	@IsOptional()
+	@Custom("isValidDomainName")
+	Website string
+}
+
+@Controller("/data")
+type DataController struct {
+}
+
+@Post("/")
+func (c *DataController) createTest(@Body() data DataDto) {
+}`,
+			expected: []string{
+				"ValidationError",
+				"ValidateDataDto",
+				"Custom validation",
+				"if !isValidSSN(dto.SSN) {",
+				"if !isValidCreditScore(dto.CreditScore) {",
+				"if !isValidDomainName(dto.Website) {",
+				"custom validation failed",
+				"CUSTOM",
+			},
+		},
+		{
 			name: "Nested validation decorator",
 			input: `package main
 

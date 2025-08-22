@@ -4111,18 +4111,11 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 		})
 		
 	case "ValidateIf":
-		if len(rule.Args) > 0 {
-			g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
-			// ValidateIf is complex - it needs to conditionally apply other validations
-			// For now, we'll implement a simple version that checks a boolean condition
-			conditionField := fmt.Sprintf("dto.%s", rule.Args[0])
-			g.writeLine(fmt.Sprintf("if %s {", conditionField))
-			g.indent()
-			g.writeLine("// Apply conditional validation here")
-			g.writeLine("// Note: ValidateIf requires additional implementation for full functionality")
-			g.unindent()
-			g.writeLine("}")
-		}
+		// ValidateIf is a meta-decorator that conditionally applies other validations
+		// It doesn't generate validation logic itself, but wraps other validations
+		// The actual implementation would require more complex logic to handle conditional validation
+		// For now, we'll skip this case as it requires architectural changes to the validation system
+		g.writeLine(fmt.Sprintf("// %s validation - conditional validation not yet fully implemented", rule.Type))
 		
 	case "Custom":
 		if len(rule.Args) > 0 {

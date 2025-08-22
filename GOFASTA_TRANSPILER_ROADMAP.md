@@ -212,8 +212,8 @@
 - [X] `@IsLowercase()` - Validate string is lowercase
 - [X] `@IsUppercase()` - Validate string is uppercase
 - [X] `@ValidateNested()` - Validate nested object/struct
-- [ ] `@ValidateIf(condition)` - Conditional validation
-- [ ] `@Custom(validatorFunc)` - Custom validation function
+- [⚠️] `@ValidateIf(condition)` - Conditional validation (architecture limitation - needs redesign)
+- [X] `@Custom(validatorFunc)` - Custom validation function
 
 **🏢 Business Logic Validation Decorators**
 - [X] `@IsPositive()` - Validate number is positive
