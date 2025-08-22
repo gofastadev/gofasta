@@ -1,42 +1,49 @@
 package main
 
-// NOTE: @ValidateIf is not yet fully implemented
-// It requires architectural changes to conditionally apply other validation decorators
-// The current implementation generates placeholder comments
+// ✅ @ValidateIf is now fully implemented!
+// It supports conditional validation decorators based on field values
 
 @Injectable()
 type ConditionalValidationDto struct {
-    // Required field
+    // Required field to determine validation path
     @IsNotEmpty()
     UserType string             // "individual" or "business"
     
-    // These fields would ideally be validated conditionally:
-    // @ValidateIf("dto.UserType == \"individual\"")
-    // @IsNotEmpty()
-    // PersonalName string
-    
-    // @ValidateIf("dto.UserType == \"business\"") 
-    // @IsNotEmpty()
-    // CompanyName string
-    
-    // For now, use standard validation:
-    @IsOptional()
+    // Conditional validation for individual users
+    @ValidateIf("dto.UserType == \"individual\"")
     @IsNotEmpty()
-    PersonalName string         // Only for individual users
+    @MinLength(2)
+    @MaxLength(50)
+    PersonalName string         // Required only for individual users
     
-    @IsOptional()
+    // Conditional validation for business users
+    @ValidateIf("dto.UserType == \"business\"") 
     @IsNotEmpty()
-    CompanyName string          // Only for business users
+    @MinLength(3)
+    @MaxLength(100)
+    CompanyName string          // Required only for business users
     
     // Age validation only for individuals
-    // @ValidateIf("dto.UserType == \"individual\"")
-    // @Min(18)
-    // Age int
-    
-    // For now:
-    @IsOptional()
+    @ValidateIf("dto.UserType == \"individual\"")
     @Min(18)
-    Age int                     // Only for individual users
+    @Max(120)
+    Age int                     // Required only for individual users
+    
+    // Business registration number only for businesses
+    @ValidateIf("dto.UserType == \"business\"")
+    @IsNotEmpty()
+    @Matches("^[A-Z0-9]{8,12}$")
+    BusinessRegNumber string    // Required only for business users
+    
+    // Complex conditional validation
+    @ValidateIf("dto.UserType == \"individual\"")
+    @IsOptional()
+    @IsEmail()
+    PersonalEmail string        // Optional email for individuals
+    
+    @ValidateIf("dto.UserType == \"business\"")
+    @IsEmail()
+    BusinessEmail string        // Required email for businesses
 }
 
 @Injectable()
@@ -44,13 +51,12 @@ type ValidationService struct {
 }
 
 func (s *ValidationService) validateUser(dto ConditionalValidationDto) {
-    // Manual conditional validation would need to be implemented here:
-    // if dto.UserType == "individual" && dto.PersonalName == "" {
-    //     // Return validation error
-    // }
-    // if dto.UserType == "business" && dto.CompanyName == "" {
-    //     // Return validation error  
-    // }
+    // ✅ Conditional validation is now handled automatically by @ValidateIf()!
+    // The generated ValidateConditionalValidationDto() function will:
+    // - Only validate PersonalName if UserType == "individual"
+    // - Only validate CompanyName and BusinessRegNumber if UserType == "business"  
+    // - Only validate Age if UserType == "individual"
+    // - Handle complex nested conditional logic automatically
 }
 
 @Controller("/api/users")

@@ -1051,6 +1051,49 @@ func (c *BusinessController) createData(@Body() data BusinessDto) {
 				"IS_FUTURE_DATE",
 			},
 		},
+		{
+			name: "Conditional validation decorators",
+			input: `package main
+
+@Injectable()
+type ConditionalDto struct {
+	@IsNotEmpty()
+	UserType string
+	
+	@ValidateIf("dto.UserType == \"individual\"")
+	@IsNotEmpty()
+	PersonalName string
+	
+	@ValidateIf("dto.UserType == \"business\"")
+	@IsNotEmpty()
+	@MinLength(3)
+	CompanyName string
+	
+	@ValidateIf("dto.UserType == \"individual\"")
+	@Min(18)
+	Age int
+}
+
+@Controller("/api/test")
+type TestController struct {
+}
+
+@Post("/validate")
+func (c *TestController) validateConditional(@Body() data ConditionalDto) {
+}`,
+			expected: []string{
+				"ValidationError",
+				"ValidateConditionalDto",
+				"ValidateIf validation",
+				"if dto.UserType == \\\"individual\\\" {",
+				"IsNotEmpty validation",
+				"if dto.UserType == \\\"business\\\" {",
+				"MinLength validation",
+				"Min validation",
+				"must not be empty",
+				"must be at least",
+			},
+		},
 	}
 
 	for _, tt := range tests {

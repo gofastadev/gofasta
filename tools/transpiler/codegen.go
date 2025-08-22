@@ -3719,15 +3719,69 @@ func (g *CodeGenerator) generateDTOValidationFunction(dto *ValidationStructInfo)
 	
 	// Generate validation for each field
 	for _, field := range dto.Fields {
-		for _, rule := range field.Validators {
-			g.generateValidationRule(field, rule)
-			g.writeLine("")
-		}
+		g.generateFieldValidation(field)
 	}
 	
 	g.writeLine("return errors")
 	g.unindent()
 	g.writeLine("}")
+}
+
+// generateFieldValidation generates validation code for a field, handling @ValidateIf conditionals
+func (g *CodeGenerator) generateFieldValidation(field *ValidationFieldInfo) {
+	if len(field.Validators) == 0 {
+		return
+	}
+	
+	i := 0
+	for i < len(field.Validators) {
+		rule := field.Validators[i]
+		
+		if rule.Type == "ValidateIf" {
+			// Handle conditional validation
+			i = g.generateConditionalValidation(field, i)
+		} else {
+			// Handle regular validation
+			g.generateValidationRule(field, rule)
+			g.writeLine("")
+			i++
+		}
+	}
+}
+
+// generateConditionalValidation handles @ValidateIf and groups subsequent validators
+func (g *CodeGenerator) generateConditionalValidation(field *ValidationFieldInfo, startIndex int) int {
+	validateIfRule := field.Validators[startIndex]
+	
+	if len(validateIfRule.Args) == 0 {
+		g.writeLine("// ValidateIf validation - missing condition argument")
+		return startIndex + 1
+	}
+	
+	condition := fmt.Sprintf("%v", validateIfRule.Args[0])
+	// Remove surrounding quotes but preserve inner quotes
+	if strings.HasPrefix(condition, "\"") && strings.HasSuffix(condition, "\"") {
+		condition = condition[1 : len(condition)-1]
+	}
+	
+	g.writeLine(fmt.Sprintf("// %s validation", validateIfRule.Type))
+	g.writeLine(fmt.Sprintf("if %s {", condition))
+	g.indent()
+	
+	// Find all consecutive non-ValidateIf validators to group under this condition
+	i := startIndex + 1
+	for i < len(field.Validators) && field.Validators[i].Type != "ValidateIf" {
+		rule := field.Validators[i]
+		g.generateValidationRule(field, rule)
+		g.writeLine("")
+		i++
+	}
+	
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	
+	return i
 }
 
 // generateValidationRule generates code for a single validation rule
@@ -4132,11 +4186,9 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 		})
 		
 	case "ValidateIf":
-		// ValidateIf is a meta-decorator that conditionally applies other validations
-		// It doesn't generate validation logic itself, but wraps other validations
-		// The actual implementation would require more complex logic to handle conditional validation
-		// For now, we'll skip this case as it requires architectural changes to the validation system
-		g.writeLine(fmt.Sprintf("// %s validation - conditional validation not yet fully implemented", rule.Type))
+		// ValidateIf is handled at a higher level in generateFieldValidation
+		// This case should not be reached in normal flow
+		g.writeLine("// ValidateIf validation - handled by generateConditionalValidation")
 		
 	case "Custom":
 		if len(rule.Args) > 0 {
