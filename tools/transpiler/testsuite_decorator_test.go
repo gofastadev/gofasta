@@ -11,8 +11,11 @@ func TestTestSuiteDecorator(t *testing.T) {
 
 @TestSuite()
 type UserServiceTests struct {
-	userService *UserService ` + "`inject:\"\"`" + `
-	mockDB      *MockDatabase ` + "`inject:\"mockDB\"`" + `
+	@Inject()
+	userService *UserService
+	
+	@Inject("mockDB")
+	mockDB      *MockDatabase
 }
 
 @BeforeEach()
@@ -101,8 +104,11 @@ func TestTestSuiteCodeGeneration(t *testing.T) {
 
 @TestSuite()
 type UserServiceTests struct {
-	userService *UserService ` + "`inject:\"\"`" + `
-	mockDB      *MockDatabase ` + "`inject:\"mockDB\"`" + `
+	@Inject()
+	userService *UserService
+	
+	@Inject("mockDB")
+	mockDB      *MockDatabase
 }
 
 @BeforeEach()
@@ -178,7 +184,8 @@ func TestTestSuiteWithHTTPTest(t *testing.T) {
 @TestSuite()
 @HTTPTest()
 type APITests struct {
-	client *TestClient ` + "`inject:\"httpClient\"`" + `
+	@Inject("httpClient")
+	client *TestClient
 }
 
 @Test("should return user data")
@@ -219,7 +226,8 @@ func TestTestSuiteWithDatabaseTest(t *testing.T) {
 @TestSuite()
 @DatabaseTest({migrations: "./testdata/migrations"})
 type IntegrationTests struct {
-	db *Database ` + "`inject:\"database\"`" + `
+	@Inject("database")
+	db *Database
 }
 
 @BeforeAll()
@@ -267,7 +275,7 @@ func cleanupDatabase() {
 	}
 
 	// The argument is parsed as an object: {migrations: "./testdata/migrations"}
-	if argValue, ok := dbTestDecorator.Args[0].Value.(map[string]interface{}); ok {
+	if argValue, ok := dbTestDecorator.Args[0].Value.(map[string]any); ok {
 		if migrations, exists := argValue["migrations"]; exists {
 			if migrations != "./testdata/migrations" {
 				t.Errorf("Expected migrations path './testdata/migrations', got '%v'", migrations)
@@ -374,7 +382,8 @@ func TestMultipleTestSuites(t *testing.T) {
 
 @TestSuite()
 type UserServiceTests struct {
-	userService *UserService ` + "`inject:\"\"`" + `
+	@Inject()
+	userService *UserService
 }
 
 @Test("should create user")
@@ -382,7 +391,8 @@ func testCreateUser() {}
 
 @TestSuite()
 type ProductServiceTests struct {
-	productService *ProductService ` + "`inject:\"\"`" + `
+	@Inject()
+	productService *ProductService
 }
 
 @Test("should create product")

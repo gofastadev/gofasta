@@ -4,9 +4,14 @@ package main
 // This generates a complete test suite with setup/teardown lifecycle methods
 @TestSuite()
 type UserServiceTests struct {
-	userService *UserService `inject:""`
-	mockDB      *MockDatabase `inject:"mockDB"`
-	testData    TestDataFactory `inject:"testFactory"`
+	@Inject()
+	userService *UserService
+	
+	@Inject("mockDB")
+	mockDB      *MockDatabase
+	
+	@Inject("testFactory")
+	testData    TestDataFactory
 }
 
 // Setup methods run before/after tests

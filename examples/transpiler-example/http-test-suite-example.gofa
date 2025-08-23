@@ -5,8 +5,12 @@ package main
 @TestSuite()
 @HTTPTest()
 type APIIntegrationTests struct {
-	client     *TestHTTPClient `inject:"httpClient"`
-	server     *TestServer     `inject:"testServer"`
+	@Inject("httpClient")
+	client     *TestHTTPClient
+	
+	@Inject("testServer")
+	server     *TestServer
+	
 	authToken  string
 }
 

@@ -5,9 +5,14 @@ package main
 @TestSuite()
 @DatabaseTest({migrations: "./testdata/migrations"})
 type DatabaseIntegrationTests struct {
-	db         *TestDatabase   `inject:"database"`
-	repository *UserRepository `inject:""`
-	factory    *TestDataFactory `inject:"testFactory"`
+	@Inject("database")
+	db         *TestDatabase
+	
+	@Inject()
+	repository *UserRepository
+	
+	@Inject("testFactory")
+	factory    *TestDataFactory
 }
 
 @BeforeAll()
