@@ -270,26 +270,404 @@
 
 > **Target:** Full-featured framework | **Timeline:** 10-12 weeks
 
-#### 🔥 3.1 Testing Framework `[HIGH PRIORITY]`
+#### 🔥 3.1 Testing Framework - Runtime Implementation `[HIGH PRIORITY]`
 
-- [ ] **Testing Module** - Test infrastructure
+> **Goal**: Provide powerful runtime testing infrastructure that the transpiler generates code for
+
+##### **🏭 Factory System Runtime**
+
+**Core Factory Engine**
+- [ ] **Factory Registry** - Central factory management
   ```go
-  type TestingModule interface {
-      CreateTestingModule(metadata ModuleMetadata) TestingModule
-      Compile() TestingModule
-      Get(token string) interface{}
+  type FactoryRegistry interface {
+      Register(name string, factory Factory)
+      Create(typeName string, overrides ...interface{}) interface{}
+      Build(typeName string, overrides ...interface{}) interface{}
+      CreateList(typeName string, count int, overrides ...interface{}) []interface{}
+  }
+  
+  type Factory interface {
+      Build(overrides ...interface{}) interface{}
+      SetTraits(traits []string) Factory
+      WithAssociations(associations map[string]interface{}) Factory
   }
   ```
-  - Mock provider support
-  - Integration test utilities
-  - E2E testing framework
-  - Test lifecycle hooks
+  - Factory registration and discovery
+  - Type-safe factory creation
+  - Factory inheritance and composition
+  - Factory dependency resolution
 
-- [ ] **Test Utilities** - Testing helpers
-  - HTTP request testing
-  - Database testing utilities
-  - Mock generators
-  - Test data factories
+**Sequence & Data Generation**
+- [ ] **Sequence Generator** - Auto-incrementing unique values
+  ```go
+  type SequenceGenerator interface {
+      Next(key string) int
+      NextString(key string, template string) string
+      Reset(key string)
+      ResetAll()
+  }
+  
+  // Usage: f.Sequence("user_id") -> 1, 2, 3, ...
+  // Usage: f.SequenceString("email", "user%d@test.com") -> "user1@test.com"
+  ```
+  - Thread-safe sequence counters
+  - Named sequences with templates
+  - Global and local sequence scopes
+  - Sequence persistence between tests
+
+- [ ] **Fake Data Engine** - Realistic test data generation
+  ```go
+  type FakeDataEngine interface {
+      Person() PersonFaker
+      Internet() InternetFaker
+      Company() CompanyFaker
+      Address() AddressFaker
+      Custom(template string) string
+  }
+  
+  type PersonFaker interface {
+      Name() string
+      FirstName() string
+      LastName() string
+      Email() string
+  }
+  ```
+  - Locale-specific fake data
+  - Custom data templates with {{mustache}} syntax
+  - Deterministic fake data (seeded)
+  - Custom fake data providers
+
+**Trait System**  
+- [ ] **Trait Engine** - Factory modifications and states
+  ```go
+  type TraitEngine interface {
+      ApplyTrait(obj interface{}, traitName string) interface{}
+      ApplyTraits(obj interface{}, traits []string) interface{}
+      RegisterTrait(typeName, traitName string, modifier TraitModifier)
+  }
+  
+  type TraitModifier func(obj interface{}) interface{}
+  ```
+  - Dynamic trait application
+  - Trait composition and ordering
+  - Trait conflict resolution
+  - Conditional trait application
+
+**Association Builder**
+- [ ] **Association Engine** - Related object creation
+  ```go
+  type AssociationEngine interface {
+      BuildAssociation(parentType, associationType string, config AssociationConfig) interface{}
+      BuildAssociations(parentType string, associations map[string]AssociationConfig) map[string]interface{}
+  }
+  
+  type AssociationConfig struct {
+      Count    int
+      Traits   []string
+      Factory  string
+      Overrides map[string]interface{}
+  }
+  ```
+  - One-to-one and one-to-many associations
+  - Recursive association building
+  - Association trait inheritance
+  - Lazy association loading
+
+##### **🎭 Mocking System Runtime**
+
+**Mock Engine**
+- [ ] **Mock Registry** - Mock lifecycle management
+  ```go
+  type MockRegistry interface {
+      CreateMock(interfaceType reflect.Type) interface{}
+      RegisterMock(name string, mock interface{})
+      ResetMocks()
+      VerifyAll() []MockViolation
+  }
+  
+  type Mock interface {
+      Expect(methodName string) *Expectation
+      Verify() []MockViolation
+      Reset()
+      Called(methodName string, args ...interface{}) []interface{}
+  }
+  ```
+  - Interface-based mock generation
+  - Method call interception and recording
+  - Mock state management and cleanup
+  - Automatic mock verification
+
+**Expectation Engine**  
+- [ ] **Fluent Expectation API** - Mock behavior configuration
+  ```go
+  type Expectation interface {
+      WithArgs(args ...interface{}) *Expectation
+      ToReturn(returns ...interface{}) *Expectation
+      ToReturnError(err error) *Expectation
+      Times(count int) *Expectation
+      Once() *Expectation
+      AtLeast(count int) *Expectation
+      AtMost(count int) *Expectation
+      Maybe() *Expectation
+  }
+  ```
+  - Argument matching (exact, partial, custom matchers)
+  - Return value specification
+  - Call count expectations
+  - Call ordering verification
+
+**Mock Verification**
+- [ ] **Verification Engine** - Mock assertion and reporting
+  ```go
+  type MockViolation struct {
+      MockName     string
+      MethodName   string
+      ExpectedArgs []interface{}
+      ActualArgs   []interface{}
+      ExpectedCalls int
+      ActualCalls   int
+      Violation     ViolationType
+  }
+  
+  type ViolationType int
+  const (
+      UnexpectedCall ViolationType = iota
+      MissingCall
+      WrongArgs
+      WrongCallCount
+  )
+  ```
+  - Detailed violation reporting
+  - Call history tracking
+  - Argument diff visualization
+  - Integration with test reporting
+
+##### **🧪 Test Infrastructure Runtime**
+
+**Test Module System**
+- [ ] **Testing DI Container** - Test-specific dependency injection
+  ```go
+  type TestingContainer interface {
+      Bind(token string, implementation interface{})
+      BindMock(token string, mockImplementation interface{})
+      Resolve(obj interface{}) error
+      CreateScope() TestingScope
+      Reset()
+  }
+  
+  type TestingScope interface {
+      Override(token string, implementation interface{})
+      Dispose()
+  }
+  ```
+  - Test-isolated DI containers
+  - Mock provider binding
+  - Scoped dependency overrides
+  - Container cleanup and reset
+
+**Test Runner Infrastructure**
+- [ ] **Test Suite Runner** - Test execution management
+  ```go
+  type TestSuite interface {
+      Setup() error
+      Cleanup() error
+      BeforeEach() error
+      AfterEach() error
+      Tests() []TestMethod
+  }
+  
+  type TestRunner interface {
+      RunSuite(suite TestSuite) TestResults
+      RunTest(test TestMethod) TestResult
+      RunParallel(suites []TestSuite, maxConcurrency int) TestResults
+  }
+  ```
+  - Test lifecycle management
+  - Parallel test execution
+  - Test isolation and cleanup
+  - Resource management
+
+**Assertion Library**
+- [ ] **Fluent Assertion Engine** - Rich test assertions
+  ```go
+  type Assertion interface {
+      ToEqual(expected interface{}) *AssertionResult
+      ToBeTrue() *AssertionResult
+      ToBeNil() *AssertionResult
+      ToHaveLength(length int) *AssertionResult
+      ToContain(element interface{}) *AssertionResult
+      ToSatisfy(predicate func(interface{}) bool) *AssertionResult
+  }
+  
+  type ChainedAssertion interface {
+      And() Assertion
+      AndNot() Assertion
+  }
+  ```
+  - Fluent assertion chaining
+  - Custom assertion matchers
+  - Detailed failure messages
+  - Assertion result aggregation
+
+##### **🌐 Integration Testing Runtime**
+
+**HTTP Testing Infrastructure**
+- [ ] **Test HTTP Client** - API testing utilities
+  ```go
+  type TestClient interface {
+      GET(path string) *RequestBuilder
+      POST(path string) *RequestBuilder
+      PUT(path string) *RequestBuilder
+      DELETE(path string) *RequestBuilder
+  }
+  
+  type RequestBuilder interface {
+      WithJSON(body interface{}) *RequestBuilder
+      WithHeaders(headers map[string]string) *RequestBuilder
+      WithAuth(token string) *RequestBuilder
+      Send() *ResponseAssertion
+  }
+  
+  type ResponseAssertion interface {
+      ExpectStatus(code int) *ResponseAssertion
+      ExpectHeader(key, value string) *ResponseAssertion
+      ExpectJSON(path string, value interface{}) *ResponseAssertion
+      ExpectJSONLength(path string, length int) *ResponseAssertion
+  }
+  ```
+  - Fluent HTTP request building
+  - Response assertion chaining
+  - JSON path assertions
+  - Request/response debugging
+
+**Database Testing Infrastructure**
+- [ ] **Test Database Manager** - Database testing utilities
+  ```go
+  type TestDBManager interface {
+      CreateTestDB() (*sql.DB, error)
+      RunMigrations(db *sql.DB, migrationsPath string) error
+      SeedData(db *sql.DB, seedPath string) error
+      CleanTables(db *sql.DB, tables []string) error
+      WithTransaction(db *sql.DB, fn func(*sql.Tx) error) error
+  }
+  
+  type DBAssertion interface {
+      ExpectRowCount(table string, count int) *DBAssertion
+      ExpectRowExists(table string, conditions map[string]interface{}) *DBAssertion
+      ExpectRowNotExists(table string, conditions map[string]interface{}) *DBAssertion
+  }
+  ```
+  - Test database lifecycle management
+  - Migration and seeding utilities
+  - Transactional test isolation
+  - Database state assertions
+
+##### **📊 Test Reporting & Analytics**
+
+**Test Results & Reporting**
+- [ ] **Test Reporter** - Comprehensive test reporting
+  ```go
+  type TestReporter interface {
+      ReportSuite(suite TestSuiteResult)
+      ReportTest(test TestResult)
+      GenerateReport(format ReportFormat) ([]byte, error)
+      GetMetrics() TestMetrics
+  }
+  
+  type TestMetrics struct {
+      TotalTests    int
+      PassedTests   int
+      FailedTests   int
+      SkippedTests  int
+      ExecutionTime time.Duration
+      Coverage      float64
+  }
+  ```
+  - Multiple report formats (JSON, XML, HTML)
+  - Test execution metrics
+  - Performance profiling
+  - Coverage integration
+
+**Performance Monitoring**
+- [ ] **Test Performance Tracker** - Test execution optimization
+  ```go
+  type PerformanceTracker interface {
+      StartTimer(testName string) Timer
+      RecordMetric(name string, value float64)
+      GetSlowTests(threshold time.Duration) []TestPerformance
+      GeneratePerformanceReport() PerformanceReport
+  }
+  ```
+  - Test execution timing
+  - Memory usage tracking
+  - Performance regression detection
+  - Optimization recommendations
+
+##### **🎯 Framework Implementation Phases**
+
+**Phase 3.1a: Core Factory System (Week 1-2)**
+- [ ] Factory registry and type management
+- [ ] Sequence generator and fake data engine
+- [ ] Basic trait system implementation
+- [ ] Factory testing and benchmarks
+
+**Phase 3.1b: Mocking Infrastructure (Week 2-3)**
+- [ ] Mock registry and interface generation
+- [ ] Expectation engine with fluent API
+- [ ] Mock verification and violation reporting
+- [ ] Mock performance optimization
+
+**Phase 3.1c: Test Infrastructure (Week 3-4)**
+- [ ] Testing DI container implementation
+- [ ] Test suite runner and lifecycle management
+- [ ] Assertion library with fluent API
+- [ ] Test isolation and cleanup mechanisms
+
+**Phase 3.1d: Integration Testing (Week 4-5)**
+- [ ] HTTP testing client and assertions
+- [ ] Database testing manager and utilities
+- [ ] Transaction-based test isolation
+- [ ] Integration with existing test frameworks
+
+**Phase 3.1e: Reporting & Performance (Week 5-6)**
+- [ ] Test reporting and metrics collection
+- [ ] Performance tracking and optimization
+- [ ] Coverage integration and reporting
+- [ ] Documentation and examples
+
+##### **🏗️ Testing Framework Packages**
+
+```
+packages/testing/
+├── factory/           # Factory system runtime
+│   ├── registry.go   # Factory registration
+│   ├── sequence.go   # Sequence generators
+│   ├── faker.go      # Fake data engine
+│   └── traits.go     # Trait system
+├── mocking/          # Mock system runtime  
+│   ├── registry.go   # Mock management
+│   ├── expectations.go # Expectation engine
+│   └── verification.go # Mock verification
+├── assertions/       # Assertion library
+│   ├── fluent.go     # Fluent API
+│   ├── matchers.go   # Custom matchers
+│   └── results.go    # Assertion results
+├── integration/      # Integration testing
+│   ├── http.go       # HTTP test client
+│   ├── database.go   # DB testing utilities
+│   └── fixtures.go   # Test fixtures
+└── reporting/        # Test reporting
+    ├── metrics.go    # Test metrics
+    ├── reporters.go  # Report generation
+    └── performance.go # Performance tracking
+```
+
+##### **🎉 Framework Success Metrics**
+- **Factory Performance**: Create 10,000+ test objects in <100ms
+- **Mock Performance**: Handle 1M+ mock calls with <5% overhead
+- **Memory Efficiency**: <50MB baseline memory usage for test infrastructure
+- **Integration Speed**: HTTP tests execute in <10ms average
+- **Developer Experience**: 95% reduction in boilerplate test code
 
 #### 🔥 3.2 WebSocket Support `[HIGH PRIORITY]`
 

@@ -605,17 +605,292 @@ type ValidationResult struct {
 
 > **Target:** All NestJS decorators | **Timeline:** 5-6 weeks
 
-#### 🔥 3.1 Testing Decorators `[HIGH PRIORITY]`
+#### 🔥 3.1 Testing Decorators - Code Generation `[HIGH PRIORITY]`
 
-- [ ] **`@Test()` decorator transpilation** - Generate test scaffolding
+> **Goal**: Generate comprehensive test scaffolding and boilerplate code from .gofa decorators
+
+##### **🧪 Test Decorator Transpilation**
+
+**Test Structure Generation**
+- [ ] **`@TestSuite()` decorator transpilation** - Generate test suite scaffolding
   ```gofa
-  @Test()
-  func TestUserService() {
-      // Generate test setup/teardown
+  @TestSuite()
+  type UserServiceTests struct {
+      userService *UserService `inject:""`
+      mockDB      *MockDatabase `inject:"mockDB"`
+  }
+  
+  @BeforeEach()
+  func (t *UserServiceTests) setup() {
+      // Will generate: Reset calls, mock initialization
+  }
+  
+  @AfterEach()
+  func (t *UserServiceTests) cleanup() {
+      // Will generate: Cleanup calls, assertion verification
   }
   ```
-- [ ] **Test module transpilation** - Generate test DI containers
-- [ ] **Mock decorators** - Generate mock implementations
+
+  **Generated Output:**
+  ```go
+  // Generated: user_service_test.go
+  func TestUserService(t *testing.T) {
+      suite := &UserServiceTests{}
+      // Generated DI container setup
+      container := testing.NewTestContainer()
+      container.Bind("mockDB", &mocks.MockDatabase{})
+      container.Resolve(suite)
+      
+      // Generated test runner
+      suite.runTests(t)
+  }
+  
+  func (suite *UserServiceTests) setup() {
+      suite.mockDB.Reset()
+      // Generated setup code
+  }
+  ```
+
+- [ ] **`@Test()` decorator transpilation** - Generate individual test methods
+  ```gofa
+  @Test("should create user successfully")  
+  func (t *UserServiceTests) testCreateUser() {
+      user := Factory.Create(User{Name: "John"})
+      result := t.userService.Create(user)
+      Expect(result).ToBeValid()
+  }
+  ```
+
+  **Generated Output:**
+  ```go
+  func (suite *UserServiceTests) TestCreateUser(t *testing.T) {
+      // Generated test isolation
+      suite.setup()
+      defer suite.cleanup()
+      
+      // Generated factory call
+      user := factories.CreateUser(map[string]interface{}{"Name": "John"})
+      result := suite.userService.Create(user)
+      
+      // Generated assertion
+      assert.True(t, testing.IsValid(result))
+  }
+  ```
+
+**Factory Decorator Generation**
+- [ ] **`@Factory()` decorator transpilation** - Generate factory struct code
+  ```gofa
+  @Factory()
+  type UserFactory struct {}
+  
+  func (f *UserFactory) Build(overrides ...interface{}) *User {
+      return &User{
+          ID:        f.Sequence("user_id"),
+          Name:      f.Fake("{{person.name}}"),
+          Email:     f.Fake("{{internet.email}}"),
+          Status:    "active",
+      }
+  }
+  
+  @Trait("admin")
+  func (f *UserFactory) AsAdmin(user *User) *User {
+      user.Role = "admin"
+      return user
+  }
+  ```
+
+  **Generated Output:**
+  ```go
+  // Generated: factories/user_factory.go
+  type UserFactory struct {
+      sequenceCounters map[string]int
+      faker           *faker.Faker
+  }
+  
+  func (f *UserFactory) Build(overrides ...interface{}) *User {
+      user := &User{
+          ID:     f.getSequence("user_id"),
+          Name:   f.faker.Person().Name(),
+          Email:  f.faker.Internet().Email(),  
+          Status: "active",
+      }
+      
+      // Generated override application
+      for _, override := range overrides {
+          f.applyOverrides(user, override)
+      }
+      return user
+  }
+  
+  func (f *UserFactory) AsAdmin(user *User) *User {
+      user.Role = "admin"
+      return user
+  }
+  ```
+
+**Mock Decorator Generation**  
+- [ ] **`@Mock()` decorator transpilation** - Generate mock struct with tracking
+  ```gofa
+  @Mock()
+  type MockUserRepository struct {
+      // Interface methods will be generated
+  }
+  ```
+
+  **Generated Output:**
+  ```go
+  // Generated: mocks/mock_user_repository.go
+  type MockUserRepository struct {
+      FindByIDCalls []FindByIDCall
+      SaveCalls     []SaveCall
+      expectations  []MockExpectation
+      t            *testing.T
+  }
+  
+  type FindByIDCall struct {
+      ID     int
+      Return *User
+      Error  error
+  }
+  
+  func (m *MockUserRepository) FindByID(id int) (*User, error) {
+      call := FindByIDCall{ID: id}
+      m.FindByIDCalls = append(m.FindByIDCalls, call)
+      
+      // Generated expectation matching logic
+      if exp := m.findExpectation("FindByID", id); exp != nil {
+          return exp.Return.(*User), exp.Error
+      }
+      
+      return nil, errors.New("unexpected call to FindByID")
+  }
+  ```
+
+**Test Module Generation**
+- [ ] **`@TestModule()` decorator transpilation** - Generate test DI setup
+  ```gofa
+  @TestModule({
+      providers: [
+          UserService,
+          {provide: "database", useClass: MockDatabase}
+      ],
+      imports: [UserModule]
+  })
+  type TestAppModule struct {}
+  ```
+
+  **Generated Output:**
+  ```go
+  // Generated: test_app_module.go  
+  func NewTestAppModule() *TestAppModule {
+      container := di.NewContainer()
+      
+      // Generated provider registration
+      container.Bind(UserService{})
+      container.Bind("database", &mocks.MockDatabase{})
+      
+      // Generated module imports
+      userModule := NewUserModule()
+      container.Import(userModule)
+      
+      return &TestAppModule{
+          container: container,
+      }
+  }
+  ```
+
+##### **⚡ Integration Decorator Generation**
+
+**HTTP Test Decorator Generation**
+- [ ] **`@HTTPTest()` decorator transpilation** - Generate HTTP test setup
+  ```gofa
+  @HTTPTest()
+  @TestSuite()
+  type APITests struct {
+      client *TestClient `inject:"httpClient"`
+  }
+  ```
+
+  **Generated Output:**
+  ```go
+  func (suite *APITests) setupHTTPTest() {
+      server := httptest.NewServer(suite.app.Handler())
+      suite.client = &TestClient{BaseURL: server.URL}
+  }
+  ```
+
+**Database Test Decorator Generation**  
+- [ ] **`@DatabaseTest()` decorator transpilation** - Generate DB test setup
+  ```gofa
+  @DatabaseTest(migrations="./testdata/migrations")
+  @TestSuite()
+  type IntegrationTests struct {}
+  ```
+
+  **Generated Output:**
+  ```go
+  func (suite *IntegrationTests) setupDatabaseTest() {
+      db := testutils.CreateTestDB()
+      testutils.RunMigrations(db, "./testdata/migrations")
+      suite.db = db
+  }
+  ```
+
+##### **🎯 Transpiler Implementation Phases**
+
+**Phase 3.1a: Basic Test Generation (Week 1-2)**
+- [ ] Parse `@TestSuite()` and `@Test()` decorators
+- [ ] Generate basic test file structure  
+- [ ] Generate test method scaffolding
+- [ ] Generate import statements and package structure
+
+**Phase 3.1b: Factory Code Generation (Week 2-3)**
+- [ ] Parse `@Factory()` decorator and build methods
+- [ ] Generate factory struct code with sequence/fake integration
+- [ ] Generate trait method implementations
+- [ ] Generate factory registration and usage code
+
+**Phase 3.1c: Mock Code Generation (Week 3-4)**
+- [ ] Parse `@Mock()` decorator
+- [ ] Generate mock struct with method tracking
+- [ ] Generate expectation matching logic
+- [ ] Generate mock verification code
+
+**Phase 3.1d: Advanced Test Generation (Week 4-5)**
+- [ ] Parse `@TestModule()` decorator for DI setup
+- [ ] Generate HTTP test setup code (`@HTTPTest()`)
+- [ ] Generate database test setup code (`@DatabaseTest()`)
+- [ ] Generate parallel test configuration (`@Parallel()`)
+
+**Phase 3.1e: Code Optimization & Error Handling (Week 5-6)**
+- [ ] Optimize generated code structure
+- [ ] Add comprehensive error handling for transpilation
+- [ ] Generate proper Go imports and package management
+- [ ] Add transpilation validation and warnings
+
+##### **📁 Generated Code Structure**
+
+```
+project/
+├── internal/
+│   ├── tests/              # Generated test files  
+│   │   ├── user_service_test.go
+│   │   └── api_integration_test.go
+│   ├── factories/          # Generated factory files
+│   │   ├── user_factory.go
+│   │   └── post_factory.go
+│   ├── mocks/             # Generated mock files
+│   │   ├── mock_user_repository.go
+│   │   └── mock_email_service.go
+│   └── testmodules/       # Generated test modules
+│       └── test_app_module.go
+```
+
+##### **🎉 Transpiler Success Metrics**
+- **Code Generation Speed**: <2 seconds for 100+ test methods
+- **Generated Code Quality**: No manual editing required for 95% of cases
+- **Error Detection**: Clear transpilation errors with line numbers
+- **Import Management**: Automatic dependency resolution and imports
 
 #### 🔥 3.2 WebSocket Decorators `[HIGH PRIORITY]`
 
