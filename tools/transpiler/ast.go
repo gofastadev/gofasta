@@ -172,6 +172,27 @@ func (m *MockDeclaration) Pos() token.Pos {
 
 func (m *MockDeclaration) isDeclaration() {}
 
+// TestModuleDeclaration represents a test module for dependency injection setup
+type TestModuleDeclaration struct {
+	Name       string              // module name (e.g., "TestAppModule")
+	Decorators []*DecoratorNode    // @TestModule decorator with configuration
+	Providers  []string            // providers array from decorator (e.g., ["UserService", "MockDatabase"])
+	Imports    []string            // imported modules array from decorator
+	Fields     []*FieldNode        // additional fields
+	Methods    []*MethodNode       // setup methods if any
+	Position   token.Pos
+}
+
+func (t *TestModuleDeclaration) String() string {
+	return "TestModule: " + t.Name
+}
+
+func (t *TestModuleDeclaration) Pos() token.Pos {
+	return t.Position
+}
+
+func (t *TestModuleDeclaration) isDeclaration() {}
+
 // FieldNode represents a field with dependency injection
 type FieldNode struct {
 	Name       string           // field name

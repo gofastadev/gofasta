@@ -267,6 +267,11 @@ func (p *Parser) parseTypeDeclarationWithDecorators(decorators []*DecoratorNode)
 		return p.parseMockDeclaration(typeName, decorators)
 	}
 	
+	// Check for explicit @TestModule() decorator
+	if p.hasTestModuleDecorator(decorators) {
+		return p.parseTestModuleDeclaration(typeName, decorators)
+	}
+	
 	// Determine declaration type based on naming convention
 	if strings.HasSuffix(typeName, "Controller") {
 		return p.parseControllerDeclaration(typeName)
@@ -315,6 +320,19 @@ func (p *Parser) hasMockDecorator(decorators []*DecoratorNode) bool {
 	}
 	for _, decorator := range decorators {
 		if decorator.Name == "Mock" {
+			return true
+		}
+	}
+	return false
+}
+
+// hasTestModuleDecorator checks if decorators contain @TestModule() decorator
+func (p *Parser) hasTestModuleDecorator(decorators []*DecoratorNode) bool {
+	if decorators == nil {
+		return false
+	}
+	for _, decorator := range decorators {
+		if decorator.Name == "TestModule" {
 			return true
 		}
 	}
@@ -702,6 +720,128 @@ func (p *Parser) parseMockDeclaration(name string, decorators []*DecoratorNode) 
 	}
 	
 	return mock
+}
+
+// parseTestModuleDeclaration parses a test module declaration
+func (p *Parser) parseTestModuleDeclaration(name string, decorators []*DecoratorNode) *TestModuleDeclaration {
+	testModule := &TestModuleDeclaration{
+		Name:       name,
+		Position:   p.currToken.Position,
+		Decorators: decorators,
+		Providers:  []string{},
+		Imports:    []string{},
+		Fields:     []*FieldNode{},
+		Methods:    []*MethodNode{},
+	}
+	
+	// Extract providers and imports from @TestModule() decorator arguments
+	for _, decorator := range decorators {
+		if decorator.Name == "TestModule" {
+			for _, arg := range decorator.Args {
+				// Handle case where argument is a map (object syntax like {providers: [...], imports: [...]})
+				if argMap, ok := arg.Value.(map[string]interface{}); ok {
+					if providers, exists := argMap["providers"]; exists {
+						if providerArray, ok := providers.([]interface{}); ok {
+							for _, provider := range providerArray {
+								if providerStr, ok := provider.(string); ok {
+									testModule.Providers = append(testModule.Providers, providerStr)
+								}
+							}
+						}
+					}
+					if imports, exists := argMap["imports"]; exists {
+						if importArray, ok := imports.([]interface{}); ok {
+							for _, importModule := range importArray {
+								if importStr, ok := importModule.(string); ok {
+									testModule.Imports = append(testModule.Imports, importStr)
+								}
+							}
+						}
+					}
+				} else if arg.Key == "providers" && arg.Value != nil {
+					// Handle direct key-value arguments (if supported)
+					if valueStr, ok := arg.Value.(string); ok {
+						providers := p.parseArrayArgument(valueStr)
+						testModule.Providers = providers
+					}
+				} else if arg.Key == "imports" && arg.Value != nil {
+					// Handle direct key-value arguments (if supported)
+					if valueStr, ok := arg.Value.(string); ok {
+						imports := p.parseArrayArgument(valueStr)
+						testModule.Imports = imports
+					}
+				}
+			}
+		}
+	}
+	
+	// Parse fields (test module configuration and dependencies)
+	for p.currToken.Type != RBRACE && p.currToken.Type != EOF {
+		if p.currToken.Type == DECORATOR {
+			// Parse field decorators
+			var fieldDecorators []*DecoratorNode
+			for p.currToken.Type == DECORATOR {
+				decorator := p.parseDecorator()
+				if decorator != nil {
+					fieldDecorators = append(fieldDecorators, decorator)
+				}
+			}
+			
+			// Parse field
+			field := p.parseField()
+			if field != nil {
+				field.Decorators = fieldDecorators
+				testModule.Fields = append(testModule.Fields, field)
+			}
+		} else if p.currToken.Type == FUNC {
+			// Parse methods (setup methods)
+			method := p.parseMethod()
+			if method != nil {
+				testModule.Methods = append(testModule.Methods, method)
+			}
+		} else {
+			// Parse field
+			field := p.parseField()
+			if field != nil {
+				testModule.Fields = append(testModule.Fields, field)
+			}
+		}
+	}
+	
+	if !p.expectToken(RBRACE) {
+		return nil
+	}
+	
+	// Parse standalone functions immediately following the struct as methods
+	for p.currToken.Type == FUNC {
+		method := p.parseMethod()
+		if method != nil {
+			testModule.Methods = append(testModule.Methods, method)
+		}
+	}
+	
+	return testModule
+}
+
+// parseArrayArgument parses array arguments from decorator like [UserService, MockDatabase]
+func (p *Parser) parseArrayArgument(value string) []string {
+	// Remove brackets and split by comma
+	value = strings.Trim(value, "[]")
+	if value == "" {
+		return []string{}
+	}
+	
+	parts := strings.Split(value, ",")
+	result := make([]string, 0, len(parts))
+	
+	for _, part := range parts {
+		trimmed := strings.TrimSpace(part)
+		if trimmed != "" {
+			result = append(result, trimmed)
+		}
+	}
+	
+	return result
 }
 
 // parseField parses a struct field with possible injection tags

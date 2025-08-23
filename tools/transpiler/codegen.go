@@ -88,6 +88,8 @@ func (g *CodeGenerator) generateDeclaration(decl GofaDeclaration) error {
 		return g.generateFactoryDeclaration(d)
 	case *MockDeclaration:
 		return g.generateMockDeclaration(d)
+	case *TestModuleDeclaration:
+		return g.generateTestModuleDeclaration(d)
 	default:
 		return fmt.Errorf("unsupported declaration type: %T", decl)
 	}
@@ -343,6 +345,126 @@ func (g *CodeGenerator) generateMockDeclaration(mock *MockDeclaration) error {
 	}
 	
 	return nil
+}
+
+// generateTestModuleDeclaration generates Go code for a test module
+func (g *CodeGenerator) generateTestModuleDeclaration(testModule *TestModuleDeclaration) error {
+	// Add necessary imports for test modules
+	g.addImport("testing")
+	g.addImport("github.com/healtronlabs/gofasta/packages/core")
+	
+	// Generate struct declaration
+	g.writeLine(fmt.Sprintf("type %s struct {", testModule.Name))
+	g.indent()
+	
+	// Add container field for DI
+	g.writeLine("container *core.DIContainer")
+	
+	// Generate fields with injection tags
+	for _, field := range testModule.Fields {
+		tag := g.generateInjectionTag(field)
+		if tag != "" {
+			g.writeLine(fmt.Sprintf("%s %s `%s`", field.Name, field.Type, tag))
+		} else {
+			g.writeLine(fmt.Sprintf("%s %s", field.Name, field.Type))
+		}
+	}
+	
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	
+	// Generate constructor
+	g.generateTestModuleConstructor(testModule)
+	g.writeLine("")
+	
+	// Generate setup method
+	g.generateTestModuleSetup(testModule)
+	g.writeLine("")
+	
+	// Generate teardown method
+	g.generateTestModuleTeardown(testModule)
+	g.writeLine("")
+	
+	return nil
+}
+
+// generateTestModuleConstructor generates the test module constructor
+func (g *CodeGenerator) generateTestModuleConstructor(testModule *TestModuleDeclaration) {
+	g.writeLine(fmt.Sprintf("func New%s() *%s {", testModule.Name, testModule.Name))
+	g.indent()
+	g.writeLine("container := core.NewDIContainer()")
+	g.writeLine("")
+	g.writeLine(fmt.Sprintf("return &%s{", testModule.Name))
+	g.indent()
+	g.writeLine("container: container,")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
+}
+
+// generateTestModuleSetup generates the setup method for test module
+func (g *CodeGenerator) generateTestModuleSetup(testModule *TestModuleDeclaration) {
+	g.writeLine(fmt.Sprintf("func (tm *%s) SetupTest(t *testing.T) {", testModule.Name))
+	g.indent()
+	
+	// Register providers
+	if len(testModule.Providers) > 0 {
+		g.writeLine("// Register test providers")
+		for _, provider := range testModule.Providers {
+			// Generate provider registration based on whether it's a mock or regular provider
+			if strings.HasPrefix(provider, "Mock") {
+				g.writeLine(fmt.Sprintf("tm.container.RegisterProvider(\"%s\", func() interface{} {", strings.ToLower(provider)))
+				g.indent()
+				g.writeLine(fmt.Sprintf("return New%s(t)", provider))
+				g.unindent()
+				g.writeLine("}, core.ScopeSingleton)")
+			} else {
+				g.writeLine(fmt.Sprintf("tm.container.RegisterProvider(\"%s\", func() interface{} {", strings.ToLower(provider)))
+				g.indent()
+				g.writeLine(fmt.Sprintf("return &%s{}", provider))
+				g.unindent()
+				g.writeLine("}, core.ScopeSingleton)")
+			}
+		}
+		g.writeLine("")
+	}
+	
+	// Initialize imports
+	if len(testModule.Imports) > 0 {
+		g.writeLine("// Initialize imported modules")
+		for _, importModule := range testModule.Imports {
+			g.writeLine(fmt.Sprintf("// TODO: Initialize %s", importModule))
+		}
+		g.writeLine("")
+	}
+	
+	// Initialize container
+	g.writeLine("// Initialize DI container")
+	g.writeLine("err := tm.container.Initialize()")
+	g.writeLine("if err != nil {")
+	g.indent()
+	g.writeLine("t.Fatalf(\"Failed to initialize test module: %v\", err)")
+	g.unindent()
+	g.writeLine("}")
+	
+	g.unindent()
+	g.writeLine("}")
+}
+
+// generateTestModuleTeardown generates the teardown method for test module
+func (g *CodeGenerator) generateTestModuleTeardown(testModule *TestModuleDeclaration) {
+	g.writeLine(fmt.Sprintf("func (tm *%s) TeardownTest() {", testModule.Name))
+	g.indent()
+	g.writeLine("// Clean up test resources")
+	g.writeLine("if tm.container != nil {")
+	g.indent()
+	g.writeLine("tm.container = nil")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
 }
 
 // generateControllerRouteRegistration generates route registration code
@@ -1796,6 +1918,10 @@ func (g *CodeGenerator) collectImportsFromDeclaration(decl GofaDeclaration) {
 		g.addImport("testing")
 		g.addImport("errors")
 		g.addImport("fmt")
+	case *TestModuleDeclaration:
+		// Add test module imports
+		g.addImport("testing")
+		g.addImport("github.com/healtronlabs/gofasta/packages/core")
 	}
 }
 
