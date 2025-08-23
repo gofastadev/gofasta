@@ -262,6 +262,11 @@ func (p *Parser) parseTypeDeclarationWithDecorators(decorators []*DecoratorNode)
 		return p.parseFactoryDeclaration(typeName, decorators)
 	}
 	
+	// Check for explicit @Mock() decorator
+	if p.hasMockDecorator(decorators) {
+		return p.parseMockDeclaration(typeName, decorators)
+	}
+	
 	// Determine declaration type based on naming convention
 	if strings.HasSuffix(typeName, "Controller") {
 		return p.parseControllerDeclaration(typeName)
@@ -297,6 +302,19 @@ func (p *Parser) hasFactoryDecorator(decorators []*DecoratorNode) bool {
 	}
 	for _, decorator := range decorators {
 		if decorator.Name == "Factory" {
+			return true
+		}
+	}
+	return false
+}
+
+// hasMockDecorator checks if decorators contain @Mock() decorator
+func (p *Parser) hasMockDecorator(decorators []*DecoratorNode) bool {
+	if decorators == nil {
+		return false
+	}
+	for _, decorator := range decorators {
+		if decorator.Name == "Mock" {
 			return true
 		}
 	}
@@ -609,6 +627,81 @@ func (p *Parser) parseFactoryDeclaration(name string, decorators []*DecoratorNod
 	}
 	
 	return factory
+}
+
+// parseMockDeclaration parses a mock declaration
+func (p *Parser) parseMockDeclaration(name string, decorators []*DecoratorNode) *MockDeclaration {
+	// Extract target type from mock name (e.g., "MockUserRepository" -> "UserRepository")
+	targetType := name
+	if strings.HasPrefix(name, "Mock") {
+		targetType = strings.TrimPrefix(name, "Mock")
+	}
+
+	mock := &MockDeclaration{
+		Name:       name,
+		TargetType: targetType,
+		Position:   p.currToken.Position,
+		Decorators: decorators,
+		Fields:     []*FieldNode{},
+		Methods:    []*MethodNode{},
+	}
+	
+	// Parse fields (mock configuration and dependencies)
+	for p.currToken.Type != RBRACE && p.currToken.Type != EOF {
+		if p.currToken.Type == DECORATOR {
+			// Parse field decorators
+			var fieldDecorators []*DecoratorNode
+			for p.currToken.Type == DECORATOR {
+				decorator := p.parseDecorator()
+				if decorator != nil {
+					fieldDecorators = append(fieldDecorators, decorator)
+				} else {
+					p.nextToken()
+					break
+				}
+			}
+			
+			// Parse the field after decorators
+			if p.currToken.Type == IDENT {
+				field := p.parseField()
+				if field != nil {
+					// Attach decorators to field
+					field.Decorators = fieldDecorators
+					mock.Fields = append(mock.Fields, field)
+				} else {
+					p.nextToken()
+				}
+			} else {
+				// Invalid field after decorators
+				p.addError("expected field after decorator")
+				p.nextToken()
+			}
+		} else if p.currToken.Type == IDENT {
+			field := p.parseField()
+			if field != nil {
+				mock.Fields = append(mock.Fields, field)
+			} else {
+				// If field parsing failed, advance token to avoid infinite loop
+				p.nextToken()
+			}
+		} else {
+			p.nextToken()
+		}
+	}
+	
+	if !p.expectToken(RBRACE) {
+		return nil
+	}
+	
+	// Parse standalone functions immediately following the struct as methods
+	for p.currToken.Type == FUNC {
+		method := p.parseMethod()
+		if method != nil {
+			mock.Methods = append(mock.Methods, method)
+		}
+	}
+	
+	return mock
 }
 
 // parseField parses a struct field with possible injection tags

@@ -152,6 +152,26 @@ func (f *FactoryDeclaration) Pos() token.Pos {
 
 func (f *FactoryDeclaration) isDeclaration() {}
 
+// MockDeclaration represents a mock class for testing
+type MockDeclaration struct {
+	Name         string           // mock name (e.g., "MockUserRepository")
+	TargetType   string           // target interface type (e.g., "UserRepository") 
+	Decorators   []*DecoratorNode // @Mock decorator
+	Fields       []*FieldNode     // additional mock configuration fields
+	Methods      []*MethodNode    // mock method implementations
+	Position     token.Pos
+}
+
+func (m *MockDeclaration) String() string {
+	return "Mock: " + m.Name
+}
+
+func (m *MockDeclaration) Pos() token.Pos {
+	return m.Position
+}
+
+func (m *MockDeclaration) isDeclaration() {}
+
 // FieldNode represents a field with dependency injection
 type FieldNode struct {
 	Name       string           // field name

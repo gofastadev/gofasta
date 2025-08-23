@@ -86,6 +86,8 @@ func (g *CodeGenerator) generateDeclaration(decl GofaDeclaration) error {
 		return g.generateTestSuiteDeclaration(d)
 	case *FactoryDeclaration:
 		return g.generateFactoryDeclaration(d)
+	case *MockDeclaration:
+		return g.generateMockDeclaration(d)
 	default:
 		return fmt.Errorf("unsupported declaration type: %T", decl)
 	}
@@ -283,6 +285,61 @@ func (g *CodeGenerator) generateFactoryDeclaration(factory *FactoryDeclaration) 
 			}
 			g.writeLine("")
 		}
+	}
+	
+	return nil
+}
+
+// generateMockDeclaration generates Go code for a mock declaration
+func (g *CodeGenerator) generateMockDeclaration(mock *MockDeclaration) error {
+	// Add necessary imports for mocks
+	g.addImport("testing")
+	g.addImport("errors")
+	g.addImport("fmt")
+	
+	// Generate mock struct
+	g.writeLine(fmt.Sprintf("type %s struct {", mock.Name))
+	g.indent()
+	
+	// Generate tracking fields for method calls
+	// For now, we'll generate basic call tracking structure
+	g.writeLine("// Method call tracking")
+	g.writeLine("CallLog []MockCall")
+	g.writeLine("expectations []MockExpectation")
+	g.writeLine("t *testing.T")
+	
+	// Generate user-defined fields
+	for _, field := range mock.Fields {
+		tag := g.generateInjectionTag(field)
+		if tag != "" {
+			g.writeLine(fmt.Sprintf("%s %s `%s`", field.Name, field.Type, tag))
+		} else {
+			g.writeLine(fmt.Sprintf("%s %s", field.Name, field.Type))
+		}
+	}
+	
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	
+	// Generate mock support structures
+	g.generateMockSupportStructures(mock)
+	g.writeLine("")
+	
+	// Generate constructor
+	g.generateMockConstructor(mock)
+	g.writeLine("")
+	
+	// Generate expectation methods
+	g.generateMockExpectationMethods(mock)
+	g.writeLine("")
+	
+	// Generate user-defined methods
+	for _, method := range mock.Methods {
+		if err := g.generateMockMethod(mock, method); err != nil {
+			return err
+		}
+		g.writeLine("")
 	}
 	
 	return nil
@@ -1733,6 +1790,11 @@ func (g *CodeGenerator) collectImportsFromDeclaration(decl GofaDeclaration) {
 		// Add factory imports
 		g.addImport("math/rand")
 		g.addImport("time")
+		g.addImport("fmt")
+	case *MockDeclaration:
+		// Add mock imports
+		g.addImport("testing")
+		g.addImport("errors")
 		g.addImport("fmt")
 	}
 }
@@ -5164,6 +5226,128 @@ func (g *CodeGenerator) generateFactoryTraitMethod(factory *FactoryDeclaration, 
 	g.writeLine(fmt.Sprintf("// Trait: %s", traitName))
 	g.writeLine("// TODO: Add trait-specific modifications here")
 	g.writeLine("return instance")
+	
+	g.unindent()
+	g.writeLine("}")
+	
+	return nil
+}
+
+// generateMockSupportStructures generates support structures for mock tracking
+func (g *CodeGenerator) generateMockSupportStructures(mock *MockDeclaration) {
+	// Generate MockCall structure
+	g.writeLine("// MockCall represents a method call made to the mock")
+	g.writeLine("type MockCall struct {")
+	g.indent()
+	g.writeLine("Method string")
+	g.writeLine("Args   []interface{}")
+	g.writeLine("Result []interface{}")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	
+	// Generate MockExpectation structure
+	g.writeLine("// MockExpectation represents an expected method call")
+	g.writeLine("type MockExpectation struct {")
+	g.indent()
+	g.writeLine("Method   string")
+	g.writeLine("Args     []interface{}")
+	g.writeLine("Returns  []interface{}")
+	g.writeLine("Error    error")
+	g.writeLine("Called   bool")
+	g.unindent()
+	g.writeLine("}")
+}
+
+// generateMockConstructor generates the mock constructor
+func (g *CodeGenerator) generateMockConstructor(mock *MockDeclaration) {
+	g.writeLine(fmt.Sprintf("func New%s(t *testing.T) *%s {", mock.Name, mock.Name))
+	g.indent()
+	g.writeLine("return &" + mock.Name + "{")
+	g.indent()
+	g.writeLine("CallLog: make([]MockCall, 0),")
+	g.writeLine("expectations: make([]MockExpectation, 0),")
+	g.writeLine("t: t,")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
+}
+
+// generateMockExpectationMethods generates expectation setup methods
+func (g *CodeGenerator) generateMockExpectationMethods(mock *MockDeclaration) {
+	// Generate On method for setting expectations
+	g.writeLine(fmt.Sprintf("func (m *%s) On(method string, args ...interface{}) *MockExpectation {", mock.Name))
+	g.indent()
+	g.writeLine("expectation := MockExpectation{")
+	g.indent()
+	g.writeLine("Method: method,")
+	g.writeLine("Args:   args,")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("m.expectations = append(m.expectations, expectation)")
+	g.writeLine("return &m.expectations[len(m.expectations)-1]")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	
+	// Generate Return method for setting return values
+	g.writeLine("func (e *MockExpectation) Return(values ...interface{}) *MockExpectation {")
+	g.indent()
+	g.writeLine("e.Returns = values")
+	g.writeLine("return e")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	
+	// Generate verification methods
+	g.writeLine(fmt.Sprintf("func (m *%s) AssertExpectations(t *testing.T) {", mock.Name))
+	g.indent()
+	g.writeLine("for _, expectation := range m.expectations {")
+	g.indent()
+	g.writeLine("if !expectation.Called {")
+	g.indent()
+	g.writeLine("t.Errorf(\"Expected method %s was not called\", expectation.Method)")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
+}
+
+// generateMockMethod generates a mock method implementation
+func (g *CodeGenerator) generateMockMethod(mock *MockDeclaration, method *MethodNode) error {
+	g.writeLine(fmt.Sprintf("func (m *%s) %s() {", mock.Name, method.Name))
+	g.indent()
+	
+	// Generate call logging
+	g.writeLine("call := MockCall{")
+	g.indent()
+	g.writeLine(fmt.Sprintf("Method: \"%s\",", method.Name))
+	g.writeLine("Args:   []interface{}{},")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("m.CallLog = append(m.CallLog, call)")
+	g.writeLine("")
+	
+	// Generate expectation matching
+	g.writeLine("// Find matching expectation")
+	g.writeLine("for i := range m.expectations {")
+	g.indent()
+	g.writeLine(fmt.Sprintf("if m.expectations[i].Method == \"%s\" {", method.Name))
+	g.indent()
+	g.writeLine("m.expectations[i].Called = true")
+	g.writeLine("// TODO: Return expected values")
+	g.writeLine("return")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	
+	g.writeLine("// Method was called but not expected")
+	g.writeLine(fmt.Sprintf("m.t.Errorf(\"Unexpected call to method %s\")", method.Name))
 	
 	g.unindent()
 	g.writeLine("}")
