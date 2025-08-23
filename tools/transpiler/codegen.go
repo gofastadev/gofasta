@@ -3040,16 +3040,6 @@ func (g *CodeGenerator) getValidationMessage(ruleType string, args []interface{}
 		return "must be a date in the past"
 	case "IsFutureDate":
 		return "must be a date in the future"
-	case "IsUnique":
-		if len(args) > 0 {
-			return fmt.Sprintf("must be unique in %v", args[0])
-		}
-		return "must be unique"
-	case "Exists":
-		if len(args) >= 2 {
-			return fmt.Sprintf("must exist in %v.%v", args[0], args[1])
-		}
-		return "must exist"
 	default:
 		return fmt.Sprintf("%s validation failed", ruleType)
 	}
@@ -3121,10 +3111,6 @@ func (g *CodeGenerator) getValidationCode(ruleType string) string {
 		return "IS_PAST_DATE"
 	case "IsFutureDate":
 		return "IS_FUTURE_DATE"
-	case "IsUnique":
-		return "IS_UNIQUE"
-	case "Exists":
-		return "EXISTS"
 	default:
 		// Convert CamelCase to SNAKE_CASE for other cases
 		var result strings.Builder
@@ -4269,34 +4255,6 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 			g.writeLine("}")
 		})
 		
-	case "IsUnique":
-		if len(rule.Args) > 0 {
-			g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
-			g.writeLine("// Note: @IsUnique() requires database integration")
-			wrapValidation(func() {
-				fieldToCheck := fmt.Sprintf("%v", rule.Args[0])
-				g.writeLine(fmt.Sprintf("// TODO: Implement database uniqueness check for field '%s'", fieldToCheck))
-				g.writeLine(fmt.Sprintf("// Example: if isDuplicate := checkUniqueInDatabase(\"%s\", %s); isDuplicate {", fieldToCheck, fieldName))
-				g.writeLine("//     [generate validation error]")
-				g.writeLine("// }")
-				g.writeLine("// For now, this validation is skipped (requires DB connection)")
-			})
-		}
-		
-	case "Exists":
-		if len(rule.Args) >= 2 {
-			g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
-			g.writeLine("// Note: @Exists() requires database integration")
-			wrapValidation(func() {
-				entity := fmt.Sprintf("%v", rule.Args[0])
-				field := fmt.Sprintf("%v", rule.Args[1])
-				g.writeLine(fmt.Sprintf("// TODO: Implement database existence check for entity '%s', field '%s'", entity, field))
-				g.writeLine(fmt.Sprintf("// Example: if !existsInDatabase(\"%s\", \"%s\", %s) {", entity, field, fieldName))
-				g.writeLine("//     [generate validation error]")
-				g.writeLine("// }")
-				g.writeLine("// For now, this validation is skipped (requires DB connection)")
-			})
-		}
 	}
 }
 

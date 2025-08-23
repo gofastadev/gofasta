@@ -1015,10 +1015,11 @@ type BusinessDto struct {
 	@IsFutureDate()
 	ExpiryDate string
 	
-	@IsUnique("username")
+	@IsNotEmpty()
+	@MinLength(3)
 	Username string
 	
-	@Exists("users", "id")
+	@IsPositive()
 	UserID int
 }
 
@@ -1035,20 +1036,24 @@ func (c *BusinessController) createData(@Body() data BusinessDto) {
 				"IsNegative validation",
 				"IsPastDate validation",
 				"IsFutureDate validation",
-				"IsUnique validation",
-				"Exists validation",
+				"IsNotEmpty validation",
+				"MinLength validation",
+				"IsPositive validation",
 				"if dto.Debt >= 0 {",
 				"now := time.Now()",
 				"time.Parse(time.RFC3339",
-				"database integration",
 				"must be a negative number",
 				"must be a date in the past",
 				"must be a date in the future",
-				"checkUniqueInDatabase",
-				"existsInDatabase",
+				"must not be empty",
+				"must be at least 3 characters long",
+				"must be a positive number",
 				"IS_NEGATIVE",
 				"IS_PAST_DATE",
 				"IS_FUTURE_DATE",
+				"IS_NOT_EMPTY",
+				"MIN_LENGTH",
+				"IS_POSITIVE",
 			},
 		},
 		{

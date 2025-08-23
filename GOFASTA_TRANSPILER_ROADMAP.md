@@ -11,9 +11,9 @@
 > **🚀 95% of validation decorators are now implemented!** This represents one of the largest feature completions in the GOFASTA transpiler.
 
 ### 📈 Recent Completions (Latest Update)
-- ✅ **55+ validation decorators** working across all categories
-- ✅ **Business logic validators**: @IsNegative, @IsPastDate, @IsFutureDate, @IsUnique, @Exists 
-- ✅ **Database integration placeholders** for @IsUnique and @Exists
+- ✅ **50+ validation decorators** working across all categories
+- ✅ **Business logic validators**: @IsNegative, @IsPastDate, @IsFutureDate 
+- ✅ **Database validation removed**: Removed @IsUnique and @Exists (violates separation of concerns)
 - ✅ **Comprehensive test coverage** with passing test suites
 - ✅ **Working examples** in transpiler-example directory
 - ✅ **All format validators**: IP, JSON, phone, credit card, ISBN, base64, hex color
@@ -70,8 +70,8 @@ Impact: High - makes validation system 100% complete
 
 **Remaining Tasks:**
 - Fix @ValidateNested architectural issues
-- Implement @ValidateIf conditional logic redesign
-- Add database integration examples for @IsUnique/@Exists
+- ✅ **@ValidateIf conditional logic** - COMPLETED with meta-decorator architecture
+- ❌ **Removed @IsUnique/@Exists** - Better handled in service layer (follows NestJS patterns)
 - Performance optimization for validation chains
 - Edge case handling for complex validation scenarios
 
@@ -420,8 +420,8 @@ Week 11-12: Developer Tooling (VS Code extension)
 - [X] `@IsNegative()` - Validate number is negative
 - [X] `@IsPastDate()` - Validate date is in the past
 - [X] `@IsFutureDate()` - Validate date is in the future
-- [X] `@IsUnique(field)` - Validate field value is unique (requires DB check - generates placeholder)
-- [X] `@Exists(entity, field)` - Validate referenced entity exists (requires DB check - generates placeholder)
+- [❌] `@IsUnique(field)` - **REMOVED** (violates separation of concerns - use service layer)
+- [❌] `@Exists(entity, field)` - **REMOVED** (violates separation of concerns - use service layer)
 
 **📋 Generated Validation Code Structure**
 ```go
@@ -529,22 +529,24 @@ type ValidationResult struct {
 8. ✅ **Field-level decorator syntax** for better developer experience
 
 **📊 Current Implementation Status:**
-- **~55 out of 60+ validation decorators** actually implemented (90%+ complete!)
+- **~50 out of 55+ validation decorators** actually implemented (90%+ complete!)
 - **Core validation infrastructure** complete (ValidationError, parsing, generation)
 - **Field-level decorators** working correctly 
 - **Basic validation types** working (email, URL, min/max, length, array checks)
 - **Format validations** complete (IP, JSON, phone, credit card, ISBN, base64, hex color, etc.)
 - **Content validations** complete (empty, optional, defined, contains, equals, in/not-in, etc.)
 - **Pattern validations** complete (matches, lowercase, uppercase, custom)
-- **Business logic validations** complete (positive, negative, past/future dates, unique/exists placeholders)
+- **Business logic validations** complete (positive, negative, past/future dates)
 
 **⚠️ Still Needed:**
 - **~5 remaining validation decorators** to complete full specification
 - **Nested validation (@ValidateNested)** - Core feature still has architectural issues
-- **Conditional validation (@ValidateIf)** - Requires system redesign for proper implementation
-- **Database integration functions** for @IsUnique and @Exists (user must provide checkUniqueInDatabase and existsInDatabase functions)
+- **Conditional validation (@ValidateIf)** - ✅ **IMPLEMENTED** with proper meta-decorator architecture
 - **Advanced nested object validation** chains
 - **Performance optimization** for large validation chains
+
+**🗑️ Removed Features (Architectural Decision):**
+- **@IsUnique** and **@Exists** - Removed for violating separation of concerns. Database validation should be handled in service layer, not input validation layer. This follows NestJS best practices.
 
 #### 🟡 2.3 Advanced Routing Decorators `[MEDIUM PRIORITY]`
 
