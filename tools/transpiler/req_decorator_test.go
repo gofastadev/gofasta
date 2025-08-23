@@ -151,7 +151,8 @@ func GetUser(@Req() req *Request, @Param("id") id string) {
 
 	expected := []string{
 		"req := ctx.GetRequest()",
-		"id := ctx.GetParam(\"id\")",
+		"idValue := ctx.GetParam(\"id\")",
+		"id := idValue",
 	}
 
 	testReqGeneration(t, input, expected, "request parameter with path parameter")
@@ -178,7 +179,8 @@ func UpdateUser(
 
 	expected := []string{
 		"req := ctx.GetRequest()",
-		"id := ctx.GetParam(\"id\")",
+		"idValue := ctx.GetParam(\"id\")",
+		"id := idValue",
 		"var updateData UpdateUserDto",
 		"if err := ctx.ParseJSON(&updateData); err != nil {",
 		"ctx.JSON(400, map[string]string{\"error\": \"Invalid request body\"})",
