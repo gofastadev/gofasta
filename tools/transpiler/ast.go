@@ -278,8 +278,6 @@ const (
 	IsNegativeDecorator
 	IsPastDateDecorator
 	IsFutureDateDecorator
-	IsUniqueDecorator
-	ExistsDecorator
 
 	// Custom decorators
 	CustomDecorator
@@ -383,8 +381,6 @@ var DecoratorTypeMap = map[string]DecoratorType{
 	"IsNegative":      IsNegativeDecorator,
 	"IsPastDate":      IsPastDateDecorator,
 	"IsFutureDate":    IsFutureDateDecorator,
-	"IsUnique":        IsUniqueDecorator,
-	"Exists":          ExistsDecorator,
 }
 
 // GetDecoratorType returns the decorator type for a given name
@@ -427,7 +423,7 @@ func IsDependencyInjectionDecorator(decoratorType DecoratorType) bool {
 
 // IsValidationDecorator checks if a decorator type is a validation decorator
 func IsValidationDecorator(decoratorType DecoratorType) bool {
-	return decoratorType >= IsStringDecorator && decoratorType <= ExistsDecorator
+	return decoratorType >= IsStringDecorator && decoratorType <= IsFutureDateDecorator
 }
 
 // IsTypeValidationDecorator checks if a decorator type is a type validation decorator
@@ -457,7 +453,7 @@ func IsPatternValidationDecorator(decoratorType DecoratorType) bool {
 
 // IsBusinessLogicValidationDecorator checks if a decorator type is a business logic validation decorator
 func IsBusinessLogicValidationDecorator(decoratorType DecoratorType) bool {
-	return decoratorType >= IsPositiveDecorator && decoratorType <= ExistsDecorator
+	return decoratorType >= IsPositiveDecorator && decoratorType <= IsFutureDateDecorator
 }
 
 // Visitor interface for traversing the AST

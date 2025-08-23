@@ -992,16 +992,12 @@ func (c *DataController) createTest(@Body() data DataDto) {
 				"ValidationError",
 				"ValidateDataDto",
 				"ValidateNested validation",
-				"if dto.Address != nil {",
-				"nestedErrors := ValidateAddressDto(dto.Address)",
+				"if nestedErrors := ValidateAddressDto(&dto.Address); len(nestedErrors) > 0 {",
 				"for _, nestedError := range nestedErrors {",
 				"nestedError.Field = \"Address.\" + nestedError.Field",
 				"errors = append(errors, nestedError)",
-				"if dto.BillingAddress != nil && len(dto.BillingAddress) > 0 {",
-				"nestedErrors := ValidateAddressDto(dto.BillingAddress)",
+				"if nestedErrors := ValidateAddressDto(&dto.BillingAddress); len(nestedErrors) > 0 {",
 				"nestedError.Field = \"BillingAddress.\" + nestedError.Field",
-				"nested validation failed",
-				"VALIDATE_NESTED",
 			},
 		},
 		{
@@ -1019,10 +1015,11 @@ type BusinessDto struct {
 	@IsFutureDate()
 	ExpiryDate string
 	
-	@IsUnique("username")
+	@IsNotEmpty()
+	@MinLength(3)
 	Username string
 	
-	@Exists("users", "id")
+	@IsPositive()
 	UserID int
 }
 
@@ -1039,20 +1036,67 @@ func (c *BusinessController) createData(@Body() data BusinessDto) {
 				"IsNegative validation",
 				"IsPastDate validation",
 				"IsFutureDate validation",
-				"IsUnique validation",
-				"Exists validation",
+				"IsNotEmpty validation",
+				"MinLength validation",
+				"IsPositive validation",
 				"if dto.Debt >= 0 {",
 				"now := time.Now()",
 				"time.Parse(time.RFC3339",
-				"database integration",
 				"must be a negative number",
 				"must be a date in the past",
 				"must be a date in the future",
-				"checkUniqueInDatabase",
-				"existsInDatabase",
+				"must not be empty",
+				"must be at least 3 characters long",
+				"must be a positive number",
 				"IS_NEGATIVE",
 				"IS_PAST_DATE",
 				"IS_FUTURE_DATE",
+				"IS_NOT_EMPTY",
+				"MIN_LENGTH",
+				"IS_POSITIVE",
+			},
+		},
+		{
+			name: "Conditional validation decorators",
+			input: `package main
+
+@Injectable()
+type ConditionalDto struct {
+	@IsNotEmpty()
+	UserType string
+	
+	@ValidateIf("dto.UserType == \"individual\"")
+	@IsNotEmpty()
+	PersonalName string
+	
+	@ValidateIf("dto.UserType == \"business\"")
+	@IsNotEmpty()
+	@MinLength(3)
+	CompanyName string
+	
+	@ValidateIf("dto.UserType == \"individual\"")
+	@Min(18)
+	Age int
+}
+
+@Controller("/api/test")
+type TestController struct {
+}
+
+@Post("/validate")
+func (c *TestController) validateConditional(@Body() data ConditionalDto) {
+}`,
+			expected: []string{
+				"ValidationError",
+				"ValidateConditionalDto",
+				"ValidateIf validation",
+				"if dto.UserType == \\\"individual\\\" {",
+				"IsNotEmpty validation",
+				"if dto.UserType == \\\"business\\\" {",
+				"MinLength validation",
+				"Min validation",
+				"must not be empty",
+				"must be at least",
 			},
 		},
 	}

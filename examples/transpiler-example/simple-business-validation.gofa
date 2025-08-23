@@ -11,10 +11,11 @@ type BusinessDto struct {
     @IsFutureDate()
     ExpiryDate string
     
-    @IsUnique("username")
+    @IsNotEmpty()
+    @MinLength(3)
     Username string
     
-    @Exists("users", "id")
+    @IsPositive()
     UserID int
 }
 

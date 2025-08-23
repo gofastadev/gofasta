@@ -34,24 +34,23 @@ type LoanApplicationDto struct {
     @IsOptional()
     NextReviewDate string        // Next review date must be in future if set
     
-    // Database integrity validations
-    @IsUnique("email")
+    // Email and identification validation (uniqueness handled in service layer)
     @IsEmail()
-    Email string                 // Email must be unique in database
+    Email string                 // Email format validation
     
-    @IsUnique("ssn")
     @Matches("^\\d{3}-\\d{2}-\\d{4}$")
-    SSN string                   // SSN must be unique and properly formatted
+    SSN string                   // SSN format validation
     
-    @Exists("users", "id") 
-    ApplicantID int              // Must reference existing user
+    @IsPositive()
+    ApplicantID int              // Must be a valid user ID (existence checked in service)
     
-    @Exists("branches", "code")
-    BranchCode string            // Must reference existing branch
+    @IsNotEmpty()
+    @MinLength(3)
+    BranchCode string            // Branch code format (existence checked in service)
     
     @IsOptional()
-    @Exists("employees", "id")
-    ReviewerID int               // Optional reviewer must exist if provided
+    @IsPositive()
+    ReviewerID int               // Optional reviewer ID (existence checked in service)
     
     // Combined business logic validations
     @IsPositive()
@@ -78,16 +77,16 @@ type ProductCatalogDto struct {
     @IsOptional()
     DiscontinueDate string       // Discontinue date must be future if set
     
-    // Database relationships
-    @Exists("categories", "id")
-    CategoryID int               // Must reference existing category
+    // Product identifiers (database relationships handled in service layer)
+    @IsPositive()
+    CategoryID int               // Category ID (existence checked in service)
     
-    @Exists("suppliers", "code") 
-    SupplierCode string          // Must reference existing supplier
+    @IsNotEmpty()
+    @MinLength(3)
+    SupplierCode string          // Supplier code (existence checked in service)
     
-    @IsUnique("sku")
     @Matches("^[A-Z0-9]{8,12}$")
-    SKU string                   // SKU must be unique and follow format
+    SKU string                   // SKU format validation (uniqueness checked in service)
     
     // Business constraints
     @IsPositive()
@@ -109,24 +108,21 @@ type UserAccountDto struct {
     @IsOptional()
     SubscriptionExpiry string    // Subscription expiry must be future if set
     
-    // Database integrity
-    @IsUnique("username")
+    // User identification (database constraints handled in service layer)
     @MinLength(3)
     @MaxLength(20)
     @Matches("^[a-zA-Z0-9_]+$")
-    Username string              // Unique username with format constraints
+    Username string              // Username format validation (uniqueness checked in service)
     
-    @IsUnique("email")
     @IsEmail()
-    Email string                 // Unique email address
+    Email string                 // Email format validation (uniqueness checked in service)
     
-    @Exists("roles", "name")
     @IsIn("admin", "user", "moderator")
-    Role string                  // Must exist in roles table and be allowed value
+    Role string                  // Role must be one of allowed values (existence checked in service)
     
     @IsOptional()
-    @Exists("users", "id")
-    ReferredBy int               // Optional referrer must exist if provided
+    @IsPositive()
+    ReferredBy int               // Optional referrer ID (existence checked in service)
     
     // Account balance business logic
     @Min(0)
@@ -153,7 +149,8 @@ type ProductController struct {
 
 @Post("/catalog")
 func (c *ProductController) addProduct(@Body() product ProductCatalogDto) {
-    // Generated validation will be applied automatically
+    // Input validation happens automatically
+    // Database validation (uniqueness, existence) handled in service layer
 }
 
 @Controller("/api/users") 
@@ -162,5 +159,6 @@ type UserController struct {
 
 @Post("/register")
 func (c *UserController) registerUser(@Body() user UserAccountDto) {
-    // Generated validation will be applied automatically
+    // Input validation happens automatically 
+    // Database validation (uniqueness, existence) handled in service layer
 }
