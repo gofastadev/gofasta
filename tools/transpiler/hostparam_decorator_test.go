@@ -406,7 +406,8 @@ func ComplexUpdate(
 
 	expected := []string{
 		"host := ctx.GetHost()",
-		"resourceId := ctx.GetParam(\"id\")",
+		"resourceIdValue := ctx.GetParam(\"id\")",
+		"resourceId := resourceIdValue",
 		"var updateData UpdateDto",
 		"if err := ctx.ParseJSON(&updateData); err != nil {",
 		"ctx.JSON(400, map[string]string{\"error\": \"Invalid request body\"})",
