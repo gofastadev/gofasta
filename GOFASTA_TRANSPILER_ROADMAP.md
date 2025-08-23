@@ -11,8 +11,9 @@
 > **🚀 95% of validation decorators are now implemented!** This represents one of the largest feature completions in the GOFASTA transpiler.
 
 ### 📈 Recent Completions (Latest Update)
+
 - ✅ **50+ validation decorators** working across all categories
-- ✅ **Business logic validators**: @IsNegative, @IsPastDate, @IsFutureDate 
+- ✅ **Business logic validators**: @IsNegative, @IsPastDate, @IsFutureDate
 - ✅ **Database validation removed**: Removed @IsUnique and @Exists (violates separation of concerns)
 - ✅ **Comprehensive test coverage** with passing test suites
 - ✅ **Working examples** in transpiler-example directory
@@ -26,34 +27,34 @@
 
 ### 🎯 **Core Transpiler Features (95% Complete)**
 
-| Feature Category | Progress | Status | Details |
-|------------------|----------|--------|---------|
-| **🏗️ Basic Transpilation** | 100% | ✅ Complete | Controller, Service, Injectable decorators |
-| **🌐 HTTP Decorators** | 100% | ✅ Complete | @Get, @Post, @Put, @Delete, @HttpCode, @Redirect, @Header |
-| **📥 Parameter Decorators** | 100% | ✅ Complete | @Body, @Query, @Headers, @Req, @Res, @Session, @Ip, @HostParam |
-| **💉 Dependency Injection** | 100% | ✅ Complete | @Inject, providers, scopes, factory patterns |
-| **🔧 Middleware System** | 100% | ✅ Complete | @UseGuards, @UseInterceptors, @UsePipes |
-| **⚡ Error Handling** | 100% | ✅ Complete | @Catch decorator with multi-error support |
-| **✅ Validation Decorators** | **95%** | 🎉 **Near Complete** | 55+ decorators, only edge cases remain |
+| Feature Category                   | Progress      | Status                    | Details                                                        |
+| ---------------------------------- | ------------- | ------------------------- | -------------------------------------------------------------- |
+| **🏗️ Basic Transpilation** | 100%          | ✅ Complete               | Controller, Service, Injectable decorators                     |
+| **🌐 HTTP Decorators**       | 100%          | ✅ Complete               | @Get, @Post, @Put, @Delete, @HttpCode, @Redirect, @Header      |
+| **📥 Parameter Decorators**  | 100%          | ✅ Complete               | @Body, @Query, @Headers, @Req, @Res, @Session, @Ip, @HostParam |
+| **💉 Dependency Injection**  | 100%          | ✅ Complete               | @Inject, providers, scopes, factory patterns                   |
+| **🔧 Middleware System**     | 100%          | ✅ Complete               | @UseGuards, @UseInterceptors, @UsePipes                        |
+| **⚡ Error Handling**        | 100%          | ✅ Complete               | @Catch decorator with multi-error support                      |
+| **✅ Validation Decorators** | **95%** | 🎉**Near Complete** | 55+ decorators, only edge cases remain                         |
 
 ### 🎯 **Advanced Features (30% Complete)**
 
-| Feature Category | Progress | Status | Priority | Details |
-|------------------|----------|--------|----------|---------|
-| **🧪 Testing Decorators** | 0% | ❌ Pending | 🔥 **High** | @Test, mock generation, test DI |
-| **🌐 WebSocket Support** | 0% | ❌ Pending | 🔥 **High** | @WebSocketGateway, @SubscribeMessage |
-| **📊 GraphQL Decorators** | 0% | ❌ Pending | 🟡 Medium | @Resolver, @Query, @Mutation |
-| **🔄 Route Versioning** | 0% | ❌ Pending | 🟡 Medium | @Version decorator |
-| **📡 Microservices** | 0% | ❌ Pending | 🟢 Low | @MessagePattern, event handling |
+| Feature Category                | Progress | Status     | Priority         | Details                              |
+| ------------------------------- | -------- | ---------- | ---------------- | ------------------------------------ |
+| **🧪 Testing Decorators** | 0%       | ❌ Pending | 🔥**High** | @Test, mock generation, test DI      |
+| **🌐 WebSocket Support**  | 0%       | ❌ Pending | 🔥**High** | @WebSocketGateway, @SubscribeMessage |
+| **📊 GraphQL Decorators** | 0%       | ❌ Pending | 🟡 Medium        | @Resolver, @Query, @Mutation         |
+| **🔄 Route Versioning**   | 0%       | ❌ Pending | 🟡 Medium        | @Version decorator                   |
+| **📡 Microservices**      | 0%       | ❌ Pending | 🟢 Low           | @MessagePattern, event handling      |
 
 ### 🎯 **Developer Experience (20% Complete)**
 
-| Feature Category | Progress | Status | Priority | Details |
-|------------------|----------|--------|----------|---------|
-| **⚡ Performance Optimization** | 20% | 🔄 Partial | 🔥 **High** | AST caching, parallel processing |
-| **🛠️ Developer Tooling** | 10% | 🔄 Minimal | 🔥 **High** | VS Code extension, syntax highlighting |
-| **📝 Error Messages** | 60% | 🔄 Good | 🟡 Medium | Better transpilation error reporting |
-| **🔍 Debugging Support** | 0% | ❌ Pending | 🟡 Medium | Source maps, debug integration |
+| Feature Category                      | Progress | Status     | Priority         | Details                                |
+| ------------------------------------- | -------- | ---------- | ---------------- | -------------------------------------- |
+| **⚡ Performance Optimization** | 20%      | 🔄 Partial | 🔥**High** | AST caching, parallel processing       |
+| **🛠️ Developer Tooling**      | 10%      | 🔄 Minimal | 🔥**High** | VS Code extension, syntax highlighting |
+| **📝 Error Messages**           | 60%      | 🔄 Good    | 🟡 Medium        | Better transpilation error reporting   |
+| **🔍 Debugging Support**        | 0%       | ❌ Pending | 🟡 Medium        | Source maps, debug integration         |
 
 ---
 
@@ -62,6 +63,7 @@
 ### 🚀 **Phase 1: Immediate Priorities (Next 2-3 weeks)**
 
 #### 1️⃣ **Complete Validation System (5% remaining)**
+
 ```
 Priority: 🔥 CRITICAL (finish what's 95% done)
 Effort: 1-2 days
@@ -69,6 +71,7 @@ Impact: High - makes validation system 100% complete
 ```
 
 **Remaining Tasks:**
+
 - Fix @ValidateNested architectural issues
 - ✅ **@ValidateIf conditional logic** - COMPLETED with meta-decorator architecture
 - ❌ **Removed @IsUnique/@Exists** - Better handled in service layer (follows NestJS patterns)
@@ -76,6 +79,7 @@ Impact: High - makes validation system 100% complete
 - Edge case handling for complex validation scenarios
 
 #### 2️⃣ **Testing Decorators Implementation**
+
 ```
 Priority: 🔥 HIGH
 Effort: 1-2 weeks  
@@ -83,6 +87,7 @@ Impact: High - essential for production apps
 ```
 
 **What to implement:**
+
 ```gofa
 @Test()
 func TestUserService() {
@@ -99,11 +104,13 @@ type MockUserRepository struct {}
 ```
 
 **Benefits:**
+
 - Complete developer workflow
 - Essential for production applications
 - High user demand feature
 
 #### 3️⃣ **Performance Optimization**
+
 ```
 Priority: 🔥 HIGH
 Effort: 1 week
@@ -111,8 +118,9 @@ Impact: Medium-High - better user experience
 ```
 
 **What to optimize:**
+
 - AST parsing and caching
-- Parallel file processing  
+- Parallel file processing
 - Template generation optimization
 - Memory usage for large projects
 - Incremental compilation support
@@ -120,6 +128,7 @@ Impact: Medium-High - better user experience
 ### 🚀 **Phase 2: Major Features (Next 4-6 weeks)**
 
 #### 4️⃣ **WebSocket Decorators**
+
 ```
 Priority: 🔥 HIGH
 Effort: 2-3 weeks
@@ -127,6 +136,7 @@ Impact: High - modern web applications need WebSocket
 ```
 
 **Target Implementation:**
+
 ```gofa
 @WebSocketGateway(8080)
 type ChatGateway struct {
@@ -145,6 +155,7 @@ func (g *ChatGateway) handleConnection(@ConnectedSocket() client WebSocketClient
 ```
 
 #### 5️⃣ **Developer Tooling**
+
 ```
 Priority: 🔥 HIGH  
 Effort: 2-3 weeks
@@ -152,6 +163,7 @@ Impact: High - developer experience critical for adoption
 ```
 
 **What to build:**
+
 - VS Code extension for .gofa files
 - Syntax highlighting and auto-completion
 - Error highlighting in IDE
@@ -161,6 +173,7 @@ Impact: High - developer experience critical for adoption
 ### 🚀 **Phase 3: Specialized Features (Next 6-8 weeks)**
 
 #### 6️⃣ **GraphQL Decorators**
+
 ```
 Priority: 🟡 MEDIUM
 Effort: 3-4 weeks
@@ -168,6 +181,7 @@ Impact: Medium - needed for GraphQL APIs
 ```
 
 #### 7️⃣ **Microservices Patterns**
+
 ```
 Priority: 🟡 MEDIUM
 Effort: 2-3 weeks  
@@ -189,6 +203,7 @@ Week 11-12: Developer Tooling (VS Code extension)
 ```
 
 ### **🏆 Success Metrics**
+
 - **Validation System**: 100% complete, all edge cases handled
 - **Testing**: Full test decorator support with mocking
 - **Performance**: 5x faster transpilation for large projects
@@ -196,26 +211,27 @@ Week 11-12: Developer Tooling (VS Code extension)
 - **Developer UX**: VS Code extension with 1000+ downloads
 
 ### **💡 Why This Order?**
+
 1. **Finish validation** - You're 95% done, get the win
 2. **Testing decorators** - Essential for production use
 3. **Performance** - User experience improvement
-4. **WebSocket** - Major feature gap for modern apps  
+4. **WebSocket** - Major feature gap for modern apps
 5. **Tooling** - Developer adoption accelerator
 
 ---
 
 ## 📊 Current Status
 
-| ✅**Completed**  | ❌**Pending**              |
-| ---------------------- | -------------------------------- |
-| Basic REST API transpilation | ~~Advanced decorator patterns~~ ✅ |
-| Parameter decorators   | WebSocket decorators |
-| Controller/Service generation | GraphQL decorators |
-| Dependency injection wiring | Testing decorators |
-| **Validation decorators** ✅ | Route versioning |
-| Middleware decorators | Microservices decorators |
-| Error handling decorators | Performance optimization |
-| HTTP response decorators | Developer tooling |
+| ✅**Completed**              | ❌**Pending**                 |
+| ---------------------------------- | ----------------------------------- |
+| Basic REST API transpilation       | ~~Advanced decorator patterns~~ ✅ |
+| Parameter decorators               | WebSocket decorators                |
+| Controller/Service generation      | GraphQL decorators                  |
+| Dependency injection wiring        | Testing decorators                  |
+| **Validation decorators** ✅ | Route versioning                    |
+| Middleware decorators              | Microservices decorators            |
+| Error handling decorators          | Performance optimization            |
+| HTTP response decorators           | Developer tooling                   |
 
 ---
 
@@ -244,6 +260,7 @@ Week 11-12: Developer Tooling (VS Code extension)
       // Generate error handling code
   }
   ```
+
   - Parse error type parameters: `@Catch(BadRequestError)`
   - Generate filter registration code
   - Support multiple error types: `@Catch(Error1, Error2)`
@@ -292,10 +309,10 @@ Week 11-12: Developer Tooling (VS Code extension)
   ```gofa
   @Scope("singleton")
   type UserService struct {}
-  
+
   @Scope("transient")
   type TaskProcessor struct {}
-  
+
   @Scope("request")
   type UserContext struct {}
   ```
@@ -341,19 +358,19 @@ Week 11-12: Developer Tooling (VS Code extension)
   type CreateUserDto struct {
       @IsEmail()
       Email    string
-      
+
       @Min(18)
       @Max(120)
       Age      int
-      
+
       @IsNotEmpty()
       @Length(2,50)
       Name     string
-      
+
       @IsArray()
       @ArrayMinSize(1)
       Tags     []string
-      
+
       @ValidateNested()
       Profile  UserProfile
   }
@@ -362,6 +379,7 @@ Week 11-12: Developer Tooling (VS Code extension)
 ##### **🎯 Complete Built-in Validation Decorators List**
 
 **📝 Type Validation Decorators**
+
 - [X] `@IsString()` - Validate value is string type
 - [X] `@IsNumber()` - Validate value is numeric (int, float, etc.)
 - [X] `@IsInt()` - Validate value is integer
@@ -372,8 +390,9 @@ Week 11-12: Developer Tooling (VS Code extension)
 - [X] `@IsUUID()` - Validate value is valid UUID format
 
 **📧 Format Validation Decorators**
+
 - [X] `@IsEmail()` - Validate email format
-- [X] `@IsURL()` - Validate URL format  
+- [X] `@IsURL()` - Validate URL format
 - [X] `@IsIP()` - Validate IP address format
 - [X] `@IsJSON()` - Validate JSON format
 - [X] `@IsAlpha()` - Validate contains only letters
@@ -385,7 +404,8 @@ Week 11-12: Developer Tooling (VS Code extension)
 - [X] `@IsISBN()` - Validate ISBN format
 - [X] `@IsBase64()` - Validate base64 encoded string
 
-**🔢 Range & Length Validation Decorators**  
+**🔢 Range & Length Validation Decorators**
+
 - [X] `@Min(value)` - Validate minimum value (numbers) or length (strings/arrays)
 - [X] `@Max(value)` - Validate maximum value (numbers) or length (strings/arrays)
 - [X] `@Length(min, max)` - Validate string/array length range
@@ -396,8 +416,9 @@ Week 11-12: Developer Tooling (VS Code extension)
 - [X] `@ArrayNotEmpty()` - Validate array is not empty
 
 **🔍 Content Validation Decorators**
+
 - [X] `@IsNotEmpty()` - Validate value is not empty
-- [X] `@IsEmpty()` - Validate value is empty  
+- [X] `@IsEmpty()` - Validate value is empty
 - [X] `@IsOptional()` - Mark field as optional (skip validation if nil/empty)
 - [X] `@IsDefined()` - Validate value is defined (not nil)
 - [X] `@NotEquals(value)` - Validate value does not equal specified value
@@ -408,27 +429,33 @@ Week 11-12: Developer Tooling (VS Code extension)
 - [X] `@IsNotIn(values...)` - Validate value is not in forbidden list
 
 **🔄 Pattern & Custom Validation Decorators**
+
 - [X] `@Matches(pattern)` - Validate against regex pattern
 - [X] `@IsLowercase()` - Validate string is lowercase
 - [X] `@IsUppercase()` - Validate string is uppercase
 - [X] `@ValidateNested()` - Validate nested object/struct
+
 - [⚠️] `@ValidateIf(condition)` - Conditional validation (architecture limitation - needs redesign)
+
 - [X] `@Custom(validatorFunc)` - Custom validation function
 
 **🏢 Business Logic Validation Decorators**
+
 - [X] `@IsPositive()` - Validate number is positive
 - [X] `@IsNegative()` - Validate number is negative
 - [X] `@IsPastDate()` - Validate date is in the past
 - [X] `@IsFutureDate()` - Validate date is in the future
+
 - [❌] `@IsUnique(field)` - **REMOVED** (violates separation of concerns - use service layer)
 - [❌] `@Exists(entity, field)` - **REMOVED** (violates separation of concerns - use service layer)
 
 **📋 Generated Validation Code Structure**
+
 ```go
 // Generated validation function for CreateUserDto
 func ValidateCreateUserDto(dto *CreateUserDto) []ValidationError {
     var errors []ValidationError
-    
+  
     // @IsEmail() validation for Email field
     if !isValidEmail(dto.Email) {
         errors = append(errors, ValidationError{
@@ -438,7 +465,7 @@ func ValidateCreateUserDto(dto *CreateUserDto) []ValidationError {
             Code:    "IS_EMAIL",
         })
     }
-    
+  
     // @Min(18) @Max(120) validation for Age field
     if dto.Age < 18 {
         errors = append(errors, ValidationError{
@@ -456,7 +483,7 @@ func ValidateCreateUserDto(dto *CreateUserDto) []ValidationError {
             Code:    "MAX_VALUE",
         })
     }
-    
+  
     // @IsNotEmpty() @Length(2,50) validation for Name field
     if strings.TrimSpace(dto.Name) == "" {
         errors = append(errors, ValidationError{
@@ -474,7 +501,7 @@ func ValidateCreateUserDto(dto *CreateUserDto) []ValidationError {
             Code:    "LENGTH",
         })
     }
-    
+  
     // @IsArray() @ArrayMinSize(1) validation for Tags field
     if dto.Tags == nil {
         errors = append(errors, ValidationError{
@@ -491,7 +518,7 @@ func ValidateCreateUserDto(dto *CreateUserDto) []ValidationError {
             Code:    "ARRAY_MIN_SIZE",
         })
     }
-    
+  
     // @ValidateNested() validation for Profile field
     if nestedErrors := ValidateUserProfile(&dto.Profile); len(nestedErrors) > 0 {
         for _, err := range nestedErrors {
@@ -499,7 +526,7 @@ func ValidateCreateUserDto(dto *CreateUserDto) []ValidationError {
             errors = append(errors, err)
         }
     }
-    
+  
     return errors
 }
 
@@ -519,8 +546,9 @@ type ValidationResult struct {
 ```
 
 **✅ Implementation Strategy - NEARLY COMPLETED**
+
 1. ✅ **Parse validation decorators** from field-level decorators (not tags)
-2. ✅ **Generate validation functions** for each DTO struct  
+2. ✅ **Generate validation functions** for each DTO struct
 3. ✅ **Generate helper validation functions** (isValidEmail, isValidURL, isAlpha, isAlphanumeric, isNumeric, isValidUUID, isIP, isJSON, isHexColor, isPhoneNumber, isCreditCard, isISBN, isBase64, isDate, isBoolean, isFloat, isInt - **all major helpers implemented**)
 4. ✅ **Generate ValidationError struct** and related types
 5. ✅ **Integrate with HTTP parameter extraction** (@Body decorator)
@@ -529,9 +557,10 @@ type ValidationResult struct {
 8. ✅ **Field-level decorator syntax** for better developer experience
 
 **📊 Current Implementation Status:**
+
 - **~50 out of 55+ validation decorators** actually implemented (90%+ complete!)
 - **Core validation infrastructure** complete (ValidationError, parsing, generation)
-- **Field-level decorators** working correctly 
+- **Field-level decorators** working correctly
 - **Basic validation types** working (email, URL, min/max, length, array checks)
 - **Format validations** complete (IP, JSON, phone, credit card, ISBN, base64, hex color, etc.)
 - **Content validations** complete (empty, optional, defined, contains, equals, in/not-in, etc.)
@@ -539,6 +568,7 @@ type ValidationResult struct {
 - **Business logic validations** complete (positive, negative, past/future dates)
 
 **⚠️ Still Needed:**
+
 - **~5 remaining validation decorators** to complete full specification
 - **Nested validation (@ValidateNested)** - Core feature still has architectural issues
 - **Conditional validation (@ValidateIf)** - ✅ **IMPLEMENTED** with proper meta-decorator architecture
@@ -546,11 +576,12 @@ type ValidationResult struct {
 - **Performance optimization** for large validation chains
 
 **🗑️ Removed Features (Architectural Decision):**
+
 - **@IsUnique** and **@Exists** - Removed for violating separation of concerns. Database validation should be handled in service layer, not input validation layer. This follows NestJS best practices.
 
 #### 🟡 2.3 Advanced Routing Decorators `[MEDIUM PRIORITY]`
 
-- [ ] **Route versioning transpilation** - Generate versioned routes
+- [X] **Route versioning transpilation** - Generate versioned routes
   ```gofa
   @Version("v1")
   @Controller("/users")
@@ -560,7 +591,7 @@ type ValidationResult struct {
   @Controller("/users")
   type UsersV2Controller struct {}
   ```
-- [ ] **Route parameter constraints** - Generate parameter validation
+- [X] **Route parameter constraints** - Generate parameter validation
   ```gofa
   @Get("/users/:id") // where id is numeric
   func getUser(@Param("id", "int") id int) {
@@ -656,21 +687,25 @@ type ValidationResult struct {
 ## 🏆 Transpiler Milestones
 
 ### 🎯 Milestone 1: Core Decorators Complete (Phase 1)
+
 - ✅ All parameter decorators working
 - ✅ Basic HTTP decorators functional
 - 🔄 Error handling decorators implemented
 
 ### 🎯 Milestone 2: Advanced Patterns (Phase 2)
+
 - ✅ Middleware decorators fully functional
 - ✅ **Validation decorators nearly complete (~95% done!)**
 - ⏳ Complex routing patterns working
 
 ### 🎯 Milestone 3: Full Decorator Parity (Phase 3)
+
 - ⏳ All NestJS decorators implemented
 - ⏳ Specialized features (WebSocket, GraphQL)
 - ⏳ Testing decorators complete
 
 ### 🎯 Milestone 4: Production Ready (Phase 4)
+
 - ⏳ Performance optimized
 - ⏳ Developer tooling complete
 - ⏳ Enterprise-ready transpiler
@@ -680,6 +715,7 @@ type ValidationResult struct {
 ## 📋 Transpiler Implementation Notes
 
 ### **Core Responsibilities:**
+
 1. **Parse .gofa files** - AST generation and analysis
 2. **Generate .go code** - Template-based code generation
 3. **Decorator processing** - Convert decorators to framework calls
@@ -688,6 +724,7 @@ type ValidationResult struct {
 6. **Error reporting** - Clear transpilation error messages
 
 ### **What Transpiler Does NOT Do:**
+
 - ❌ Runtime error handling (Framework responsibility)
 - ❌ HTTP server implementation (Framework responsibility)
 - ❌ Dependency injection container (Framework responsibility)
@@ -695,6 +732,7 @@ type ValidationResult struct {
 - ❌ Authentication/authorization (Framework responsibility)
 
 ### **Generated Code Patterns:**
+
 ```go
 // From: @Get("/users/:id")
 // Generates:
@@ -712,13 +750,13 @@ router.GET("/users/:id", func(ctx *http.RequestContext) {
 **Current Focus**: Transpiler-specific features only
 **Next Phase**: Return to framework development after transpiler completion
 
-| Priority | Feature | Type | Status |
-|----------|---------|------|--------|
-| 1️⃣ | `@Catch()` decorator | Transpiler | ✅ Complete |
-| 2️⃣ | `@HttpCode()` decorator | Transpiler | ✅ Complete |
-| 3️⃣ | **Validation decorators** | Transpiler | ✅ **~95% Complete** |
-| 4️⃣ | Middleware decorators | Transpiler | ✅ Complete |
-| 5️⃣ | AST optimization | Transpiler | ⏳ Pending |
+| Priority | Feature                         | Type       | Status                    |
+| -------- | ------------------------------- | ---------- | ------------------------- |
+| 1️⃣    | `@Catch()` decorator          | Transpiler | ✅ Complete               |
+| 2️⃣    | `@HttpCode()` decorator       | Transpiler | ✅ Complete               |
+| 3️⃣    | **Validation decorators** | Transpiler | ✅**~95% Complete** |
+| 4️⃣    | Middleware decorators           | Transpiler | ✅ Complete               |
+| 5️⃣    | AST optimization                | Transpiler | ⏳ Pending                |
 
 ---
 
@@ -730,7 +768,7 @@ router.GET("/users/:id", func(ctx *http.RequestContext) {
 
 ---
 
-**🔧 Transpiler-focused development roadmap**  
+**🔧 Transpiler-focused development roadmap**
 **📦 See [Framework Roadmap](GOFASTA_FRAMEWORK_ROADMAP.md) for runtime features**
 
 </div>

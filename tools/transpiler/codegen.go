@@ -511,7 +511,34 @@ func (g *CodeGenerator) generateParameterExtraction(method *MethodNode) {
 				if paramName == "" {
 					paramName = param.Name
 				}
-				g.writeLine(fmt.Sprintf("%s := ctx.GetParam(\"%s\")", param.Name, paramName))
+				
+				// Get parameter constraint options
+				constraintOptions := g.getParameterConstraintOptions(decorator)
+				
+				// Extract parameter value
+				g.writeLine(fmt.Sprintf("%sValue := ctx.GetParam(\"%s\")", param.Name, paramName))
+				
+				// Handle required parameter validation
+				if constraintOptions.Required {
+					g.writeLine(fmt.Sprintf("if %sValue == \"\" {", param.Name))
+					g.indent()
+					g.writeLine(fmt.Sprintf("ctx.JSON(400, map[string]string{\"error\": \"Parameter '%s' is required\"})", param.Name))
+					g.writeLine("return")
+					g.unindent()
+					g.writeLine("}")
+				}
+				
+				// Generate constraint validation if parameter is not empty
+				if len(constraintOptions.Constraints) > 0 || constraintOptions.Transform != "" {
+					g.writeLine(fmt.Sprintf("if %sValue != \"\" {", param.Name))
+					g.indent()
+					g.generateParameterConstraintValidation(param, fmt.Sprintf("%sValue", param.Name), constraintOptions)
+					g.unindent()
+					g.writeLine("}")
+				}
+				
+				// Assign final value
+				g.writeLine(fmt.Sprintf("%s := %sValue", param.Name, param.Name))
 
 			case "Query":
 				g.generateQueryParameterExtraction(param, decorator)
@@ -802,6 +829,20 @@ type HeaderParameterOptions struct {
 	CaseInsensitive bool // whether header matching should be case insensitive (default: true)
 }
 
+// ParamConstraint represents a route parameter constraint
+type ParamConstraint struct {
+	Type   string // "int", "guid", "regex", "min", "max", "range", "length", "minlength", "maxlength", "alpha", "bool"
+	Value  string // constraint value (e.g., regex pattern, min/max values)
+	Value2 string // second value for range constraints
+}
+
+// ParameterConstraintOptions represents options for parameter constraint handling
+type ParameterConstraintOptions struct {
+	Constraints []ParamConstraint
+	Required    bool
+	Transform   string // "lowercase", "uppercase", "trim"
+}
+
 // getQueryParameterOptions extracts query parameter options from decorator
 func (g *CodeGenerator) getQueryParameterOptions(decorator *DecoratorNode) QueryParameterOptions {
 	options := QueryParameterOptions{
@@ -902,6 +943,71 @@ func (g *CodeGenerator) getHeaderParameterOptions(decorator *DecoratorNode) Head
 	}
 	
 	return options
+}
+
+// getParameterConstraintOptions extracts parameter constraint options from decorator
+func (g *CodeGenerator) getParameterConstraintOptions(decorator *DecoratorNode) ParameterConstraintOptions {
+	options := ParameterConstraintOptions{
+		Required: false,
+	}
+	
+	// Look for object argument with options
+	for _, arg := range decorator.Args {
+		if objValue, ok := arg.Value.(map[string]interface{}); ok {
+			if required, exists := objValue["required"]; exists {
+				if reqBool, ok := required.(bool); ok {
+					options.Required = reqBool
+				}
+			}
+			if transform, exists := objValue["transform"]; exists {
+				if transformStr, ok := transform.(string); ok {
+					options.Transform = transformStr
+				}
+			}
+			if constraints, exists := objValue["constraints"]; exists {
+				if constraintsArr, ok := constraints.([]interface{}); ok {
+					for _, constraint := range constraintsArr {
+						if constraintStr, ok := constraint.(string); ok {
+							parsedConstraint := g.parseConstraint(constraintStr)
+							options.Constraints = append(options.Constraints, parsedConstraint)
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	return options
+}
+
+// parseConstraint parses a constraint string into a ParamConstraint struct
+func (g *CodeGenerator) parseConstraint(constraintStr string) ParamConstraint {
+	constraint := ParamConstraint{}
+	
+	// Handle constraints with values like "min(1)", "max(100)", "range(1,100)", "regex(\\d+)"
+	if strings.Contains(constraintStr, "(") && strings.Contains(constraintStr, ")") {
+		openParen := strings.Index(constraintStr, "(")
+		closeParen := strings.LastIndex(constraintStr, ")")
+		
+		constraint.Type = constraintStr[:openParen]
+		valueStr := constraintStr[openParen+1 : closeParen]
+		
+		// Handle range constraints with two values
+		if constraint.Type == "range" && strings.Contains(valueStr, ",") {
+			values := strings.Split(valueStr, ",")
+			if len(values) == 2 {
+				constraint.Value = strings.TrimSpace(values[0])
+				constraint.Value2 = strings.TrimSpace(values[1])
+			}
+		} else {
+			constraint.Value = valueStr
+		}
+	} else {
+		// Simple constraints without values like "int", "alpha", "bool"
+		constraint.Type = constraintStr
+	}
+	
+	return constraint
 }
 
 // generateQueryTypeConversion generates type conversion code for query parameters
@@ -1079,6 +1185,140 @@ func (g *CodeGenerator) generateHeaderTypeConversion(param *ParameterNode, value
 	default:
 		// String type (default)
 		g.writeLine(fmt.Sprintf("%s = %s", param.Name, valueVar))
+	}
+}
+
+// generateParameterConstraintValidation generates validation code for parameter constraints
+func (g *CodeGenerator) generateParameterConstraintValidation(param *ParameterNode, valueVar string, options ParameterConstraintOptions) {
+	// Apply string transformations first
+	if options.Transform != "" {
+		switch options.Transform {
+		case "lowercase":
+			g.writeLine(fmt.Sprintf("%s = strings.ToLower(%s)", valueVar, valueVar))
+		case "uppercase":
+			g.writeLine(fmt.Sprintf("%s = strings.ToUpper(%s)", valueVar, valueVar))
+		case "trim":
+			g.writeLine(fmt.Sprintf("%s = strings.TrimSpace(%s)", valueVar, valueVar))
+		}
+	}
+	
+	// Generate validation code for each constraint
+	for _, constraint := range options.Constraints {
+		switch constraint.Type {
+		case "int":
+			g.writeLine(fmt.Sprintf("if _, err := strconv.Atoi(%s); err != nil {", valueVar))
+			g.indent()
+			g.writeLine(fmt.Sprintf("ctx.JSON(400, map[string]string{\"error\": \"Parameter '%s' must be an integer\"})", param.Name))
+			g.writeLine("return")
+			g.unindent()
+			g.writeLine("}")
+			
+		case "bool":
+			g.writeLine(fmt.Sprintf("if _, err := strconv.ParseBool(%s); err != nil {", valueVar))
+			g.indent()
+			g.writeLine(fmt.Sprintf("ctx.JSON(400, map[string]string{\"error\": \"Parameter '%s' must be a boolean (true/false)\"})", param.Name))
+			g.writeLine("return")
+			g.unindent()
+			g.writeLine("}")
+			
+		case "guid":
+			g.writeLine(fmt.Sprintf("if _, err := uuid.Parse(%s); err != nil {", valueVar))
+			g.indent()
+			g.writeLine(fmt.Sprintf("ctx.JSON(400, map[string]string{\"error\": \"Parameter '%s' must be a valid GUID\"})", param.Name))
+			g.writeLine("return")
+			g.unindent()
+			g.writeLine("}")
+			
+		case "alpha":
+			g.writeLine(fmt.Sprintf("if matched, _ := regexp.MatchString(\"^[a-zA-Z]+$\", %s); !matched {", valueVar))
+			g.indent()
+			g.writeLine(fmt.Sprintf("ctx.JSON(400, map[string]string{\"error\": \"Parameter '%s' must contain only alphabetic characters\"})", param.Name))
+			g.writeLine("return")
+			g.unindent()
+			g.writeLine("}")
+			
+		case "regex":
+			if constraint.Value != "" {
+				g.writeLine(fmt.Sprintf("if matched, _ := regexp.MatchString(\"%s\", %s); !matched {", constraint.Value, valueVar))
+				g.indent()
+				g.writeLine(fmt.Sprintf("ctx.JSON(400, map[string]string{\"error\": \"Parameter '%s' does not match required pattern\"})", param.Name))
+				g.writeLine("return")
+				g.unindent()
+				g.writeLine("}")
+			}
+			
+		case "min":
+			if constraint.Value != "" {
+				g.writeLine(fmt.Sprintf("if intVal, err := strconv.Atoi(%s); err == nil {", valueVar))
+				g.indent()
+				g.writeLine(fmt.Sprintf("if intVal < %s {", constraint.Value))
+				g.indent()
+				g.writeLine(fmt.Sprintf("ctx.JSON(400, map[string]string{\"error\": \"Parameter '%s' must be at least %s\"})", param.Name, constraint.Value))
+				g.writeLine("return")
+				g.unindent()
+				g.writeLine("}")
+				g.unindent()
+				g.writeLine("}")
+			}
+			
+		case "max":
+			if constraint.Value != "" {
+				g.writeLine(fmt.Sprintf("if intVal, err := strconv.Atoi(%s); err == nil {", valueVar))
+				g.indent()
+				g.writeLine(fmt.Sprintf("if intVal > %s {", constraint.Value))
+				g.indent()
+				g.writeLine(fmt.Sprintf("ctx.JSON(400, map[string]string{\"error\": \"Parameter '%s' must be at most %s\"})", param.Name, constraint.Value))
+				g.writeLine("return")
+				g.unindent()
+				g.writeLine("}")
+				g.unindent()
+				g.writeLine("}")
+			}
+			
+		case "range":
+			if constraint.Value != "" && constraint.Value2 != "" {
+				g.writeLine(fmt.Sprintf("if intVal, err := strconv.Atoi(%s); err == nil {", valueVar))
+				g.indent()
+				g.writeLine(fmt.Sprintf("if intVal < %s || intVal > %s {", constraint.Value, constraint.Value2))
+				g.indent()
+				g.writeLine(fmt.Sprintf("ctx.JSON(400, map[string]string{\"error\": \"Parameter '%s' must be between %s and %s\"})", param.Name, constraint.Value, constraint.Value2))
+				g.writeLine("return")
+				g.unindent()
+				g.writeLine("}")
+				g.unindent()
+				g.writeLine("}")
+			}
+			
+		case "length":
+			if constraint.Value != "" {
+				g.writeLine(fmt.Sprintf("if len(%s) != %s {", valueVar, constraint.Value))
+				g.indent()
+				g.writeLine(fmt.Sprintf("ctx.JSON(400, map[string]string{\"error\": \"Parameter '%s' must be exactly %s characters long\"})", param.Name, constraint.Value))
+				g.writeLine("return")
+				g.unindent()
+				g.writeLine("}")
+			}
+			
+		case "minlength":
+			if constraint.Value != "" {
+				g.writeLine(fmt.Sprintf("if len(%s) < %s {", valueVar, constraint.Value))
+				g.indent()
+				g.writeLine(fmt.Sprintf("ctx.JSON(400, map[string]string{\"error\": \"Parameter '%s' must be at least %s characters long\"})", param.Name, constraint.Value))
+				g.writeLine("return")
+				g.unindent()
+				g.writeLine("}")
+			}
+			
+		case "maxlength":
+			if constraint.Value != "" {
+				g.writeLine(fmt.Sprintf("if len(%s) > %s {", valueVar, constraint.Value))
+				g.indent()
+				g.writeLine(fmt.Sprintf("ctx.JSON(400, map[string]string{\"error\": \"Parameter '%s' must be at most %s characters long\"})", param.Name, constraint.Value))
+				g.writeLine("return")
+				g.unindent()
+				g.writeLine("}")
+			}
+		}
 	}
 }
 
