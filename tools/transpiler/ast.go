@@ -132,6 +132,26 @@ func (ts *TestSuiteDeclaration) Pos() token.Pos {
 
 func (ts *TestSuiteDeclaration) isDeclaration() {}
 
+// FactoryDeclaration represents a test data factory class
+type FactoryDeclaration struct {
+	Name       string           // factory name (e.g., "UserFactory")
+	TargetType string           // target struct type (e.g., "User")  
+	Decorators []*DecoratorNode // @Factory decorator
+	Fields     []*FieldNode     // factory configuration fields
+	Methods    []*MethodNode    // Build method and traits
+	Position   token.Pos
+}
+
+func (f *FactoryDeclaration) String() string {
+	return "Factory: " + f.Name
+}
+
+func (f *FactoryDeclaration) Pos() token.Pos {
+	return f.Position
+}
+
+func (f *FactoryDeclaration) isDeclaration() {}
+
 // FieldNode represents a field with dependency injection
 type FieldNode struct {
 	Name       string           // field name
@@ -307,6 +327,7 @@ const (
 	AfterAllDecorator
 	MockDecorator
 	FactoryDecorator
+	TraitDecorator
 	TestModuleDecorator
 	HTTPTestDecorator
 	DatabaseTestDecorator
@@ -423,6 +444,7 @@ var DecoratorTypeMap = map[string]DecoratorType{
 	"AfterAll":        AfterAllDecorator,
 	"Mock":            MockDecorator,
 	"Factory":         FactoryDecorator,
+	"Trait":           TraitDecorator,
 	"TestModule":      TestModuleDecorator,
 	"HTTPTest":        HTTPTestDecorator,
 	"DatabaseTest":    DatabaseTestDecorator,

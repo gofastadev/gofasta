@@ -257,6 +257,11 @@ func (p *Parser) parseTypeDeclarationWithDecorators(decorators []*DecoratorNode)
 		return p.parseTestSuiteDeclaration(typeName)
 	}
 	
+	// Check for explicit @Factory() decorator
+	if p.hasFactoryDecorator(decorators) {
+		return p.parseFactoryDeclaration(typeName, decorators)
+	}
+	
 	// Determine declaration type based on naming convention
 	if strings.HasSuffix(typeName, "Controller") {
 		return p.parseControllerDeclaration(typeName)
@@ -279,6 +284,19 @@ func (p *Parser) hasTestSuiteDecorator(decorators []*DecoratorNode) bool {
 	}
 	for _, decorator := range decorators {
 		if decorator.Name == "TestSuite" {
+			return true
+		}
+	}
+	return false
+}
+
+// hasFactoryDecorator checks if decorators contain @Factory() decorator
+func (p *Parser) hasFactoryDecorator(decorators []*DecoratorNode) bool {
+	if decorators == nil {
+		return false
+	}
+	for _, decorator := range decorators {
+		if decorator.Name == "Factory" {
 			return true
 		}
 	}
@@ -516,6 +534,81 @@ func (p *Parser) parseTestSuiteDeclaration(name string) *TestSuiteDeclaration {
 	}
 	
 	return testSuite
+}
+
+// parseFactoryDeclaration parses a factory declaration
+func (p *Parser) parseFactoryDeclaration(name string, decorators []*DecoratorNode) *FactoryDeclaration {
+	// Extract target type from factory name (e.g., "UserFactory" -> "User")
+	targetType := name
+	if strings.HasSuffix(name, "Factory") {
+		targetType = strings.TrimSuffix(name, "Factory")
+	}
+
+	factory := &FactoryDeclaration{
+		Name:       name,
+		TargetType: targetType,
+		Position:   p.currToken.Position,
+		Decorators: decorators,
+		Fields:     []*FieldNode{},
+		Methods:    []*MethodNode{},
+	}
+	
+	// Parse fields (factory configuration and dependencies)
+	for p.currToken.Type != RBRACE && p.currToken.Type != EOF {
+		if p.currToken.Type == DECORATOR {
+			// Parse field decorators
+			var fieldDecorators []*DecoratorNode
+			for p.currToken.Type == DECORATOR {
+				decorator := p.parseDecorator()
+				if decorator != nil {
+					fieldDecorators = append(fieldDecorators, decorator)
+				} else {
+					p.nextToken()
+					break
+				}
+			}
+			
+			// Parse the field after decorators
+			if p.currToken.Type == IDENT {
+				field := p.parseField()
+				if field != nil {
+					// Attach decorators to field
+					field.Decorators = fieldDecorators
+					factory.Fields = append(factory.Fields, field)
+				} else {
+					p.nextToken()
+				}
+			} else {
+				// Invalid field after decorators
+				p.addError("expected field after decorator")
+				p.nextToken()
+			}
+		} else if p.currToken.Type == IDENT {
+			field := p.parseField()
+			if field != nil {
+				factory.Fields = append(factory.Fields, field)
+			} else {
+				// If field parsing failed, advance token to avoid infinite loop
+				p.nextToken()
+			}
+		} else {
+			p.nextToken()
+		}
+	}
+	
+	if !p.expectToken(RBRACE) {
+		return nil
+	}
+	
+	// Parse standalone functions immediately following the struct as methods
+	for p.currToken.Type == FUNC {
+		method := p.parseMethod()
+		if method != nil {
+			factory.Methods = append(factory.Methods, method)
+		}
+	}
+	
+	return factory
 }
 
 // parseField parses a struct field with possible injection tags

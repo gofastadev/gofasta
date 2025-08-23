@@ -84,6 +84,8 @@ func (g *CodeGenerator) generateDeclaration(decl GofaDeclaration) error {
 		return g.generateModuleDeclaration(d)
 	case *TestSuiteDeclaration:
 		return g.generateTestSuiteDeclaration(d)
+	case *FactoryDeclaration:
+		return g.generateFactoryDeclaration(d)
 	default:
 		return fmt.Errorf("unsupported declaration type: %T", decl)
 	}
@@ -231,6 +233,58 @@ func (g *CodeGenerator) generateTestSuiteDeclaration(testSuite *TestSuiteDeclara
 	// Generate test runner function
 	g.generateTestSuiteRunner(testSuite)
 
+	return nil
+}
+
+// generateFactoryDeclaration generates Go code for a factory declaration
+func (g *CodeGenerator) generateFactoryDeclaration(factory *FactoryDeclaration) error {
+	// Add necessary imports for factories
+	g.addImport("math/rand")
+	g.addImport("time")
+	g.addImport("fmt")
+	
+	// Generate factory struct
+	g.writeLine(fmt.Sprintf("type %s struct {", factory.Name))
+	g.indent()
+	g.writeLine("sequenceCounters map[string]int")
+	g.writeLine("rand *rand.Rand")
+	
+	// Generate user-defined fields
+	for _, field := range factory.Fields {
+		tag := g.generateInjectionTag(field)
+		if tag != "" {
+			g.writeLine(fmt.Sprintf("%s %s `%s`", field.Name, field.Type, tag))
+		} else {
+			g.writeLine(fmt.Sprintf("%s %s", field.Name, field.Type))
+		}
+	}
+	
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	
+	// Generate constructor
+	g.generateFactoryConstructor(factory)
+	g.writeLine("")
+	
+	// Generate Build method
+	g.generateFactoryBuildMethod(factory)
+	g.writeLine("")
+	
+	// Generate helper methods
+	g.generateFactoryHelperMethods(factory)
+	g.writeLine("")
+	
+	// Generate trait methods
+	for _, method := range factory.Methods {
+		if g.hasTraitDecorator(method) {
+			if err := g.generateFactoryTraitMethod(factory, method); err != nil {
+				return err
+			}
+			g.writeLine("")
+		}
+	}
+	
 	return nil
 }
 
@@ -1675,6 +1729,11 @@ func (g *CodeGenerator) collectImportsFromDeclaration(decl GofaDeclaration) {
 		g.addImport("testing")
 		g.addImport("github.com/stretchr/testify/assert")
 		g.addImport("github.com/stretchr/testify/suite")
+	case *FactoryDeclaration:
+		// Add factory imports
+		g.addImport("math/rand")
+		g.addImport("time")
+		g.addImport("fmt")
 	}
 }
 
@@ -4990,5 +5049,124 @@ func (g *CodeGenerator) findDecorator(decorators []*DecoratorNode, name string) 
 			return decorator
 		}
 	}
+	return nil
+}
+
+// generateFactoryConstructor generates the factory constructor method
+func (g *CodeGenerator) generateFactoryConstructor(factory *FactoryDeclaration) {
+	g.writeLine(fmt.Sprintf("func New%s() *%s {", factory.Name, factory.Name))
+	g.indent()
+	g.writeLine("return &" + factory.Name + "{")
+	g.indent()
+	g.writeLine("sequenceCounters: make(map[string]int),")
+	g.writeLine("rand: rand.New(rand.NewSource(time.Now().UnixNano())),")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
+}
+
+// generateFactoryBuildMethod generates the Build method for the factory
+func (g *CodeGenerator) generateFactoryBuildMethod(factory *FactoryDeclaration) {
+	g.writeLine(fmt.Sprintf("func (f *%s) Build(overrides interface{}) *%s {", factory.Name, factory.TargetType))
+	g.indent()
+	
+	// Generate default instance creation
+	g.writeLine(fmt.Sprintf("instance := &%s{", factory.TargetType))
+	g.indent()
+	
+	// Generate default field values (this would be customizable based on field types)
+	// For now, we will generate basic examples
+	g.writeLine("// TODO: Add default field values here")
+	g.writeLine("// Example: ID: f.getSequence(\"id\"),")
+	g.writeLine("// Example: Name: f.generateRandomString(),")
+	
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	
+	// Apply overrides
+	g.writeLine("// Apply overrides")
+	g.writeLine("if overrides != nil {")
+	g.indent()
+	g.writeLine("// TODO: Implement override application logic")
+	g.writeLine("_ = overrides // Use parameter to avoid unused variable warning")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	g.writeLine("return instance")
+	
+	g.unindent()
+	g.writeLine("}")
+}
+
+// generateFactoryHelperMethods generates helper methods for the factory
+func (g *CodeGenerator) generateFactoryHelperMethods(factory *FactoryDeclaration) {
+	// Generate sequence counter method
+	g.writeLine(fmt.Sprintf("func (f *%s) getSequence(name string) int {", factory.Name))
+	g.indent()
+	g.writeLine("f.sequenceCounters[name]++")
+	g.writeLine("return f.sequenceCounters[name]")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	
+	// Generate random string method
+	g.writeLine(fmt.Sprintf("func (f *%s) generateRandomString() string {", factory.Name))
+	g.indent()
+	g.writeLine("const charset = \"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\"")
+	g.writeLine("length := 10")
+	g.writeLine("result := make([]byte, length)")
+	g.writeLine("for i := range result {")
+	g.indent()
+	g.writeLine("result[i] = charset[f.rand.Intn(len(charset))]")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("return string(result)")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	
+	// Generate random int method
+	g.writeLine(fmt.Sprintf("func (f *%s) generateRandomInt(min, max int) int {", factory.Name))
+	g.indent()
+	g.writeLine("return f.rand.Intn(max-min) + min")
+	g.unindent()
+	g.writeLine("}")
+}
+
+// hasTraitDecorator checks if a method has a @Trait decorator
+func (g *CodeGenerator) hasTraitDecorator(method *MethodNode) bool {
+	return g.hasDecorator(method.Decorators, "Trait")
+}
+
+// generateFactoryTraitMethod generates a trait method for the factory
+func (g *CodeGenerator) generateFactoryTraitMethod(factory *FactoryDeclaration, method *MethodNode) error {
+	traitDecorator := g.findDecorator(method.Decorators, "Trait")
+	if traitDecorator == nil {
+		return fmt.Errorf("trait method %s missing @Trait decorator", method.Name)
+	}
+	
+	// Get trait name from decorator argument
+	traitName := method.Name
+	if len(traitDecorator.Args) > 0 {
+		if strVal, ok := traitDecorator.Args[0].Value.(string); ok {
+			traitName = strVal
+		}
+	}
+	
+	// Generate trait method signature
+	g.writeLine(fmt.Sprintf("func (f *%s) %s(instance *%s) *%s {", 
+		factory.Name, method.Name, factory.TargetType, factory.TargetType))
+	g.indent()
+	
+	// Generate method body
+	g.writeLine(fmt.Sprintf("// Trait: %s", traitName))
+	g.writeLine("// TODO: Add trait-specific modifications here")
+	g.writeLine("return instance")
+	
+	g.unindent()
+	g.writeLine("}")
+	
 	return nil
 }
