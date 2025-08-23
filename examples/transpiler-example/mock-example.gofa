@@ -1,0 +1,36 @@
+package main
+
+// MockUserRepository demonstrates @Mock() decorator usage
+// This generates a complete mock with call tracking, expectations, and verification
+@Mock()
+type MockUserRepository struct {
+	@Inject("database")
+	database *Database
+	
+	@Inject()
+	logger *Logger
+	
+	// Custom mock configuration
+	allowUnexpectedCalls bool
+}
+
+// Mock method implementations with call tracking
+func FindByID(id int) (*User, error) {
+	// The transpiler generates the full mock implementation:
+	// - Call logging with method name and arguments
+	// - Expectation matching and verification
+	// - Return value support for test scenarios
+	// - Error injection for testing error conditions
+}
+
+func Save(user *User) error {
+	// Mock implementation with expectation support
+}
+
+func Update(user *User) error {
+	// Mock implementation
+}
+
+func Delete(id int) error {
+	// Mock implementation
+}

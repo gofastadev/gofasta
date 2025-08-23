@@ -1,0 +1,8 @@
+package main
+
+@Mock()
+type MockEmailService struct {}
+
+func SendEmail(to, subject, body string) error {
+	// Mock implementation
+}
