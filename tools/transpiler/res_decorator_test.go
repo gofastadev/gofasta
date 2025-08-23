@@ -151,7 +151,8 @@ func GetUser(@Res() res *ResponseWriter, @Param("id") id string) {
 
 	expected := []string{
 		"res := ctx.GetResponseWriter()",
-		"id := ctx.GetParam(\"id\")",
+		"idValue := ctx.GetParam(\"id\")",
+		"id := idValue",
 	}
 
 	testResGeneration(t, input, expected, "response parameter with path parameter")
@@ -199,7 +200,8 @@ func UpdateUser(
 
 	expected := []string{
 		"res := ctx",
-		"id := ctx.GetParam(\"id\")",
+		"idValue := ctx.GetParam(\"id\")",
+		"id := idValue",
 		"var updateData UpdateUserDto",
 		"if err := ctx.ParseJSON(&updateData); err != nil {",
 		"ctx.JSON(400, map[string]string{\"error\": \"Invalid request body\"})",

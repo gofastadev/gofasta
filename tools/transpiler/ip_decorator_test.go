@@ -269,7 +269,8 @@ func DeleteResource(
 
 	expected := []string{
 		"clientIP := ctx.GetClientIP()",
-		"resourceId := ctx.GetParam(\"resourceId\")",
+		"resourceIdValue := ctx.GetParam(\"resourceId\")",
+		"resourceId := resourceIdValue",
 		"var userId string",
 		"if sessionValue := ctx.GetSession(\"userId\"); sessionValue != nil {",
 		"if strValue, ok := sessionValue.(string); ok {",
@@ -337,7 +338,8 @@ func ComplexUpdate(
 
 	expected := []string{
 		"clientIP := ctx.GetClientIP()",
-		"resourceId := ctx.GetParam(\"id\")",
+		"resourceIdValue := ctx.GetParam(\"id\")",
+		"resourceId := resourceIdValue",
 		"var updateData UpdateDto",
 		"if err := ctx.ParseJSON(&updateData); err != nil {",
 		"ctx.JSON(400, map[string]string{\"error\": \"Invalid request body\"})",

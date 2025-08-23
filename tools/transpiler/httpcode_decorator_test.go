@@ -368,7 +368,8 @@ func DeleteUser(@Param("id") id string) {}
 `,
 			expectedSnippets: []string{
 				"ctx.Status(204)",
-				"id := ctx.GetParam(\"id\")",
+				"idValue := ctx.GetParam(\"id\")",
+				"id := idValue",
 				"ctx.JSON(204,",
 			},
 		},

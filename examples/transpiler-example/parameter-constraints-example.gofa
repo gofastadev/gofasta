@@ -1,0 +1,180 @@
+package main
+
+// Examples demonstrating route parameter constraints in GOFASTA
+// Parameter constraints provide server-side validation for route parameters
+// before they reach your controller methods
+
+@Controller("/api/users")
+type UserController struct {}
+
+// Basic integer constraint - ensures ID is a valid integer
+@Get("/:id")
+func GetUser(
+    @Param("id", { constraints: ["int"] }) id string
+) {
+    // id parameter will be validated as integer before reaching this method
+    // Returns 400 error if id is not a valid integer
+    return User{}
+}
+
+// Multiple constraints - integer with minimum value
+@Get("/:id/posts")
+func GetUserPosts(
+    @Param("id", { constraints: ["int", "min(1)"] }) userId string,
+    @Query("page", { defaultValue: "1" }) page int
+) {
+    // userId must be an integer and at least 1
+    // Returns 400 if userId < 1 or not integer
+    return []Post{}
+}
+
+// Range constraint for pagination
+@Get("/:id/followers")
+func GetUserFollowers(
+    @Param("id", { constraints: ["int", "range(1,999999)"] }) userId string
+) {
+    // userId must be integer between 1 and 999999
+    return []Follower{}
+}
+
+// String length constraints
+@Get("/username/:username")
+func GetUserByUsername(
+    @Param("username", { constraints: ["minlength(3)", "maxlength(20)", "alpha"] }) username string
+) {
+    // username must be 3-20 characters long and contain only letters
+    return User{}
+}
+
+// GUID constraint for resource IDs
+@Get("/resource/:resourceId")
+func GetResource(
+    @Param("resourceId", { constraints: ["guid"] }) resourceId string
+) {
+    // resourceId must be a valid GUID format
+    // e.g., "123e4567-e89b-12d3-a456-426614174000"
+    return Resource{}
+}
+
+// Custom regex pattern
+@Get("/product/:sku")
+func GetProduct(
+    @Param("sku", { constraints: ["regex(^[A-Z]{2}-\\d{4}$)"] }) sku string
+) {
+    // SKU must match pattern: 2 uppercase letters, hyphen, 4 digits
+    // e.g., "AB-1234"
+    return Product{}
+}
+
+// Boolean constraint
+@Get("/settings/:enabled")
+func GetSetting(
+    @Param("enabled", { constraints: ["bool"] }) enabled string
+) {
+    // enabled must be "true" or "false"
+    return Setting{}
+}
+
+// Required parameter with transformation
+@Put("/:id")
+func UpdateUser(
+    @Param("id", { required: true, constraints: ["int", "min(1)"], transform: "trim" }) id string,
+    @Body() updateData UpdateUserDTO
+) {
+    // id is required, must be integer >= 1, whitespace is trimmed
+    return User{}
+}
+
+// Complex validation example
+@Get("/category/:categoryId/items/:itemId")
+func GetCategoryItem(
+    @Param("categoryId", { 
+        required: true, 
+        constraints: ["int", "range(1,100)"],
+        transform: "trim" 
+    }) categoryId string,
+    @Param("itemId", { 
+        required: true,
+        constraints: ["regex(^ITEM-\\d{6}$)"],
+        transform: "uppercase" 
+    }) itemId string
+) {
+    // categoryId: required integer 1-100, trimmed
+    // itemId: required format "ITEM-123456", converted to uppercase
+    return Item{}
+}
+
+// Multiple route parameters with different constraints
+@Get("/store/:storeCode/product/:productId/review/:reviewId")
+func GetProductReview(
+    @Param("storeCode", { 
+        constraints: ["length(3)", "alpha"],
+        transform: "uppercase"
+    }) storeCode string,
+    @Param("productId", { 
+        constraints: ["int", "min(1)"]
+    }) productId string,
+    @Param("reviewId", { 
+        constraints: ["guid"],
+        required: true
+    }) reviewId string
+) {
+    // storeCode: exactly 3 letters, converted to uppercase
+    // productId: integer >= 1
+    // reviewId: required GUID format
+    return Review{}
+}
+
+// Data transfer objects
+type UpdateUserDTO struct {
+    Name  string `json:"name"`
+    Email string `json:"email"`
+}
+
+type User struct {
+    ID       int    `json:"id"`
+    Username string `json:"username"`
+    Name     string `json:"name"`
+    Email    string `json:"email"`
+}
+
+type Post struct {
+    ID     int    `json:"id"`
+    Title  string `json:"title"`
+    Body   string `json:"body"`
+}
+
+type Follower struct {
+    ID   int    `json:"id"`
+    Name string `json:"name"`
+}
+
+type Resource struct {
+    ID   string `json:"id"`
+    Name string `json:"name"`
+}
+
+type Product struct {
+    SKU   string `json:"sku"`
+    Name  string `json:"name"`
+    Price float64 `json:"price"`
+}
+
+type Setting struct {
+    Key     string `json:"key"`
+    Value   string `json:"value"`
+    Enabled bool   `json:"enabled"`
+}
+
+type Item struct {
+    ID         string `json:"id"`
+    CategoryID int    `json:"category_id"`
+    Name       string `json:"name"`
+}
+
+type Review struct {
+    ID        string `json:"id"`
+    ProductID int    `json:"product_id"`
+    Rating    int    `json:"rating"`
+    Comment   string `json:"comment"`
+}

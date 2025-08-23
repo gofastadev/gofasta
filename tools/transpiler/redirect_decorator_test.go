@@ -8,10 +8,10 @@ import (
 
 func TestRedirectDecoratorParsing(t *testing.T) {
 	tests := []struct {
-		name             string
-		input            string
-		expectedURL      string
-		expectedStatus   int
+		name           string
+		input          string
+		expectedURL    string
+		expectedStatus int
 	}{
 		{
 			name: "Basic @Redirect with URL and status code",
@@ -110,7 +110,7 @@ func Permanent308Redirect() {}
 			}
 
 			method := controller.Methods[0]
-			
+
 			// Check for Redirect decorator
 			var foundURL string
 			var foundStatus int = 302 // Default
@@ -142,8 +142,8 @@ func Permanent308Redirect() {}
 
 func TestRedirectDecoratorCodeGeneration(t *testing.T) {
 	tests := []struct {
-		name            string
-		input           string
+		name             string
+		input            string
 		expectedSnippets []string
 	}{
 		{
@@ -265,10 +265,10 @@ func Redirect3() {}
 
 func TestRedirectDecoratorValidation(t *testing.T) {
 	tests := []struct {
-		name            string
-		input           string
-		shouldError     bool
-		errorMsg        string
+		name        string
+		input       string
+		shouldError bool
+		errorMsg    string
 	}{
 		{
 			name: "Valid redirect with URL and status",
@@ -363,8 +363,8 @@ func TestRedirectDecoratorTypeMapping(t *testing.T) {
 
 func TestRedirectDecoratorWithOtherDecorators(t *testing.T) {
 	tests := []struct {
-		name            string
-		input           string
+		name             string
+		input            string
 		expectedSnippets []string
 	}{
 		{
@@ -398,7 +398,8 @@ type UserController struct {}
 func TestRedirect(@Param("id") id string) {}
 `,
 			expectedSnippets: []string{
-				"id := ctx.GetParam(\"id\")",
+				"idValue := ctx.GetParam(\"id\")",
+				"id := idValue",
 				"ctx.Redirect(302, \"https://example.com\")",
 			},
 		},
@@ -435,8 +436,8 @@ func TestRedirect(@Param("id") id string) {}
 
 func TestRedirectDecoratorComplexScenarios(t *testing.T) {
 	tests := []struct {
-		name            string
-		input           string
+		name             string
+		input            string
 		expectedSnippets []string
 	}{
 		{
