@@ -135,6 +135,17 @@ func (p *Parser) ParseFile() (*GofaFile, error) {
 								testSuite.Methods = append(testSuite.Methods, method)
 							}
 							continue
+						} else if factory, ok := file.Declarations[len(file.Declarations)-1].(*FactoryDeclaration); ok {
+							// Parse as method and attach to factory (for @Trait methods)
+							method := p.parseMethod()
+							if method != nil {
+								// Attach decorators to method
+								for _, decorator := range decorators {
+									method.Decorators = append(method.Decorators, decorator)
+								}
+								factory.Methods = append(factory.Methods, method)
+							}
+							continue
 						}
 					}
 				}

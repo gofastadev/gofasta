@@ -1,0 +1,9 @@
+package main
+
+@Factory()
+type UserFactory struct {}
+
+@Trait("admin")
+func AdminUser() *User {
+	// Create admin user
+}
