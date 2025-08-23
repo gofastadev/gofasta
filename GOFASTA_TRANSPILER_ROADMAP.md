@@ -756,7 +756,7 @@ type ValidationResult struct {
 
 **Mock Decorator Generation**
 
-- [ ] **`@Mock()` decorator transpilation** - Generate mock struct with tracking
+- [X] **`@Mock()` decorator transpilation** - Generate mock struct with tracking
 
   ```gofa
   @Mock()
