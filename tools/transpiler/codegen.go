@@ -82,6 +82,8 @@ func (g *CodeGenerator) generateDeclaration(decl GofaDeclaration) error {
 		return g.generateServiceDeclaration(d)
 	case *ModuleDeclaration:
 		return g.generateModuleDeclaration(d)
+	case *TestSuiteDeclaration:
+		return g.generateTestSuiteDeclaration(d)
 	default:
 		return fmt.Errorf("unsupported declaration type: %T", decl)
 	}
@@ -189,6 +191,45 @@ func (g *CodeGenerator) generateModuleDeclaration(module *ModuleDeclaration) err
 
 	// Generate Configure method
 	g.generateModuleConfigureMethod(module)
+
+	return nil
+}
+
+// generateTestSuiteDeclaration generates Go code for a test suite
+func (g *CodeGenerator) generateTestSuiteDeclaration(testSuite *TestSuiteDeclaration) error {
+
+	// Generate test suite struct
+	g.writeLine(fmt.Sprintf("type %s struct {", testSuite.Name))
+	g.indent()
+	g.writeLine("suite.Suite")
+
+	// Generate fields with injection tags for mocks and dependencies
+	for _, field := range testSuite.Fields {
+		tag := g.generateInjectionTag(field)
+		if tag != "" {
+			g.writeLine(fmt.Sprintf("%s %s `%s`", field.Name, field.Type, tag))
+		} else {
+			g.writeLine(fmt.Sprintf("%s %s", field.Name, field.Type))
+		}
+	}
+
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+
+	// Generate setup methods (BeforeEach/BeforeAll)
+	g.generateTestSuiteSetupMethods(testSuite)
+	
+	// Generate test methods
+	for _, method := range testSuite.Methods {
+		if err := g.generateTestMethod(testSuite, method); err != nil {
+			return err
+		}
+		g.writeLine("")
+	}
+
+	// Generate test runner function
+	g.generateTestSuiteRunner(testSuite)
 
 	return nil
 }
@@ -1628,6 +1669,12 @@ func (g *CodeGenerator) collectImportsFromDeclaration(decl GofaDeclaration) {
 	case *ModuleDeclaration:
 		// Modules need core package
 		g.addImport("github.com/healtronlabs/gofasta/packages/core")
+		
+	case *TestSuiteDeclaration:
+		// Add testing imports
+		g.addImport("testing")
+		g.addImport("github.com/stretchr/testify/assert")
+		g.addImport("github.com/stretchr/testify/suite")
 	}
 }
 
@@ -4814,4 +4861,134 @@ func (g *CodeGenerator) usesBase64Validation(dtoStructs map[string]*ValidationSt
 		}
 	}
 	return false
+}
+
+// generateTestSuiteSetupMethods generates setup and teardown methods for test suite
+func (g *CodeGenerator) generateTestSuiteSetupMethods(testSuite *TestSuiteDeclaration) {
+	// Generate SetupSuite method (BeforeAll equivalent)
+	g.writeLine(fmt.Sprintf("func (suite *%s) SetupSuite() {", testSuite.Name))
+	g.indent()
+	g.writeLine("// Setup before all tests")
+	
+	// Look for @BeforeAll decorators on methods
+	for _, method := range testSuite.Methods {
+		if g.hasDecorator(method.Decorators, "BeforeAll") {
+			g.writeLine(fmt.Sprintf("%s()", method.Name))
+		}
+	}
+	
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+
+	// Generate SetupTest method (BeforeEach equivalent)
+	g.writeLine(fmt.Sprintf("func (suite *%s) SetupTest() {", testSuite.Name))
+	g.indent()
+	g.writeLine("// Setup before each test")
+	
+	// Look for @BeforeEach decorators on methods
+	for _, method := range testSuite.Methods {
+		if g.hasDecorator(method.Decorators, "BeforeEach") {
+			g.writeLine(fmt.Sprintf("%s()", method.Name))
+		}
+	}
+	
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+
+	// Generate TearDownTest method (AfterEach equivalent)
+	g.writeLine(fmt.Sprintf("func (suite *%s) TearDownTest() {", testSuite.Name))
+	g.indent()
+	g.writeLine("// Cleanup after each test")
+	
+	// Look for @AfterEach decorators on methods
+	for _, method := range testSuite.Methods {
+		if g.hasDecorator(method.Decorators, "AfterEach") {
+			g.writeLine(fmt.Sprintf("%s()", method.Name))
+		}
+	}
+	
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+
+	// Generate TearDownSuite method (AfterAll equivalent)
+	g.writeLine(fmt.Sprintf("func (suite *%s) TearDownSuite() {", testSuite.Name))
+	g.indent()
+	g.writeLine("// Cleanup after all tests")
+	
+	// Look for @AfterAll decorators on methods
+	for _, method := range testSuite.Methods {
+		if g.hasDecorator(method.Decorators, "AfterAll") {
+			g.writeLine(fmt.Sprintf("%s()", method.Name))
+		}
+	}
+	
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+}
+
+// generateTestMethod generates a test method
+func (g *CodeGenerator) generateTestMethod(testSuite *TestSuiteDeclaration, method *MethodNode) error {
+	// Skip methods that are setup/teardown methods
+	if g.hasDecorator(method.Decorators, "BeforeEach") || 
+	   g.hasDecorator(method.Decorators, "AfterEach") ||
+	   g.hasDecorator(method.Decorators, "BeforeAll") || 
+	   g.hasDecorator(method.Decorators, "AfterAll") {
+		return nil
+	}
+
+	// Generate test method - ensure it starts with "Test"
+	methodName := method.Name
+	if !strings.HasPrefix(methodName, "Test") {
+		if strings.HasPrefix(methodName, "test") {
+			methodName = "T" + methodName[1:] // testSomething -> TestSomething
+		} else {
+			methodName = "Test" + strings.Title(methodName) // something -> TestSomething
+		}
+	}
+
+	g.writeLine(fmt.Sprintf("func (suite *%s) %s() {", testSuite.Name, methodName))
+	g.indent()
+
+	// Add test description as comment if @Test decorator has a description
+	testDecorator := g.findDecorator(method.Decorators, "Test")
+	if testDecorator != nil && len(testDecorator.Args) > 0 {
+		if description, ok := testDecorator.Args[0].Value.(string); ok {
+			g.writeLine(fmt.Sprintf("// %s", description))
+		}
+	}
+
+	// Generate basic test structure
+	g.writeLine("// TODO: Implement test logic")
+	g.writeLine("// Use suite.Assert() methods for assertions")
+	g.writeLine("assert := suite.Assert()")
+	g.writeLine("_ = assert // Remove unused variable warning")
+
+	g.unindent()
+	g.writeLine("}")
+
+	return nil
+}
+
+// generateTestSuiteRunner generates the test runner function
+func (g *CodeGenerator) generateTestSuiteRunner(testSuite *TestSuiteDeclaration) {
+	g.writeLine(fmt.Sprintf("func Test%s(t *testing.T) {", testSuite.Name))
+	g.indent()
+	g.writeLine(fmt.Sprintf("suite.Run(t, new(%s))", testSuite.Name))
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+}
+
+// findDecorator finds a decorator by name in a list of decorators
+func (g *CodeGenerator) findDecorator(decorators []*DecoratorNode, name string) *DecoratorNode {
+	for _, decorator := range decorators {
+		if decorator.Name == name {
+			return decorator
+		}
+	}
+	return nil
 }

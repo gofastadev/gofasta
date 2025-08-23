@@ -111,7 +111,7 @@ func (p *Parser) ParseFile() (*GofaFile, error) {
 			// After parsing all decorators, check if current token is a declaration
 			if p.currToken.Type == TYPE || p.currToken.Type == FUNC {
 				if p.currToken.Type == FUNC {
-					// Check if this is a method for the last controller
+					// Check if this is a method for the last controller or test suite
 					if len(file.Declarations) > 0 {
 						if controller, ok := file.Declarations[len(file.Declarations)-1].(*ControllerDeclaration); ok {
 							// Parse as method and attach to controller
@@ -124,12 +124,23 @@ func (p *Parser) ParseFile() (*GofaFile, error) {
 								controller.Methods = append(controller.Methods, method)
 							}
 							continue
+						} else if testSuite, ok := file.Declarations[len(file.Declarations)-1].(*TestSuiteDeclaration); ok {
+							// Parse as method and attach to test suite
+							method := p.parseMethod()
+							if method != nil {
+								// Attach decorators to method
+								for _, decorator := range decorators {
+									method.Decorators = append(method.Decorators, decorator)
+								}
+								testSuite.Methods = append(testSuite.Methods, method)
+							}
+							continue
 						}
 					}
 				}
 				
 				// Parse the declaration and attach all decorators
-				decl := p.parseDeclaration()
+				decl := p.parseDeclarationWithDecorators(decorators)
 				if decl != nil {
 					for _, decorator := range decorators {
 						p.attachDecoratorToDeclaration(decorator, decl)
@@ -199,9 +210,14 @@ func (p *Parser) parseImport() *ast.ImportSpec {
 
 // parseDeclaration parses a top-level declaration
 func (p *Parser) parseDeclaration() GofaDeclaration {
+	return p.parseDeclarationWithDecorators(nil)
+}
+
+// parseDeclarationWithDecorators parses a declaration with access to decorators
+func (p *Parser) parseDeclarationWithDecorators(decorators []*DecoratorNode) GofaDeclaration {
 	switch p.currToken.Type {
 	case TYPE:
-		return p.parseTypeDeclaration()
+		return p.parseTypeDeclarationWithDecorators(decorators)
 	case FUNC:
 		return p.parseFunctionDeclaration()
 	case EOF:
@@ -214,8 +230,8 @@ func (p *Parser) parseDeclaration() GofaDeclaration {
 	}
 }
 
-// parseTypeDeclaration parses a type declaration (controller, service, module)
-func (p *Parser) parseTypeDeclaration() GofaDeclaration {
+// parseTypeDeclarationWithDecorators parses a type declaration with access to decorators
+func (p *Parser) parseTypeDeclarationWithDecorators(decorators []*DecoratorNode) GofaDeclaration {
 	if !p.expectToken(TYPE) {
 		return nil
 	}
@@ -236,17 +252,37 @@ func (p *Parser) parseTypeDeclaration() GofaDeclaration {
 		return nil
 	}
 	
-	// Determine declaration type based on naming convention or decorators
+	// Check for explicit @TestSuite() decorator first
+	if p.hasTestSuiteDecorator(decorators) {
+		return p.parseTestSuiteDeclaration(typeName)
+	}
+	
+	// Determine declaration type based on naming convention
 	if strings.HasSuffix(typeName, "Controller") {
 		return p.parseControllerDeclaration(typeName)
 	} else if strings.HasSuffix(typeName, "Service") {
 		return p.parseServiceDeclaration(typeName)
 	} else if strings.HasSuffix(typeName, "Module") {
 		return p.parseModuleDeclaration(typeName)
+	} else if strings.HasSuffix(typeName, "Tests") || strings.HasSuffix(typeName, "TestSuite") {
+		return p.parseTestSuiteDeclaration(typeName)
 	}
 	
 	// Default to service declaration
 	return p.parseServiceDeclaration(typeName)
+}
+
+// hasTestSuiteDecorator checks if decorators contain @TestSuite() decorator
+func (p *Parser) hasTestSuiteDecorator(decorators []*DecoratorNode) bool {
+	if decorators == nil {
+		return false
+	}
+	for _, decorator := range decorators {
+		if decorator.Name == "TestSuite" {
+			return true
+		}
+	}
+	return false
 }
 
 // parseControllerDeclaration parses a controller declaration
@@ -409,6 +445,77 @@ func (p *Parser) parseModuleDeclaration(name string) *ModuleDeclaration {
 	}
 	
 	return module
+}
+
+// parseTestSuiteDeclaration parses a test suite declaration
+func (p *Parser) parseTestSuiteDeclaration(name string) *TestSuiteDeclaration {
+	testSuite := &TestSuiteDeclaration{
+		Name:       name,
+		Position:   p.currToken.Position,
+		Decorators: []*DecoratorNode{},
+		Fields:     []*FieldNode{},
+		Methods:    []*MethodNode{},
+	}
+	
+	// Parse fields (including field decorators for mocks and dependencies)
+	for p.currToken.Type != RBRACE && p.currToken.Type != EOF {
+		if p.currToken.Type == DECORATOR {
+			// Parse field decorators
+			var decorators []*DecoratorNode
+			for p.currToken.Type == DECORATOR {
+				decorator := p.parseDecorator()
+				if decorator != nil {
+					decorators = append(decorators, decorator)
+				} else {
+					p.nextToken()
+					break
+				}
+			}
+			
+			// Parse the field after decorators
+			if p.currToken.Type == IDENT {
+				field := p.parseField()
+				if field != nil {
+					// Attach decorators to field
+					field.Decorators = decorators
+					testSuite.Fields = append(testSuite.Fields, field)
+				} else {
+					p.nextToken()
+				}
+			} else {
+				// Invalid field after decorators
+				p.addError("expected field after decorator")
+				p.nextToken()
+			}
+		} else if p.currToken.Type == IDENT {
+			field := p.parseField()
+			if field != nil {
+				testSuite.Fields = append(testSuite.Fields, field)
+			} else {
+				// If field parsing failed, advance token to avoid infinite loop
+				p.nextToken()
+			}
+		} else {
+			p.nextToken()
+		}
+	}
+	
+	if !p.expectToken(RBRACE) {
+		return nil
+	}
+	
+	// Parse standalone functions immediately following the struct as methods
+	for p.currToken.Type == FUNC {
+		method := p.parseMethod()
+		if method != nil {
+			testSuite.Methods = append(testSuite.Methods, method)
+		} else {
+			// If method parsing failed, break to avoid infinite loop
+			break
+		}
+	}
+	
+	return testSuite
 }
 
 // parseField parses a struct field with possible injection tags
@@ -1014,6 +1121,8 @@ func (p *Parser) attachDecoratorToDeclaration(decorator *DecoratorNode, decl Gof
 	case *ServiceDeclaration:
 		d.Decorators = append(d.Decorators, decorator)
 	case *ModuleDeclaration:
+		d.Decorators = append(d.Decorators, decorator)
+	case *TestSuiteDeclaration:
 		d.Decorators = append(d.Decorators, decorator)
 	}
 }

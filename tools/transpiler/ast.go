@@ -113,6 +113,25 @@ func (m *ModuleDeclaration) Pos() token.Pos {
 
 func (m *ModuleDeclaration) isDeclaration() {}
 
+// TestSuiteDeclaration represents a test suite class
+type TestSuiteDeclaration struct {
+	Name       string           // test suite name
+	Decorators []*DecoratorNode // @TestSuite, @HTTPTest, @DatabaseTest, etc.
+	Fields     []*FieldNode     // injected dependencies and mocks
+	Methods    []*MethodNode    // test methods with @Test, @BeforeEach, etc.
+	Position   token.Pos
+}
+
+func (ts *TestSuiteDeclaration) String() string {
+	return "TestSuite: " + ts.Name
+}
+
+func (ts *TestSuiteDeclaration) Pos() token.Pos {
+	return ts.Position
+}
+
+func (ts *TestSuiteDeclaration) isDeclaration() {}
+
 // FieldNode represents a field with dependency injection
 type FieldNode struct {
 	Name       string           // field name
@@ -279,6 +298,19 @@ const (
 	IsPastDateDecorator
 	IsFutureDateDecorator
 
+	// Testing decorators
+	TestSuiteDecorator
+	TestDecorator
+	BeforeEachDecorator
+	AfterEachDecorator
+	BeforeAllDecorator
+	AfterAllDecorator
+	MockDecorator
+	FactoryDecorator
+	TestModuleDecorator
+	HTTPTestDecorator
+	DatabaseTestDecorator
+
 	// Custom decorators
 	CustomDecorator
 )
@@ -381,6 +413,19 @@ var DecoratorTypeMap = map[string]DecoratorType{
 	"IsNegative":      IsNegativeDecorator,
 	"IsPastDate":      IsPastDateDecorator,
 	"IsFutureDate":    IsFutureDateDecorator,
+	
+	// Testing decorators
+	"TestSuite":       TestSuiteDecorator,
+	"Test":            TestDecorator,
+	"BeforeEach":      BeforeEachDecorator,
+	"AfterEach":       AfterEachDecorator,
+	"BeforeAll":       BeforeAllDecorator,
+	"AfterAll":        AfterAllDecorator,
+	"Mock":            MockDecorator,
+	"Factory":         FactoryDecorator,
+	"TestModule":      TestModuleDecorator,
+	"HTTPTest":        HTTPTestDecorator,
+	"DatabaseTest":    DatabaseTestDecorator,
 }
 
 // GetDecoratorType returns the decorator type for a given name
@@ -456,6 +501,11 @@ func IsBusinessLogicValidationDecorator(decoratorType DecoratorType) bool {
 	return decoratorType >= IsPositiveDecorator && decoratorType <= IsFutureDateDecorator
 }
 
+// IsTestingDecorator checks if a decorator type is a testing decorator
+func IsTestingDecorator(decoratorType DecoratorType) bool {
+	return decoratorType >= TestSuiteDecorator && decoratorType <= DatabaseTestDecorator
+}
+
 // Visitor interface for traversing the AST
 type Visitor interface {
 	Visit(node GofaASTNode) Visitor
@@ -501,6 +551,17 @@ func Walk(v Visitor, node GofaASTNode) {
 	case *ModuleDeclaration:
 		for _, decorator := range n.Decorators {
 			Walk(v, decorator)
+		}
+
+	case *TestSuiteDeclaration:
+		for _, decorator := range n.Decorators {
+			Walk(v, decorator)
+		}
+		for _, field := range n.Fields {
+			Walk(v, field)
+		}
+		for _, method := range n.Methods {
+			Walk(v, method)
 		}
 
 	case *MethodNode:

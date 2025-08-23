@@ -1,0 +1,65 @@
+package main
+
+// APIIntegrationTests demonstrates @TestSuite() with @HTTPTest() for HTTP endpoint testing
+// This generates test suite with HTTP client setup for integration testing
+@TestSuite()
+@HTTPTest()
+type APIIntegrationTests struct {
+	client     *TestHTTPClient `inject:"httpClient"`
+	server     *TestServer     `inject:"testServer"`
+	authToken  string
+}
+
+@BeforeAll()
+func setupHTTPTestEnvironment() {
+	// Setup test HTTP server, authentication, etc.
+	// This runs once before all HTTP tests
+}
+
+@BeforeEach()
+func setupHTTPTest() {
+	// Setup for each HTTP test
+	// Initialize auth tokens, reset client state, etc.
+}
+
+@Test("should return 200 for GET /api/users")
+func testGetUsersEndpoint() {
+	// Test GET /api/users endpoint
+	// HTTP client will be available via dependency injection
+}
+
+@Test("should return 201 for POST /api/users with valid data")
+func testCreateUserEndpoint() {
+	// Test POST /api/users with valid user data
+	// Test successful user creation via HTTP API
+}
+
+@Test("should return 400 for POST /api/users with invalid data")
+func testCreateUserValidationError() {
+	// Test POST /api/users with invalid user data
+	// Test validation error handling via HTTP API
+}
+
+@Test("should return 404 for GET /api/users/nonexistent")
+func testGetNonexistentUser() {
+	// Test GET /api/users/{id} with non-existent user ID
+	// Test 404 error handling
+}
+
+@Test("should require authentication for protected endpoints")
+func testAuthenticationRequired() {
+	// Test that protected endpoints require authentication
+	// Test 401 Unauthorized responses
+}
+
+@AfterEach()
+func cleanupHTTPTest() {
+	// Cleanup after each HTTP test
+	// Clear auth tokens, reset server state, etc.
+}
+
+@AfterAll()
+func teardownHTTPTestEnvironment() {
+	// Cleanup HTTP test environment
+	// Stop test server, cleanup resources, etc.
+}
