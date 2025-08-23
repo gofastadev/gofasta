@@ -384,7 +384,8 @@ type DownloadController struct {}
 func DownloadFile(@Param("filename") filename string) {}
 `,
 			expectedSnippets: []string{
-				"filename := ctx.GetParam(\"filename\")",
+				"filenameValue := ctx.GetParam(\"filename\")",
+				"filename := filenameValue",
 				"ctx.Header(\"Content-Type\", \"application/octet-stream\")",
 				"ctx.Header(\"Content-Disposition\", \"attachment\")",
 			},
@@ -404,7 +405,8 @@ func GetData(@Param("id") id string) {}
 `,
 			expectedSnippets: []string{
 				"ctx.Header(\"X-API-Version\", \"v1.0\")",
-				"id := ctx.GetParam(\"id\")",
+				"idValue := ctx.GetParam(\"id\")",
+				"id := idValue",
 				"handleGetDataError",
 			},
 		},
