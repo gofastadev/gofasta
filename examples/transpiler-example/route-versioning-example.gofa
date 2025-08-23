@@ -1,0 +1,188 @@
+package main
+
+// Example: Route versioning with @Version decorator
+// This demonstrates how to create versioned API endpoints
+
+@Injectable()
+type UserService struct {
+	db DatabaseConnection `inject:""`
+}
+
+func (s *UserService) getUsers() []User {
+	// Service method for getting users
+	return []User{}
+}
+
+func (s *UserService) getUserById(id string) User {
+	// Service method for getting user by ID
+	return User{}
+}
+
+func (s *UserService) createUser(user CreateUserDto) User {
+	// Service method for creating user
+	return User{}
+}
+
+// ✅ V1 API Controller - Uses @Version("1") for /v1/* routes
+@Version("1")
+@Controller("/users")
+type UsersV1Controller struct {
+	service *UserService `inject:"userService"`
+}
+
+@Get("/")
+func (c *UsersV1Controller) getAllUsers() []User {
+	// GET /v1/users
+	return c.service.getUsers()
+}
+
+@Get("/:id")
+func (c *UsersV1Controller) getUserById(@Param("id") id string) User {
+	// GET /v1/users/:id
+	return c.service.getUserById(id)
+}
+
+@Post("/")
+func (c *UsersV1Controller) createUser(@Body() data CreateUserDto) User {
+	// POST /v1/users
+	return c.service.createUser(data)
+}
+
+// ✅ V2 API Controller - Uses @Version("2") for /v2/* routes  
+@Version("2")
+@Controller("/users")
+type UsersV2Controller struct {
+	service *UserService `inject:"userService"`
+}
+
+@Get("/")
+func (c *UsersV2Controller) getAllUsers(@Query("page") page int, @Query("limit") limit int) []User {
+	// GET /v2/users?page=1&limit=10 (enhanced with pagination)
+	return c.service.getUsers()
+}
+
+@Get("/:id")
+func (c *UsersV2Controller) getUserById(@Param("id") id string) User {
+	// GET /v2/users/:id
+	return c.service.getUserById(id)
+}
+
+@Post("/")
+func (c *UsersV2Controller) createUser(@Body() data CreateUserDto) User {
+	// POST /v2/users
+	return c.service.createUser(data)
+}
+
+@Put("/:id")
+func (c *UsersV2Controller) updateUser(@Param("id") id string, @Body() data UpdateUserDto) User {
+	// PUT /v2/users/:id (new in v2)
+	return User{}
+}
+
+// ✅ V3 API Controller - Uses @Version("3") for /v3/* routes
+@Version("3")
+@Controller("/users") 
+type UsersV3Controller struct {
+	service *UserService `inject:"userService"`
+}
+
+@Get("/")
+func (c *UsersV3Controller) getAllUsers(@Query("page") page int, @Query("limit") limit int, @Query("sort") sort string) []User {
+	// GET /v3/users?page=1&limit=10&sort=name (enhanced with sorting)
+	return c.service.getUsers()
+}
+
+@Get("/:id")
+func (c *UsersV3Controller) getUserById(@Param("id") id string, @Query("include") include []string) User {
+	// GET /v3/users/:id?include=profile,settings (enhanced with includes)
+	return c.service.getUserById(id)
+}
+
+@Post("/")
+func (c *UsersV3Controller) createUser(@Body() data CreateUserDto) User {
+	// POST /v3/users
+	return c.service.createUser(data)
+}
+
+@Put("/:id")  
+func (c *UsersV3Controller) updateUser(@Param("id") id string, @Body() data UpdateUserDto) User {
+	// PUT /v3/users/:id
+	return User{}
+}
+
+@Delete("/:id")
+func (c *UsersV3Controller) deleteUser(@Param("id") id string) void {
+	// DELETE /v3/users/:id (new in v3)
+}
+
+// ✅ Mixed versioning - Different version formats
+@Version("v4")  // Version with "v" prefix
+@Controller("/api/users")
+type UsersV4Controller struct {
+	service *UserService `inject:"userService"`
+}
+
+@Get("/")
+func (c *UsersV4Controller) getAllUsers() []User {
+	// GET /v4/api/users 
+	return c.service.getUsers()
+}
+
+// ✅ Numeric version with leading slash
+@Version("/v5")  // Version with "/v" prefix  
+@Controller("/api/users")
+type UsersV5Controller struct {
+	service *UserService `inject:"userService"`
+}
+
+@Get("/")
+func (c *UsersV5Controller) getAllUsers() []User {
+	// GET /v5/api/users
+	return c.service.getUsers()
+}
+
+// ✅ No version decorator - should generate normal routes
+@Controller("/health")
+type HealthController struct {
+}
+
+@Get("/")
+func (c *HealthController) checkHealth() HealthStatus {
+	// GET /health (no version prefix)
+	return HealthStatus{Status: "OK"}
+}
+
+// DTOs and models
+@Injectable()
+type CreateUserDto struct {
+	@IsNotEmpty()
+	@IsEmail()
+	Email string
+	
+	@IsNotEmpty()
+	@MinLength(2)
+	Name string
+}
+
+@Injectable() 
+type UpdateUserDto struct {
+	@IsOptional()
+	@IsEmail()
+	Email string
+	
+	@IsOptional()
+	@MinLength(2) 
+	Name string
+}
+
+type User struct {
+	ID    string `json:"id"`
+	Email string `json:"email"`
+	Name  string `json:"name"`
+}
+
+type HealthStatus struct {
+	Status string `json:"status"`
+}
+
+type DatabaseConnection struct {}

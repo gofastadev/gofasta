@@ -1433,16 +1433,55 @@ func (g *CodeGenerator) getDecoratorArgValue(decorator *DecoratorNode, index int
 	return ""
 }
 
-// getControllerPath gets the controller base path
+// getControllerPath gets the controller base path with version prefix
 func (g *CodeGenerator) getControllerPath(controller *ControllerDeclaration) string {
+	var basePath string
+	
+	// Debug: uncomment to see decorator parsing
+	// fmt.Printf("DEBUG: Controller %s has %d decorators:\n", controller.Name, len(controller.Decorators))
+	// for i, decorator := range controller.Decorators {
+	//     fmt.Printf("  Decorator %d: Name='%s' Args=%d\n", i, decorator.Name, len(decorator.Args))
+	// }
+	
+	// Get the base path from @Controller decorator
 	controllerDecorator := g.getDecorator(controller.Decorators, "Controller")
 	if controllerDecorator != nil && len(controllerDecorator.Args) > 0 {
-		return g.getDecoratorArgValue(controllerDecorator, 0)
+		basePath = g.getDecoratorArgValue(controllerDecorator, 0)
+	} else {
+		// Default path based on controller name
+		name := strings.TrimSuffix(controller.Name, "Controller")
+		basePath = "/" + strings.ToLower(name)
 	}
 
-	// Default path based on controller name
-	name := strings.TrimSuffix(controller.Name, "Controller")
-	return "/" + strings.ToLower(name)
+	// Check for @Version decorator and prepend version prefix
+	versionDecorator := g.getDecorator(controller.Decorators, "Version")
+	if versionDecorator != nil && len(versionDecorator.Args) > 0 {
+		version := g.getDecoratorArgValue(versionDecorator, 0)
+		
+		// Skip empty version strings
+		if strings.TrimSpace(version) == "" {
+			return basePath
+		}
+		
+		// fmt.Printf("DEBUG: Found @Version decorator with value: '%s'\n", version)
+		
+		// Normalize version to lowercase for consistency (industry best practice)
+		version = strings.ToLower(version)
+		
+		// Ensure version starts with "v" if it's not already there
+		if !strings.HasPrefix(version, "v") && !strings.HasPrefix(version, "/v") {
+			version = "v" + version
+		}
+		// Ensure version starts with "/" if it doesn't already
+		if !strings.HasPrefix(version, "/") {
+			version = "/" + version
+		}
+		
+		// Combine version with base path
+		basePath = version + basePath
+		// fmt.Printf("DEBUG: Final versioned path: '%s'\n", basePath)
+	}
+	return basePath
 }
 
 // RouteInfo represents route information
