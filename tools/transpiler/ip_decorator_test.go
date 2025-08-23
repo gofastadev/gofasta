@@ -269,7 +269,8 @@ func DeleteResource(
 
 	expected := []string{
 		"clientIP := ctx.GetClientIP()",
-		"resourceId := ctx.GetParam(\"resourceId\")",
+		"resourceIdValue := ctx.GetParam(\"resourceId\")",
+		"resourceId := resourceIdValue",
 		"var userId string",
 		"if sessionValue := ctx.GetSession(\"userId\"); sessionValue != nil {",
 		"if strValue, ok := sessionValue.(string); ok {",
