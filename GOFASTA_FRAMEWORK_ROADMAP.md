@@ -669,26 +669,129 @@ packages/testing/
 - **Integration Speed**: HTTP tests execute in <10ms average
 - **Developer Experience**: 95% reduction in boilerplate test code
 
-#### 🔥 3.2 WebSocket Support `[HIGH PRIORITY]`
+#### 🔥 3.2 WebSocket Runtime Framework `[HIGH PRIORITY]`
 
-- [ ] **WebSocket Gateway** - Real-time communication
+> **Goal**: Complete WebSocket runtime infrastructure that supports transpiler-generated WebSocket code
+
+### **Phase 3.2a: WebSocket Runtime Core (Week 1-2)**
+- [ ] **WS.1** Create `websocket.Hub` connection manager
   ```go
-  type WebSocketGateway interface {
-      HandleConnection(client WebSocketClient)
-      HandleDisconnection(client WebSocketClient)
-      HandleMessage(client WebSocketClient, message interface{})
+  type Hub struct {
+      clients    map[*Client]bool
+      broadcast  chan []byte
+      register   chan *Client
+      unregister chan *Client
+      rooms      map[string]map[*Client]bool
   }
   ```
-  - WebSocket client management
-  - Room/namespace management
-  - Message broadcasting
-  - WebSocket middleware support
+- [ ] **WS.2** Implement WebSocket client connection handling
+- [ ] **WS.3** Add WebSocket server startup and shutdown logic
+- [ ] **WS.4** Create connection lifecycle management (connect/disconnect)
+- [ ] **WS.5** Implement basic message routing system
+- [ ] **WS.6** Add connection authentication middleware
+- [ ] **WS.7** Create connection timeout and health checking
+- [ ] **WS.8** Implement basic error handling and logging for WebSocket
+- [ ] **WS.9** Add WebSocket connection pooling
+- [ ] **WS.10** Create WebSocket message serialization/deserialization
 
-- [ ] **Real-time Features** - Advanced WebSocket features
-  - Event-based messaging
-  - Client authentication
-  - Rate limiting for WebSocket
-  - Connection state management
+### **Phase 3.2b: Advanced WebSocket Features (Week 2-3)**
+- [ ] **WS.11** Implement room management (`Join()`, `Leave()`, `To()`)
+  ```go
+  type Room interface {
+      AddClient(client *Client)
+      RemoveClient(client *Client) 
+      Broadcast(message []byte)
+      GetClients() []*Client
+  }
+  ```
+- [ ] **WS.12** Add namespace support for WebSocket servers
+- [ ] **WS.13** Implement broadcasting capabilities (`Broadcast()`, `Emit()`)
+- [ ] **WS.14** Create WebSocket authentication guard system
+- [ ] **WS.15** Add role-based authorization for WebSocket handlers
+- [ ] **WS.16** Implement WebSocket interceptor middleware
+- [ ] **WS.17** Add message validation pipeline system
+- [ ] **WS.18** Create WebSocket CORS handling
+- [ ] **WS.19** Implement WebSocket transport configuration
+- [ ] **WS.20** Add WebSocket session management
+
+### **Phase 3.2c: WebSocket Client & External Integration (Week 3)**
+- [ ] **WS.21** Implement WebSocket client for external connections
+  ```go
+  type WebSocketClient interface {
+      Connect(url string, headers map[string]string) error
+      Send(message interface{}) error
+      OnMessage(handler MessageHandler)
+      OnError(handler ErrorHandler)
+      Disconnect() error
+  }
+  ```
+- [ ] **WS.22** Add external WebSocket message handling
+- [ ] **WS.23** Create WebSocket client connection management
+- [ ] **WS.24** Implement client-side authentication
+- [ ] **WS.25** Add client-side message queuing
+- [ ] **WS.26** Create client reconnection logic
+- [ ] **WS.27** Implement client-side error handling
+- [ ] **WS.28** Add client-side event emitters
+- [ ] **WS.29** Create client connection pooling
+- [ ] **WS.30** Implement client load balancing
+
+### **Phase 3.2d: WebSocket Error Handling & Resilience (Week 4)**
+- [ ] **WS.31** Create comprehensive WebSocket error handling system
+  ```go
+  type WebSocketErrorHandler interface {
+      HandleConnectionError(client *Client, err error)
+      HandleMessageError(client *Client, message []byte, err error)
+      HandleSystemError(err error)
+  }
+  ```
+- [ ] **WS.32** Implement client error notification system
+- [ ] **WS.33** Add WebSocket middleware error handling
+- [ ] **WS.34** Create validation error handling for messages
+- [ ] **WS.35** Implement connection timeout and retry logic
+- [ ] **WS.36** Add WebSocket connection health monitoring
+- [ ] **WS.37** Create graceful connection shutdown
+- [ ] **WS.38** Implement error recovery mechanisms
+- [ ] **WS.39** Add error logging and monitoring for WebSocket
+- [ ] **WS.40** Create circuit breaker for WebSocket connections
+
+### **Phase 3.2e: Performance & Scalability (Week 4-5)**
+- [ ] **WS.41** Implement connection pooling optimization
+- [ ] **WS.42** Add message queuing for high-throughput scenarios
+- [ ] **WS.43** Create WebSocket memory usage optimization
+- [ ] **WS.44** Add WebSocket monitoring and metrics collection
+  ```go
+  type WebSocketMetrics interface {
+      RecordConnection(clientID string)
+      RecordDisconnection(clientID string, reason string)
+      RecordMessageSent(size int, messageType string)
+      GetConnectionCount() int
+      GetMessageRate() float64
+  }
+  ```
+- [ ] **WS.45** Implement horizontal scaling support
+- [ ] **WS.46** Create WebSocket load testing utilities
+- [ ] **WS.47** Add performance benchmarking tools
+- [ ] **WS.48** Implement message compression
+- [ ] **WS.49** Create connection multiplexing
+- [ ] **WS.50** Add WebSocket clustering support
+
+### **WebSocket Testing Framework Runtime**
+- [ ] **WST.1** Create WebSocket mock client utilities
+  ```go
+  type MockWebSocketClient interface {
+      ExpectConnection() *ConnectionExpectation
+      ExpectMessage(message interface{}) *MessageExpectation
+      Emit(event string, data interface{})
+      Verify() error
+  }
+  ```
+- [ ] **WST.2** Implement WebSocket test server
+- [ ] **WST.3** Add WebSocket integration testing framework
+- [ ] **WST.4** Create WebSocket performance testing tools
+- [ ] **WST.5** Implement WebSocket test fixtures
+- [ ] **WST.6** Add WebSocket test assertions
+- [ ] **WST.7** Create WebSocket test helpers
+- [ ] **WST.8** Implement WebSocket test mocking system
 
 #### 🟡 3.3 GraphQL Integration `[MEDIUM PRIORITY]`
 

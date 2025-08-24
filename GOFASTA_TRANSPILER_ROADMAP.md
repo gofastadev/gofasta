@@ -56,7 +56,7 @@
 
 | Feature Category                | Progress | Status     | Priority         | Details                              |
 | ------------------------------- | -------- | ---------- | ---------------- | ------------------------------------ |
-| **🌐 WebSocket Support**  | 0%       | ❌ Pending | 🔥**High** | @WebSocketGateway, @SubscribeMessage |
+| **🌐 WebSocket Support**  | 0%       | 🔄 **Detailed Plan Ready** | 🔥**High** | 15+ decorators planned across 5 phases |
 | **📊 GraphQL Decorators** | 0%       | ❌ Pending | 🟡 Medium        | @Resolver, @Query, @Mutation         |
 | **🔄 Route Versioning**   | **100%** | ✅ Complete | ✅ **Done** | @Version decorator - **COMPLETED!** |
 | **📡 Microservices**      | 0%       | ❌ Pending | 🟢 Low           | @MessagePattern, event handling      |
@@ -80,37 +80,566 @@
 
 ```
 Priority: 🔥 CRITICAL (next major feature gap)
-Effort: 3-4 weeks
+Effort: 4-5 weeks (extended timeline for comprehensive implementation)
 Impact: High - critical for modern real-time applications
+Complexity: High - requires new AST nodes, parsing, and runtime integration
 ```
 
-**What to implement:**
+## 🌐 **Complete WebSocket Development Plan**
 
+### **Phase 1: Core WebSocket Decorators (Week 1-2)**
+
+#### **1.1 Gateway Decorators**
 ```gofa
-@WebSocketGateway(8080)
+// Gateway declaration with configuration
+@WebSocketGateway({
+    port: 8080,
+    namespace: "/chat",
+    cors: true,
+    transports: ["websocket", "polling"]
+})
 type ChatGateway struct {
     @Inject("chatService")
     chatService *ChatService
+    
+    @Inject("logger")
+    logger *Logger
 }
 
+// Simple gateway with default config
+@WebSocketGateway(8080)
+type SimpleGateway struct {}
+```
+
+#### **1.2 Message Handling Decorators**
+```gofa
+// Subscribe to specific message types
 @SubscribeMessage("message")
-func HandleMessage(@MessageBody() data *ChatMessage) {
-    // Handle WebSocket message
+func (g *ChatGateway) HandleMessage(
+    @MessageBody() data *ChatMessage,
+    @ConnectedSocket() client *WebSocketClient,
+    @MessageAck() ack *AckCallback
+) error {
+    // Process message and send acknowledgment
+    return g.chatService.ProcessMessage(data)
 }
 
-@OnGatewayConnection()
-func HandleConnection(@ConnectedSocket() client *WebSocket) {
-    // Handle client connection
+// Multiple message types
+@SubscribeMessage(["join_room", "leave_room"])
+func (g *ChatGateway) HandleRoomActions(
+    @MessageBody() data *RoomAction,
+    @ConnectedSocket() client *WebSocketClient
+) {
+    // Handle room join/leave logic
+}
+
+// Pattern-based message handling
+@SubscribeMessage("user.*")
+func (g *ChatGateway) HandleUserEvents(
+    @MessageBody() data interface{},
+    @MessagePattern() pattern string
+) {
+    // Handle all user-related events
 }
 ```
 
-**Implementation Tasks:**
-1. Add WebSocket AST nodes (@WebSocketGateway, @SubscribeMessage, @OnGatewayConnection, @OnGatewayDisconnection)
-2. Add WebSocket parsing support in parser.go
-3. Implement WebSocket code generation (gorilla/websocket integration)
-4. Create comprehensive test cases for WebSocket functionality
-5. Add WebSocket example files and documentation
-6. Integration with existing middleware and guard systems
+#### **1.3 Connection Lifecycle Decorators**
+```gofa
+// Handle new connections
+@OnGatewayConnection()
+func (g *ChatGateway) HandleConnection(
+    @ConnectedSocket() client *WebSocketClient,
+    @Headers() headers map[string]string
+) {
+    g.logger.Info("Client connected:", client.ID())
+    // Authentication, room assignment, etc.
+}
+
+// Handle disconnections
+@OnGatewayDisconnect()
+func (g *ChatGateway) HandleDisconnect(
+    @ConnectedSocket() client *WebSocketClient,
+    @DisconnectReason() reason string
+) {
+    g.logger.Info("Client disconnected:", client.ID(), "Reason:", reason)
+    // Cleanup, notifications, etc.
+}
+
+// Handle initialization after connection
+@OnGatewayInit()
+func (g *ChatGateway) AfterInit() {
+    g.logger.Info("Gateway initialized")
+}
+```
+
+### **Phase 2: Advanced WebSocket Features (Week 2-3)**
+
+#### **2.1 Room and Namespace Management**
+```gofa
+@WebSocketGateway({
+    namespace: "/game",
+    port: 8080
+})
+type GameGateway struct {
+    @Inject("gameService")
+    gameService *GameService
+}
+
+@SubscribeMessage("join_game")
+func (g *GameGateway) JoinGame(
+    @MessageBody() data *JoinGameData,
+    @ConnectedSocket() client *WebSocketClient
+) {
+    // Join client to game room
+    client.Join(data.RoomID)
+    
+    // Notify other players
+    client.To(data.RoomID).Emit("player_joined", data.Player)
+}
+
+@SubscribeMessage("game_action")
+func (g *GameGateway) HandleGameAction(
+    @MessageBody() action *GameAction,
+    @ConnectedSocket() client *WebSocketClient
+) {
+    // Broadcast to all clients in room except sender
+    client.Broadcast().To(action.RoomID).Emit("action_update", action)
+}
+```
+
+#### **2.2 Authentication and Authorization**
+```gofa
+@WebSocketGateway(8080)
+@UseGuards("wsAuthGuard")
+type SecureGateway struct {}
+
+@SubscribeMessage("sensitive_action")
+@UseGuards("wsRoleGuard")
+@Roles(["admin", "moderator"])
+func (g *SecureGateway) HandleSensitiveAction(
+    @MessageBody() data *SensitiveData,
+    @ConnectedSocket() client *WebSocketClient,
+    @CurrentUser() user *User
+) {
+    // Only authenticated users with proper roles can execute
+}
+```
+
+#### **2.3 Validation and Transformation**
+```gofa
+@SubscribeMessage("create_post")
+@UsePipes("wsValidationPipe")
+func (g *ChatGateway) CreatePost(
+    @MessageBody() @IsNotEmpty() @MaxLength(500) content string,
+    @ConnectedSocket() client *WebSocketClient
+) {
+    // Validated message content
+}
+
+@SubscribeMessage("user_data")
+@UseInterceptors("wsTransformInterceptor")
+func (g *ChatGateway) HandleUserData(
+    @MessageBody() data *UserData
+) {
+    // Data will be transformed by interceptor
+}
+```
+
+### **Phase 3: WebSocket Parameter Decorators (Week 3)**
+
+#### **3.1 Core Parameter Decorators**
+```gofa
+@SubscribeMessage("complex_handler")
+func (g *ChatGateway) ComplexHandler(
+    @MessageBody() body interface{},              // Message payload
+    @ConnectedSocket() client *WebSocketClient,   // Current client connection
+    @MessageAck() ack *AckCallback,              // Acknowledgment callback
+    @MessagePattern() pattern string,             // Matched message pattern
+    @Headers() headers map[string]string,         // Connection headers
+    @Query() query map[string]string,             // Connection query params
+    @Session() session *Session,                  // Client session data
+    @Rooms() rooms []string,                      // Client's current rooms
+    @Namespace() ns string,                       // Current namespace
+    @Server() server *WebSocketServer,            // WebSocket server instance
+    @CurrentUser() user *User,                    // Authenticated user (with guards)
+    @ClientIP() ip string,                        // Client IP address
+    @DisconnectReason() reason string,            // Disconnect reason (for disconnect handlers)
+    @EventName() event string,                    // Original event name
+    @RawMessage() raw []byte,                     // Raw message bytes
+) {
+    // Full access to all WebSocket context
+}
+```
+
+### **Phase 4: Error Handling and Middleware (Week 4)**
+
+#### **4.1 WebSocket Error Handling**
+```gofa
+@WebSocketGateway(8080)
+type ErrorHandlingGateway struct {}
+
+@Catch("*")
+func (g *ErrorHandlingGateway) HandleAllErrors(
+    @ConnectedSocket() client *WebSocketClient,
+    @Exception() err error,
+    @EventName() event string
+) {
+    // Global error handler for WebSocket events
+    client.Emit("error", map[string]interface{}{
+        "event": event,
+        "message": err.Error(),
+        "timestamp": time.Now(),
+    })
+}
+
+@Catch("ValidationError")
+func (g *ErrorHandlingGateway) HandleValidationErrors(
+    @ConnectedSocket() client *WebSocketClient,
+    @Exception() err *ValidationError
+) {
+    // Specific validation error handling
+    client.Emit("validation_error", err.Details)
+}
+```
+
+#### **4.2 WebSocket Middleware Integration**
+```gofa
+// Custom WebSocket Guard
+type WSAuthGuard struct {
+    @Inject("jwtService")
+    jwtService *JWTService
+}
+
+func (g *WSAuthGuard) CanActivate(
+    context *ExecutionContext,
+    client *WebSocketClient
+) bool {
+    token := client.Handshake().Auth["token"]
+    return g.jwtService.Verify(token)
+}
+
+// Custom WebSocket Interceptor
+type WSLoggingInterceptor struct {
+    @Inject("logger")
+    logger *Logger
+}
+
+func (i *WSLoggingInterceptor) Intercept(
+    context *ExecutionContext,
+    next *CallHandler
+) interface{} {
+    start := time.Now()
+    result := next.Handle()
+    i.logger.Info("WebSocket event processed in", time.Since(start))
+    return result
+}
+```
+
+### **Phase 5: Advanced Features and Testing (Week 4-5)**
+
+#### **5.1 WebSocket Client Integration**
+```gofa
+// Server-side WebSocket client for external connections
+type ExternalWSClient struct {
+    @Inject("wsClientService")
+    clientService *WebSocketClientService
+}
+
+@WebSocketClient("ws://external-service.com")
+func (c *ExternalWSClient) ConnectToExternal() *WebSocketConnection {
+    return c.clientService.Connect()
+}
+
+@OnMessage("external_event")
+func (c *ExternalWSClient) HandleExternalMessage(
+    @MessageBody() data interface{}
+) {
+    // Handle messages from external WebSocket server
+}
+```
+
+#### **5.2 WebSocket Testing Decorators**
+```gofa
+@TestSuite()
+type WebSocketGatewayTest struct {
+    @Mock("chatService")
+    mockChatService *ChatService
+    
+    @WebSocketTestClient()
+    wsClient *TestWebSocketClient
+    
+    gateway *ChatGateway
+}
+
+@Test("should handle message")
+func (t *WebSocketGatewayTest) TestHandleMessage() {
+    // Arrange
+    message := &ChatMessage{Content: "Hello"}
+    t.mockChatService.On("ProcessMessage", message).Return(nil)
+    
+    // Act
+    t.wsClient.Emit("message", message)
+    
+    // Assert
+    t.mockChatService.AssertExpectations()
+}
+
+@WebSocketIntegrationTest()
+func (t *WebSocketGatewayTest) TestRealTimeMessage() {
+    // Full integration test with real WebSocket connections
+}
+```
+
+### **Implementation Architecture**
+
+#### **5.3 AST Node Structures**
+```go
+// parser/ast.go additions
+type WebSocketGatewayDecorator struct {
+    BaseDecorator
+    Port      *int
+    Namespace *string
+    Config    map[string]interface{}
+}
+
+type SubscribeMessageDecorator struct {
+    BaseDecorator
+    Events   []string
+    Pattern  *string
+}
+
+type WebSocketParameterDecorator struct {
+    BaseDecorator
+    Type string // "messageBody", "connectedSocket", "messageAck", etc.
+}
+```
+
+#### **5.4 Code Generation Templates**
+```go
+// generator/websocket_template.go
+const WebSocketGatewayTemplate = `
+type {{.Name}}WSServer struct {
+    hub *websocket.Hub
+    {{range .Dependencies}}
+    {{.Name}} {{.Type}}
+    {{end}}
+}
+
+func New{{.Name}}WSServer({{.DependencyParams}}) *{{.Name}}WSServer {
+    return &{{.Name}}WSServer{
+        hub: websocket.NewHub(),
+        {{.DependencyAssignments}}
+    }
+}
+
+func (s *{{.Name}}WSServer) Start() {
+    http.HandleFunc("{{.Namespace}}", s.handleWebSocket)
+    go s.hub.Run()
+    log.Printf("WebSocket server starting on port {{.Port}}")
+}
+`
+```
+
+## ✅ **WebSocket Transpiler Implementation Checklist**
+
+> **Focus**: Code generation and AST parsing for WebSocket decorators  
+> **Runtime Features**: See [Framework Roadmap](GOFASTA_FRAMEWORK_ROADMAP.md)
+
+### **Phase 1: AST & Parsing Foundation (Week 1-2)**
+- [ ] **1.1** Add WebSocket AST node structures to `parser/ast.go`
+  ```go
+  type WebSocketGatewayDecorator struct {
+      BaseDecorator
+      Port      *int
+      Namespace *string 
+      Config    map[string]interface{}
+  }
+  ```
+- [ ] **1.2** Implement `@WebSocketGateway()` decorator parsing in `parser.go`
+- [ ] **1.3** Implement `@SubscribeMessage()` decorator parsing with event arrays
+- [ ] **1.4** Implement `@OnGatewayConnection()` decorator parsing
+- [ ] **1.5** Implement `@OnGatewayDisconnect()` decorator parsing
+- [ ] **1.6** Implement `@OnGatewayInit()` decorator parsing
+- [ ] **1.7** Add WebSocket decorator validation and error handling
+- [ ] **1.8** Create WebSocket AST traversal and analysis
+- [ ] **1.9** Implement WebSocket decorator inheritance patterns
+- [ ] **1.10** Add WebSocket decorator unit tests
+
+### **Phase 2: Code Generation Templates (Week 2-3)**
+- [ ] **2.1** Create WebSocket gateway code generation templates
+  ```go
+  const WebSocketGatewayTemplate = `
+  type {{.Name}}WSServer struct {
+      hub *websocket.Hub
+      {{range .Dependencies}}
+      {{.Name}} {{.Type}}
+      {{end}}
+  }`
+  ```
+- [ ] **2.2** Implement WebSocket message handler code generation
+- [ ] **2.3** Add WebSocket lifecycle method generation (connect/disconnect)
+- [ ] **2.4** Create WebSocket middleware integration code generation
+- [ ] **2.5** Implement WebSocket guard decorator code generation
+- [ ] **2.6** Add WebSocket interceptor decorator code generation
+- [ ] **2.7** Create WebSocket pipe decorator code generation
+- [ ] **2.8** Implement WebSocket configuration parsing and generation
+- [ ] **2.9** Add WebSocket import statement generation
+- [ ] **2.10** Create WebSocket route registration code generation
+
+### **Phase 3: Parameter Decorator Implementation (Week 3)**
+
+#### **3.1 Extend Existing HTTP Decorators for WebSocket Context**
+> **Efficiency**: Reuse existing parsing logic, only modify code generation
+
+- [ ] **3.1** Extend `@Headers()` for WebSocket handshake context
+  ```go
+  // HTTP: ctx.Request.Header.Get("auth")  
+  // WebSocket: client.Handshake().Header.Get("auth")
+  ```
+- [ ] **3.2** Extend `@Query()` for WebSocket connection URL context  
+  ```go
+  // HTTP: ctx.Request.URL.Query().Get("room")
+  // WebSocket: client.Handshake().URL.Query().Get("room")
+  ```
+- [ ] **3.3** Extend `@Session()` for WebSocket session context
+  ```go
+  // HTTP: ctx.Session.Get("user")
+  // WebSocket: client.Session().Get("user")  
+  ```
+- [ ] **3.4** Extend `@Catch()` for WebSocket error handling context
+  ```go
+  // Add WebSocket error context to existing @Catch implementation
+  ```
+
+#### **3.2 Implement WebSocket-Specific Parameter Decorators**
+> **New**: WebSocket-only decorators with unique functionality
+
+- [ ] **3.5** Implement `@MessageBody()` parameter decorator
+  ```go
+  // Extract and deserialize WebSocket message payload
+  ```
+- [ ] **3.6** Implement `@ConnectedSocket()` parameter decorator
+  ```go
+  // Inject current WebSocket client connection
+  ```
+- [ ] **3.7** Implement `@MessageAck()` parameter decorator
+  ```go
+  // Inject acknowledgment callback for WebSocket messages
+  ```
+- [ ] **3.8** Implement `@Rooms()` parameter decorator
+  ```go
+  // Inject array of rooms client has joined
+  ```
+- [ ] **3.9** Implement `@Namespace()` parameter decorator
+  ```go
+  // Inject current WebSocket namespace
+  ```
+- [ ] **3.10** Implement `@CurrentUser()` parameter decorator (WebSocket context)
+  ```go
+  // Extract authenticated user from WebSocket connection
+  ```
+- [ ] **3.11** Implement `@ClientIP()` parameter decorator (WebSocket context)
+  ```go
+  // Extract client IP from WebSocket connection
+  ```
+- [ ] **3.12** Implement `@MessagePattern()` parameter decorator
+  ```go
+  // Inject matched message pattern string
+  ```
+- [ ] **3.13** Implement `@Server()` parameter decorator
+  ```go
+  // Inject WebSocket server instance
+  ```
+- [ ] **3.14** Implement `@EventName()` parameter decorator
+  ```go
+  // Inject original WebSocket event name
+  ```
+
+#### **3.3 Context-Aware Parameter Processing**
+- [ ] **3.15** Add context detection logic to existing parameter parser
+  ```go
+  func (p *Parser) parseParameterDecorator() *ParameterDecorator {
+      if p.isWebSocketContext() {
+          return p.parseWebSocketParameterDecorator()  
+      }
+      return p.parseHTTPParameterDecorator()
+  }
+  ```
+- [ ] **3.16** Create shared parameter validation and type checking
+- [ ] **3.17** Add WebSocket parameter code generation templates
+
+### **Phase 4: Advanced Decorator Features (Week 4)**
+- [ ] **4.1** Add WebSocket-specific error handling template generation
+- [ ] **4.2** Implement `@WebSocketClient()` decorator parsing & codegen
+- [ ] **4.3** Add `@OnMessage()` decorator for external client connections
+- [ ] **4.4** Implement WebSocket namespace and room decorator support
+- [ ] **4.5** Add WebSocket authentication decorator integration
+- [ ] **4.6** Create WebSocket custom decorator support
+- [ ] **4.7** Implement WebSocket decorator composition and chaining
+- [ ] **4.8** Add WebSocket configuration validation and type checking
+- [ ] **4.9** Create WebSocket decorator precedence and order handling
+- [ ] **4.10** Add WebSocket middleware decorator integration templates
+
+### **Phase 5: Testing & Documentation (Week 5)**
+- [ ] **5.1** Implement `@WebSocketTestClient()` decorator parsing & codegen
+- [ ] **5.2** Add `@WebSocketIntegrationTest()` decorator transpilation
+- [ ] **5.3** Create WebSocket testing helper code generation
+- [ ] **5.4** Implement WebSocket mock generation templates
+- [ ] **5.5** Add comprehensive WebSocket transpiler test suite
+- [ ] **5.6** Create WebSocket transpilation performance tests
+- [ ] **5.7** Add WebSocket AST validation tests
+- [ ] **5.8** Create WebSocket code generation integration tests
+- [ ] **5.9** Add WebSocket decorator examples for transpiler
+- [ ] **5.10** Create WebSocket transpilation documentation
+
+### **Transpiler Integration & Testing**
+- [ ] **T.1** Test WebSocket decorator precedence with HTTP decorators
+- [ ] **T.2** Verify WebSocket dependency injection transpilation
+- [ ] **T.3** Test WebSocket middleware decorator integration
+- [ ] **T.4** Validate WebSocket error handling transpilation
+- [ ] **T.5** Test WebSocket validation decorator integration
+- [ ] **T.6** Verify WebSocket import generation and dependencies
+- [ ] **T.7** Test WebSocket code generation performance
+- [ ] **T.8** Validate WebSocket AST parsing performance
+- [ ] **T.9** Integration test with existing transpiler features
+- [ ] **T.10** End-to-end transpilation testing
+
+**Total Transpiler Tasks: 44 checkboxes focused on code generation**
+
+### **🚀 Efficiency Gains from Reusing Existing HTTP Decorators**
+
+**Reused Decorators (4)**: `@Headers()`, `@Query()`, `@Session()`, `@Catch()`
+- **✅ 80% code reuse**: Existing parsing logic maintained
+- **🔧 Only code generation changes**: Different context templates
+- **⚡ Faster implementation**: ~50% time reduction for these decorators
+- **🐛 Lower bug risk**: Proven parsing logic
+
+**New WebSocket-Only Decorators (10)**: `@MessageBody()`, `@ConnectedSocket()`, `@MessageAck()`, etc.
+- **🆕 Full implementation needed**: Unique WebSocket functionality
+- **🎯 WebSocket-specific**: No HTTP equivalent exists
+
+**Implementation Priority**:
+1. **Week 1-2**: Core WebSocket AST and basic decorators
+2. **Week 3**: Extend existing decorators (quick wins) + new decorators  
+3. **Week 4-5**: Advanced features and testing
+
+**Example Implementation Approach**:
+```go
+// Existing parseHeadersDecorator() function - NO CHANGES NEEDED
+func (p *Parser) parseHeadersDecorator() *HeadersDecorator {
+    // ... existing logic works for both HTTP and WebSocket ...
+}
+
+// Only code generation changes needed
+func (g *Generator) generateHeadersParameter(decorator *HeadersDecorator, context string) string {
+    if context == "websocket" {
+        return fmt.Sprintf(`client.Handshake().Header.Get("%s")`, decorator.Key)
+    }
+    return fmt.Sprintf(`ctx.Request.Header.Get("%s")`, decorator.Key) // existing
+}
+```
+
+> 🏗️ **Runtime Implementation**: WebSocket server, connection management, broadcasting, etc. are implemented in the framework packages (see [Framework Roadmap](GOFASTA_FRAMEWORK_ROADMAP.md))
 
 #### 2️⃣ **Performance Optimization**
 
@@ -213,7 +742,7 @@ Impact: High - significantly improves developer experience
 ### 🎯 **Recommended Focus Order**
 
 **🔥 Immediate (Next 1-2 months):**
-1. WebSocket support implementation - **3-4 weeks effort, HIGH impact**
+1. WebSocket support implementation - **4-5 weeks effort, HIGH impact** ✨ **COMPREHENSIVE PLAN READY**
 2. Performance optimization - **2-3 weeks effort, MEDIUM impact**  
 3. Developer tooling (VS Code extension) - **4-6 weeks effort, HIGH adoption impact**
 
@@ -252,9 +781,46 @@ The GOFASTA transpiler has achieved incredible progress with **all core decorato
 
 **Next Focus Should Be:**
 
-1. **🚀 Major Feature**: WebSocket support (3-4 weeks) → **Modern real-time app ready**  
-2. **👥 Adoption**: Developer tooling (4-6 weeks) → **Better developer experience**
-3. **⚡ Performance**: Optimization (2-3 weeks) → **Enterprise ready**
+1. **🚀 Major Feature**: WebSocket **transpiler** support (4-5 weeks) → **Real-time code generation ready** ✨ **TRANSPILER PLAN COMPLETE**
+2. **👥 Adoption**: Developer tooling (4-6 weeks) → **Better developer experience**  
+3. **⚡ Performance**: Transpilation optimization (2-3 weeks) → **Faster code generation**
 
 This approach will deliver a **complete, modern, high-performance** transpiler ready for production use in real-time applications with excellent developer experience.
+
+---
+
+## 🌐 **WebSocket Implementation Summary**
+
+The comprehensive WebSocket development plan includes:
+
+### **📦 Decorator Coverage (15+ Decorators)**
+- **Gateway**: `@WebSocketGateway()` with advanced configuration
+- **Messaging**: `@SubscribeMessage()`, `@OnMessage()`, `@MessagePattern()`
+- **Lifecycle**: `@OnGatewayConnection()`, `@OnGatewayDisconnect()`, `@OnGatewayInit()`
+- **Parameters**: `@MessageBody()`, `@ConnectedSocket()`, `@MessageAck()`, `@Headers()`, `@Query()`, `@Session()`, `@Rooms()`, `@Namespace()`, `@CurrentUser()`, `@ClientIP()`
+- **Client**: `@WebSocketClient()`, `@WebSocketTestClient()`
+- **Testing**: `@WebSocketIntegrationTest()`
+
+### **🏗️ Architecture Features**
+- **Real-time Communication**: Full duplex WebSocket support
+- **Room Management**: Join/leave rooms, broadcasting, namespaces
+- **Security**: Integration with existing guard and authentication systems
+- **Middleware**: Interceptors, pipes, and guards adapted for WebSocket context
+- **Error Handling**: Comprehensive error catching and client notification
+- **Testing**: Mock clients, integration tests, performance testing
+
+### **⚡ Implementation Phases**
+1. **Phase 1**: Core decorators and basic functionality (Week 1-2)
+2. **Phase 2**: Advanced features, rooms, security (Week 2-3) 
+3. **Phase 3**: Parameter decorators and context (Week 3)
+4. **Phase 4**: Error handling and middleware (Week 4)
+5. **Phase 5**: Testing framework and optimization (Week 4-5)
+
+### **🎯 Expected Transpiler Outcomes**
+- **Real-time Code Generation**: Complete WebSocket decorator transpilation
+- **AST Parsing**: Full support for WebSocket syntax and decorators
+- **Code Templates**: Production-ready Go code generation for WebSocket features
+- **Developer Experience**: IntelliSense, validation, and error reporting for WebSocket decorators
+
+> 🏗️ **Runtime Features**: WebSocket server implementation, connection management, broadcasting, etc. handled by framework (see [Framework Roadmap](GOFASTA_FRAMEWORK_ROADMAP.md))
 
