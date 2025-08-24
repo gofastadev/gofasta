@@ -36,7 +36,7 @@ func (g *CodeGenerator) GenerateGoCode(file *GofaFile) (string, error) {
 
 	// Add validation imports if needed
 	g.addValidationImportsIfNeeded(file)
-	
+
 	// Collect imports
 	g.collectImports(file)
 
@@ -129,13 +129,13 @@ func (g *CodeGenerator) generateControllerDeclaration(controller *ControllerDecl
 
 	// Generate error filter handlers for controller-level @Catch() decorators
 	g.generateCatchHandlers(controller)
-	
+
 	// Generate guard middleware functions
 	g.generateGuardMiddlewareFunctions(controller)
-	
+
 	// Generate interceptor middleware functions
 	g.generateInterceptorMiddlewareFunctions(controller)
-	
+
 	// Generate pipe middleware functions
 	g.generatePipeMiddlewareFunctions(controller)
 
@@ -225,7 +225,7 @@ func (g *CodeGenerator) generateTestSuiteDeclaration(testSuite *TestSuiteDeclara
 
 	// Generate setup methods (BeforeEach/BeforeAll)
 	g.generateTestSuiteSetupMethods(testSuite)
-	
+
 	// Generate test methods
 	for _, method := range testSuite.Methods {
 		if err := g.generateTestMethod(testSuite, method); err != nil {
@@ -246,13 +246,13 @@ func (g *CodeGenerator) generateFactoryDeclaration(factory *FactoryDeclaration) 
 	g.addImport("math/rand")
 	g.addImport("time")
 	g.addImport("fmt")
-	
+
 	// Generate factory struct
 	g.writeLine(fmt.Sprintf("type %s struct {", factory.Name))
 	g.indent()
 	g.writeLine("sequenceCounters map[string]int")
 	g.writeLine("rand *rand.Rand")
-	
+
 	// Generate user-defined fields
 	for _, field := range factory.Fields {
 		tag := g.generateInjectionTag(field)
@@ -262,23 +262,23 @@ func (g *CodeGenerator) generateFactoryDeclaration(factory *FactoryDeclaration) 
 			g.writeLine(fmt.Sprintf("%s %s", field.Name, field.Type))
 		}
 	}
-	
+
 	g.unindent()
 	g.writeLine("}")
 	g.writeLine("")
-	
+
 	// Generate constructor
 	g.generateFactoryConstructor(factory)
 	g.writeLine("")
-	
+
 	// Generate Build method
 	g.generateFactoryBuildMethod(factory)
 	g.writeLine("")
-	
+
 	// Generate helper methods
 	g.generateFactoryHelperMethods(factory)
 	g.writeLine("")
-	
+
 	// Generate trait methods
 	for _, method := range factory.Methods {
 		if g.hasTraitDecorator(method) {
@@ -288,7 +288,7 @@ func (g *CodeGenerator) generateFactoryDeclaration(factory *FactoryDeclaration) 
 			g.writeLine("")
 		}
 	}
-	
+
 	return nil
 }
 
@@ -298,18 +298,18 @@ func (g *CodeGenerator) generateMockDeclaration(mock *MockDeclaration) error {
 	g.addImport("testing")
 	g.addImport("errors")
 	g.addImport("fmt")
-	
+
 	// Generate mock struct
 	g.writeLine(fmt.Sprintf("type %s struct {", mock.Name))
 	g.indent()
-	
+
 	// Generate tracking fields for method calls
 	// For now, we'll generate basic call tracking structure
 	g.writeLine("// Method call tracking")
 	g.writeLine("CallLog []MockCall")
 	g.writeLine("expectations []MockExpectation")
 	g.writeLine("t *testing.T")
-	
+
 	// Generate user-defined fields
 	for _, field := range mock.Fields {
 		tag := g.generateInjectionTag(field)
@@ -319,23 +319,23 @@ func (g *CodeGenerator) generateMockDeclaration(mock *MockDeclaration) error {
 			g.writeLine(fmt.Sprintf("%s %s", field.Name, field.Type))
 		}
 	}
-	
+
 	g.unindent()
 	g.writeLine("}")
 	g.writeLine("")
-	
+
 	// Generate mock support structures
 	g.generateMockSupportStructures(mock)
 	g.writeLine("")
-	
+
 	// Generate constructor
 	g.generateMockConstructor(mock)
 	g.writeLine("")
-	
+
 	// Generate expectation methods
 	g.generateMockExpectationMethods(mock)
 	g.writeLine("")
-	
+
 	// Generate user-defined methods
 	for _, method := range mock.Methods {
 		if err := g.generateMockMethod(mock, method); err != nil {
@@ -343,7 +343,7 @@ func (g *CodeGenerator) generateMockDeclaration(mock *MockDeclaration) error {
 		}
 		g.writeLine("")
 	}
-	
+
 	return nil
 }
 
@@ -352,14 +352,14 @@ func (g *CodeGenerator) generateTestModuleDeclaration(testModule *TestModuleDecl
 	// Add necessary imports for test modules
 	g.addImport("testing")
 	g.addImport("github.com/healtronlabs/gofasta/packages/core")
-	
+
 	// Generate struct declaration
 	g.writeLine(fmt.Sprintf("type %s struct {", testModule.Name))
 	g.indent()
-	
+
 	// Add container field for DI
 	g.writeLine("container *core.DIContainer")
-	
+
 	// Generate fields with injection tags
 	for _, field := range testModule.Fields {
 		tag := g.generateInjectionTag(field)
@@ -369,23 +369,23 @@ func (g *CodeGenerator) generateTestModuleDeclaration(testModule *TestModuleDecl
 			g.writeLine(fmt.Sprintf("%s %s", field.Name, field.Type))
 		}
 	}
-	
+
 	g.unindent()
 	g.writeLine("}")
 	g.writeLine("")
-	
+
 	// Generate constructor
 	g.generateTestModuleConstructor(testModule)
 	g.writeLine("")
-	
+
 	// Generate setup method
 	g.generateTestModuleSetup(testModule)
 	g.writeLine("")
-	
+
 	// Generate teardown method
 	g.generateTestModuleTeardown(testModule)
 	g.writeLine("")
-	
+
 	return nil
 }
 
@@ -408,7 +408,7 @@ func (g *CodeGenerator) generateTestModuleConstructor(testModule *TestModuleDecl
 func (g *CodeGenerator) generateTestModuleSetup(testModule *TestModuleDeclaration) {
 	g.writeLine(fmt.Sprintf("func (tm *%s) SetupTest(t *testing.T) {", testModule.Name))
 	g.indent()
-	
+
 	// Register providers
 	if len(testModule.Providers) > 0 {
 		g.writeLine("// Register test providers")
@@ -430,7 +430,7 @@ func (g *CodeGenerator) generateTestModuleSetup(testModule *TestModuleDeclaratio
 		}
 		g.writeLine("")
 	}
-	
+
 	// Initialize imports
 	if len(testModule.Imports) > 0 {
 		g.writeLine("// Initialize imported modules")
@@ -439,7 +439,7 @@ func (g *CodeGenerator) generateTestModuleSetup(testModule *TestModuleDeclaratio
 		}
 		g.writeLine("")
 	}
-	
+
 	// Initialize container
 	g.writeLine("// Initialize DI container")
 	g.writeLine("err := tm.container.Initialize()")
@@ -448,7 +448,7 @@ func (g *CodeGenerator) generateTestModuleSetup(testModule *TestModuleDeclaratio
 	g.writeLine("t.Fatalf(\"Failed to initialize test module: %v\", err)")
 	g.unindent()
 	g.writeLine("}")
-	
+
 	g.unindent()
 	g.writeLine("}")
 }
@@ -514,7 +514,7 @@ func (g *CodeGenerator) generateErrorFilterRegistration(controller *ControllerDe
 		if decorator.Name == "Catch" {
 			hasControllerFilters = true
 			config := g.getCatchFilterConfig(decorator, "controller")
-			
+
 			// Generate filter registration
 			if len(config.ErrorTypes) > 0 {
 				for _, errorType := range config.ErrorTypes {
@@ -536,15 +536,15 @@ func (g *CodeGenerator) generateErrorFilterRegistration(controller *ControllerDe
 				hasMethodFilters = true
 				config := g.getCatchFilterConfig(decorator, "method")
 				handlerName := fmt.Sprintf("handle%sError", strings.Title(method.Name))
-				
+
 				if len(config.ErrorTypes) > 0 {
 					for _, errorType := range config.ErrorTypes {
-						g.writeLine(fmt.Sprintf("server.RegisterMethodErrorFilter(\"%s\", \"%s\", c.%s)", 
+						g.writeLine(fmt.Sprintf("server.RegisterMethodErrorFilter(\"%s\", \"%s\", c.%s)",
 							method.Name, errorType, handlerName))
 					}
 				} else {
 					// Method-level global filter
-					g.writeLine(fmt.Sprintf("server.RegisterMethodErrorFilter(\"%s\", \"*\", c.%s)", 
+					g.writeLine(fmt.Sprintf("server.RegisterMethodErrorFilter(\"%s\", \"*\", c.%s)",
 						method.Name, handlerName))
 				}
 			}
@@ -582,7 +582,7 @@ func (g *CodeGenerator) generateControllerMethod(controller *ControllerDeclarati
 
 	// Generate method body placeholder
 	g.writeLine("// TODO: Implement method logic")
-	
+
 	// Generate response with appropriate status code
 	statusCode := g.getHttpStatusCode(method)
 	if statusCode == 0 {
@@ -628,23 +628,23 @@ func (g *CodeGenerator) generateServiceInitializeMethod(service *ServiceDeclarat
 // generateProviderFactory generates a provider factory function for injectable services
 func (g *CodeGenerator) generateProviderFactory(service *ServiceDeclaration) {
 	factoryName := fmt.Sprintf("New%s", service.Name)
-	
+
 	// Extract scope from @Injectable decorator
 	scope := g.getInjectableScope(service)
-	
+
 	// Generate factory function signature
 	g.writeLine(fmt.Sprintf("func %s(container *core.DIContainer) (*%s, error) {", factoryName, service.Name))
 	g.indent()
-	
+
 	// Create instance
 	g.writeLine(fmt.Sprintf("instance := &%s{}", service.Name))
 	g.writeLine("")
-	
+
 	// Generate dependency injection for each field
 	for _, field := range service.Fields {
 		g.generateFieldDependencyInjection(field)
 	}
-	
+
 	// Initialize the service if it has an Initialize method
 	g.writeLine("")
 	g.writeLine("if initializer, ok := interface{}(instance).(interface{ Initialize() error }); ok {")
@@ -656,13 +656,13 @@ func (g *CodeGenerator) generateProviderFactory(service *ServiceDeclaration) {
 	g.writeLine("}")
 	g.unindent()
 	g.writeLine("}")
-	
+
 	g.writeLine("")
 	g.writeLine("return instance, nil")
 	g.unindent()
 	g.writeLine("}")
 	g.writeLine("")
-	
+
 	// Generate provider registration helper
 	g.generateProviderRegistration(service, factoryName, scope)
 }
@@ -728,7 +728,7 @@ func (g *CodeGenerator) generateMethodSignature(receiverType string, method *Met
 	if isController {
 		// Controllers always get HTTP context as first parameter
 		sig.WriteString("ctx *httpPackage.RequestContext")
-		
+
 		// For controllers, only include non-decorated parameters in the signature
 		// Decorated parameters are extracted in the method body
 		nonDecoratedParams := []string{}
@@ -785,13 +785,13 @@ func (g *CodeGenerator) generateParameterExtraction(method *MethodNode) {
 				if paramName == "" {
 					paramName = param.Name
 				}
-				
+
 				// Get parameter constraint options
 				constraintOptions := g.getParameterConstraintOptions(decorator)
-				
+
 				// Extract parameter value
 				g.writeLine(fmt.Sprintf("%sValue := ctx.GetParam(\"%s\")", param.Name, paramName))
-				
+
 				// Handle required parameter validation
 				if constraintOptions.Required {
 					g.writeLine(fmt.Sprintf("if %sValue == \"\" {", param.Name))
@@ -801,7 +801,7 @@ func (g *CodeGenerator) generateParameterExtraction(method *MethodNode) {
 					g.unindent()
 					g.writeLine("}")
 				}
-				
+
 				// Generate constraint validation if parameter is not empty
 				if len(constraintOptions.Constraints) > 0 || constraintOptions.Transform != "" {
 					g.writeLine(fmt.Sprintf("if %sValue != \"\" {", param.Name))
@@ -810,7 +810,7 @@ func (g *CodeGenerator) generateParameterExtraction(method *MethodNode) {
 					g.unindent()
 					g.writeLine("}")
 				}
-				
+
 				// Assign final value
 				g.writeLine(fmt.Sprintf("%s := %sValue", param.Name, param.Name))
 
@@ -819,19 +819,19 @@ func (g *CodeGenerator) generateParameterExtraction(method *MethodNode) {
 
 			case "Headers":
 				g.generateHeaderParameterExtraction(param, decorator)
-			
+
 			case "Req":
 				g.generateRequestParameterExtraction(param, decorator)
-			
+
 			case "Res":
 				g.generateResponseParameterExtraction(param, decorator)
-			
+
 			case "Session":
 				g.generateSessionParameterExtraction(param, decorator)
-			
+
 			case "Ip":
 				g.generateIpParameterExtraction(param, decorator)
-			
+
 			case "HostParam":
 				g.generateHostParamParameterExtraction(param, decorator)
 			}
@@ -848,13 +848,13 @@ func (g *CodeGenerator) generateQueryParameterExtraction(param *ParameterNode, d
 
 	// Get query parameter options from decorator
 	options := g.getQueryParameterOptions(decorator)
-	
+
 	// Generate variable declaration
 	g.writeLine(fmt.Sprintf("var %s %s", param.Name, param.Type))
-	
+
 	// Get raw query value
 	g.writeLine(fmt.Sprintf("queryValue := ctx.GetQuery(\"%s\")", queryName))
-	
+
 	// Handle default value
 	if options.DefaultValue != "" {
 		g.writeLine(fmt.Sprintf("if queryValue == \"\" {"))
@@ -863,7 +863,7 @@ func (g *CodeGenerator) generateQueryParameterExtraction(param *ParameterNode, d
 		g.unindent()
 		g.writeLine("}")
 	}
-	
+
 	// Handle required validation
 	if options.Required && options.DefaultValue == "" {
 		g.writeLine("if queryValue == \"\" {")
@@ -873,10 +873,10 @@ func (g *CodeGenerator) generateQueryParameterExtraction(param *ParameterNode, d
 		g.unindent()
 		g.writeLine("}")
 	}
-	
+
 	// Handle type conversion based on parameter type and options
 	g.generateQueryTypeConversion(param, "queryValue", options)
-	
+
 	g.writeLine("")
 }
 
@@ -889,13 +889,13 @@ func (g *CodeGenerator) generateHeaderParameterExtraction(param *ParameterNode, 
 
 	// Get header parameter options from decorator
 	options := g.getHeaderParameterOptions(decorator)
-	
+
 	// Generate variable declaration
 	g.writeLine(fmt.Sprintf("var %s %s", param.Name, param.Type))
-	
+
 	// Get raw header value
 	g.writeLine(fmt.Sprintf("headerValue := ctx.GetHeader(\"%s\")", headerName))
-	
+
 	// Handle default value
 	if options.DefaultValue != "" {
 		g.writeLine(fmt.Sprintf("if headerValue == \"\" {"))
@@ -904,7 +904,7 @@ func (g *CodeGenerator) generateHeaderParameterExtraction(param *ParameterNode, 
 		g.unindent()
 		g.writeLine("}")
 	}
-	
+
 	// Handle required validation
 	if options.Required && options.DefaultValue == "" {
 		g.writeLine("if headerValue == \"\" {")
@@ -914,10 +914,10 @@ func (g *CodeGenerator) generateHeaderParameterExtraction(param *ParameterNode, 
 		g.unindent()
 		g.writeLine("}")
 	}
-	
+
 	// Handle type conversion based on parameter type and options
 	g.generateHeaderTypeConversion(param, "headerValue", options)
-	
+
 	g.writeLine("")
 }
 
@@ -926,7 +926,7 @@ func (g *CodeGenerator) generateRequestParameterExtraction(param *ParameterNode,
 	// For @Req(), we simply assign the HTTP context's underlying request
 	// The parameter should be of type *http.Request or *httpPackage.RequestContext
 	paramType := strings.ToLower(param.Type)
-	
+
 	if strings.Contains(paramType, "requestcontext") || strings.Contains(paramType, "*requestcontext") {
 		// Assign the context directly
 		g.writeLine(fmt.Sprintf("%s := ctx", param.Name))
@@ -937,7 +937,7 @@ func (g *CodeGenerator) generateRequestParameterExtraction(param *ParameterNode,
 		// Default to request context if type is unclear
 		g.writeLine(fmt.Sprintf("%s := ctx", param.Name))
 	}
-	
+
 	g.writeLine("")
 }
 
@@ -946,7 +946,7 @@ func (g *CodeGenerator) generateResponseParameterExtraction(param *ParameterNode
 	// For @Res(), we provide access to the HTTP response writer and context
 	// The parameter should be of type *http.ResponseWriter, *httpPackage.ResponseContext, or *httpPackage.RequestContext
 	paramType := strings.ToLower(param.Type)
-	
+
 	if strings.Contains(paramType, "responsewriter") || strings.Contains(paramType, "*responsewriter") {
 		// Assign the response writer from context
 		g.writeLine(fmt.Sprintf("%s := ctx.GetResponseWriter()", param.Name))
@@ -960,7 +960,7 @@ func (g *CodeGenerator) generateResponseParameterExtraction(param *ParameterNode
 		// Default to request context which has response capabilities
 		g.writeLine(fmt.Sprintf("%s := ctx", param.Name))
 	}
-	
+
 	g.writeLine("")
 }
 
@@ -968,21 +968,21 @@ func (g *CodeGenerator) generateResponseParameterExtraction(param *ParameterNode
 func (g *CodeGenerator) generateSessionParameterExtraction(param *ParameterNode, decorator *DecoratorNode) {
 	// For @Session(), we provide access to session data through the context
 	// The parameter can be a specific session key or the entire session object
-	
+
 	// Check if a session key is specified in the decorator
 	sessionKey := g.getDecoratorArgValue(decorator, 0)
-	
+
 	if sessionKey != "" {
 		// Extract specific session value by key
 		paramType := strings.ToLower(param.Type)
-		
+
 		// Generate variable declaration
 		g.writeLine(fmt.Sprintf("var %s %s", param.Name, param.Type))
-		
+
 		// Get session value
 		g.writeLine(fmt.Sprintf("if sessionValue := ctx.GetSession(\"%s\"); sessionValue != nil {", sessionKey))
 		g.indent()
-		
+
 		// Handle type conversion based on parameter type
 		switch {
 		case strings.Contains(paramType, "string"):
@@ -991,7 +991,7 @@ func (g *CodeGenerator) generateSessionParameterExtraction(param *ParameterNode,
 			g.writeLine(fmt.Sprintf("%s = strValue", param.Name))
 			g.unindent()
 			g.writeLine("}")
-			
+
 		case strings.Contains(paramType, "int"):
 			g.writeLine(fmt.Sprintf("if intValue, ok := sessionValue.(int); ok {"))
 			g.indent()
@@ -1006,7 +1006,7 @@ func (g *CodeGenerator) generateSessionParameterExtraction(param *ParameterNode,
 			g.writeLine("}")
 			g.unindent()
 			g.writeLine("}")
-			
+
 		case strings.Contains(paramType, "bool"):
 			g.writeLine(fmt.Sprintf("if boolValue, ok := sessionValue.(bool); ok {"))
 			g.indent()
@@ -1021,7 +1021,7 @@ func (g *CodeGenerator) generateSessionParameterExtraction(param *ParameterNode,
 			g.writeLine("}")
 			g.unindent()
 			g.writeLine("}")
-			
+
 		default:
 			// Handle interface{} or custom types
 			g.writeLine(fmt.Sprintf("if typedValue, ok := sessionValue.(%s); ok {", param.Type))
@@ -1030,14 +1030,14 @@ func (g *CodeGenerator) generateSessionParameterExtraction(param *ParameterNode,
 			g.unindent()
 			g.writeLine("}")
 		}
-		
+
 		g.unindent()
 		g.writeLine("}")
-		
+
 	} else {
 		// Extract entire session object
 		paramType := strings.ToLower(param.Type)
-		
+
 		if strings.Contains(paramType, "session") || strings.Contains(paramType, "*session") {
 			// Assign the session object directly
 			g.writeLine(fmt.Sprintf("%s := ctx.GetSessionStore()", param.Name))
@@ -1049,7 +1049,7 @@ func (g *CodeGenerator) generateSessionParameterExtraction(param *ParameterNode,
 			g.writeLine(fmt.Sprintf("%s := ctx.GetSessionStore()", param.Name))
 		}
 	}
-	
+
 	g.writeLine("")
 }
 
@@ -1057,16 +1057,16 @@ func (g *CodeGenerator) generateSessionParameterExtraction(param *ParameterNode,
 func (g *CodeGenerator) generateIpParameterExtraction(param *ParameterNode, decorator *DecoratorNode) {
 	// For @Ip(), we extract the client's IP address from the request
 	// This handles various scenarios like proxies, load balancers, and direct connections
-	
+
 	// The implementation should try multiple sources in order:
 	// 1. X-Forwarded-For header (most common with proxies/load balancers)
 	// 2. X-Real-IP header (nginx and others)
 	// 3. X-Client-IP header (some proxies)
 	// 4. CF-Connecting-IP header (Cloudflare)
 	// 5. Remote address from the connection
-	
+
 	g.writeLine(fmt.Sprintf("%s := ctx.GetClientIP()", param.Name))
-	
+
 	g.writeLine("")
 }
 
@@ -1078,9 +1078,9 @@ func (g *CodeGenerator) generateHostParamParameterExtraction(param *ParameterNod
 	// - Hostname only
 	// - Port only
 	// - Subdomain
-	
+
 	g.writeLine(fmt.Sprintf("%s := ctx.GetHost()", param.Name))
-	
+
 	g.writeLine("")
 }
 
@@ -1095,12 +1095,12 @@ type QueryParameterOptions struct {
 
 // HeaderParameterOptions represents options for header parameter handling
 type HeaderParameterOptions struct {
-	DefaultValue string
-	Required     bool
-	Type         string // "string", "int", "bool", "array", "float"
-	Separator    string // for array types, default ","
-	Transform    string // "lowercase", "uppercase", "trim"
-	CaseInsensitive bool // whether header matching should be case insensitive (default: true)
+	DefaultValue    string
+	Required        bool
+	Type            string // "string", "int", "bool", "array", "float"
+	Separator       string // for array types, default ","
+	Transform       string // "lowercase", "uppercase", "trim"
+	CaseInsensitive bool   // whether header matching should be case insensitive (default: true)
 }
 
 // ParamConstraint represents a route parameter constraint
@@ -1123,14 +1123,14 @@ func (g *CodeGenerator) getQueryParameterOptions(decorator *DecoratorNode) Query
 		Type:      "string",
 		Separator: ",",
 	}
-	
+
 	// If there's only one string argument, it's the query name
 	if len(decorator.Args) == 1 {
 		if _, ok := decorator.Args[0].Value.(string); ok {
 			return options
 		}
 	}
-	
+
 	// Look for object argument with options
 	for _, arg := range decorator.Args {
 		if objValue, ok := arg.Value.(map[string]interface{}); ok {
@@ -1161,7 +1161,7 @@ func (g *CodeGenerator) getQueryParameterOptions(decorator *DecoratorNode) Query
 			}
 		}
 	}
-	
+
 	return options
 }
 
@@ -1172,14 +1172,14 @@ func (g *CodeGenerator) getHeaderParameterOptions(decorator *DecoratorNode) Head
 		Separator:       ",",
 		CaseInsensitive: true, // Headers are case-insensitive by default per HTTP spec
 	}
-	
+
 	// If there's only one string argument, it's the header name
 	if len(decorator.Args) == 1 {
 		if _, ok := decorator.Args[0].Value.(string); ok {
 			return options
 		}
 	}
-	
+
 	// Look for object argument with options
 	for _, arg := range decorator.Args {
 		if objValue, ok := arg.Value.(map[string]interface{}); ok {
@@ -1215,7 +1215,7 @@ func (g *CodeGenerator) getHeaderParameterOptions(decorator *DecoratorNode) Head
 			}
 		}
 	}
-	
+
 	return options
 }
 
@@ -1224,7 +1224,7 @@ func (g *CodeGenerator) getParameterConstraintOptions(decorator *DecoratorNode) 
 	options := ParameterConstraintOptions{
 		Required: false,
 	}
-	
+
 	// Look for object argument with options
 	for _, arg := range decorator.Args {
 		if objValue, ok := arg.Value.(map[string]interface{}); ok {
@@ -1250,22 +1250,22 @@ func (g *CodeGenerator) getParameterConstraintOptions(decorator *DecoratorNode) 
 			}
 		}
 	}
-	
+
 	return options
 }
 
 // parseConstraint parses a constraint string into a ParamConstraint struct
 func (g *CodeGenerator) parseConstraint(constraintStr string) ParamConstraint {
 	constraint := ParamConstraint{}
-	
+
 	// Handle constraints with values like "min(1)", "max(100)", "range(1,100)", "regex(\\d+)"
 	if strings.Contains(constraintStr, "(") && strings.Contains(constraintStr, ")") {
 		openParen := strings.Index(constraintStr, "(")
 		closeParen := strings.LastIndex(constraintStr, ")")
-		
+
 		constraint.Type = constraintStr[:openParen]
 		valueStr := constraintStr[openParen+1 : closeParen]
-		
+
 		// Handle range constraints with two values
 		if constraint.Type == "range" && strings.Contains(valueStr, ",") {
 			values := strings.Split(valueStr, ",")
@@ -1280,14 +1280,14 @@ func (g *CodeGenerator) parseConstraint(constraintStr string) ParamConstraint {
 		// Simple constraints without values like "int", "alpha", "bool"
 		constraint.Type = constraintStr
 	}
-	
+
 	return constraint
 }
 
 // generateQueryTypeConversion generates type conversion code for query parameters
 func (g *CodeGenerator) generateQueryTypeConversion(param *ParameterNode, valueVar string, options QueryParameterOptions) {
 	paramType := strings.ToLower(param.Type)
-	
+
 	// Apply string transformations first
 	if options.Transform != "" {
 		switch options.Transform {
@@ -1299,7 +1299,7 @@ func (g *CodeGenerator) generateQueryTypeConversion(param *ParameterNode, valueV
 			g.writeLine(fmt.Sprintf("%s = strings.TrimSpace(%s)", valueVar, valueVar))
 		}
 	}
-	
+
 	// Handle different parameter types
 	switch {
 	case strings.Contains(paramType, "[]") || options.Type == "array":
@@ -1315,7 +1315,7 @@ func (g *CodeGenerator) generateQueryTypeConversion(param *ParameterNode, valueV
 		g.writeLine("}")
 		g.unindent()
 		g.writeLine("}")
-		
+
 	case paramType == "int" || paramType == "int64" || paramType == "int32":
 		// Integer conversion
 		g.writeLine(fmt.Sprintf("if %s != \"\" {", valueVar))
@@ -1332,7 +1332,7 @@ func (g *CodeGenerator) generateQueryTypeConversion(param *ParameterNode, valueV
 		g.writeLine("}")
 		g.unindent()
 		g.writeLine("}")
-		
+
 	case paramType == "float64" || paramType == "float32":
 		// Float conversion
 		g.writeLine(fmt.Sprintf("if %s != \"\" {", valueVar))
@@ -1349,7 +1349,7 @@ func (g *CodeGenerator) generateQueryTypeConversion(param *ParameterNode, valueV
 		g.writeLine("}")
 		g.unindent()
 		g.writeLine("}")
-		
+
 	case paramType == "bool":
 		// Boolean conversion
 		g.writeLine(fmt.Sprintf("if %s != \"\" {", valueVar))
@@ -1366,7 +1366,7 @@ func (g *CodeGenerator) generateQueryTypeConversion(param *ParameterNode, valueV
 		g.writeLine("}")
 		g.unindent()
 		g.writeLine("}")
-		
+
 	default:
 		// String type (default)
 		g.writeLine(fmt.Sprintf("%s = %s", param.Name, valueVar))
@@ -1376,7 +1376,7 @@ func (g *CodeGenerator) generateQueryTypeConversion(param *ParameterNode, valueV
 // generateHeaderTypeConversion generates type conversion code for header parameters
 func (g *CodeGenerator) generateHeaderTypeConversion(param *ParameterNode, valueVar string, options HeaderParameterOptions) {
 	paramType := strings.ToLower(param.Type)
-	
+
 	// Apply string transformations first
 	if options.Transform != "" {
 		switch options.Transform {
@@ -1388,7 +1388,7 @@ func (g *CodeGenerator) generateHeaderTypeConversion(param *ParameterNode, value
 			g.writeLine(fmt.Sprintf("%s = strings.TrimSpace(%s)", valueVar, valueVar))
 		}
 	}
-	
+
 	// Handle different parameter types
 	switch {
 	case strings.Contains(paramType, "[]") || options.Type == "array":
@@ -1404,7 +1404,7 @@ func (g *CodeGenerator) generateHeaderTypeConversion(param *ParameterNode, value
 		g.writeLine("}")
 		g.unindent()
 		g.writeLine("}")
-		
+
 	case paramType == "int" || paramType == "int64" || paramType == "int32":
 		// Integer conversion
 		g.writeLine(fmt.Sprintf("if %s != \"\" {", valueVar))
@@ -1421,7 +1421,7 @@ func (g *CodeGenerator) generateHeaderTypeConversion(param *ParameterNode, value
 		g.writeLine("}")
 		g.unindent()
 		g.writeLine("}")
-		
+
 	case paramType == "float64" || paramType == "float32":
 		// Float conversion
 		g.writeLine(fmt.Sprintf("if %s != \"\" {", valueVar))
@@ -1438,7 +1438,7 @@ func (g *CodeGenerator) generateHeaderTypeConversion(param *ParameterNode, value
 		g.writeLine("}")
 		g.unindent()
 		g.writeLine("}")
-		
+
 	case paramType == "bool":
 		// Boolean conversion
 		g.writeLine(fmt.Sprintf("if %s != \"\" {", valueVar))
@@ -1455,7 +1455,7 @@ func (g *CodeGenerator) generateHeaderTypeConversion(param *ParameterNode, value
 		g.writeLine("}")
 		g.unindent()
 		g.writeLine("}")
-		
+
 	default:
 		// String type (default)
 		g.writeLine(fmt.Sprintf("%s = %s", param.Name, valueVar))
@@ -1475,7 +1475,7 @@ func (g *CodeGenerator) generateParameterConstraintValidation(param *ParameterNo
 			g.writeLine(fmt.Sprintf("%s = strings.TrimSpace(%s)", valueVar, valueVar))
 		}
 	}
-	
+
 	// Generate validation code for each constraint
 	for _, constraint := range options.Constraints {
 		switch constraint.Type {
@@ -1486,7 +1486,7 @@ func (g *CodeGenerator) generateParameterConstraintValidation(param *ParameterNo
 			g.writeLine("return")
 			g.unindent()
 			g.writeLine("}")
-			
+
 		case "bool":
 			g.writeLine(fmt.Sprintf("if _, err := strconv.ParseBool(%s); err != nil {", valueVar))
 			g.indent()
@@ -1494,7 +1494,7 @@ func (g *CodeGenerator) generateParameterConstraintValidation(param *ParameterNo
 			g.writeLine("return")
 			g.unindent()
 			g.writeLine("}")
-			
+
 		case "guid":
 			g.writeLine(fmt.Sprintf("if _, err := uuid.Parse(%s); err != nil {", valueVar))
 			g.indent()
@@ -1502,7 +1502,7 @@ func (g *CodeGenerator) generateParameterConstraintValidation(param *ParameterNo
 			g.writeLine("return")
 			g.unindent()
 			g.writeLine("}")
-			
+
 		case "alpha":
 			g.writeLine(fmt.Sprintf("if matched, _ := regexp.MatchString(\"^[a-zA-Z]+$\", %s); !matched {", valueVar))
 			g.indent()
@@ -1510,7 +1510,7 @@ func (g *CodeGenerator) generateParameterConstraintValidation(param *ParameterNo
 			g.writeLine("return")
 			g.unindent()
 			g.writeLine("}")
-			
+
 		case "regex":
 			if constraint.Value != "" {
 				g.writeLine(fmt.Sprintf("if matched, _ := regexp.MatchString(\"%s\", %s); !matched {", constraint.Value, valueVar))
@@ -1520,7 +1520,7 @@ func (g *CodeGenerator) generateParameterConstraintValidation(param *ParameterNo
 				g.unindent()
 				g.writeLine("}")
 			}
-			
+
 		case "min":
 			if constraint.Value != "" {
 				g.writeLine(fmt.Sprintf("if intVal, err := strconv.Atoi(%s); err == nil {", valueVar))
@@ -1534,7 +1534,7 @@ func (g *CodeGenerator) generateParameterConstraintValidation(param *ParameterNo
 				g.unindent()
 				g.writeLine("}")
 			}
-			
+
 		case "max":
 			if constraint.Value != "" {
 				g.writeLine(fmt.Sprintf("if intVal, err := strconv.Atoi(%s); err == nil {", valueVar))
@@ -1548,7 +1548,7 @@ func (g *CodeGenerator) generateParameterConstraintValidation(param *ParameterNo
 				g.unindent()
 				g.writeLine("}")
 			}
-			
+
 		case "range":
 			if constraint.Value != "" && constraint.Value2 != "" {
 				g.writeLine(fmt.Sprintf("if intVal, err := strconv.Atoi(%s); err == nil {", valueVar))
@@ -1562,7 +1562,7 @@ func (g *CodeGenerator) generateParameterConstraintValidation(param *ParameterNo
 				g.unindent()
 				g.writeLine("}")
 			}
-			
+
 		case "length":
 			if constraint.Value != "" {
 				g.writeLine(fmt.Sprintf("if len(%s) != %s {", valueVar, constraint.Value))
@@ -1572,7 +1572,7 @@ func (g *CodeGenerator) generateParameterConstraintValidation(param *ParameterNo
 				g.unindent()
 				g.writeLine("}")
 			}
-			
+
 		case "minlength":
 			if constraint.Value != "" {
 				g.writeLine(fmt.Sprintf("if len(%s) < %s {", valueVar, constraint.Value))
@@ -1582,7 +1582,7 @@ func (g *CodeGenerator) generateParameterConstraintValidation(param *ParameterNo
 				g.unindent()
 				g.writeLine("}")
 			}
-			
+
 		case "maxlength":
 			if constraint.Value != "" {
 				g.writeLine(fmt.Sprintf("if len(%s) > %s {", valueVar, constraint.Value))
@@ -1626,7 +1626,7 @@ func (g *CodeGenerator) getInjectDecorator(field *FieldNode) *DecoratorNode {
 func (g *CodeGenerator) generateInjectTag(decorator *DecoratorNode, field *FieldNode) string {
 	// Default inject tag
 	tag := `inject:""`
-	
+
 	// If no arguments, use field name as token
 	if len(decorator.Args) == 0 {
 		// Convert field name to lowercase for token
@@ -1634,7 +1634,7 @@ func (g *CodeGenerator) generateInjectTag(decorator *DecoratorNode, field *Field
 		tag = fmt.Sprintf(`inject:"%s"`, token)
 		return tag
 	}
-	
+
 	// Process decorator arguments
 	for _, arg := range decorator.Args {
 		// Handle string argument (injection token)
@@ -1642,11 +1642,11 @@ func (g *CodeGenerator) generateInjectTag(decorator *DecoratorNode, field *Field
 			tag = fmt.Sprintf(`inject:"%s"`, tokenValue)
 			break
 		}
-		
+
 		// Handle object argument with injection configuration
 		if objValue, ok := arg.Value.(map[string]interface{}); ok {
 			var parts []string
-			
+
 			// Extract token
 			if token, exists := objValue["token"]; exists {
 				if tokenStr, ok := token.(string); ok {
@@ -1657,28 +1657,28 @@ func (g *CodeGenerator) generateInjectTag(decorator *DecoratorNode, field *Field
 				token := strings.ToLower(field.Name)
 				parts = append(parts, fmt.Sprintf(`inject:"%s"`, token))
 			}
-			
+
 			// Extract optional (for optional injection)
 			if optional, exists := objValue["optional"]; exists {
 				if optBool, ok := optional.(bool); ok && optBool {
 					parts = append(parts, `optional:"true"`)
 				}
 			}
-			
+
 			// Extract scope
 			if scope, exists := objValue["scope"]; exists {
 				if scopeStr, ok := scope.(string); ok {
 					parts = append(parts, fmt.Sprintf(`scope:"%s"`, scopeStr))
 				}
 			}
-			
+
 			if len(parts) > 0 {
 				tag = strings.Join(parts, " ")
 			}
 			break
 		}
 	}
-	
+
 	return tag
 }
 
@@ -1692,7 +1692,7 @@ func (g *CodeGenerator) getInjectableScope(service *ServiceDeclaration) string {
 			return scope
 		}
 	}
-	
+
 	// Fall back to @Injectable decorator scope
 	injectableDecorator := g.getDecorator(service.Decorators, "Injectable")
 	if injectableDecorator != nil {
@@ -1701,7 +1701,7 @@ func (g *CodeGenerator) getInjectableScope(service *ServiceDeclaration) string {
 			return scope
 		}
 	}
-	
+
 	return "singleton" // Default scope
 }
 
@@ -1713,7 +1713,7 @@ func (g *CodeGenerator) getScopeFromDecorator(decorator *DecoratorNode) string {
 		if scopeValue, ok := arg.Value.(string); ok {
 			return g.normalizeScopeName(scopeValue)
 		}
-		
+
 		// Handle object argument with scope property
 		if objValue, ok := arg.Value.(map[string]interface{}); ok {
 			if scope, exists := objValue["scope"]; exists {
@@ -1723,7 +1723,7 @@ func (g *CodeGenerator) getScopeFromDecorator(decorator *DecoratorNode) string {
 			}
 		}
 	}
-	
+
 	return ""
 }
 
@@ -1745,9 +1745,9 @@ func (g *CodeGenerator) normalizeScopeName(scope string) string {
 func (g *CodeGenerator) generateFieldDependencyInjection(field *FieldNode) {
 	// Get injection configuration from @Inject decorator or default
 	injectionConfig := g.getFieldInjectionConfig(field)
-	
+
 	g.writeLine(fmt.Sprintf("// Inject %s", field.Name))
-	
+
 	if injectionConfig.Optional {
 		// Optional dependency - don't fail if not found
 		g.writeLine(fmt.Sprintf("if dep, exists := container.GetOptional(\"%s\"); exists {", injectionConfig.Token))
@@ -1777,7 +1777,7 @@ func (g *CodeGenerator) generateFieldDependencyInjection(field *FieldNode) {
 		g.unindent()
 		g.writeLine("}")
 	}
-	
+
 	g.writeLine("")
 }
 
@@ -1795,13 +1795,13 @@ func (g *CodeGenerator) getFieldInjectionConfig(field *FieldNode) FieldInjection
 		Optional: false,
 		Scope:    "singleton",
 	}
-	
+
 	// Check for @Inject decorator
 	injectDecorator := g.getInjectDecorator(field)
 	if injectDecorator == nil {
 		return config
 	}
-	
+
 	// Process decorator arguments
 	for _, arg := range injectDecorator.Args {
 		// Handle string argument (injection token)
@@ -1809,7 +1809,7 @@ func (g *CodeGenerator) getFieldInjectionConfig(field *FieldNode) FieldInjection
 			config.Token = tokenValue
 			break
 		}
-		
+
 		// Handle object argument with injection configuration
 		if objValue, ok := arg.Value.(map[string]interface{}); ok {
 			// Extract token
@@ -1818,14 +1818,14 @@ func (g *CodeGenerator) getFieldInjectionConfig(field *FieldNode) FieldInjection
 					config.Token = tokenStr
 				}
 			}
-			
+
 			// Extract optional
 			if optional, exists := objValue["optional"]; exists {
 				if optBool, ok := optional.(bool); ok {
 					config.Optional = optBool
 				}
 			}
-			
+
 			// Extract scope
 			if scope, exists := objValue["scope"]; exists {
 				if scopeStr, ok := scope.(string); ok {
@@ -1835,21 +1835,21 @@ func (g *CodeGenerator) getFieldInjectionConfig(field *FieldNode) FieldInjection
 			break
 		}
 	}
-	
+
 	return config
 }
 
 // generateProviderRegistration generates provider registration helper function
 func (g *CodeGenerator) generateProviderRegistration(service *ServiceDeclaration, factoryName, scope string) {
 	registrationName := fmt.Sprintf("Register%sProvider", service.Name)
-	
+
 	g.writeLine(fmt.Sprintf("// %s registers the %s provider with the DI container", registrationName, service.Name))
 	g.writeLine(fmt.Sprintf("func %s(container *core.DIContainer) error {", registrationName))
 	g.indent()
-	
+
 	// Register the provider with the specified scope
 	serviceToken := strings.ToLower(service.Name)
-	
+
 	switch scope {
 	case "singleton":
 		g.writeLine(fmt.Sprintf("return container.RegisterSingleton(\"%s\", %s)", serviceToken, factoryName))
@@ -1861,7 +1861,7 @@ func (g *CodeGenerator) generateProviderRegistration(service *ServiceDeclaration
 		// Default to singleton
 		g.writeLine(fmt.Sprintf("return container.RegisterSingleton(\"%s\", %s)", serviceToken, factoryName))
 	}
-	
+
 	g.unindent()
 	g.writeLine("}")
 }
@@ -1871,7 +1871,7 @@ func (g *CodeGenerator) collectImports(file *GofaFile) {
 	// Standard imports for Gofasta
 	g.addImport("github.com/healtronlabs/gofasta/packages/core")
 	g.addImport("github.com/healtronlabs/gofasta/packages/http")
-	
+
 	// Standard Go library imports for query parameter handling
 	g.addImport("strconv")
 	g.addImport("strings")
@@ -1902,7 +1902,7 @@ func (g *CodeGenerator) collectImportsFromDeclaration(decl GofaDeclaration) {
 	case *ModuleDeclaration:
 		// Modules need core package
 		g.addImport("github.com/healtronlabs/gofasta/packages/core")
-		
+
 	case *TestSuiteDeclaration:
 		// Add testing imports
 		g.addImport("testing")
@@ -1970,13 +1970,13 @@ func (g *CodeGenerator) getDecoratorArgValue(decorator *DecoratorNode, index int
 // getControllerPath gets the controller base path with version prefix
 func (g *CodeGenerator) getControllerPath(controller *ControllerDeclaration) string {
 	var basePath string
-	
+
 	// Debug: uncomment to see decorator parsing
 	// fmt.Printf("DEBUG: Controller %s has %d decorators:\n", controller.Name, len(controller.Decorators))
 	// for i, decorator := range controller.Decorators {
 	//     fmt.Printf("  Decorator %d: Name='%s' Args=%d\n", i, decorator.Name, len(decorator.Args))
 	// }
-	
+
 	// Get the base path from @Controller decorator
 	controllerDecorator := g.getDecorator(controller.Decorators, "Controller")
 	if controllerDecorator != nil && len(controllerDecorator.Args) > 0 {
@@ -1991,17 +1991,17 @@ func (g *CodeGenerator) getControllerPath(controller *ControllerDeclaration) str
 	versionDecorator := g.getDecorator(controller.Decorators, "Version")
 	if versionDecorator != nil && len(versionDecorator.Args) > 0 {
 		version := g.getDecoratorArgValue(versionDecorator, 0)
-		
+
 		// Skip empty version strings
 		if strings.TrimSpace(version) == "" {
 			return basePath
 		}
-		
+
 		// fmt.Printf("DEBUG: Found @Version decorator with value: '%s'\n", version)
-		
+
 		// Normalize version to lowercase for consistency (industry best practice)
 		version = strings.ToLower(version)
-		
+
 		// Ensure version starts with "v" if it's not already there
 		if !strings.HasPrefix(version, "v") && !strings.HasPrefix(version, "/v") {
 			version = "v" + version
@@ -2010,7 +2010,7 @@ func (g *CodeGenerator) getControllerPath(controller *ControllerDeclaration) str
 		if !strings.HasPrefix(version, "/") {
 			version = "/" + version
 		}
-		
+
 		// Combine version with base path
 		basePath = version + basePath
 		// fmt.Printf("DEBUG: Final versioned path: '%s'\n", basePath)
@@ -2148,7 +2148,7 @@ func (g *CodeGenerator) combineRoutePaths(controllerPath, methodPath string) str
 	}
 
 	path := strings.TrimSuffix(controllerPath, "/") + "/" + strings.TrimPrefix(methodPath, "/")
-	
+
 	// Clean up multiple consecutive slashes
 	for strings.Contains(path, "//") {
 		path = strings.ReplaceAll(path, "//", "/")
@@ -2183,7 +2183,7 @@ func (g *CodeGenerator) generateCatchHandlers(controller *ControllerDeclaration)
 // generateCatchHandler generates a single catch handler method
 func (g *CodeGenerator) generateCatchHandler(controller *ControllerDeclaration, decorator *DecoratorNode, scope string, methodName ...string) {
 	config := g.getCatchFilterConfig(decorator, scope)
-	
+
 	// Generate handler method name
 	var handlerName string
 	if scope == "method" && len(methodName) > 0 {
@@ -2424,33 +2424,33 @@ func (g *CodeGenerator) unindent() {
 // generateGuardsMiddleware generates guard middleware chain for method and controller
 func (g *CodeGenerator) generateGuardsMiddleware(controller *ControllerDeclaration, method *MethodNode) string {
 	var guards []string
-	
+
 	// Collect controller-level guards first
 	controllerGuards := g.getGuardDecorators(controller.Decorators)
 	guards = append(guards, controllerGuards...)
-	
+
 	// Collect method-level guards (these take precedence/are applied after controller guards)
 	methodGuards := g.getGuardDecorators(method.Decorators)
 	guards = append(guards, methodGuards...)
-	
+
 	if len(guards) == 0 {
 		return ""
 	}
-	
+
 	// Create middleware chain - generate the middleware instance calls
 	var middlewareChain []string
 	for _, guard := range guards {
 		// Convert guard name to middleware function call
 		middlewareChain = append(middlewareChain, fmt.Sprintf("c.%s", guard))
 	}
-	
+
 	return strings.Join(middlewareChain, ", ")
 }
 
 // getGuardDecorators extracts guard names from @UseGuards() decorators
 func (g *CodeGenerator) getGuardDecorators(decorators []*DecoratorNode) []string {
 	var guards []string
-	
+
 	for _, decorator := range decorators {
 		if decorator.Name == "UseGuards" {
 			// Extract guard names from decorator arguments
@@ -2461,34 +2461,34 @@ func (g *CodeGenerator) getGuardDecorators(decorators []*DecoratorNode) []string
 			}
 		}
 	}
-	
+
 	return guards
 }
 
 // generateGuardMiddlewareFunctions generates guard middleware function implementations
 func (g *CodeGenerator) generateGuardMiddlewareFunctions(controller *ControllerDeclaration) {
 	allGuards := make(map[string]bool)
-	
+
 	// Collect all unique guards from controller and methods
 	controllerGuards := g.getGuardDecorators(controller.Decorators)
 	for _, guard := range controllerGuards {
 		allGuards[guard] = true
 	}
-	
+
 	for _, method := range controller.Methods {
 		methodGuards := g.getGuardDecorators(method.Decorators)
 		for _, guard := range methodGuards {
 			allGuards[guard] = true
 		}
 	}
-	
+
 	if len(allGuards) == 0 {
 		return
 	}
-	
+
 	// Generate guard middleware methods for the controller
 	g.writeLine("// Guard middleware methods")
-	
+
 	for guard := range allGuards {
 		g.generateControllerGuardMethod(controller.Name, guard)
 		g.writeLine("")
@@ -2500,7 +2500,7 @@ func (g *CodeGenerator) generateControllerGuardMethod(controllerName, guardName 
 	g.writeLine(fmt.Sprintf("// %s implements the %s guard middleware", guardName, guardName))
 	g.writeLine(fmt.Sprintf("func (c *%s) %s(ctx *httpPackage.RequestContext) {", controllerName, guardName))
 	g.indent()
-	
+
 	// Generate guard logic based on guard name
 	switch guardName {
 	case "AuthGuard":
@@ -2512,7 +2512,7 @@ func (g *CodeGenerator) generateControllerGuardMethod(controllerName, guardName 
 	default:
 		g.generateGenericGuardLogic(guardName)
 	}
-	
+
 	g.writeLine("// If guard passes, continue to next middleware/handler")
 	g.writeLine("ctx.Next()")
 	g.unindent()
@@ -2605,46 +2605,45 @@ func (g *CodeGenerator) generateGenericGuardLogic(guardName string) {
 // generateMiddlewareChain generates combined middleware chain for pipes, interceptors, and guards
 func (g *CodeGenerator) generateMiddlewareChain(controller *ControllerDeclaration, method *MethodNode) string {
 	var middleware []string
-	
+
 	// Collect pipes first (they run before interceptors and guards in the pipeline)
 	controllerPipes := g.getPipeDecorators(controller.Decorators)
 	middleware = append(middleware, controllerPipes...)
-	
+
 	methodPipes := g.getPipeDecorators(method.Decorators)
 	middleware = append(middleware, methodPipes...)
-	
+
 	// Collect interceptors second (they run after pipes but before guards)
 	controllerInterceptors := g.getInterceptorDecorators(controller.Decorators)
 	middleware = append(middleware, controllerInterceptors...)
-	
+
 	methodInterceptors := g.getInterceptorDecorators(method.Decorators)
 	middleware = append(middleware, methodInterceptors...)
-	
+
 	// Collect guards last (they run after pipes and interceptors)
 	controllerGuards := g.getGuardDecorators(controller.Decorators)
 	middleware = append(middleware, controllerGuards...)
-	
+
 	methodGuards := g.getGuardDecorators(method.Decorators)
 	middleware = append(middleware, methodGuards...)
-	
-	
+
 	if len(middleware) == 0 {
 		return ""
 	}
-	
+
 	// Create middleware chain - generate the middleware instance calls
 	var middlewareChain []string
 	for _, mw := range middleware {
 		middlewareChain = append(middlewareChain, fmt.Sprintf("c.%s", mw))
 	}
-	
+
 	return strings.Join(middlewareChain, ", ")
 }
 
 // getInterceptorDecorators extracts interceptor names from @UseInterceptors() decorators
 func (g *CodeGenerator) getInterceptorDecorators(decorators []*DecoratorNode) []string {
 	var interceptors []string
-	
+
 	for _, decorator := range decorators {
 		if decorator.Name == "UseInterceptors" {
 			// Extract interceptor names from decorator arguments
@@ -2655,34 +2654,34 @@ func (g *CodeGenerator) getInterceptorDecorators(decorators []*DecoratorNode) []
 			}
 		}
 	}
-	
+
 	return interceptors
 }
 
 // generateInterceptorMiddlewareFunctions generates interceptor middleware function implementations
 func (g *CodeGenerator) generateInterceptorMiddlewareFunctions(controller *ControllerDeclaration) {
 	allInterceptors := make(map[string]bool)
-	
+
 	// Collect all unique interceptors from controller and methods
 	controllerInterceptors := g.getInterceptorDecorators(controller.Decorators)
 	for _, interceptor := range controllerInterceptors {
 		allInterceptors[interceptor] = true
 	}
-	
+
 	for _, method := range controller.Methods {
 		methodInterceptors := g.getInterceptorDecorators(method.Decorators)
 		for _, interceptor := range methodInterceptors {
 			allInterceptors[interceptor] = true
 		}
 	}
-	
+
 	if len(allInterceptors) == 0 {
 		return
 	}
-	
+
 	// Generate interceptor middleware methods for the controller
 	g.writeLine("// Interceptor middleware methods")
-	
+
 	for interceptor := range allInterceptors {
 		g.generateControllerInterceptorMethod(controller.Name, interceptor)
 		g.writeLine("")
@@ -2694,7 +2693,7 @@ func (g *CodeGenerator) generateControllerInterceptorMethod(controllerName, inte
 	g.writeLine(fmt.Sprintf("// %s implements the %s interceptor middleware", interceptorName, interceptorName))
 	g.writeLine(fmt.Sprintf("func (c *%s) %s(ctx *httpPackage.RequestContext) {", controllerName, interceptorName))
 	g.indent()
-	
+
 	// Generate interceptor logic based on interceptor name
 	switch interceptorName {
 	case "LoggingInterceptor":
@@ -2708,7 +2707,7 @@ func (g *CodeGenerator) generateControllerInterceptorMethod(controllerName, inte
 	default:
 		g.generateGenericInterceptorLogic(interceptorName)
 	}
-	
+
 	g.writeLine("// Continue to next middleware/handler")
 	g.writeLine("ctx.Next()")
 	g.unindent()
@@ -2870,7 +2869,7 @@ func (g *CodeGenerator) generateGenericInterceptorLogic(interceptorName string) 
 // getPipeDecorators extracts pipe names from @UsePipes() decorators
 func (g *CodeGenerator) getPipeDecorators(decorators []*DecoratorNode) []string {
 	var pipes []string
-	
+
 	for _, decorator := range decorators {
 		if decorator.Name == "UsePipes" {
 			// Extract pipe names from decorator arguments
@@ -2881,34 +2880,34 @@ func (g *CodeGenerator) getPipeDecorators(decorators []*DecoratorNode) []string 
 			}
 		}
 	}
-	
+
 	return pipes
 }
 
 // generatePipeMiddlewareFunctions generates pipe middleware function implementations
 func (g *CodeGenerator) generatePipeMiddlewareFunctions(controller *ControllerDeclaration) {
 	allPipes := make(map[string]bool)
-	
+
 	// Collect all unique pipes from controller and methods
 	controllerPipes := g.getPipeDecorators(controller.Decorators)
 	for _, pipe := range controllerPipes {
 		allPipes[pipe] = true
 	}
-	
+
 	for _, method := range controller.Methods {
 		methodPipes := g.getPipeDecorators(method.Decorators)
 		for _, pipe := range methodPipes {
 			allPipes[pipe] = true
 		}
 	}
-	
+
 	if len(allPipes) == 0 {
 		return
 	}
-	
+
 	// Generate pipe middleware methods for the controller
 	g.writeLine("// Pipe middleware methods")
-	
+
 	for pipe := range allPipes {
 		g.generateControllerPipeMethod(controller.Name, pipe)
 		g.writeLine("")
@@ -2920,7 +2919,7 @@ func (g *CodeGenerator) generateControllerPipeMethod(controllerName, pipeName st
 	g.writeLine(fmt.Sprintf("// %s implements the %s pipe middleware", pipeName, pipeName))
 	g.writeLine(fmt.Sprintf("func (c *%s) %s(ctx *httpPackage.RequestContext) {", controllerName, pipeName))
 	g.indent()
-	
+
 	// Generate pipe logic based on pipe name
 	switch pipeName {
 	case "ValidationPipe":
@@ -2938,7 +2937,7 @@ func (g *CodeGenerator) generateControllerPipeMethod(controllerName, pipeName st
 	default:
 		g.generateGenericPipeLogic(pipeName)
 	}
-	
+
 	g.unindent()
 	g.writeLine("}")
 }
@@ -3057,7 +3056,7 @@ func (g *CodeGenerator) generateParseIntPipeLogic() {
 	g.writeLine("ctx.Next()")
 }
 
-// generateParseBoolPipeLogic generates parse bool pipe logic  
+// generateParseBoolPipeLogic generates parse bool pipe logic
 func (g *CodeGenerator) generateParseBoolPipeLogic() {
 	g.writeLine("// ParseBool pipe logic")
 	g.writeLine("// Parse string parameters to booleans")
@@ -3222,19 +3221,19 @@ type ValidationRule struct {
 // generateValidationCode generates validation functions for DTOs with validation decorators
 func (g *CodeGenerator) generateValidationCode(file *GofaFile) {
 	dtoStructs := g.findDTOStructsWithValidation(file)
-	
+
 	if len(dtoStructs) == 0 {
 		return
 	}
-	
+
 	// Generate ValidationError struct first
 	g.generateValidationErrorStruct()
 	g.writeLine("")
-	
+
 	// Generate helper validation functions
 	g.generateValidationHelperFunctions()
 	g.writeLine("")
-	
+
 	// Generate validation functions for each DTO
 	for _, dto := range dtoStructs {
 		g.generateDTOValidationFunction(dto)
@@ -3245,7 +3244,7 @@ func (g *CodeGenerator) generateValidationCode(file *GofaFile) {
 // findDTOStructsWithValidation finds all structs that have validation decorators
 func (g *CodeGenerator) findDTOStructsWithValidation(file *GofaFile) map[string]*ValidationStructInfo {
 	dtos := make(map[string]*ValidationStructInfo)
-	
+
 	// Look for standalone type declarations (DTOs) that have validation decorators
 	for _, decl := range file.Declarations {
 		switch d := decl.(type) {
@@ -3261,14 +3260,14 @@ func (g *CodeGenerator) findDTOStructsWithValidation(file *GofaFile) map[string]
 			}
 		}
 	}
-	
+
 	return dtos
 }
 
 // extractValidationFromStruct extracts validation information from struct fields
 func (g *CodeGenerator) extractValidationFromStruct(structName string, fields []*FieldNode) *ValidationStructInfo {
 	var validationFields []*ValidationFieldInfo
-	
+
 	for _, field := range fields {
 		if g.hasValidationDecorators(field) {
 			validators := g.parseValidationDecoratorsFromField(field)
@@ -3283,11 +3282,11 @@ func (g *CodeGenerator) extractValidationFromStruct(structName string, fields []
 			}
 		}
 	}
-	
+
 	if len(validationFields) == 0 {
 		return nil
 	}
-	
+
 	return &ValidationStructInfo{
 		Name:   structName,
 		Fields: validationFields,
@@ -3307,7 +3306,7 @@ func (g *CodeGenerator) hasValidationDecorators(field *FieldNode) bool {
 // parseValidationDecoratorsFromField parses validation decorators from field decorators
 func (g *CodeGenerator) parseValidationDecoratorsFromField(field *FieldNode) []ValidationRule {
 	var rules []ValidationRule
-	
+
 	for _, decorator := range field.Decorators {
 		decoratorType := GetDecoratorType(decorator.Name)
 		if IsValidationDecorator(decoratorType) {
@@ -3317,7 +3316,7 @@ func (g *CodeGenerator) parseValidationDecoratorsFromField(field *FieldNode) []V
 			}
 		}
 	}
-	
+
 	return rules
 }
 
@@ -3343,23 +3342,23 @@ func (g *CodeGenerator) convertDecoratorArgsToInterface(args []DecoratorArg) []i
 // parseValidationDecorators parses validation decorators from struct tags
 func (g *CodeGenerator) parseValidationDecorators(tag string) []ValidationRule {
 	var rules []ValidationRule
-	
+
 	// Extract validate: content from struct tag
 	validateContent := g.extractTagContent(tag, "validate")
 	if validateContent == "" {
 		return rules
 	}
-	
+
 	// Parse individual decorators like @IsEmail() @Min(18) @Max(120)
 	decorators := g.extractDecorators(validateContent)
-	
+
 	for _, decorator := range decorators {
 		rule := g.parseValidationRule(decorator)
 		if rule != nil {
 			rules = append(rules, *rule)
 		}
 	}
-	
+
 	return rules
 }
 
@@ -3367,18 +3366,18 @@ func (g *CodeGenerator) parseValidationDecorators(tag string) []ValidationRule {
 func (g *CodeGenerator) extractTagContent(tag, key string) string {
 	// Extract content between quotes after key:
 	// `validate:"@IsEmail() @Min(18)"` -> "@IsEmail() @Min(18)"
-	keyPattern := key + `:"` 
+	keyPattern := key + `:"`
 	startIndex := strings.Index(tag, keyPattern)
 	if startIndex == -1 {
 		return ""
 	}
-	
+
 	startIndex += len(keyPattern)
 	endIndex := strings.Index(tag[startIndex:], `"`)
 	if endIndex == -1 {
 		return ""
 	}
-	
+
 	return tag[startIndex : startIndex+endIndex]
 }
 
@@ -3386,7 +3385,7 @@ func (g *CodeGenerator) extractTagContent(tag, key string) string {
 func (g *CodeGenerator) extractDecorators(content string) []string {
 	var decorators []string
 	content = strings.TrimSpace(content)
-	
+
 	// Split by @ but keep the @
 	parts := strings.Split(content, "@")
 	for i, part := range parts {
@@ -3397,7 +3396,7 @@ func (g *CodeGenerator) extractDecorators(content string) []string {
 			decorators = append(decorators, "@"+part)
 		}
 	}
-	
+
 	return decorators
 }
 
@@ -3407,10 +3406,10 @@ func (g *CodeGenerator) parseValidationRule(decorator string) *ValidationRule {
 	if !strings.HasPrefix(decorator, "@") {
 		return nil
 	}
-	
+
 	// Remove @
 	decorator = decorator[1:]
-	
+
 	// Check if it has parentheses
 	parenIndex := strings.Index(decorator, "(")
 	if parenIndex == -1 {
@@ -3422,19 +3421,19 @@ func (g *CodeGenerator) parseValidationRule(decorator string) *ValidationRule {
 			Code:    g.getValidationCode(decorator),
 		}
 	}
-	
+
 	// Extract name and arguments
 	name := decorator[:parenIndex]
 	argsStr := decorator[parenIndex+1:]
-	
+
 	// Remove closing parenthesis
 	if strings.HasSuffix(argsStr, ")") {
 		argsStr = argsStr[:len(argsStr)-1]
 	}
-	
+
 	// Parse arguments
 	args := g.parseValidationArgs(argsStr)
-	
+
 	return &ValidationRule{
 		Type:    name,
 		Args:    args,
@@ -3446,11 +3445,11 @@ func (g *CodeGenerator) parseValidationRule(decorator string) *ValidationRule {
 // parseValidationArgs parses validation arguments from string
 func (g *CodeGenerator) parseValidationArgs(argsStr string) []interface{} {
 	var args []interface{}
-	
+
 	if strings.TrimSpace(argsStr) == "" {
 		return args
 	}
-	
+
 	// Split by comma
 	parts := strings.Split(argsStr, ",")
 	for _, part := range parts {
@@ -3458,27 +3457,27 @@ func (g *CodeGenerator) parseValidationArgs(argsStr string) []interface{} {
 		if part == "" {
 			continue
 		}
-		
+
 		// Try to parse as number
 		if intVal, err := strconv.Atoi(part); err == nil {
 			args = append(args, intVal)
 			continue
 		}
-		
+
 		if floatVal, err := strconv.ParseFloat(part, 64); err == nil {
 			args = append(args, floatVal)
 			continue
 		}
-		
+
 		// Remove quotes if present
 		if (strings.HasPrefix(part, `"`) && strings.HasSuffix(part, `"`)) ||
-		   (strings.HasPrefix(part, `'`) && strings.HasSuffix(part, `'`)) {
+			(strings.HasPrefix(part, `'`) && strings.HasSuffix(part, `'`)) {
 			part = part[1 : len(part)-1]
 		}
-		
+
 		args = append(args, part)
 	}
-	
+
 	return args
 }
 
@@ -3703,13 +3702,13 @@ func (g *CodeGenerator) generateValidationErrorStruct() {
 	g.writeLine("type ValidationError struct {")
 	g.indent()
 	g.writeLine("Field   string      `json:\"field\"`")
-	g.writeLine("Value   interface{} `json:\"value\"`") 
+	g.writeLine("Value   interface{} `json:\"value\"`")
 	g.writeLine("Message string      `json:\"message\"`")
 	g.writeLine("Code    string      `json:\"code\"`")
 	g.unindent()
 	g.writeLine("}")
 	g.writeLine("")
-	
+
 	g.writeLine("// ValidationResult represents the result of validation")
 	g.writeLine("type ValidationResult struct {")
 	g.indent()
@@ -3723,7 +3722,7 @@ func (g *CodeGenerator) generateValidationErrorStruct() {
 func (g *CodeGenerator) generateValidationHelperFunctions() {
 	g.writeLine("// Validation helper functions")
 	g.writeLine("")
-	
+
 	// Email validation
 	g.writeLine("func isValidEmail(email string) bool {")
 	g.indent()
@@ -3733,7 +3732,7 @@ func (g *CodeGenerator) generateValidationHelperFunctions() {
 	g.unindent()
 	g.writeLine("}")
 	g.writeLine("")
-	
+
 	// URL validation
 	g.writeLine("func isValidURL(url string) bool {")
 	g.indent()
@@ -3742,7 +3741,7 @@ func (g *CodeGenerator) generateValidationHelperFunctions() {
 	g.unindent()
 	g.writeLine("}")
 	g.writeLine("")
-	
+
 	// UUID validation
 	g.writeLine("func isValidUUID(uuid string) bool {")
 	g.indent()
@@ -3752,7 +3751,7 @@ func (g *CodeGenerator) generateValidationHelperFunctions() {
 	g.unindent()
 	g.writeLine("}")
 	g.writeLine("")
-	
+
 	// Numeric validation
 	g.writeLine("func isNumeric(str string) bool {")
 	g.indent()
@@ -3762,7 +3761,7 @@ func (g *CodeGenerator) generateValidationHelperFunctions() {
 	g.unindent()
 	g.writeLine("}")
 	g.writeLine("")
-	
+
 	// Alpha validation
 	g.writeLine("func isAlpha(str string) bool {")
 	g.indent()
@@ -3772,7 +3771,7 @@ func (g *CodeGenerator) generateValidationHelperFunctions() {
 	g.unindent()
 	g.writeLine("}")
 	g.writeLine("")
-	
+
 	// Alphanumeric validation
 	g.writeLine("func isAlphanumeric(str string) bool {")
 	g.indent()
@@ -3782,7 +3781,7 @@ func (g *CodeGenerator) generateValidationHelperFunctions() {
 	g.unindent()
 	g.writeLine("}")
 	g.writeLine("")
-	
+
 	// Integer validation
 	g.writeLine("func isInt(value interface{}) bool {")
 	g.indent()
@@ -3823,7 +3822,7 @@ func (g *CodeGenerator) generateValidationHelperFunctions() {
 	g.unindent()
 	g.writeLine("}")
 	g.writeLine("")
-	
+
 	// Float validation
 	g.writeLine("func isFloat(value interface{}) bool {")
 	g.indent()
@@ -3853,7 +3852,7 @@ func (g *CodeGenerator) generateValidationHelperFunctions() {
 	g.unindent()
 	g.writeLine("}")
 	g.writeLine("")
-	
+
 	// Boolean validation
 	g.writeLine("func isBoolean(value interface{}) bool {")
 	g.indent()
@@ -3883,7 +3882,7 @@ func (g *CodeGenerator) generateValidationHelperFunctions() {
 	g.unindent()
 	g.writeLine("}")
 	g.writeLine("")
-	
+
 	// Date validation
 	g.writeLine("func isDate(value interface{}) bool {")
 	g.indent()
@@ -3935,7 +3934,7 @@ func (g *CodeGenerator) generateValidationHelperFunctions() {
 	g.unindent()
 	g.writeLine("}")
 	g.writeLine("")
-	
+
 	// IP validation
 	g.writeLine("func isIP(value interface{}) bool {")
 	g.indent()
@@ -3954,7 +3953,7 @@ func (g *CodeGenerator) generateValidationHelperFunctions() {
 	g.unindent()
 	g.writeLine("}")
 	g.writeLine("")
-	
+
 	// JSON validation
 	g.writeLine("func isJSON(value interface{}) bool {")
 	g.indent()
@@ -3977,7 +3976,7 @@ func (g *CodeGenerator) generateValidationHelperFunctions() {
 	g.unindent()
 	g.writeLine("}")
 	g.writeLine("")
-	
+
 	// Hex color validation
 	g.writeLine("func isHexColor(value interface{}) bool {")
 	g.indent()
@@ -4017,7 +4016,7 @@ func (g *CodeGenerator) generateValidationHelperFunctions() {
 	g.unindent()
 	g.writeLine("}")
 	g.writeLine("")
-	
+
 	// Phone number validation
 	g.writeLine("func isPhoneNumber(value interface{}) bool {")
 	g.indent()
@@ -4055,7 +4054,7 @@ func (g *CodeGenerator) generateValidationHelperFunctions() {
 	g.unindent()
 	g.writeLine("}")
 	g.writeLine("")
-	
+
 	// Credit card validation using Luhn algorithm
 	g.writeLine("func isCreditCard(value interface{}) bool {")
 	g.indent()
@@ -4110,7 +4109,7 @@ func (g *CodeGenerator) generateValidationHelperFunctions() {
 	g.unindent()
 	g.writeLine("}")
 	g.writeLine("")
-	
+
 	// ISBN validation (both ISBN-10 and ISBN-13)
 	g.writeLine("func isISBN(value interface{}) bool {")
 	g.indent()
@@ -4151,7 +4150,7 @@ func (g *CodeGenerator) generateValidationHelperFunctions() {
 	g.unindent()
 	g.writeLine("}")
 	g.writeLine("")
-	
+
 	// ISBN-10 validation helper
 	g.writeLine("func isISBN10(isbn string) bool {")
 	g.indent()
@@ -4180,7 +4179,7 @@ func (g *CodeGenerator) generateValidationHelperFunctions() {
 	g.unindent()
 	g.writeLine("}")
 	g.writeLine("")
-	
+
 	// ISBN-13 validation helper
 	g.writeLine("func isISBN13(isbn string) bool {")
 	g.indent()
@@ -4204,7 +4203,7 @@ func (g *CodeGenerator) generateValidationHelperFunctions() {
 	g.unindent()
 	g.writeLine("}")
 	g.writeLine("")
-	
+
 	// Base64 validation
 	g.writeLine("func isBase64(value interface{}) bool {")
 	g.indent()
@@ -4269,18 +4268,18 @@ func (g *CodeGenerator) generateValidationHelperFunctions() {
 // generateDTOValidationFunction generates validation function for a DTO
 func (g *CodeGenerator) generateDTOValidationFunction(dto *ValidationStructInfo) {
 	funcName := fmt.Sprintf("Validate%s", dto.Name)
-	
+
 	g.writeLine(fmt.Sprintf("// %s validates %s struct", funcName, dto.Name))
 	g.writeLine(fmt.Sprintf("func %s(dto *%s) []ValidationError {", funcName, dto.Name))
 	g.indent()
 	g.writeLine("var errors []ValidationError")
 	g.writeLine("")
-	
+
 	// Generate validation for each field
 	for _, field := range dto.Fields {
 		g.generateFieldValidation(field)
 	}
-	
+
 	g.writeLine("return errors")
 	g.unindent()
 	g.writeLine("}")
@@ -4291,11 +4290,11 @@ func (g *CodeGenerator) generateFieldValidation(field *ValidationFieldInfo) {
 	if len(field.Validators) == 0 {
 		return
 	}
-	
+
 	i := 0
 	for i < len(field.Validators) {
 		rule := field.Validators[i]
-		
+
 		if rule.Type == "ValidateIf" {
 			// Handle conditional validation
 			i = g.generateConditionalValidation(field, i)
@@ -4311,22 +4310,22 @@ func (g *CodeGenerator) generateFieldValidation(field *ValidationFieldInfo) {
 // generateConditionalValidation handles @ValidateIf and groups subsequent validators
 func (g *CodeGenerator) generateConditionalValidation(field *ValidationFieldInfo, startIndex int) int {
 	validateIfRule := field.Validators[startIndex]
-	
+
 	if len(validateIfRule.Args) == 0 {
 		g.writeLine("// ValidateIf validation - missing condition argument")
 		return startIndex + 1
 	}
-	
+
 	condition := fmt.Sprintf("%v", validateIfRule.Args[0])
 	// Remove surrounding quotes but preserve inner quotes
 	if strings.HasPrefix(condition, "\"") && strings.HasSuffix(condition, "\"") {
 		condition = condition[1 : len(condition)-1]
 	}
-	
+
 	g.writeLine(fmt.Sprintf("// %s validation", validateIfRule.Type))
 	g.writeLine(fmt.Sprintf("if %s {", condition))
 	g.indent()
-	
+
 	// Find all consecutive non-ValidateIf validators to group under this condition
 	i := startIndex + 1
 	for i < len(field.Validators) && field.Validators[i].Type != "ValidateIf" {
@@ -4335,26 +4334,26 @@ func (g *CodeGenerator) generateConditionalValidation(field *ValidationFieldInfo
 		g.writeLine("")
 		i++
 	}
-	
+
 	g.unindent()
 	g.writeLine("}")
 	g.writeLine("")
-	
+
 	return i
 }
 
 // generateValidationRule generates code for a single validation rule
 func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule ValidationRule) {
 	fieldName := "dto." + strings.Title(field.Name) // Use actual field name
-	
+
 	// Skip @IsOptional() as it's a modifier, not a validator
 	if rule.Type == "IsOptional" {
 		return
 	}
-	
+
 	// Check if field is optional
 	isOptional := g.isFieldOptional(field)
-	
+
 	// Helper function to wrap validation with optional guard
 	wrapValidation := func(validationLogic func()) {
 		if isOptional {
@@ -4369,7 +4368,7 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 				// For other types, check if not nil
 				optionalGuard = fmt.Sprintf("if %s != nil", fieldName)
 			}
-			
+
 			g.writeLine(optionalGuard + " {")
 			g.indent()
 			validationLogic()
@@ -4379,7 +4378,7 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 			validationLogic()
 		}
 	}
-	
+
 	switch rule.Type {
 	case "IsEmail":
 		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
@@ -4388,7 +4387,7 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 			g.generateValidationError(field.Name, fieldName, rule)
 			g.writeLine("}")
 		})
-		
+
 	case "IsURL":
 		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
 		wrapValidation(func() {
@@ -4396,13 +4395,13 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 			g.generateValidationError(field.Name, fieldName, rule)
 			g.writeLine("}")
 		})
-		
+
 	case "IsNotEmpty":
 		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
 		g.writeLine(fmt.Sprintf("if strings.TrimSpace(%s) == \"\" {", fieldName))
 		g.generateValidationError(field.Name, fieldName, rule)
 		g.writeLine("}")
-		
+
 	case "Min":
 		if len(rule.Args) > 0 {
 			g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
@@ -4414,7 +4413,7 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 			g.generateValidationError(field.Name, fieldName, rule)
 			g.writeLine("}")
 		}
-		
+
 	case "Max":
 		if len(rule.Args) > 0 {
 			g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
@@ -4426,7 +4425,7 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 			g.generateValidationError(field.Name, fieldName, rule)
 			g.writeLine("}")
 		}
-		
+
 	case "Length":
 		if len(rule.Args) >= 2 {
 			g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
@@ -4434,13 +4433,13 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 			g.generateValidationError(field.Name, fieldName, rule)
 			g.writeLine("}")
 		}
-		
+
 	case "IsArray":
 		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
 		g.writeLine(fmt.Sprintf("if %s == nil {", fieldName))
 		g.generateValidationError(field.Name, fieldName, rule)
 		g.writeLine("}")
-		
+
 	case "ArrayMinSize":
 		if len(rule.Args) > 0 {
 			g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
@@ -4450,7 +4449,7 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 				g.writeLine("}")
 			})
 		}
-		
+
 	case "ArrayMaxSize":
 		if len(rule.Args) > 0 {
 			g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
@@ -4458,16 +4457,16 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 			g.generateValidationError(field.Name, fieldName, rule)
 			g.writeLine("}")
 		}
-		
+
 	case "ArrayNotEmpty":
 		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
 		g.writeLine(fmt.Sprintf("if %s == nil || len(%s) == 0 {", fieldName, fieldName))
 		g.generateValidationError(field.Name, fieldName, rule)
 		g.writeLine("}")
-		
+
 	case "IsEmpty":
 		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
-		// Check if the field type starts with [] (slice) or contains [] 
+		// Check if the field type starts with [] (slice) or contains []
 		if strings.HasPrefix(field.Type, "[]") {
 			g.writeLine(fmt.Sprintf("if %s != nil && len(%s) > 0 {", fieldName, fieldName))
 		} else if field.Type == "string" {
@@ -4478,11 +4477,11 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 		}
 		g.generateValidationError(field.Name, fieldName, rule)
 		g.writeLine("}")
-		
+
 	case "IsString":
 		// Type validation is typically handled at compile time in Go, but we can add runtime checks
 		g.writeLine(fmt.Sprintf("// %s validation (compile-time type check)", rule.Type))
-		
+
 	case "IsNumber":
 		// For interface{} types, add runtime type checking
 		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
@@ -4493,7 +4492,7 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 		g.writeLine("}")
 		g.unindent()
 		g.writeLine("}")
-		
+
 	case "IsInt":
 		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
 		// Check if field is interface{} type, otherwise assume compile-time type safety
@@ -4505,67 +4504,67 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 		}
 		g.generateValidationError(field.Name, fieldName, rule)
 		g.writeLine("}")
-		
+
 	case "IsFloat":
 		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
 		g.writeLine(fmt.Sprintf("if !isFloat(%s) {", fieldName))
 		g.generateValidationError(field.Name, fieldName, rule)
 		g.writeLine("}")
-		
+
 	case "IsBoolean":
 		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
 		g.writeLine(fmt.Sprintf("if !isBoolean(%s) {", fieldName))
 		g.generateValidationError(field.Name, fieldName, rule)
 		g.writeLine("}")
-		
+
 	case "IsDate":
 		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
 		g.writeLine(fmt.Sprintf("if !isDate(%s) {", fieldName))
 		g.generateValidationError(field.Name, fieldName, rule)
 		g.writeLine("}")
-		
+
 	case "IsIP":
 		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
 		g.writeLine(fmt.Sprintf("if !isIP(%s) {", fieldName))
 		g.generateValidationError(field.Name, fieldName, rule)
 		g.writeLine("}")
-		
+
 	case "IsJSON":
 		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
 		g.writeLine(fmt.Sprintf("if !isJSON(%s) {", fieldName))
 		g.generateValidationError(field.Name, fieldName, rule)
 		g.writeLine("}")
-		
+
 	case "IsHexColor":
 		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
 		g.writeLine(fmt.Sprintf("if !isHexColor(%s) {", fieldName))
 		g.generateValidationError(field.Name, fieldName, rule)
 		g.writeLine("}")
-		
+
 	case "IsPhoneNumber":
 		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
 		g.writeLine(fmt.Sprintf("if !isPhoneNumber(%s) {", fieldName))
 		g.generateValidationError(field.Name, fieldName, rule)
 		g.writeLine("}")
-		
+
 	case "IsCreditCard":
 		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
 		g.writeLine(fmt.Sprintf("if !isCreditCard(%s) {", fieldName))
 		g.generateValidationError(field.Name, fieldName, rule)
 		g.writeLine("}")
-		
+
 	case "IsISBN":
 		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
 		g.writeLine(fmt.Sprintf("if !isISBN(%s) {", fieldName))
 		g.generateValidationError(field.Name, fieldName, rule)
 		g.writeLine("}")
-		
+
 	case "IsBase64":
 		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
 		g.writeLine(fmt.Sprintf("if !isBase64(%s) {", fieldName))
 		g.generateValidationError(field.Name, fieldName, rule)
 		g.writeLine("}")
-		
+
 	case "MinLength":
 		if len(rule.Args) > 0 {
 			g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
@@ -4575,7 +4574,7 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 				g.writeLine("}")
 			})
 		}
-		
+
 	case "MaxLength":
 		if len(rule.Args) > 0 {
 			g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
@@ -4583,25 +4582,25 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 			g.generateValidationError(field.Name, fieldName, rule)
 			g.writeLine("}")
 		}
-		
+
 	case "IsPositive":
 		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
 		g.writeLine(fmt.Sprintf("if %s <= 0 {", fieldName))
 		g.generateValidationError(field.Name, fieldName, rule)
 		g.writeLine("}")
-		
+
 	case "IsAlpha":
 		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
 		g.writeLine(fmt.Sprintf("if !isAlpha(%s) {", fieldName))
 		g.generateValidationError(field.Name, fieldName, rule)
 		g.writeLine("}")
-		
+
 	case "IsAlphanumeric":
 		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
 		g.writeLine(fmt.Sprintf("if !isAlphanumeric(%s) {", fieldName))
 		g.generateValidationError(field.Name, fieldName, rule)
 		g.writeLine("}")
-		
+
 	case "IsNumeric":
 		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
 		wrapValidation(func() {
@@ -4609,7 +4608,7 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 			g.generateValidationError(field.Name, fieldName, rule)
 			g.writeLine("}")
 		})
-		
+
 	case "IsDefined":
 		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
 		if strings.HasPrefix(field.Type, "[]") {
@@ -4621,7 +4620,7 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 		}
 		g.generateValidationError(field.Name, fieldName, rule)
 		g.writeLine("}")
-		
+
 	case "NotEquals":
 		if len(rule.Args) > 0 {
 			g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
@@ -4631,7 +4630,7 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 				g.writeLine("}")
 			})
 		}
-		
+
 	case "Equals":
 		if len(rule.Args) > 0 {
 			g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
@@ -4641,7 +4640,7 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 				g.writeLine("}")
 			})
 		}
-		
+
 	case "Contains":
 		if len(rule.Args) > 0 {
 			g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
@@ -4651,7 +4650,7 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 				g.writeLine("}")
 			})
 		}
-		
+
 	case "NotContains":
 		if len(rule.Args) > 0 {
 			g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
@@ -4661,7 +4660,7 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 				g.writeLine("}")
 			})
 		}
-		
+
 	case "IsIn":
 		if len(rule.Args) > 0 {
 			g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
@@ -4683,7 +4682,7 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 				g.writeLine("}")
 			})
 		}
-		
+
 	case "IsNotIn":
 		if len(rule.Args) > 0 {
 			g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
@@ -4699,7 +4698,7 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 				g.writeLine("}")
 			})
 		}
-		
+
 	case "Matches":
 		if len(rule.Args) > 0 {
 			g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
@@ -4710,7 +4709,7 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 				g.writeLine("}")
 			})
 		}
-		
+
 	case "IsLowercase":
 		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
 		wrapValidation(func() {
@@ -4718,7 +4717,7 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 			g.generateValidationError(field.Name, fieldName, rule)
 			g.writeLine("}")
 		})
-		
+
 	case "IsUppercase":
 		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
 		wrapValidation(func() {
@@ -4726,7 +4725,7 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 			g.generateValidationError(field.Name, fieldName, rule)
 			g.writeLine("}")
 		})
-		
+
 	case "ValidateNested":
 		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
 		wrapValidation(func() {
@@ -4743,12 +4742,12 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 				g.generateNestedStructValidation(field, fieldName)
 			}
 		})
-		
+
 	case "ValidateIf":
 		// ValidateIf is handled at a higher level in generateFieldValidation
 		// This case should not be reached in normal flow
 		g.writeLine("// ValidateIf validation - handled by generateConditionalValidation")
-		
+
 	case "Custom":
 		if len(rule.Args) > 0 {
 			g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
@@ -4759,15 +4758,15 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 				g.writeLine("}")
 			})
 		}
-		
+
 	case "IsNegative":
 		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
 		wrapValidation(func() {
 			// Generate numeric type checking first
 			switch field.Type {
 			case "int", "int8", "int16", "int32", "int64",
-				 "uint", "uint8", "uint16", "uint32", "uint64",
-				 "float32", "float64":
+				"uint", "uint8", "uint16", "uint32", "uint64",
+				"float32", "float64":
 				g.writeLine(fmt.Sprintf("if %s >= 0 {", fieldName))
 			default:
 				// For interface{} or other types, use runtime checking
@@ -4789,7 +4788,7 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 			g.generateValidationError(field.Name, fieldName, rule)
 			g.writeLine("}")
 		})
-		
+
 	case "IsPastDate":
 		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
 		wrapValidation(func() {
@@ -4808,7 +4807,7 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 			g.generateValidationError(field.Name, fieldName, rule)
 			g.writeLine("}")
 		})
-		
+
 	case "IsFutureDate":
 		g.writeLine(fmt.Sprintf("// %s validation", rule.Type))
 		wrapValidation(func() {
@@ -4827,7 +4826,7 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 			g.generateValidationError(field.Name, fieldName, rule)
 			g.writeLine("}")
 		})
-		
+
 	}
 }
 
@@ -4893,7 +4892,7 @@ func (g *CodeGenerator) formatValueList(values []interface{}) string {
 // generateNestedStructValidation generates validation for direct struct type
 func (g *CodeGenerator) generateNestedStructValidation(field *ValidationFieldInfo, fieldName string) {
 	nestedValidationFunc := g.getNestedValidationFunctionName(field.Type)
-	
+
 	// For direct structs, we always validate regardless of @IsOptional()
 	// Direct structs can't be nil, so @IsOptional() doesn't apply in the same way
 	g.writeLine(fmt.Sprintf("if nestedErrors := %s(&%s); len(nestedErrors) > 0 {", nestedValidationFunc, fieldName))
@@ -4937,13 +4936,13 @@ func (g *CodeGenerator) generateNestedSliceValidation(field *ValidationFieldInfo
 	if isPointerSlice {
 		sliceType = strings.TrimPrefix(sliceType, "*")
 	}
-	
+
 	nestedValidationFunc := g.getNestedValidationFunctionName(sliceType)
 	g.writeLine(fmt.Sprintf("if %s != nil && len(%s) > 0 {", fieldName, fieldName))
 	g.indent()
 	g.writeLine(fmt.Sprintf("for i, item := range %s {", fieldName))
 	g.indent()
-	
+
 	if isPointerSlice {
 		g.writeLine("if item != nil {")
 		g.indent()
@@ -4951,7 +4950,7 @@ func (g *CodeGenerator) generateNestedSliceValidation(field *ValidationFieldInfo
 	} else {
 		g.writeLine(fmt.Sprintf("if nestedErrors := %s(&item); len(nestedErrors) > 0 {", nestedValidationFunc))
 	}
-	
+
 	g.indent()
 	g.writeLine("for _, nestedError := range nestedErrors {")
 	g.indent()
@@ -4961,12 +4960,12 @@ func (g *CodeGenerator) generateNestedSliceValidation(field *ValidationFieldInfo
 	g.writeLine("}")
 	g.unindent()
 	g.writeLine("}")
-	
+
 	if isPointerSlice {
 		g.unindent()
 		g.writeLine("}")
 	}
-	
+
 	g.unindent()
 	g.writeLine("}")
 	g.unindent()
@@ -4990,37 +4989,37 @@ func (g *CodeGenerator) getNestedValidationFunctionName(typeName string) string 
 func (g *CodeGenerator) addValidationImportsIfNeeded(file *GofaFile) {
 	// Check if there are any structs with validation decorators
 	dtoStructs := g.findDTOStructsWithValidation(file)
-	
+
 	if len(dtoStructs) > 0 {
 		// Add required imports based on what validations are used
 		g.addImport("strings")
 		g.addImport("regexp")
 		g.addImport("fmt") // For nested validation error formatting
-		
+
 		// Check if URL validation is used
 		needsURLImport := g.usesURLValidation(dtoStructs)
 		if needsURLImport {
 			g.addImport("net/url")
 		}
-		
+
 		// Check if Date validation is used
 		needsTimeImport := g.usesDateValidation(dtoStructs)
 		if needsTimeImport {
 			g.addImport("time")
 		}
-		
+
 		// Check if IP validation is used
 		needsNetImport := g.usesIPValidation(dtoStructs)
 		if needsNetImport {
 			g.addImport("net")
 		}
-		
+
 		// Check if JSON validation is used
 		needsJSONImport := g.usesJSONValidation(dtoStructs)
 		if needsJSONImport {
 			g.addImport("encoding/json")
 		}
-		
+
 		// Check if Base64 validation is used
 		needsBase64Import := g.usesBase64Validation(dtoStructs)
 		if needsBase64Import {
@@ -5033,7 +5032,7 @@ func (g *CodeGenerator) addValidationImportsIfNeeded(file *GofaFile) {
 func (g *CodeGenerator) generateValidationCodeIfNeeded(file *GofaFile) {
 	// Check if there are any structs with validation decorators
 	dtoStructs := g.findDTOStructsWithValidation(file)
-	
+
 	if len(dtoStructs) > 0 {
 		// Generate validation code
 		g.generateValidationCode(file)
@@ -5116,14 +5115,14 @@ func (g *CodeGenerator) generateTestSuiteSetupMethods(testSuite *TestSuiteDeclar
 	g.writeLine(fmt.Sprintf("func (suite *%s) SetupSuite() {", testSuite.Name))
 	g.indent()
 	g.writeLine("// Setup before all tests")
-	
+
 	// Look for @BeforeAll decorators on methods
 	for _, method := range testSuite.Methods {
 		if g.hasDecorator(method.Decorators, "BeforeAll") {
 			g.writeLine(fmt.Sprintf("%s()", method.Name))
 		}
 	}
-	
+
 	g.unindent()
 	g.writeLine("}")
 	g.writeLine("")
@@ -5132,14 +5131,14 @@ func (g *CodeGenerator) generateTestSuiteSetupMethods(testSuite *TestSuiteDeclar
 	g.writeLine(fmt.Sprintf("func (suite *%s) SetupTest() {", testSuite.Name))
 	g.indent()
 	g.writeLine("// Setup before each test")
-	
+
 	// Look for @BeforeEach decorators on methods
 	for _, method := range testSuite.Methods {
 		if g.hasDecorator(method.Decorators, "BeforeEach") {
 			g.writeLine(fmt.Sprintf("%s()", method.Name))
 		}
 	}
-	
+
 	g.unindent()
 	g.writeLine("}")
 	g.writeLine("")
@@ -5148,14 +5147,14 @@ func (g *CodeGenerator) generateTestSuiteSetupMethods(testSuite *TestSuiteDeclar
 	g.writeLine(fmt.Sprintf("func (suite *%s) TearDownTest() {", testSuite.Name))
 	g.indent()
 	g.writeLine("// Cleanup after each test")
-	
+
 	// Look for @AfterEach decorators on methods
 	for _, method := range testSuite.Methods {
 		if g.hasDecorator(method.Decorators, "AfterEach") {
 			g.writeLine(fmt.Sprintf("%s()", method.Name))
 		}
 	}
-	
+
 	g.unindent()
 	g.writeLine("}")
 	g.writeLine("")
@@ -5164,14 +5163,14 @@ func (g *CodeGenerator) generateTestSuiteSetupMethods(testSuite *TestSuiteDeclar
 	g.writeLine(fmt.Sprintf("func (suite *%s) TearDownSuite() {", testSuite.Name))
 	g.indent()
 	g.writeLine("// Cleanup after all tests")
-	
+
 	// Look for @AfterAll decorators on methods
 	for _, method := range testSuite.Methods {
 		if g.hasDecorator(method.Decorators, "AfterAll") {
 			g.writeLine(fmt.Sprintf("%s()", method.Name))
 		}
 	}
-	
+
 	g.unindent()
 	g.writeLine("}")
 	g.writeLine("")
@@ -5180,10 +5179,10 @@ func (g *CodeGenerator) generateTestSuiteSetupMethods(testSuite *TestSuiteDeclar
 // generateTestMethod generates a test method
 func (g *CodeGenerator) generateTestMethod(testSuite *TestSuiteDeclaration, method *MethodNode) error {
 	// Skip methods that are setup/teardown methods
-	if g.hasDecorator(method.Decorators, "BeforeEach") || 
-	   g.hasDecorator(method.Decorators, "AfterEach") ||
-	   g.hasDecorator(method.Decorators, "BeforeAll") || 
-	   g.hasDecorator(method.Decorators, "AfterAll") {
+	if g.hasDecorator(method.Decorators, "BeforeEach") ||
+		g.hasDecorator(method.Decorators, "AfterEach") ||
+		g.hasDecorator(method.Decorators, "BeforeAll") ||
+		g.hasDecorator(method.Decorators, "AfterAll") {
 		return nil
 	}
 
@@ -5258,21 +5257,21 @@ func (g *CodeGenerator) generateFactoryConstructor(factory *FactoryDeclaration) 
 func (g *CodeGenerator) generateFactoryBuildMethod(factory *FactoryDeclaration) {
 	g.writeLine(fmt.Sprintf("func (f *%s) Build(overrides interface{}) *%s {", factory.Name, factory.TargetType))
 	g.indent()
-	
+
 	// Generate default instance creation
 	g.writeLine(fmt.Sprintf("instance := &%s{", factory.TargetType))
 	g.indent()
-	
+
 	// Generate default field values (this would be customizable based on field types)
 	// For now, we will generate basic examples
 	g.writeLine("// TODO: Add default field values here")
 	g.writeLine("// Example: ID: f.getSequence(\"id\"),")
 	g.writeLine("// Example: Name: f.generateRandomString(),")
-	
+
 	g.unindent()
 	g.writeLine("}")
 	g.writeLine("")
-	
+
 	// Apply overrides
 	g.writeLine("// Apply overrides")
 	g.writeLine("if overrides != nil {")
@@ -5283,7 +5282,7 @@ func (g *CodeGenerator) generateFactoryBuildMethod(factory *FactoryDeclaration) 
 	g.writeLine("}")
 	g.writeLine("")
 	g.writeLine("return instance")
-	
+
 	g.unindent()
 	g.writeLine("}")
 }
@@ -5298,7 +5297,7 @@ func (g *CodeGenerator) generateFactoryHelperMethods(factory *FactoryDeclaration
 	g.unindent()
 	g.writeLine("}")
 	g.writeLine("")
-	
+
 	// Generate random string method
 	g.writeLine(fmt.Sprintf("func (f *%s) generateRandomString() string {", factory.Name))
 	g.indent()
@@ -5314,7 +5313,7 @@ func (g *CodeGenerator) generateFactoryHelperMethods(factory *FactoryDeclaration
 	g.unindent()
 	g.writeLine("}")
 	g.writeLine("")
-	
+
 	// Generate random int method
 	g.writeLine(fmt.Sprintf("func (f *%s) generateRandomInt(min, max int) int {", factory.Name))
 	g.indent()
@@ -5334,7 +5333,7 @@ func (g *CodeGenerator) generateFactoryTraitMethod(factory *FactoryDeclaration, 
 	if traitDecorator == nil {
 		return fmt.Errorf("trait method %s missing @Trait decorator", method.Name)
 	}
-	
+
 	// Get trait name from decorator argument
 	traitName := method.Name
 	if len(traitDecorator.Args) > 0 {
@@ -5342,20 +5341,20 @@ func (g *CodeGenerator) generateFactoryTraitMethod(factory *FactoryDeclaration, 
 			traitName = strVal
 		}
 	}
-	
+
 	// Generate trait method signature
-	g.writeLine(fmt.Sprintf("func (f *%s) %s(instance *%s) *%s {", 
+	g.writeLine(fmt.Sprintf("func (f *%s) %s(instance *%s) *%s {",
 		factory.Name, method.Name, factory.TargetType, factory.TargetType))
 	g.indent()
-	
+
 	// Generate method body
 	g.writeLine(fmt.Sprintf("// Trait: %s", traitName))
 	g.writeLine("// TODO: Add trait-specific modifications here")
 	g.writeLine("return instance")
-	
+
 	g.unindent()
 	g.writeLine("}")
-	
+
 	return nil
 }
 
@@ -5371,7 +5370,7 @@ func (g *CodeGenerator) generateMockSupportStructures(mock *MockDeclaration) {
 	g.unindent()
 	g.writeLine("}")
 	g.writeLine("")
-	
+
 	// Generate MockExpectation structure
 	g.writeLine("// MockExpectation represents an expected method call")
 	g.writeLine("type MockExpectation struct {")
@@ -5416,7 +5415,7 @@ func (g *CodeGenerator) generateMockExpectationMethods(mock *MockDeclaration) {
 	g.unindent()
 	g.writeLine("}")
 	g.writeLine("")
-	
+
 	// Generate Return method for setting return values
 	g.writeLine("func (e *MockExpectation) Return(values ...interface{}) *MockExpectation {")
 	g.indent()
@@ -5425,7 +5424,7 @@ func (g *CodeGenerator) generateMockExpectationMethods(mock *MockDeclaration) {
 	g.unindent()
 	g.writeLine("}")
 	g.writeLine("")
-	
+
 	// Generate verification methods
 	g.writeLine(fmt.Sprintf("func (m *%s) AssertExpectations(t *testing.T) {", mock.Name))
 	g.indent()
@@ -5446,7 +5445,7 @@ func (g *CodeGenerator) generateMockExpectationMethods(mock *MockDeclaration) {
 func (g *CodeGenerator) generateMockMethod(mock *MockDeclaration, method *MethodNode) error {
 	g.writeLine(fmt.Sprintf("func (m *%s) %s() {", mock.Name, method.Name))
 	g.indent()
-	
+
 	// Generate call logging
 	g.writeLine("call := MockCall{")
 	g.indent()
@@ -5456,7 +5455,7 @@ func (g *CodeGenerator) generateMockMethod(mock *MockDeclaration, method *Method
 	g.writeLine("}")
 	g.writeLine("m.CallLog = append(m.CallLog, call)")
 	g.writeLine("")
-	
+
 	// Generate expectation matching
 	g.writeLine("// Find matching expectation")
 	g.writeLine("for i := range m.expectations {")
@@ -5471,12 +5470,12 @@ func (g *CodeGenerator) generateMockMethod(mock *MockDeclaration, method *Method
 	g.unindent()
 	g.writeLine("}")
 	g.writeLine("")
-	
+
 	g.writeLine("// Method was called but not expected")
 	g.writeLine(fmt.Sprintf("m.t.Errorf(\"Unexpected call to method %s\")", method.Name))
-	
+
 	g.unindent()
 	g.writeLine("}")
-	
+
 	return nil
 }

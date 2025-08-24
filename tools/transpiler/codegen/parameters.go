@@ -276,8 +276,136 @@ func (g *CodeGenerator) generateHeaderTypeConversion(param *ParameterNode, value
 	}
 }
 
-// generateParameterConstraintValidation generates parameter constraint validation
+// generateParameterConstraintValidation generates validation code for parameter constraints
 func (g *CodeGenerator) generateParameterConstraintValidation(param *ParameterNode, valueVar string, options ParameterConstraintOptions) {
-	// TODO: Implement constraint validation
-	g.writeLine("// TODO: Implement parameter constraint validation")
+	// Apply string transformations first
+	if options.Transform != "" {
+		switch options.Transform {
+		case "lowercase":
+			g.writeLine(fmt.Sprintf("%s = strings.ToLower(%s)", valueVar, valueVar))
+		case "uppercase":
+			g.writeLine(fmt.Sprintf("%s = strings.ToUpper(%s)", valueVar, valueVar))
+		case "trim":
+			g.writeLine(fmt.Sprintf("%s = strings.TrimSpace(%s)", valueVar, valueVar))
+		}
+	}
+
+	// Generate validation code for each constraint
+	for _, constraint := range options.Constraints {
+		switch constraint.Type {
+		case "int":
+			g.writeLine(fmt.Sprintf("if _, err := strconv.Atoi(%s); err != nil {", valueVar))
+			g.indent()
+			g.writeLine(fmt.Sprintf("ctx.JSON(400, map[string]string{\"error\": \"Parameter '%s' must be an integer\"})", param.Name))
+			g.writeLine("return")
+			g.unindent()
+			g.writeLine("}")
+
+		case "bool":
+			g.writeLine(fmt.Sprintf("if _, err := strconv.ParseBool(%s); err != nil {", valueVar))
+			g.indent()
+			g.writeLine(fmt.Sprintf("ctx.JSON(400, map[string]string{\"error\": \"Parameter '%s' must be a boolean (true/false)\"})", param.Name))
+			g.writeLine("return")
+			g.unindent()
+			g.writeLine("}")
+
+		case "guid":
+			g.writeLine(fmt.Sprintf("if _, err := uuid.Parse(%s); err != nil {", valueVar))
+			g.indent()
+			g.writeLine(fmt.Sprintf("ctx.JSON(400, map[string]string{\"error\": \"Parameter '%s' must be a valid GUID\"})", param.Name))
+			g.writeLine("return")
+			g.unindent()
+			g.writeLine("}")
+
+		case "alpha":
+			g.writeLine(fmt.Sprintf("if matched, _ := regexp.MatchString(\"^[a-zA-Z]+$\", %s); !matched {", valueVar))
+			g.indent()
+			g.writeLine(fmt.Sprintf("ctx.JSON(400, map[string]string{\"error\": \"Parameter '%s' must contain only alphabetic characters\"})", param.Name))
+			g.writeLine("return")
+			g.unindent()
+			g.writeLine("}")
+
+		case "regex":
+			if constraint.Value != "" {
+				g.writeLine(fmt.Sprintf("if matched, _ := regexp.MatchString(\"%s\", %s); !matched {", constraint.Value, valueVar))
+				g.indent()
+				g.writeLine(fmt.Sprintf("ctx.JSON(400, map[string]string{\"error\": \"Parameter '%s' does not match required pattern\"})", param.Name))
+				g.writeLine("return")
+				g.unindent()
+				g.writeLine("}")
+			}
+
+		case "min":
+			if constraint.Value != "" {
+				g.writeLine(fmt.Sprintf("if intVal, err := strconv.Atoi(%s); err == nil {", valueVar))
+				g.indent()
+				g.writeLine(fmt.Sprintf("if intVal < %s {", constraint.Value))
+				g.indent()
+				g.writeLine(fmt.Sprintf("ctx.JSON(400, map[string]string{\"error\": \"Parameter '%s' must be at least %s\"})", param.Name, constraint.Value))
+				g.writeLine("return")
+				g.unindent()
+				g.writeLine("}")
+				g.unindent()
+				g.writeLine("}")
+			}
+
+		case "max":
+			if constraint.Value != "" {
+				g.writeLine(fmt.Sprintf("if intVal, err := strconv.Atoi(%s); err == nil {", valueVar))
+				g.indent()
+				g.writeLine(fmt.Sprintf("if intVal > %s {", constraint.Value))
+				g.indent()
+				g.writeLine(fmt.Sprintf("ctx.JSON(400, map[string]string{\"error\": \"Parameter '%s' must be at most %s\"})", param.Name, constraint.Value))
+				g.writeLine("return")
+				g.unindent()
+				g.writeLine("}")
+				g.unindent()
+				g.writeLine("}")
+			}
+
+		case "range":
+			if constraint.Value != "" && constraint.Value2 != "" {
+				g.writeLine(fmt.Sprintf("if intVal, err := strconv.Atoi(%s); err == nil {", valueVar))
+				g.indent()
+				g.writeLine(fmt.Sprintf("if intVal < %s || intVal > %s {", constraint.Value, constraint.Value2))
+				g.indent()
+				g.writeLine(fmt.Sprintf("ctx.JSON(400, map[string]string{\"error\": \"Parameter '%s' must be between %s and %s\"})", param.Name, constraint.Value, constraint.Value2))
+				g.writeLine("return")
+				g.unindent()
+				g.writeLine("}")
+				g.unindent()
+				g.writeLine("}")
+			}
+
+		case "length":
+			if constraint.Value != "" {
+				g.writeLine(fmt.Sprintf("if len(%s) != %s {", valueVar, constraint.Value))
+				g.indent()
+				g.writeLine(fmt.Sprintf("ctx.JSON(400, map[string]string{\"error\": \"Parameter '%s' must be exactly %s characters long\"})", param.Name, constraint.Value))
+				g.writeLine("return")
+				g.unindent()
+				g.writeLine("}")
+			}
+
+		case "minlength":
+			if constraint.Value != "" {
+				g.writeLine(fmt.Sprintf("if len(%s) < %s {", valueVar, constraint.Value))
+				g.indent()
+				g.writeLine(fmt.Sprintf("ctx.JSON(400, map[string]string{\"error\": \"Parameter '%s' must be at least %s characters long\"})", param.Name, constraint.Value))
+				g.writeLine("return")
+				g.unindent()
+				g.writeLine("}")
+			}
+
+		case "maxlength":
+			if constraint.Value != "" {
+				g.writeLine(fmt.Sprintf("if len(%s) > %s {", valueVar, constraint.Value))
+				g.indent()
+				g.writeLine(fmt.Sprintf("ctx.JSON(400, map[string]string{\"error\": \"Parameter '%s' must be at most %s characters long\"})", param.Name, constraint.Value))
+				g.writeLine("return")
+				g.unindent()
+				g.writeLine("}")
+			}
+		}
+	}
 }

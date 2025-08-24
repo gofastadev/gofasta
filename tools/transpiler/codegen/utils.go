@@ -272,3 +272,4 @@ func (g *CodeGenerator) formatValueList(values []interface{}) string {
 	}
 	return strings.Join(formattedValues, ", ")
 }
+

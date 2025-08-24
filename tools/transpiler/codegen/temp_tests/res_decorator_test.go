@@ -1,11 +1,11 @@
-package transpiler
+package codegen
 
 import (
 	"strings"
 	"testing"
 )
 
-func TestReqDecoratorBasic(t *testing.T) {
+func TestResDecoratorBasic(t *testing.T) {
 	input := `
 package main
 
@@ -14,18 +14,18 @@ type UserController struct {
 }
 
 @Get("")
-func GetUsers(@Req() req *RequestContext) {
+func GetUsers(@Res() res *RequestContext) {
 }
 `
 
 	expected := []string{
-		"req := ctx",
+		"res := ctx",
 	}
 
-	testReqGeneration(t, input, expected, "basic request context parameter")
+	testResGeneration(t, input, expected, "basic response context parameter")
 }
 
-func TestReqDecoratorWithHTTPRequest(t *testing.T) {
+func TestResDecoratorWithResponseWriter(t *testing.T) {
 	input := `
 package main
 
@@ -34,18 +34,18 @@ type UserController struct {
 }
 
 @Get("")
-func GetUsers(@Req() req *Request) {
+func GetUsers(@Res() res *ResponseWriter) {
 }
 `
 
 	expected := []string{
-		"req := ctx.GetRequest()",
+		"res := ctx.GetResponseWriter()",
 	}
 
-	testReqGeneration(t, input, expected, "HTTP request parameter")
+	testResGeneration(t, input, expected, "response writer parameter")
 }
 
-func TestReqDecoratorWithRequestContextType(t *testing.T) {
+func TestResDecoratorWithResponseContext(t *testing.T) {
 	input := `
 package main
 
@@ -54,18 +54,18 @@ type UserController struct {
 }
 
 @Get("")
-func GetUsers(@Req() ctx *RequestContext) {
+func GetUsers(@Res() res *ResponseContext) {
 }
 `
 
 	expected := []string{
-		"ctx := ctx",
+		"res := ctx",
 	}
 
-	testReqGeneration(t, input, expected, "RequestContext type parameter")
+	testResGeneration(t, input, expected, "ResponseContext type parameter")
 }
 
-func TestReqDecoratorMultipleParameters(t *testing.T) {
+func TestResDecoratorMultipleParameters(t *testing.T) {
 	input := `
 package main
 
@@ -74,21 +74,21 @@ type UserController struct {
 }
 
 @Get("")
-func GetUsers(@Req() req *Request, @Query("id") id string) {
+func GetUsers(@Res() res *ResponseWriter, @Query("id") id string) {
 }
 `
 
 	expected := []string{
-		"req := ctx.GetRequest()",
+		"res := ctx.GetResponseWriter()",
 		"var id string",
 		"queryValue := ctx.GetQuery(\"id\")",
 		"id = queryValue",
 	}
 
-	testReqGeneration(t, input, expected, "request parameter with other parameters")
+	testResGeneration(t, input, expected, "response parameter with other parameters")
 }
 
-func TestReqDecoratorWithBody(t *testing.T) {
+func TestResDecoratorWithBody(t *testing.T) {
 	input := `
 package main
 
@@ -97,12 +97,12 @@ type UserController struct {
 }
 
 @Post("")
-func CreateUser(@Req() req *Request, @Body() user User) {
+func CreateUser(@Res() res *ResponseWriter, @Body() user User) {
 }
 `
 
 	expected := []string{
-		"req := ctx.GetRequest()",
+		"res := ctx.GetResponseWriter()",
 		"var user User",
 		"if err := ctx.ParseJSON(&user); err != nil {",
 		"ctx.JSON(400, map[string]string{\"error\": \"Invalid request body\"})",
@@ -110,10 +110,10 @@ func CreateUser(@Req() req *Request, @Body() user User) {
 		"}",
 	}
 
-	testReqGeneration(t, input, expected, "request parameter with body parameter")
+	testResGeneration(t, input, expected, "response parameter with body parameter")
 }
 
-func TestReqDecoratorWithHeaders(t *testing.T) {
+func TestResDecoratorWithHeaders(t *testing.T) {
 	input := `
 package main
 
@@ -122,21 +122,21 @@ type UserController struct {
 }
 
 @Get("")
-func GetUsers(@Req() req *Request, @Headers("Authorization") auth string) {
+func GetUsers(@Res() res *ResponseWriter, @Headers("Authorization") auth string) {
 }
 `
 
 	expected := []string{
-		"req := ctx.GetRequest()",
+		"res := ctx.GetResponseWriter()",
 		"var auth string",
 		"headerValue := ctx.GetHeader(\"Authorization\")",
 		"auth = headerValue",
 	}
 
-	testReqGeneration(t, input, expected, "request parameter with headers parameter")
+	testResGeneration(t, input, expected, "response parameter with headers parameter")
 }
 
-func TestReqDecoratorWithParam(t *testing.T) {
+func TestResDecoratorWithParam(t *testing.T) {
 	input := `
 package main
 
@@ -145,20 +145,41 @@ type UserController struct {
 }
 
 @Get("/:id")
-func GetUser(@Req() req *Request, @Param("id") id string) {
+func GetUser(@Res() res *ResponseWriter, @Param("id") id string) {
+}
+`
+
+	expected := []string{
+		"res := ctx.GetResponseWriter()",
+		"idValue := ctx.GetParam(\"id\")",
+		"id := idValue",
+	}
+
+	testResGeneration(t, input, expected, "response parameter with path parameter")
+}
+
+func TestResDecoratorWithReqAndRes(t *testing.T) {
+	input := `
+package main
+
+@Controller("/api/users") 
+type UserController struct {
+}
+
+@Get("")
+func GetUsers(@Req() req *Request, @Res() res *ResponseWriter) {
 }
 `
 
 	expected := []string{
 		"req := ctx.GetRequest()",
-		"idValue := ctx.GetParam(\"id\")",
-		"id := idValue",
+		"res := ctx.GetResponseWriter()",
 	}
 
-	testReqGeneration(t, input, expected, "request parameter with path parameter")
+	testResGeneration(t, input, expected, "both request and response parameters")
 }
 
-func TestReqDecoratorComplexExample(t *testing.T) {
+func TestResDecoratorComplexExample(t *testing.T) {
 	input := `
 package main
 
@@ -168,7 +189,7 @@ type UserController struct {
 
 @Put("/:id")
 func UpdateUser(
-	@Req() req *Request,
+	@Res() res *RequestContext,
 	@Param("id") id string,
 	@Body() updateData UpdateUserDto,
 	@Query("validate", { defaultValue: "true" }) validate bool,
@@ -178,7 +199,7 @@ func UpdateUser(
 `
 
 	expected := []string{
-		"req := ctx.GetRequest()",
+		"res := ctx",
 		"idValue := ctx.GetParam(\"id\")",
 		"id := idValue",
 		"var updateData UpdateUserDto",
@@ -208,10 +229,10 @@ func UpdateUser(
 		"authToken = headerValue",
 	}
 
-	testReqGeneration(t, input, expected, "complex request parameter with multiple decorators")
+	testResGeneration(t, input, expected, "complex response parameter with multiple decorators")
 }
 
-func TestReqDecoratorDefaultTypeHandling(t *testing.T) {
+func TestResDecoratorDefaultTypeHandling(t *testing.T) {
 	input := `
 package main
 
@@ -220,19 +241,54 @@ type UserController struct {
 }
 
 @Get("")
-func GetUsers(@Req() req interface{}) {
+func GetUsers(@Res() res interface{}) {
 }
 `
 
 	expected := []string{
-		"req := ctx",
+		"res := ctx",
 	}
 
-	testReqGeneration(t, input, expected, "request parameter with interface{} type (defaults to context)")
+	testResGeneration(t, input, expected, "response parameter with interface{} type (defaults to context)")
 }
 
-// Helper function for testing @Req() decorator generation
-func testReqGeneration(t *testing.T, input string, expected []string, description string) {
+func TestResDecoratorReqAndResWithOtherParams(t *testing.T) {
+	input := `
+package main
+
+@Controller("/api/streaming") 
+type StreamingController struct {
+}
+
+@Get("/data")
+func StreamData(
+	@Req() req *Request,
+	@Res() res *ResponseWriter,
+	@Query("format", { defaultValue: "json" }) format string,
+	@Headers("Accept-Encoding") encoding string
+) {
+}
+`
+
+	expected := []string{
+		"req := ctx.GetRequest()",
+		"res := ctx.GetResponseWriter()",
+		"var format string",
+		"queryValue := ctx.GetQuery(\"format\")",
+		"if queryValue == \"\" {",
+		"queryValue = \"json\"",
+		"}",
+		"format = queryValue",
+		"var encoding string",
+		"headerValue := ctx.GetHeader(\"Accept-Encoding\")",
+		"encoding = headerValue",
+	}
+
+	testResGeneration(t, input, expected, "request and response parameters with other decorators")
+}
+
+// Helper function for testing @Res() decorator generation
+func testResGeneration(t *testing.T, input string, expected []string, description string) {
 	t.Helper()
 	
 	// Parse the input
@@ -257,7 +313,7 @@ func testReqGeneration(t *testing.T, input string, expected []string, descriptio
 	}
 }
 
-func TestReqDecoratorImports(t *testing.T) {
+func TestResDecoratorImports(t *testing.T) {
 	input := `
 package main
 
@@ -266,7 +322,7 @@ type UserController struct {
 }
 
 @Get("")
-func GetUsers(@Req() req *Request) {
+func GetUsers(@Res() res *ResponseWriter) {
 }
 `
 
