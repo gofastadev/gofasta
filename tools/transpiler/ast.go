@@ -113,6 +113,28 @@ func (m *ModuleDeclaration) Pos() token.Pos {
 
 func (m *ModuleDeclaration) isDeclaration() {}
 
+// WebSocketGatewayDeclaration represents a WebSocket gateway class
+type WebSocketGatewayDeclaration struct {
+	Name       string           // gateway name
+	Decorators []*DecoratorNode // @WebSocketGateway, @UseGuards, etc.
+	Fields     []*FieldNode     // injected dependencies
+	Methods    []*MethodNode    // gateway methods/event handlers
+	Port       *int             // WebSocket port from @WebSocketGateway
+	Namespace  *string          // WebSocket namespace from @WebSocketGateway
+	Config     map[string]interface{} // additional configuration
+	Position   token.Pos
+}
+
+func (w *WebSocketGatewayDeclaration) String() string {
+	return "WebSocketGateway: " + w.Name
+}
+
+func (w *WebSocketGatewayDeclaration) Pos() token.Pos {
+	return w.Position
+}
+
+func (w *WebSocketGatewayDeclaration) isDeclaration() {}
+
 // TestSuiteDeclaration represents a test suite class
 type TestSuiteDeclaration struct {
 	Name       string           // test suite name
@@ -373,6 +395,37 @@ const (
 	HTTPTestDecorator
 	DatabaseTestDecorator
 
+	// WebSocket decorators - Gateway
+	WebSocketGatewayDecorator
+	
+	// WebSocket decorators - Message handling
+	SubscribeMessageDecorator
+	OnMessageDecorator
+	MessagePatternDecorator
+	
+	// WebSocket decorators - Lifecycle
+	OnGatewayConnectionDecorator
+	OnGatewayDisconnectDecorator
+	OnGatewayInitDecorator
+	
+	// WebSocket decorators - Parameters
+	MessageBodyDecorator
+	ConnectedSocketDecorator
+	MessageAckDecorator
+	RoomsDecorator
+	NamespaceDecorator
+	CurrentUserDecorator
+	ClientIPDecorator
+	DisconnectReasonDecorator
+	EventNameDecorator
+	RawMessageDecorator
+	ServerDecorator
+	
+	// WebSocket decorators - Client
+	WebSocketClientDecorator
+	WebSocketTestClientDecorator
+	WebSocketIntegrationTestDecorator
+
 	// Custom decorators
 	CustomDecorator
 )
@@ -489,6 +542,29 @@ var DecoratorTypeMap = map[string]DecoratorType{
 	"TestModule":      TestModuleDecorator,
 	"HTTPTest":        HTTPTestDecorator,
 	"DatabaseTest":    DatabaseTestDecorator,
+	
+	// WebSocket decorators
+	"WebSocketGateway":         WebSocketGatewayDecorator,
+	"SubscribeMessage":         SubscribeMessageDecorator,
+	"OnMessage":               OnMessageDecorator,
+	"MessagePattern":          MessagePatternDecorator,
+	"OnGatewayConnection":     OnGatewayConnectionDecorator,
+	"OnGatewayDisconnect":     OnGatewayDisconnectDecorator,
+	"OnGatewayInit":           OnGatewayInitDecorator,
+	"MessageBody":             MessageBodyDecorator,
+	"ConnectedSocket":         ConnectedSocketDecorator,
+	"MessageAck":              MessageAckDecorator,
+	"Rooms":                   RoomsDecorator,
+	"Namespace":               NamespaceDecorator,
+	"CurrentUser":             CurrentUserDecorator,
+	"ClientIP":                ClientIPDecorator,
+	"DisconnectReason":        DisconnectReasonDecorator,
+	"EventName":               EventNameDecorator,
+	"RawMessage":              RawMessageDecorator,
+	"Server":                  ServerDecorator,
+	"WebSocketClient":         WebSocketClientDecorator,
+	"WebSocketTestClient":     WebSocketTestClientDecorator,
+	"WebSocketIntegrationTest": WebSocketIntegrationTestDecorator,
 }
 
 // GetDecoratorType returns the decorator type for a given name
@@ -569,6 +645,36 @@ func IsTestingDecorator(decoratorType DecoratorType) bool {
 	return decoratorType >= TestSuiteDecorator && decoratorType <= DatabaseTestDecorator
 }
 
+// IsWebSocketDecorator checks if a decorator type is a WebSocket decorator
+func IsWebSocketDecorator(decoratorType DecoratorType) bool {
+	return decoratorType >= WebSocketGatewayDecorator && decoratorType <= WebSocketIntegrationTestDecorator
+}
+
+// IsWebSocketGatewayDecorator checks if a decorator type is a WebSocket gateway decorator
+func IsWebSocketGatewayDecorator(decoratorType DecoratorType) bool {
+	return decoratorType == WebSocketGatewayDecorator
+}
+
+// IsWebSocketMessageDecorator checks if a decorator type is a WebSocket message handling decorator
+func IsWebSocketMessageDecorator(decoratorType DecoratorType) bool {
+	return decoratorType >= SubscribeMessageDecorator && decoratorType <= MessagePatternDecorator
+}
+
+// IsWebSocketLifecycleDecorator checks if a decorator type is a WebSocket lifecycle decorator
+func IsWebSocketLifecycleDecorator(decoratorType DecoratorType) bool {
+	return decoratorType >= OnGatewayConnectionDecorator && decoratorType <= OnGatewayInitDecorator
+}
+
+// IsWebSocketParameterDecorator checks if a decorator type is a WebSocket parameter decorator
+func IsWebSocketParameterDecorator(decoratorType DecoratorType) bool {
+	return decoratorType >= MessageBodyDecorator && decoratorType <= ServerDecorator
+}
+
+// IsWebSocketClientDecorator checks if a decorator type is a WebSocket client decorator
+func IsWebSocketClientDecorator(decoratorType DecoratorType) bool {
+	return decoratorType >= WebSocketClientDecorator && decoratorType <= WebSocketIntegrationTestDecorator
+}
+
 // Visitor interface for traversing the AST
 type Visitor interface {
 	Visit(node GofaASTNode) Visitor
@@ -617,6 +723,17 @@ func Walk(v Visitor, node GofaASTNode) {
 		}
 
 	case *TestSuiteDeclaration:
+		for _, decorator := range n.Decorators {
+			Walk(v, decorator)
+		}
+		for _, field := range n.Fields {
+			Walk(v, field)
+		}
+		for _, method := range n.Methods {
+			Walk(v, method)
+		}
+
+	case *WebSocketGatewayDeclaration:
 		for _, decorator := range n.Decorators {
 			Walk(v, decorator)
 		}

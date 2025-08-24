@@ -1,0 +1,83 @@
+package main
+
+// WebSocket Client example demonstrating client-side decorators
+@Injectable()
+type ExternalAPIClient struct {
+	@Inject("config")
+	config *Config
+}
+
+// WebSocket client connection to external service  
+@WebSocketClient("ws://external-api.example.com:8080")
+func (c *ExternalAPIClient) ConnectToExternalAPI() *WebSocketConnection {
+	return nil // Implementation handled by framework
+}
+
+// Handle messages from external WebSocket server
+@OnMessage("api_update")
+func (c *ExternalAPIClient) HandleAPIUpdate(
+	@MessageBody() data *APIUpdate
+) {
+	// Process external API updates
+}
+
+@OnMessage("heartbeat")
+func (c *ExternalAPIClient) HandleHeartbeat(
+	@MessageBody() data *HeartbeatData,
+	@EventName() event string
+) {
+	// Handle heartbeat from external service
+}
+
+// WebSocket testing decorators example
+@TestSuite()
+type WebSocketGatewayTest struct {
+	@Mock("chatService")
+	mockChatService *ChatService
+	
+	@WebSocketTestClient()
+	wsClient *TestWebSocketClient
+	
+	gateway *ChatGateway
+}
+
+@Test("should handle message")
+func (t *WebSocketGatewayTest) TestHandleMessage() {
+	// Arrange
+	message := &ChatMessage{Content: "Hello WebSocket"}
+	
+	// Act
+	t.wsClient.Emit("message", message)
+	
+	// Assert - testing framework integration
+}
+
+@WebSocketIntegrationTest()
+func (t *WebSocketGatewayTest) TestRealTimeMessage() {
+	// Full integration test with real WebSocket connections
+}
+
+// Data structures for client example
+type APIUpdate struct {
+	Type string      `json:"type"`
+	Data interface{} `json:"data"`
+}
+
+type HeartbeatData struct {
+	Timestamp int64 `json:"timestamp"`
+}
+
+type Config struct {
+	ExternalAPIURL string
+}
+
+// WebSocket interfaces
+type WebSocketConnection interface {
+	Send(data interface{}) error
+	Close() error
+}
+
+type TestWebSocketClient interface {
+	Emit(event string, data interface{})
+	On(event string, handler func(interface{}))
+}
