@@ -41,25 +41,25 @@
 
 ### 🎯 **Core Transpiler Features (98% Complete)**
 
-| Feature Category                   | Progress      | Status                    | Details                                                        |
-| ---------------------------------- | ------------- | ------------------------- | -------------------------------------------------------------- |
-| **🏗️ Basic Transpilation** | 100%          | ✅ Complete               | Controller, Service, Injectable decorators                     |
-| **🌐 HTTP Decorators**       | 100%          | ✅ Complete               | @Get, @Post, @Put, @Delete, @HttpCode, @Redirect, @Header      |
-| **📥 Parameter Decorators**  | 100%          | ✅ Complete               | @Body, @Query, @Headers, @Req, @Res, @Session, @Ip, @HostParam |
-| **💉 Dependency Injection**  | 100%          | ✅ Complete               | @Inject, providers, scopes, factory patterns                   |
-| **🔧 Middleware System**     | 100%          | ✅ Complete               | @UseGuards, @UseInterceptors, @UsePipes                        |
-| **⚡ Error Handling**        | 100%          | ✅ Complete               | @Catch decorator with multi-error support                      |
-| **✅ Validation Decorators** | **100%**      | 🎉**Complete**      | All 55+ decorators implemented and working                     |
-| **🧪 Testing Decorators**   | **100%**      | 🎉**Complete**      | All 12 decorators implemented: TestSuite, Factory, Mock, Trait, etc. |
+| Feature Category                   | Progress       | Status               | Details                                                              |
+| ---------------------------------- | -------------- | -------------------- | -------------------------------------------------------------------- |
+| **🏗️ Basic Transpilation** | 100%           | ✅ Complete          | Controller, Service, Injectable decorators                           |
+| **🌐 HTTP Decorators**       | 100%           | ✅ Complete          | @Get, @Post, @Put, @Delete, @HttpCode, @Redirect, @Header            |
+| **📥 Parameter Decorators**  | 100%           | ✅ Complete          | @Body, @Query, @Headers, @Req, @Res, @Session, @Ip, @HostParam       |
+| **💉 Dependency Injection**  | 100%           | ✅ Complete          | @Inject, providers, scopes, factory patterns                         |
+| **🔧 Middleware System**     | 100%           | ✅ Complete          | @UseGuards, @UseInterceptors, @UsePipes                              |
+| **⚡ Error Handling**        | 100%           | ✅ Complete          | @Catch decorator with multi-error support                            |
+| **✅ Validation Decorators** | **100%** | 🎉**Complete** | All 55+ decorators implemented and working                           |
+| **🧪 Testing Decorators**    | **100%** | 🎉**Complete** | All 12 decorators implemented: TestSuite, Factory, Mock, Trait, etc. |
 
 ### 🎯 **Advanced Features (25% Complete)**
 
-| Feature Category                | Progress | Status     | Priority         | Details                              |
-| ------------------------------- | -------- | ---------- | ---------------- | ------------------------------------ |
-| **🌐 WebSocket Support**  | 0%       | 🔄 **Detailed Plan Ready** | 🔥**High** | 15+ decorators planned across 5 phases |
-| **📊 GraphQL Decorators** | 0%       | ❌ Pending | 🟡 Medium        | @Resolver, @Query, @Mutation         |
-| **🔄 Route Versioning**   | **100%** | ✅ Complete | ✅ **Done** | @Version decorator - **COMPLETED!** |
-| **📡 Microservices**      | 0%       | ❌ Pending | 🟢 Low           | @MessagePattern, event handling      |
+| Feature Category                | Progress       | Status                          | Priority         | Details                                  |
+| ------------------------------- | -------------- | ------------------------------- | ---------------- | ---------------------------------------- |
+| **🌐 WebSocket Support**  | 0%             | 🔄**Detailed Plan Ready** | 🔥**High** | 15+ decorators planned across 5 phases   |
+| **📊 GraphQL Decorators** | 0%             | ❌ Pending                      | 🟡 Medium        | @Resolver, @Query, @Mutation             |
+| **🔄 Route Versioning**   | **100%** | ✅ Complete                     | ✅**Done** | @Version decorator -**COMPLETED!** |
+| **📡 Microservices**      | 0%             | ❌ Pending                      | 🟢 Low           | @MessagePattern, event handling          |
 
 ### 🎯 **Developer Experience (20% Complete)**
 
@@ -90,6 +90,7 @@ Complexity: High - requires new AST nodes, parsing, and runtime integration
 ### **Phase 1: Core WebSocket Decorators (Week 1-2)**
 
 #### **1.1 Gateway Decorators**
+
 ```gofa
 // Gateway declaration with configuration
 @WebSocketGateway({
@@ -101,7 +102,7 @@ Complexity: High - requires new AST nodes, parsing, and runtime integration
 type ChatGateway struct {
     @Inject("chatService")
     chatService *ChatService
-    
+  
     @Inject("logger")
     logger *Logger
 }
@@ -112,6 +113,7 @@ type SimpleGateway struct {}
 ```
 
 #### **1.2 Message Handling Decorators**
+
 ```gofa
 // Subscribe to specific message types
 @SubscribeMessage("message")
@@ -144,6 +146,7 @@ func (g *ChatGateway) HandleUserEvents(
 ```
 
 #### **1.3 Connection Lifecycle Decorators**
+
 ```gofa
 // Handle new connections
 @OnGatewayConnection()
@@ -175,6 +178,7 @@ func (g *ChatGateway) AfterInit() {
 ### **Phase 2: Advanced WebSocket Features (Week 2-3)**
 
 #### **2.1 Room and Namespace Management**
+
 ```gofa
 @WebSocketGateway({
     namespace: "/game",
@@ -192,7 +196,7 @@ func (g *GameGateway) JoinGame(
 ) {
     // Join client to game room
     client.Join(data.RoomID)
-    
+  
     // Notify other players
     client.To(data.RoomID).Emit("player_joined", data.Player)
 }
@@ -208,6 +212,7 @@ func (g *GameGateway) HandleGameAction(
 ```
 
 #### **2.2 Authentication and Authorization**
+
 ```gofa
 @WebSocketGateway(8080)
 @UseGuards("wsAuthGuard")
@@ -226,6 +231,7 @@ func (g *SecureGateway) HandleSensitiveAction(
 ```
 
 #### **2.3 Validation and Transformation**
+
 ```gofa
 @SubscribeMessage("create_post")
 @UsePipes("wsValidationPipe")
@@ -248,6 +254,7 @@ func (g *ChatGateway) HandleUserData(
 ### **Phase 3: WebSocket Parameter Decorators (Week 3)**
 
 #### **3.1 Core Parameter Decorators**
+
 ```gofa
 @SubscribeMessage("complex_handler")
 func (g *ChatGateway) ComplexHandler(
@@ -274,6 +281,7 @@ func (g *ChatGateway) ComplexHandler(
 ### **Phase 4: Error Handling and Middleware (Week 4)**
 
 #### **4.1 WebSocket Error Handling**
+
 ```gofa
 @WebSocketGateway(8080)
 type ErrorHandlingGateway struct {}
@@ -303,6 +311,7 @@ func (g *ErrorHandlingGateway) HandleValidationErrors(
 ```
 
 #### **4.2 WebSocket Middleware Integration**
+
 ```gofa
 // Custom WebSocket Guard
 type WSAuthGuard struct {
@@ -338,6 +347,7 @@ func (i *WSLoggingInterceptor) Intercept(
 ### **Phase 5: Advanced Features and Testing (Week 4-5)**
 
 #### **5.1 WebSocket Client Integration**
+
 ```gofa
 // Server-side WebSocket client for external connections
 type ExternalWSClient struct {
@@ -359,15 +369,16 @@ func (c *ExternalWSClient) HandleExternalMessage(
 ```
 
 #### **5.2 WebSocket Testing Decorators**
+
 ```gofa
 @TestSuite()
 type WebSocketGatewayTest struct {
     @Mock("chatService")
     mockChatService *ChatService
-    
+  
     @WebSocketTestClient()
     wsClient *TestWebSocketClient
-    
+  
     gateway *ChatGateway
 }
 
@@ -376,10 +387,10 @@ func (t *WebSocketGatewayTest) TestHandleMessage() {
     // Arrange
     message := &ChatMessage{Content: "Hello"}
     t.mockChatService.On("ProcessMessage", message).Return(nil)
-    
+  
     // Act
     t.wsClient.Emit("message", message)
-    
+  
     // Assert
     t.mockChatService.AssertExpectations()
 }
@@ -393,6 +404,7 @@ func (t *WebSocketGatewayTest) TestRealTimeMessage() {
 ### **Implementation Architecture**
 
 #### **5.3 AST Node Structures**
+
 ```go
 // parser/ast.go additions
 type WebSocketGatewayDecorator struct {
@@ -415,6 +427,7 @@ type WebSocketParameterDecorator struct {
 ```
 
 #### **5.4 Code Generation Templates**
+
 ```go
 // generator/websocket_template.go
 const WebSocketGatewayTemplate = `
@@ -442,11 +455,12 @@ func (s *{{.Name}}WSServer) Start() {
 
 ## ✅ **WebSocket Transpiler Implementation Checklist**
 
-> **Focus**: Code generation and AST parsing for WebSocket decorators  
+> **Focus**: Code generation and AST parsing for WebSocket decorators
 > **Runtime Features**: See [Framework Roadmap](GOFASTA_FRAMEWORK_ROADMAP.md)
 
 ### **Phase 1: AST & Parsing Foundation (Week 1-2)**
-- [ ] **1.1** Add WebSocket AST node structures to `parser/ast.go`
+
+- [X] **1.1** Add WebSocket AST node structures to `parser/ast.go`
   ```go
   type WebSocketGatewayDecorator struct {
       BaseDecorator
@@ -466,6 +480,7 @@ func (s *{{.Name}}WSServer) Start() {
 - [ ] **1.10** Add WebSocket decorator unit tests
 
 ### **Phase 2: Code Generation Templates (Week 2-3)**
+
 - [ ] **2.1** Create WebSocket gateway code generation templates
   ```go
   const WebSocketGatewayTemplate = `
@@ -489,6 +504,7 @@ func (s *{{.Name}}WSServer) Start() {
 ### **Phase 3: Parameter Decorator Implementation (Week 3)**
 
 #### **3.1 Extend Existing HTTP Decorators for WebSocket Context**
+
 > **Efficiency**: Reuse existing parsing logic, only modify code generation
 
 - [ ] **3.1** Extend `@Headers()` for WebSocket handshake context
@@ -496,7 +512,7 @@ func (s *{{.Name}}WSServer) Start() {
   // HTTP: ctx.Request.Header.Get("auth")  
   // WebSocket: client.Handshake().Header.Get("auth")
   ```
-- [ ] **3.2** Extend `@Query()` for WebSocket connection URL context  
+- [ ] **3.2** Extend `@Query()` for WebSocket connection URL context
   ```go
   // HTTP: ctx.Request.URL.Query().Get("room")
   // WebSocket: client.Handshake().URL.Query().Get("room")
@@ -512,6 +528,7 @@ func (s *{{.Name}}WSServer) Start() {
   ```
 
 #### **3.2 Implement WebSocket-Specific Parameter Decorators**
+
 > **New**: WebSocket-only decorators with unique functionality
 
 - [ ] **3.5** Implement `@MessageBody()` parameter decorator
@@ -556,6 +573,7 @@ func (s *{{.Name}}WSServer) Start() {
   ```
 
 #### **3.3 Context-Aware Parameter Processing**
+
 - [ ] **3.15** Add context detection logic to existing parameter parser
   ```go
   func (p *Parser) parseParameterDecorator() *ParameterDecorator {
@@ -569,6 +587,7 @@ func (s *{{.Name}}WSServer) Start() {
 - [ ] **3.17** Add WebSocket parameter code generation templates
 
 ### **Phase 4: Advanced Decorator Features (Week 4)**
+
 - [ ] **4.1** Add WebSocket-specific error handling template generation
 - [ ] **4.2** Implement `@WebSocketClient()` decorator parsing & codegen
 - [ ] **4.3** Add `@OnMessage()` decorator for external client connections
@@ -581,6 +600,7 @@ func (s *{{.Name}}WSServer) Start() {
 - [ ] **4.10** Add WebSocket middleware decorator integration templates
 
 ### **Phase 5: Testing & Documentation (Week 5)**
+
 - [ ] **5.1** Implement `@WebSocketTestClient()` decorator parsing & codegen
 - [ ] **5.2** Add `@WebSocketIntegrationTest()` decorator transpilation
 - [ ] **5.3** Create WebSocket testing helper code generation
@@ -593,6 +613,7 @@ func (s *{{.Name}}WSServer) Start() {
 - [ ] **5.10** Create WebSocket transpilation documentation
 
 ### **Transpiler Integration & Testing**
+
 - [ ] **T.1** Test WebSocket decorator precedence with HTTP decorators
 - [ ] **T.2** Verify WebSocket dependency injection transpilation
 - [ ] **T.3** Test WebSocket middleware decorator integration
@@ -609,21 +630,25 @@ func (s *{{.Name}}WSServer) Start() {
 ### **🚀 Efficiency Gains from Reusing Existing HTTP Decorators**
 
 **Reused Decorators (4)**: `@Headers()`, `@Query()`, `@Session()`, `@Catch()`
+
 - **✅ 80% code reuse**: Existing parsing logic maintained
 - **🔧 Only code generation changes**: Different context templates
 - **⚡ Faster implementation**: ~50% time reduction for these decorators
 - **🐛 Lower bug risk**: Proven parsing logic
 
 **New WebSocket-Only Decorators (10)**: `@MessageBody()`, `@ConnectedSocket()`, `@MessageAck()`, etc.
+
 - **🆕 Full implementation needed**: Unique WebSocket functionality
 - **🎯 WebSocket-specific**: No HTTP equivalent exists
 
 **Implementation Priority**:
+
 1. **Week 1-2**: Core WebSocket AST and basic decorators
-2. **Week 3**: Extend existing decorators (quick wins) + new decorators  
+2. **Week 3**: Extend existing decorators (quick wins) + new decorators
 3. **Week 4-5**: Advanced features and testing
 
 **Example Implementation Approach**:
+
 ```go
 // Existing parseHeadersDecorator() function - NO CHANGES NEEDED
 func (p *Parser) parseHeadersDecorator() *HeadersDecorator {
@@ -650,6 +675,7 @@ Impact: Medium - faster transpilation for large projects
 ```
 
 **Performance Tasks:**
+
 1. Implement AST caching system
 2. Add parallel parsing for multiple files
 3. Optimize code generation templates
@@ -660,6 +686,7 @@ Impact: Medium - faster transpilation for large projects
 ### 🚀 **Phase 2: Next Major Features (Next 1-2 months)**
 
 #### 1️⃣ **GraphQL Decorators**
+
 ```
 Priority: 🟡 MEDIUM
 Effort: 3-4 weeks
@@ -667,6 +694,7 @@ Impact: Medium - enables GraphQL API development
 ```
 
 **GraphQL Features:**
+
 ```gofa
 @Resolver()
 type UserResolver struct {
@@ -691,6 +719,7 @@ func UserUpdated() <-chan *User {
 ```
 
 #### 2️⃣ **Developer Tooling**
+
 ```
 Priority: 🔥 HIGH (developer adoption)
 Effort: 4-6 weeks
@@ -698,43 +727,47 @@ Impact: High - significantly improves developer experience
 ```
 
 **Tooling Features:**
+
 1. **VS Code Extension:**
+
    - Syntax highlighting for .gofa files
    - IntelliSense and autocompletion
    - Error diagnostics and hints
    - Code snippets for decorators
-
 2. **CLI Enhancements:**
+
    - Watch mode improvements
    - Better error reporting
    - Progress indicators
    - Debugging mode
-
 3. **Documentation Generator:**
+
    - Auto-generate API documentation from decorators
    - OpenAPI/Swagger integration
    - Example generation
 
 ---
 
-## 📊 **Current Progress Summary** 
+## 📊 **Current Progress Summary**
 
 ### 🎯 **Overall Completion: 98-100%**
 
 **✅ Completed Systems (100%):**
+
 - **🏗️ Basic Transpilation**: Controllers, Services, Modules, Injectable
-- **🌐 HTTP Decorators**: GET, POST, PUT, DELETE, HttpCode, Redirect, Header  
+- **🌐 HTTP Decorators**: GET, POST, PUT, DELETE, HttpCode, Redirect, Header
 - **📥 Parameter Decorators**: Body, Query, Headers, Req, Res, Session, Ip, HostParam
 - **💉 Dependency Injection**: @Inject, providers, scopes, factory patterns
-- **🔧 Middleware System**: @UseGuards, @UseInterceptors, @UsePipes  
+- **🔧 Middleware System**: @UseGuards, @UseInterceptors, @UsePipes
 - **⚡ Error Handling**: @Catch decorator with multi-error support
 - **🧪 Testing Decorators**: All 12 decorators (TestSuite, Factory, Mock, Trait, etc.) ✨
 - **✅ Validation Decorators**: All 55+ decorators fully implemented and working ✨ **JUST UPDATED!**
 - **🔄 Route Versioning**: @Version decorator support ✨ **CONFIRMED COMPLETE!**
 
 **⏳ Next Priority Features (0-25%):**
+
 - **🌐 WebSocket Support**: @WebSocketGateway, @SubscribeMessage
-- **⚡ Performance Optimization**: AST caching, parallel processing  
+- **⚡ Performance Optimization**: AST caching, parallel processing
 - **🛠️ Developer Tooling**: VS Code extension, better CLI
 - **📊 GraphQL Decorators**: @Resolver, @Query, @Mutation
 - **📡 Microservices**: @MessagePattern, event handling
@@ -742,8 +775,9 @@ Impact: High - significantly improves developer experience
 ### 🎯 **Recommended Focus Order**
 
 **🔥 Immediate (Next 1-2 months):**
+
 1. WebSocket support implementation - **4-5 weeks effort, HIGH impact** ✨ **COMPREHENSIVE PLAN READY**
-2. Performance optimization - **2-3 weeks effort, MEDIUM impact**  
+2. Performance optimization - **2-3 weeks effort, MEDIUM impact**
 3. Developer tooling (VS Code extension) - **4-6 weeks effort, HIGH adoption impact**
 
 **🌟 Medium Term (Next 2-4 months):**
@@ -755,12 +789,14 @@ Impact: High - significantly improves developer experience
 ## 🏆 **Success Metrics & Achievements**
 
 ### 📈 **Current Status**
-- **Core Features**: 100% complete  
+
+- **Core Features**: 100% complete
 - **Essential Decorators**: 100% complete (Testing 100% + Validation 100% + Route Versioning 100%)
 - **Production Readiness**: 98% - Just need WebSocket for modern apps
 - **Developer Experience**: 25% - Needs tooling improvements
 
 ### 🎉 **Major Achievements**
+
 - **✅ Testing System Complete**: All 12 testing decorators implemented
 - **✅ Validation System Complete**: All 55+ validation decorators fully working ✨
 - **✅ Route Versioning Complete**: @Version decorator fully implemented ✨
@@ -768,7 +804,8 @@ Impact: High - significantly improves developer experience
 - **✅ Middleware System**: Complete guard, interceptor, and pipe support
 
 ### 🎯 **Next Milestones**
-- **🎯 Real-time Ready**: WebSocket decorator support for modern apps  
+
+- **🎯 Real-time Ready**: WebSocket decorator support for modern apps
 - **🎯 Developer Friendly**: VS Code extension and enhanced CLI tooling
 - **🎯 Enterprise Ready**: Performance optimization and monitoring
 - **🎯 Modern Complete**: GraphQL support for complete modern framework coverage
@@ -777,12 +814,12 @@ Impact: High - significantly improves developer experience
 
 ## 💡 **Strategic Recommendation**
 
-The GOFASTA transpiler has achieved incredible progress with **all core decorators now 100% complete** including testing, validation, and route versioning! The entire core system is at 98-100% completion. 
+The GOFASTA transpiler has achieved incredible progress with **all core decorators now 100% complete** including testing, validation, and route versioning! The entire core system is at 98-100% completion.
 
 **Next Focus Should Be:**
 
 1. **🚀 Major Feature**: WebSocket **transpiler** support (4-5 weeks) → **Real-time code generation ready** ✨ **TRANSPILER PLAN COMPLETE**
-2. **👥 Adoption**: Developer tooling (4-6 weeks) → **Better developer experience**  
+2. **👥 Adoption**: Developer tooling (4-6 weeks) → **Better developer experience**
 3. **⚡ Performance**: Transpilation optimization (2-3 weeks) → **Faster code generation**
 
 This approach will deliver a **complete, modern, high-performance** transpiler ready for production use in real-time applications with excellent developer experience.
@@ -794,6 +831,7 @@ This approach will deliver a **complete, modern, high-performance** transpiler r
 The comprehensive WebSocket development plan includes:
 
 ### **📦 Decorator Coverage (15+ Decorators)**
+
 - **Gateway**: `@WebSocketGateway()` with advanced configuration
 - **Messaging**: `@SubscribeMessage()`, `@OnMessage()`, `@MessagePattern()`
 - **Lifecycle**: `@OnGatewayConnection()`, `@OnGatewayDisconnect()`, `@OnGatewayInit()`
@@ -802,6 +840,7 @@ The comprehensive WebSocket development plan includes:
 - **Testing**: `@WebSocketIntegrationTest()`
 
 ### **🏗️ Architecture Features**
+
 - **Real-time Communication**: Full duplex WebSocket support
 - **Room Management**: Join/leave rooms, broadcasting, namespaces
 - **Security**: Integration with existing guard and authentication systems
@@ -810,17 +849,18 @@ The comprehensive WebSocket development plan includes:
 - **Testing**: Mock clients, integration tests, performance testing
 
 ### **⚡ Implementation Phases**
+
 1. **Phase 1**: Core decorators and basic functionality (Week 1-2)
-2. **Phase 2**: Advanced features, rooms, security (Week 2-3) 
+2. **Phase 2**: Advanced features, rooms, security (Week 2-3)
 3. **Phase 3**: Parameter decorators and context (Week 3)
 4. **Phase 4**: Error handling and middleware (Week 4)
 5. **Phase 5**: Testing framework and optimization (Week 4-5)
 
 ### **🎯 Expected Transpiler Outcomes**
+
 - **Real-time Code Generation**: Complete WebSocket decorator transpilation
 - **AST Parsing**: Full support for WebSocket syntax and decorators
 - **Code Templates**: Production-ready Go code generation for WebSocket features
 - **Developer Experience**: IntelliSense, validation, and error reporting for WebSocket decorators
 
 > 🏗️ **Runtime Features**: WebSocket server implementation, connection management, broadcasting, etc. handled by framework (see [Framework Roadmap](GOFASTA_FRAMEWORK_ROADMAP.md))
-

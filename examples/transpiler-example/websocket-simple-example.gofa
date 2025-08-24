@@ -1,0 +1,36 @@
+package main
+
+// Simple WebSocket Gateway demonstrating basic AST node structures
+@WebSocketGateway(3000)
+type SimpleGateway struct {
+	@Inject("messageService")
+	messageService *MessageService
+}
+
+// Basic message handling
+@SubscribeMessage("chat")
+func HandleChat(
+	@MessageBody() message string,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Echo the message back to all clients
+}
+
+// Connection lifecycle
+@OnGatewayConnection()
+func OnConnect(@ConnectedSocket() client *WebSocketClient) {
+	// Welcome message
+}
+
+@OnGatewayDisconnect()
+func OnDisconnect(@ConnectedSocket() client *WebSocketClient) {
+	// Handle disconnection
+}
+
+@Injectable()
+type MessageService struct{}
+
+// WebSocket client struct for AST demonstration  
+type WebSocketClient struct {
+	id string
+}

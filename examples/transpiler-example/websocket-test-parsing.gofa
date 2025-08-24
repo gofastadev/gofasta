@@ -1,0 +1,62 @@
+package main
+
+// Test WebSocket Gateway parsing with various configurations
+@WebSocketGateway(8080)
+type BasicGateway struct {
+	@Inject("service")
+	service *Service
+}
+
+@WebSocketGateway({
+	port: 3000,
+	namespace: "/chat",
+	cors: true,
+	transports: ["websocket", "polling"]
+})
+type AdvancedGateway struct {
+	@Inject("chatService")
+	chatService *ChatService
+	
+	@Inject()
+	logger *Logger
+}
+
+// WebSocket methods
+@SubscribeMessage("message")
+func HandleBasicMessage(
+	@MessageBody() data string,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Basic message handling
+}
+
+@OnGatewayConnection()
+func HandleConnection(
+	@ConnectedSocket() client *WebSocketClient,
+	@Headers() headers map[string]string
+) {
+	// Connection handling
+}
+
+@OnGatewayDisconnect()
+func HandleDisconnect(
+	@ConnectedSocket() client *WebSocketClient,
+	@DisconnectReason() reason string
+) {
+	// Disconnection handling
+}
+
+// Services
+@Injectable()
+type Service struct{}
+
+@Injectable()
+type ChatService struct{}
+
+@Injectable()
+type Logger struct{}
+
+// WebSocket types
+type WebSocketClient struct {
+	id string
+}

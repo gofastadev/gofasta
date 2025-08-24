@@ -1,0 +1,90 @@
+package main
+
+// WebSocket Client example demonstrating client-side decorators
+@Injectable()
+type ExternalAPIClient struct {
+	@Inject("config")
+	config *Config
+}
+
+// WebSocket client connection to external service  
+@WebSocketClient("ws://external-api.example.com:8080")
+func ConnectToExternalAPI() *WebSocketConnection {
+	// Implementation handled by framework
+}
+
+// Handle messages from external WebSocket server
+@OnMessage("api_update")
+func HandleAPIUpdate(
+	@MessageBody() data *APIUpdate
+) {
+	// Process external API updates
+}
+
+@OnMessage("heartbeat")
+func HandleHeartbeat(
+	@MessageBody() data *HeartbeatData,
+	@EventName() event string
+) {
+	// Handle heartbeat from external service
+}
+
+// WebSocket testing decorators example
+@TestSuite()
+type WebSocketGatewayTest struct {
+	@Mock("chatService")
+	mockChatService *ChatService
+	
+	@WebSocketTestClient()
+	wsClient *TestWebSocketClient
+	
+	gateway *ChatGateway
+}
+
+@Test("should handle message")
+func TestHandleMessage() {
+	// Arrange
+	// Act 
+	// Assert - testing framework integration
+}
+
+@WebSocketIntegrationTest()
+func TestRealTimeMessage() {
+	// Full integration test with real WebSocket connections
+}
+
+// Data structures for client example
+type APIUpdate struct {
+	Type string
+	Data string
+}
+
+type HeartbeatData struct {
+	Timestamp int64
+}
+
+type Config struct {
+	ExternalAPIURL string
+}
+
+// WebSocket types for AST demonstration
+type WebSocketConnection struct {
+	connected bool
+}
+
+type TestWebSocketClient struct {
+	client string
+}
+
+// Additional types used in the example
+type ChatMessage struct {
+	Content string
+}
+
+type ChatService struct {
+	active bool
+}
+
+type ChatGateway struct {
+	running bool
+}
