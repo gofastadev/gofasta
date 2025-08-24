@@ -1,9 +1,5 @@
 package main
 
-import (
-	"time"
-)
-
 // Basic WebSocket Gateway example demonstrating Phase 1 AST support
 @WebSocketGateway(8080)
 type ChatGateway struct {
@@ -18,8 +14,7 @@ type ChatGateway struct {
 @WebSocketGateway({
 	port: 8080,
 	namespace: "/chat",
-	cors: true,
-	transports: ["websocket", "polling"]
+	cors: true
 })
 type AdvancedChatGateway struct {
 	@Inject("chatService")
@@ -33,120 +28,96 @@ func HandleMessage(
 	@ConnectedSocket() client *WebSocketClient,
 	@MessageAck() ack *AckCallback
 ) error {
-	g.logger.Info("Received message:", data.Content)
-	return g.chatService.ProcessMessage(data)
+	// Handle the message
+	return nil
 }
 
-// Multiple message types handling
-@SubscribeMessage(["join_room", "leave_room"])  
-func (g *ChatGateway) HandleRoomActions(
+// Room join handling
+@SubscribeMessage("join_room")  
+func HandleJoinRoom(
 	@MessageBody() data *RoomAction,
 	@ConnectedSocket() client *WebSocketClient,
 	@EventName() event string
 ) {
-	g.logger.Info("Room action:", event, "for room:", data.RoomID)
-	
-	if event == "join_room" {
-		client.Join(data.RoomID)
-	} else if event == "leave_room" {
-		client.Leave(data.RoomID)  
-	}
+	// Handle room join
+}
+
+// Room leave handling
+@SubscribeMessage("leave_room")
+func HandleLeaveRoom(
+	@MessageBody() data *RoomAction,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Handle room leave
 }
 
 // Pattern-based message handling
-@SubscribeMessage("user.*")
-func (g *ChatGateway) HandleUserEvents(
-	@MessageBody() data interface{},
+@SubscribeMessage("user_event")
+func HandleUserEvents(
+	@MessageBody() data string,
 	@MessagePattern() pattern string,
 	@ConnectedSocket() client *WebSocketClient
 ) {
-	g.logger.Info("User event pattern:", pattern)
-	// Handle all user-related events
+	// Handle user-related events
 }
 
 // WebSocket lifecycle handlers
 @OnGatewayConnection()
-func (g *ChatGateway) HandleConnection(
+func HandleConnection(
 	@ConnectedSocket() client *WebSocketClient,
 	@Headers() headers map[string]string,
-	@Query() query map[string]string,
 	@ClientIP() ip string
 ) {
-	g.logger.Info("Client connected:", client.ID(), "from IP:", ip)
-	
-	// Authentication example using headers
-	if token := headers["Authorization"]; token != "" {
-		// Authenticate user
-		g.logger.Info("Authenticating user with token")
-	}
+	// Handle new connection
 }
 
 @OnGatewayDisconnect()
-func (g *ChatGateway) HandleDisconnect(
+func HandleDisconnect(
 	@ConnectedSocket() client *WebSocketClient,
 	@DisconnectReason() reason string,
 	@Rooms() rooms []string
 ) {
-	g.logger.Info("Client disconnected:", client.ID(), "Reason:", reason)
-	g.logger.Info("Was in rooms:", rooms)
-	
-	// Cleanup and notify other users
-	for _, room := range rooms {
-		client.To(room).Emit("user_left", map[string]interface{}{
-			"userId": client.ID(),
-			"room": room,
-		})
-	}
+	// Handle disconnection
 }
 
 @OnGatewayInit()
-func (g *ChatGateway) AfterInit() {
-	g.logger.Info("Chat Gateway initialized successfully")
+func AfterInit() {
+	// Gateway initialization
 }
 
 // Complex message handler with multiple WebSocket parameters
 @SubscribeMessage("complex_action")
-func (g *ChatGateway) ComplexHandler(
-	@MessageBody() body interface{},
+func ComplexHandler(
+	@MessageBody() body string,
 	@ConnectedSocket() client *WebSocketClient,
 	@MessageAck() ack *AckCallback,
 	@MessagePattern() pattern string,
 	@Headers() headers map[string]string,
-	@Query() query map[string]string,
 	@Session() session *Session,
 	@Rooms() rooms []string,
 	@Namespace() ns string,
-	@Server() server *WebSocketServer,
 	@CurrentUser() user *User,
 	@ClientIP() ip string,
-	@EventName() event string,
-	@RawMessage() raw []byte
+	@EventName() event string
 ) {
-	g.logger.Info("Complex action received")
-	g.logger.Info("Event:", event, "Pattern:", pattern, "Namespace:", ns)
-	g.logger.Info("Client IP:", ip, "Rooms:", rooms)
-	g.logger.Info("Raw message size:", len(raw))
-	
-	// Send acknowledgment
-	ack("Message processed successfully")
+	// Complex action handling
 }
 
 // Data structures
 type ChatMessage struct {
-	Content string    `json:"content"`
-	UserID  string    `json:"userId"`
-	RoomID  string    `json:"roomId"`
-	Time    time.Time `json:"time"`
+	Content string
+	UserID  string
+	RoomID  string
 }
 
 type RoomAction struct {
-	RoomID string `json:"roomId"`
-	UserID string `json:"userId"`
+	RoomID string
+	UserID string
 }
 
 type User struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+	ID   string
+	Name string
 }
 
 // WebSocket service dependencies
@@ -156,23 +127,25 @@ type ChatService struct {
 	db *Database
 }
 
-func (cs *ChatService) ProcessMessage(msg *ChatMessage) error {
-	// Process chat message logic
-	return nil
-}
-
 @Injectable()
 type Logger struct{}
-
-func (l *Logger) Info(args ...interface{}) {
-	// Logging implementation
-}
 
 @Injectable() 
 type Database struct{}
 
-// WebSocket connection and server interfaces (for AST demonstration)
-type WebSocketClient struct{}
-type WebSocketServer struct{}
-type AckCallback func(interface{})
-type Session struct{}
+// WebSocket connection and server types (for AST demonstration)
+type WebSocketClient struct {
+	id string
+}
+
+type WebSocketServer struct {
+	port int
+}
+
+type AckCallback struct {
+	callback string
+}
+
+type Session struct {
+	data string
+}

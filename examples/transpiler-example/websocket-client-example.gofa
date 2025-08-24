@@ -9,20 +9,20 @@ type ExternalAPIClient struct {
 
 // WebSocket client connection to external service  
 @WebSocketClient("ws://external-api.example.com:8080")
-func (c *ExternalAPIClient) ConnectToExternalAPI() *WebSocketConnection {
-	return nil // Implementation handled by framework
+func ConnectToExternalAPI() *WebSocketConnection {
+	// Implementation handled by framework
 }
 
 // Handle messages from external WebSocket server
 @OnMessage("api_update")
-func (c *ExternalAPIClient) HandleAPIUpdate(
+func HandleAPIUpdate(
 	@MessageBody() data *APIUpdate
 ) {
 	// Process external API updates
 }
 
 @OnMessage("heartbeat")
-func (c *ExternalAPIClient) HandleHeartbeat(
+func HandleHeartbeat(
 	@MessageBody() data *HeartbeatData,
 	@EventName() event string
 ) {
@@ -42,42 +42,49 @@ type WebSocketGatewayTest struct {
 }
 
 @Test("should handle message")
-func (t *WebSocketGatewayTest) TestHandleMessage() {
+func TestHandleMessage() {
 	// Arrange
-	message := &ChatMessage{Content: "Hello WebSocket"}
-	
-	// Act
-	t.wsClient.Emit("message", message)
-	
+	// Act 
 	// Assert - testing framework integration
 }
 
 @WebSocketIntegrationTest()
-func (t *WebSocketGatewayTest) TestRealTimeMessage() {
+func TestRealTimeMessage() {
 	// Full integration test with real WebSocket connections
 }
 
 // Data structures for client example
 type APIUpdate struct {
-	Type string      `json:"type"`
-	Data interface{} `json:"data"`
+	Type string
+	Data string
 }
 
 type HeartbeatData struct {
-	Timestamp int64 `json:"timestamp"`
+	Timestamp int64
 }
 
 type Config struct {
 	ExternalAPIURL string
 }
 
-// WebSocket interfaces
-type WebSocketConnection interface {
-	Send(data interface{}) error
-	Close() error
+// WebSocket types for AST demonstration
+type WebSocketConnection struct {
+	connected bool
 }
 
-type TestWebSocketClient interface {
-	Emit(event string, data interface{})
-	On(event string, handler func(interface{}))
+type TestWebSocketClient struct {
+	client string
+}
+
+// Additional types used in the example
+type ChatMessage struct {
+	Content string
+}
+
+type ChatService struct {
+	active bool
+}
+
+type ChatGateway struct {
+	running bool
 }
