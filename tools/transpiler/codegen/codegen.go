@@ -4,98 +4,37 @@ import (
 	"fmt"
 	"go/format"
 	"strings"
+	
+	transpiler "github.com/healtronlabs/gofasta/tools/transpiler"
 )
 
-// Import AST types from parent package - these would need to be aliased or embedded
-type GofaDeclaration interface{}
-type GofaFile struct {
-	Declarations []GofaDeclaration
-}
-type DecoratorNode struct {
-	Name string
-	Args []DecoratorArg
-}
-type DecoratorArg struct {
-	Value interface{}
-}
-type ControllerDeclaration struct {
-	Name       string
-	Fields     []*FieldNode
-	Methods    []*MethodNode
-	Decorators []*DecoratorNode
-}
-type ServiceDeclaration struct {
-	Name       string
-	Fields     []*FieldNode
-	Methods    []*MethodNode
-	Decorators []*DecoratorNode
-}
-type ModuleDeclaration struct {
-	Name       string
-	Decorators []*DecoratorNode
-}
-type TestSuiteDeclaration struct {
-	Name       string
-	Fields     []*FieldNode
-	Methods    []*MethodNode
-	Decorators []*DecoratorNode
-}
-type FactoryDeclaration struct {
-	Name       string
-	TargetType string
-	Fields     []*FieldNode
-	Methods    []*MethodNode
-	Decorators []*DecoratorNode
-}
-type MockDeclaration struct {
-	Name       string
-	TargetType string
-	Fields     []*FieldNode
-	Methods    []*MethodNode
-	Decorators []*DecoratorNode
-}
-type TestModuleDeclaration struct {
-	Name       string
-	Fields     []*FieldNode
-	Providers  []string
-	Imports    []string
-	Decorators []*DecoratorNode
-}
-type FieldNode struct {
-	Name       string
-	Type       string
-	Tag        string
-	Decorators []*DecoratorNode
-}
-type MethodNode struct {
-	Name       string
-	Params     []*ParameterNode
-	ReturnType string
-	Decorators []*DecoratorNode
-}
-type ParameterNode struct {
-	Name       string
-	Type       string
-	Decorators []*DecoratorNode
-}
+// Use AST types from parent package
+type GofaDeclaration = transpiler.GofaDeclaration
+type GofaFile = transpiler.GofaFile
+type DecoratorNode = transpiler.DecoratorNode
+type DecoratorArg = transpiler.DecoratorArg
+type ControllerDeclaration = transpiler.ControllerDeclaration
+type ServiceDeclaration = transpiler.ServiceDeclaration
+type ModuleDeclaration = transpiler.ModuleDeclaration
+type TestSuiteDeclaration = transpiler.TestSuiteDeclaration
+type FactoryDeclaration = transpiler.FactoryDeclaration
+type MockDeclaration = transpiler.MockDeclaration
+type TestModuleDeclaration = transpiler.TestModuleDeclaration
+type WebSocketGatewayDeclaration = transpiler.WebSocketGatewayDeclaration
+type FieldNode = transpiler.FieldNode
+type MethodNode = transpiler.MethodNode
+type ParameterNode = transpiler.ParameterNode
 
-// ParseGofaFile parses a Gofasta file - bridge to actual implementation
+// Parser types
+type Lexer = transpiler.Lexer
+type Parser = transpiler.Parser
+
+// ParseGofaFile parses a Gofasta file using the parent package parser
 func ParseGofaFile(input string) (*GofaFile, error) {
-	// This would be implemented by calling the parent package functions
-	// For now, create a simple parser for basic tests
-	if strings.Contains(input, "@Controller") {
-		return &GofaFile{
-			Declarations: []GofaDeclaration{
-				&ControllerDeclaration{
-					Name:       "TestController",
-					Fields:     []*FieldNode{},
-					Methods:    []*MethodNode{},
-					Decorators: []*DecoratorNode{},
-				},
-			},
-		}, nil
-	}
-	return &GofaFile{Declarations: []GofaDeclaration{}}, nil
+	// Use the real parser from parent package
+	lexer := transpiler.NewLexer(input)
+	parser := transpiler.NewParser(lexer)
+	return parser.ParseFile()
 }
 
 // GetDecoratorType returns the decorator type for tests
@@ -206,6 +145,8 @@ func (g *CodeGenerator) generateDeclaration(decl GofaDeclaration) error {
 		return g.generateMockDeclaration(d)
 	case *TestModuleDeclaration:
 		return g.generateTestModuleDeclaration(d)
+	case *WebSocketGatewayDeclaration:
+		return g.generateWebSocketGatewayDeclaration(d)
 	default:
 		return fmt.Errorf("unsupported declaration type: %T", decl)
 	}
@@ -261,27 +202,12 @@ type GofaASTNode interface{}
 // Visitor interface for tests
 type Visitor interface{}
 
-// Simple lexer for basic tests  
-type Lexer struct {
-	input string
-}
-
-// NewLexer creates a new lexer
+// NewLexer creates a new lexer - bridge to parent package
 func NewLexer(input string) *Lexer {
-	return &Lexer{input: input}
+	return transpiler.NewLexer(input)
 }
 
-// Simple parser for basic tests
-type Parser struct {
-	lexer *Lexer
-}
-
-// NewParser creates a new parser
+// NewParser creates a new parser - bridge to parent package  
 func NewParser(lexer *Lexer) *Parser {
-	return &Parser{lexer: lexer}
-}
-
-// ParseFile parses the input and returns a GofaFile
-func (p *Parser) ParseFile() (*GofaFile, error) {
-	return ParseGofaFile(p.lexer.input)
+	return transpiler.NewParser(lexer)
 }

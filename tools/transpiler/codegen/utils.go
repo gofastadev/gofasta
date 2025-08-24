@@ -273,3 +273,33 @@ func (g *CodeGenerator) formatValueList(values []interface{}) string {
 	return strings.Join(formattedValues, ", ")
 }
 
+// parseConstraint parses a constraint string and returns a ParamConstraint
+func (g *CodeGenerator) parseConstraint(constraintStr string) ParamConstraint {
+	constraint := ParamConstraint{}
+
+	// Handle constraints with values like "min(1)", "max(100)", "range(1,100)", "regex(\\d+)"
+	if strings.Contains(constraintStr, "(") && strings.Contains(constraintStr, ")") {
+		openParen := strings.Index(constraintStr, "(")
+		closeParen := strings.LastIndex(constraintStr, ")")
+
+		constraint.Type = constraintStr[:openParen]
+		valueStr := constraintStr[openParen+1 : closeParen]
+
+		// Handle range constraints with two values
+		if constraint.Type == "range" && strings.Contains(valueStr, ",") {
+			values := strings.Split(valueStr, ",")
+			if len(values) == 2 {
+				constraint.Value = strings.TrimSpace(values[0])
+				constraint.Value2 = strings.TrimSpace(values[1])
+			}
+		} else {
+			constraint.Value = valueStr
+		}
+	} else {
+		// Simple constraints without values like "int", "alpha", "bool"
+		constraint.Type = constraintStr
+	}
+
+	return constraint
+}
+

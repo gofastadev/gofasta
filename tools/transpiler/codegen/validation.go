@@ -1,6 +1,10 @@
 package codegen
 
-import "fmt"
+import (
+	"fmt"
+	"strconv"
+	"strings"
+)
 
 // addValidationImportsIfNeeded adds validation imports if needed
 func (g *CodeGenerator) addValidationImportsIfNeeded(file *GofaFile) {
@@ -144,5 +148,207 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 		}
 	default:
 		g.writeLine(fmt.Sprintf("// TODO: Implement %s validation", rule.Type))
+	}
+}
+
+// parseValidationDecoratorsFromField parses validation decorators from field decorators
+func (g *CodeGenerator) parseValidationDecoratorsFromField(field *FieldNode) []ValidationRule {
+	var rules []ValidationRule
+
+	for _, decorator := range field.Decorators {
+		decoratorType := GetDecoratorType(decorator.Name)
+		if IsValidationDecorator(decoratorType) {
+			rule := g.parseValidationRuleFromDecorator(decorator)
+			if rule != nil {
+				rules = append(rules, *rule)
+			}
+		}
+	}
+
+	return rules
+}
+
+// parseValidationRuleFromDecorator parses a single validation rule from a decorator node
+func (g *CodeGenerator) parseValidationRuleFromDecorator(decorator *DecoratorNode) *ValidationRule {
+	return &ValidationRule{
+		Type:    decorator.Name,
+		Args:    g.convertDecoratorArgsToInterface(decorator.Args),
+		Message: g.getValidationMessage(decorator.Name, g.convertDecoratorArgsToInterface(decorator.Args)),
+		Code:    g.getValidationCode(decorator.Name),
+	}
+}
+
+// IsValidationDecorator checks if a decorator is a validation decorator
+func IsValidationDecorator(decoratorType interface{}) bool {
+	if str, ok := decoratorType.(string); ok {
+		validationDecorators := []string{
+			"IsEmail", "IsOptional", "IsNotEmpty", "IsString", "IsBoolean", 
+			"IsNumber", "IsInt", "IsArray", "IsObject", "IsUrl", "IsUUID",
+			"MinLength", "MaxLength", "Length", "Min", "Max", "IsAlpha",
+			"IsAlphanumeric", "IsDecimal", "IsHexColor", "IsIP", "IsJSON",
+			"Matches", "Contains", "IsDate", "IsDateString", "IsCreditCard",
+			"IsISBN", "IsPhoneNumber", "IsPostalCode", "IsLatitude", "IsLongitude",
+		}
+		for _, vd := range validationDecorators {
+			if str == vd {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// parseValidationDecorators parses validation decorators from struct tags
+func (g *CodeGenerator) parseValidationDecorators(tag string) []ValidationRule {
+	var rules []ValidationRule
+
+	// Extract validate: content from struct tag
+	validateContent := g.extractTagContent(tag, "validate")
+	if validateContent == "" {
+		return rules
+	}
+
+	// Parse individual decorators like @IsEmail() @Min(18) @Max(120)
+	decorators := g.extractDecorators(validateContent)
+
+	for _, decorator := range decorators {
+		rule := g.parseValidationRule(decorator)
+		if rule != nil {
+			rules = append(rules, *rule)
+		}
+	}
+
+	return rules
+}
+
+// parseValidationRule parses a validation rule from decorator string
+func (g *CodeGenerator) parseValidationRule(decorator string) *ValidationRule {
+	decorator = strings.TrimSpace(decorator)
+	if !strings.HasPrefix(decorator, "@") {
+		return nil
+	}
+
+	// Remove @
+	decorator = decorator[1:]
+
+	// Check if it has parentheses
+	parenIndex := strings.Index(decorator, "(")
+	if parenIndex == -1 {
+		// Simple decorator like @IsEmail
+		return &ValidationRule{
+			Type:    decorator,
+			Args:    []interface{}{},
+			Message: g.getValidationMessage(decorator, []interface{}{}),
+			Code:    g.getValidationCode(decorator),
+		}
+	}
+
+	// Extract decorator type and arguments
+	decoratorType := decorator[:parenIndex]
+	argsStr := decorator[parenIndex+1 : len(decorator)-1] // Remove parentheses
+
+	args := g.parseValidationArgs(argsStr)
+
+	return &ValidationRule{
+		Type:    decoratorType,
+		Args:    args,
+		Message: g.getValidationMessage(decoratorType, args),
+		Code:    g.getValidationCode(decoratorType),
+	}
+}
+
+// parseValidationArgs parses validation arguments from string
+func (g *CodeGenerator) parseValidationArgs(argsStr string) []interface{} {
+	var args []interface{}
+
+	if strings.TrimSpace(argsStr) == "" {
+		return args
+	}
+
+	// Split by comma
+	parts := strings.Split(argsStr, ",")
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+
+		// Try to parse as number
+		if intVal, err := strconv.Atoi(part); err == nil {
+			args = append(args, intVal)
+			continue
+		}
+
+		// Try to parse as float
+		if floatVal, err := strconv.ParseFloat(part, 64); err == nil {
+			args = append(args, floatVal)
+			continue
+		}
+
+		// Try to parse as boolean
+		if boolVal, err := strconv.ParseBool(part); err == nil {
+			args = append(args, boolVal)
+			continue
+		}
+
+		// Remove quotes if present and treat as string
+		if strings.HasPrefix(part, "\"") && strings.HasSuffix(part, "\"") {
+			part = part[1 : len(part)-1]
+		}
+		args = append(args, part)
+	}
+
+	return args
+}
+
+// getValidationMessage gets validation message for a rule
+func (g *CodeGenerator) getValidationMessage(ruleType string, args []interface{}) string {
+	switch ruleType {
+	case "IsEmail":
+		return "Invalid email address"
+	case "IsNotEmpty":
+		return "Field cannot be empty"
+	case "MinLength":
+		if len(args) > 0 {
+			return fmt.Sprintf("Must be at least %v characters long", args[0])
+		}
+		return "Must meet minimum length requirement"
+	case "MaxLength":
+		if len(args) > 0 {
+			return fmt.Sprintf("Must be at most %v characters long", args[0])
+		}
+		return "Must not exceed maximum length"
+	case "Min":
+		if len(args) > 0 {
+			return fmt.Sprintf("Must be at least %v", args[0])
+		}
+		return "Must meet minimum value requirement"
+	case "Max":
+		if len(args) > 0 {
+			return fmt.Sprintf("Must be at most %v", args[0])
+		}
+		return "Must not exceed maximum value"
+	default:
+		return fmt.Sprintf("Validation failed for %s", ruleType)
+	}
+}
+
+// getValidationCode gets validation code for a rule
+func (g *CodeGenerator) getValidationCode(ruleType string) string {
+	switch ruleType {
+	case "IsEmail":
+		return "INVALID_EMAIL"
+	case "IsNotEmpty":
+		return "EMPTY_FIELD"
+	case "MinLength":
+		return "MIN_LENGTH"
+	case "MaxLength":
+		return "MAX_LENGTH"
+	case "Min":
+		return "MIN_VALUE"
+	case "Max":
+		return "MAX_VALUE"
+	default:
+		return "VALIDATION_ERROR"
 	}
 }

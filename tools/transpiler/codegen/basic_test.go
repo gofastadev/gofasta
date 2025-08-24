@@ -42,8 +42,8 @@ func (c *UserController) GetUsers() {}
 		t.Error("Expected ControllerDeclaration")
 	}
 	
-	if controller.Name != "TestController" {
-		t.Errorf("Expected controller name 'TestController', got '%s'", controller.Name)
+	if controller.Name != "UserController" {
+		t.Errorf("Expected controller name 'UserController', got '%s'", controller.Name)
 	}
 }
 

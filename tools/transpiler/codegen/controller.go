@@ -5,6 +5,18 @@ import (
 	"strings"
 )
 
+// generateWebSocketGatewayDeclaration generates a WebSocket gateway declaration
+func (g *CodeGenerator) generateWebSocketGatewayDeclaration(gateway *WebSocketGatewayDeclaration) error {
+	// WebSocket gateways are similar to controllers but handle WebSocket connections
+	// For now, treat them like controllers
+	return g.generateControllerDeclaration(&ControllerDeclaration{
+		Name:       gateway.Name,
+		Fields:     gateway.Fields,
+		Methods:    gateway.Methods,
+		Decorators: gateway.Decorators,
+	})
+}
+
 // generateControllerDeclaration generates Go code for a controller
 func (g *CodeGenerator) generateControllerDeclaration(controller *ControllerDeclaration) error {
 	// Generate struct declaration
