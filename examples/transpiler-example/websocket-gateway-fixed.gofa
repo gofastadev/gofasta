@@ -1,0 +1,138 @@
+package main
+
+// Basic WebSocket Gateway example demonstrating Phase 1 AST support
+@WebSocketGateway(8080)
+type ChatGateway struct {
+	@Inject("chatService")
+	chatService *ChatService
+	
+	@Inject("logger") 
+	logger *Logger
+}
+
+// WebSocket Gateway with advanced configuration
+@WebSocketGateway({
+	port: 8080,
+	namespace: "/chat",
+	cors: true
+})
+type AdvancedChatGateway struct {
+	@Inject("chatService")
+	chatService *ChatService
+}
+
+// Basic message handling
+@SubscribeMessage("message")
+func HandleMessage(
+	@MessageBody() data *ChatMessage,
+	@ConnectedSocket() client *WebSocketClient,
+	@MessageAck() ack *AckCallback
+) error {
+	// Handle the message
+	return nil
+}
+
+// Room action handling
+@SubscribeMessage("join_room")
+func HandleJoinRoom(
+	@MessageBody() data *RoomAction,
+	@ConnectedSocket() client *WebSocketClient,
+	@EventName() event string
+) {
+	// Handle room join
+}
+
+@SubscribeMessage("leave_room")
+func HandleLeaveRoom(
+	@MessageBody() data *RoomAction,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Handle room leave
+}
+
+// WebSocket lifecycle handlers
+@OnGatewayConnection()
+func HandleConnection(
+	@ConnectedSocket() client *WebSocketClient,
+	@Headers() headers map[string]string,
+	@ClientIP() ip string
+) {
+	// Handle new connection
+}
+
+@OnGatewayDisconnect()
+func HandleDisconnect(
+	@ConnectedSocket() client *WebSocketClient,
+	@DisconnectReason() reason string,
+	@Rooms() rooms []string
+) {
+	// Handle disconnection
+}
+
+@OnGatewayInit()
+func AfterInit() {
+	// Gateway initialization
+}
+
+// Complex message handler with multiple WebSocket parameters
+@SubscribeMessage("complex_action")
+func ComplexHandler(
+	@MessageBody() body string,
+	@ConnectedSocket() client *WebSocketClient,
+	@MessageAck() ack *AckCallback,
+	@Headers() headers map[string]string,
+	@Session() session *Session,
+	@Namespace() ns string,
+	@CurrentUser() user *User,
+	@ClientIP() ip string,
+	@EventName() event string
+) {
+	// Complex action handling
+}
+
+// Data structures
+type ChatMessage struct {
+	Content string
+	UserID  string
+	RoomID  string
+}
+
+type RoomAction struct {
+	RoomID string
+	UserID string
+}
+
+type User struct {
+	ID   string
+	Name string
+}
+
+// WebSocket service dependencies
+@Injectable()
+type ChatService struct {
+	@Inject("database")
+	db *Database
+}
+
+@Injectable()
+type Logger struct{}
+
+@Injectable() 
+type Database struct{}
+
+// WebSocket connection and server types (for AST demonstration)
+type WebSocketClient struct {
+	id string
+}
+
+type WebSocketServer struct {
+	port int
+}
+
+type AckCallback struct {
+	callback string
+}
+
+type Session struct {
+	data map[string]string
+}
