@@ -1,0 +1,11 @@
+package main
+
+@TestSuite()
+type UserTests struct {
+	userService *UserService `inject:""`
+}
+
+@Test("should create user")
+func testCreateUser() {
+	// Test user creation
+}

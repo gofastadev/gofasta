@@ -1,0 +1,65 @@
+package main
+
+// UserServiceTests demonstrates @TestSuite() decorator usage
+// This generates a complete test suite with setup/teardown lifecycle methods
+@TestSuite()
+type UserServiceTests struct {
+	@Inject()
+	userService *UserService
+	
+	@Inject("mockDB")
+	mockDB      *MockDatabase
+	
+	@Inject("testFactory")
+	testData    TestDataFactory
+}
+
+// Setup methods run before/after tests
+@BeforeAll()
+func initializeTestResources() {
+	// Initialize shared test resources
+	// This runs once before all tests in the suite
+}
+
+@BeforeEach()
+func setupEachTest() {
+	// Setup that runs before each individual test
+	// Reset mocks, prepare test data, etc.
+}
+
+@AfterEach()
+func cleanupEachTest() {
+	// Cleanup that runs after each individual test
+	// Verify mocks, cleanup test data, etc.
+}
+
+@AfterAll()
+func finalizeTestResources() {
+	// Cleanup shared resources
+	// This runs once after all tests in the suite complete
+}
+
+// Test methods demonstrate different testing scenarios
+@Test("should create a new user successfully")
+func testCreateUser() {
+	// Test user creation functionality
+	// Generated method will be named: TestCreateUser()
+}
+
+@Test("should validate user email format")
+func testUserEmailValidation() {
+	// Test email validation logic
+	// Generated method will be named: TestUserEmailValidation()
+}
+
+@Test("should handle duplicate user registration")
+func testDuplicateUserHandling() {
+	// Test duplicate user scenarios
+	// Generated method will be named: TestDuplicateUserHandling()
+}
+
+@Test("should delete user and cleanup related data")
+func testUserDeletion() {
+	// Test user deletion with cascade cleanup
+	// Generated method will be named: TestUserDeletion()
+}

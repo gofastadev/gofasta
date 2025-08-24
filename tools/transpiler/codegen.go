@@ -82,6 +82,14 @@ func (g *CodeGenerator) generateDeclaration(decl GofaDeclaration) error {
 		return g.generateServiceDeclaration(d)
 	case *ModuleDeclaration:
 		return g.generateModuleDeclaration(d)
+	case *TestSuiteDeclaration:
+		return g.generateTestSuiteDeclaration(d)
+	case *FactoryDeclaration:
+		return g.generateFactoryDeclaration(d)
+	case *MockDeclaration:
+		return g.generateMockDeclaration(d)
+	case *TestModuleDeclaration:
+		return g.generateTestModuleDeclaration(d)
 	default:
 		return fmt.Errorf("unsupported declaration type: %T", decl)
 	}
@@ -191,6 +199,272 @@ func (g *CodeGenerator) generateModuleDeclaration(module *ModuleDeclaration) err
 	g.generateModuleConfigureMethod(module)
 
 	return nil
+}
+
+// generateTestSuiteDeclaration generates Go code for a test suite
+func (g *CodeGenerator) generateTestSuiteDeclaration(testSuite *TestSuiteDeclaration) error {
+
+	// Generate test suite struct
+	g.writeLine(fmt.Sprintf("type %s struct {", testSuite.Name))
+	g.indent()
+	g.writeLine("suite.Suite")
+
+	// Generate fields with injection tags for mocks and dependencies
+	for _, field := range testSuite.Fields {
+		tag := g.generateInjectionTag(field)
+		if tag != "" {
+			g.writeLine(fmt.Sprintf("%s %s `%s`", field.Name, field.Type, tag))
+		} else {
+			g.writeLine(fmt.Sprintf("%s %s", field.Name, field.Type))
+		}
+	}
+
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+
+	// Generate setup methods (BeforeEach/BeforeAll)
+	g.generateTestSuiteSetupMethods(testSuite)
+	
+	// Generate test methods
+	for _, method := range testSuite.Methods {
+		if err := g.generateTestMethod(testSuite, method); err != nil {
+			return err
+		}
+		g.writeLine("")
+	}
+
+	// Generate test runner function
+	g.generateTestSuiteRunner(testSuite)
+
+	return nil
+}
+
+// generateFactoryDeclaration generates Go code for a factory declaration
+func (g *CodeGenerator) generateFactoryDeclaration(factory *FactoryDeclaration) error {
+	// Add necessary imports for factories
+	g.addImport("math/rand")
+	g.addImport("time")
+	g.addImport("fmt")
+	
+	// Generate factory struct
+	g.writeLine(fmt.Sprintf("type %s struct {", factory.Name))
+	g.indent()
+	g.writeLine("sequenceCounters map[string]int")
+	g.writeLine("rand *rand.Rand")
+	
+	// Generate user-defined fields
+	for _, field := range factory.Fields {
+		tag := g.generateInjectionTag(field)
+		if tag != "" {
+			g.writeLine(fmt.Sprintf("%s %s `%s`", field.Name, field.Type, tag))
+		} else {
+			g.writeLine(fmt.Sprintf("%s %s", field.Name, field.Type))
+		}
+	}
+	
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	
+	// Generate constructor
+	g.generateFactoryConstructor(factory)
+	g.writeLine("")
+	
+	// Generate Build method
+	g.generateFactoryBuildMethod(factory)
+	g.writeLine("")
+	
+	// Generate helper methods
+	g.generateFactoryHelperMethods(factory)
+	g.writeLine("")
+	
+	// Generate trait methods
+	for _, method := range factory.Methods {
+		if g.hasTraitDecorator(method) {
+			if err := g.generateFactoryTraitMethod(factory, method); err != nil {
+				return err
+			}
+			g.writeLine("")
+		}
+	}
+	
+	return nil
+}
+
+// generateMockDeclaration generates Go code for a mock declaration
+func (g *CodeGenerator) generateMockDeclaration(mock *MockDeclaration) error {
+	// Add necessary imports for mocks
+	g.addImport("testing")
+	g.addImport("errors")
+	g.addImport("fmt")
+	
+	// Generate mock struct
+	g.writeLine(fmt.Sprintf("type %s struct {", mock.Name))
+	g.indent()
+	
+	// Generate tracking fields for method calls
+	// For now, we'll generate basic call tracking structure
+	g.writeLine("// Method call tracking")
+	g.writeLine("CallLog []MockCall")
+	g.writeLine("expectations []MockExpectation")
+	g.writeLine("t *testing.T")
+	
+	// Generate user-defined fields
+	for _, field := range mock.Fields {
+		tag := g.generateInjectionTag(field)
+		if tag != "" {
+			g.writeLine(fmt.Sprintf("%s %s `%s`", field.Name, field.Type, tag))
+		} else {
+			g.writeLine(fmt.Sprintf("%s %s", field.Name, field.Type))
+		}
+	}
+	
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	
+	// Generate mock support structures
+	g.generateMockSupportStructures(mock)
+	g.writeLine("")
+	
+	// Generate constructor
+	g.generateMockConstructor(mock)
+	g.writeLine("")
+	
+	// Generate expectation methods
+	g.generateMockExpectationMethods(mock)
+	g.writeLine("")
+	
+	// Generate user-defined methods
+	for _, method := range mock.Methods {
+		if err := g.generateMockMethod(mock, method); err != nil {
+			return err
+		}
+		g.writeLine("")
+	}
+	
+	return nil
+}
+
+// generateTestModuleDeclaration generates Go code for a test module
+func (g *CodeGenerator) generateTestModuleDeclaration(testModule *TestModuleDeclaration) error {
+	// Add necessary imports for test modules
+	g.addImport("testing")
+	g.addImport("github.com/healtronlabs/gofasta/packages/core")
+	
+	// Generate struct declaration
+	g.writeLine(fmt.Sprintf("type %s struct {", testModule.Name))
+	g.indent()
+	
+	// Add container field for DI
+	g.writeLine("container *core.DIContainer")
+	
+	// Generate fields with injection tags
+	for _, field := range testModule.Fields {
+		tag := g.generateInjectionTag(field)
+		if tag != "" {
+			g.writeLine(fmt.Sprintf("%s %s `%s`", field.Name, field.Type, tag))
+		} else {
+			g.writeLine(fmt.Sprintf("%s %s", field.Name, field.Type))
+		}
+	}
+	
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	
+	// Generate constructor
+	g.generateTestModuleConstructor(testModule)
+	g.writeLine("")
+	
+	// Generate setup method
+	g.generateTestModuleSetup(testModule)
+	g.writeLine("")
+	
+	// Generate teardown method
+	g.generateTestModuleTeardown(testModule)
+	g.writeLine("")
+	
+	return nil
+}
+
+// generateTestModuleConstructor generates the test module constructor
+func (g *CodeGenerator) generateTestModuleConstructor(testModule *TestModuleDeclaration) {
+	g.writeLine(fmt.Sprintf("func New%s() *%s {", testModule.Name, testModule.Name))
+	g.indent()
+	g.writeLine("container := core.NewDIContainer()")
+	g.writeLine("")
+	g.writeLine(fmt.Sprintf("return &%s{", testModule.Name))
+	g.indent()
+	g.writeLine("container: container,")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
+}
+
+// generateTestModuleSetup generates the setup method for test module
+func (g *CodeGenerator) generateTestModuleSetup(testModule *TestModuleDeclaration) {
+	g.writeLine(fmt.Sprintf("func (tm *%s) SetupTest(t *testing.T) {", testModule.Name))
+	g.indent()
+	
+	// Register providers
+	if len(testModule.Providers) > 0 {
+		g.writeLine("// Register test providers")
+		for _, provider := range testModule.Providers {
+			// Generate provider registration based on whether it's a mock or regular provider
+			if strings.HasPrefix(provider, "Mock") {
+				g.writeLine(fmt.Sprintf("tm.container.RegisterProvider(\"%s\", func() interface{} {", strings.ToLower(provider)))
+				g.indent()
+				g.writeLine(fmt.Sprintf("return New%s(t)", provider))
+				g.unindent()
+				g.writeLine("}, core.ScopeSingleton)")
+			} else {
+				g.writeLine(fmt.Sprintf("tm.container.RegisterProvider(\"%s\", func() interface{} {", strings.ToLower(provider)))
+				g.indent()
+				g.writeLine(fmt.Sprintf("return &%s{}", provider))
+				g.unindent()
+				g.writeLine("}, core.ScopeSingleton)")
+			}
+		}
+		g.writeLine("")
+	}
+	
+	// Initialize imports
+	if len(testModule.Imports) > 0 {
+		g.writeLine("// Initialize imported modules")
+		for _, importModule := range testModule.Imports {
+			g.writeLine(fmt.Sprintf("// TODO: Initialize %s", importModule))
+		}
+		g.writeLine("")
+	}
+	
+	// Initialize container
+	g.writeLine("// Initialize DI container")
+	g.writeLine("err := tm.container.Initialize()")
+	g.writeLine("if err != nil {")
+	g.indent()
+	g.writeLine("t.Fatalf(\"Failed to initialize test module: %v\", err)")
+	g.unindent()
+	g.writeLine("}")
+	
+	g.unindent()
+	g.writeLine("}")
+}
+
+// generateTestModuleTeardown generates the teardown method for test module
+func (g *CodeGenerator) generateTestModuleTeardown(testModule *TestModuleDeclaration) {
+	g.writeLine(fmt.Sprintf("func (tm *%s) TeardownTest() {", testModule.Name))
+	g.indent()
+	g.writeLine("// Clean up test resources")
+	g.writeLine("if tm.container != nil {")
+	g.indent()
+	g.writeLine("tm.container = nil")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
 }
 
 // generateControllerRouteRegistration generates route registration code
@@ -1627,6 +1901,26 @@ func (g *CodeGenerator) collectImportsFromDeclaration(decl GofaDeclaration) {
 
 	case *ModuleDeclaration:
 		// Modules need core package
+		g.addImport("github.com/healtronlabs/gofasta/packages/core")
+		
+	case *TestSuiteDeclaration:
+		// Add testing imports
+		g.addImport("testing")
+		g.addImport("github.com/stretchr/testify/assert")
+		g.addImport("github.com/stretchr/testify/suite")
+	case *FactoryDeclaration:
+		// Add factory imports
+		g.addImport("math/rand")
+		g.addImport("time")
+		g.addImport("fmt")
+	case *MockDeclaration:
+		// Add mock imports
+		g.addImport("testing")
+		g.addImport("errors")
+		g.addImport("fmt")
+	case *TestModuleDeclaration:
+		// Add test module imports
+		g.addImport("testing")
 		g.addImport("github.com/healtronlabs/gofasta/packages/core")
 	}
 }
@@ -4814,4 +5108,375 @@ func (g *CodeGenerator) usesBase64Validation(dtoStructs map[string]*ValidationSt
 		}
 	}
 	return false
+}
+
+// generateTestSuiteSetupMethods generates setup and teardown methods for test suite
+func (g *CodeGenerator) generateTestSuiteSetupMethods(testSuite *TestSuiteDeclaration) {
+	// Generate SetupSuite method (BeforeAll equivalent)
+	g.writeLine(fmt.Sprintf("func (suite *%s) SetupSuite() {", testSuite.Name))
+	g.indent()
+	g.writeLine("// Setup before all tests")
+	
+	// Look for @BeforeAll decorators on methods
+	for _, method := range testSuite.Methods {
+		if g.hasDecorator(method.Decorators, "BeforeAll") {
+			g.writeLine(fmt.Sprintf("%s()", method.Name))
+		}
+	}
+	
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+
+	// Generate SetupTest method (BeforeEach equivalent)
+	g.writeLine(fmt.Sprintf("func (suite *%s) SetupTest() {", testSuite.Name))
+	g.indent()
+	g.writeLine("// Setup before each test")
+	
+	// Look for @BeforeEach decorators on methods
+	for _, method := range testSuite.Methods {
+		if g.hasDecorator(method.Decorators, "BeforeEach") {
+			g.writeLine(fmt.Sprintf("%s()", method.Name))
+		}
+	}
+	
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+
+	// Generate TearDownTest method (AfterEach equivalent)
+	g.writeLine(fmt.Sprintf("func (suite *%s) TearDownTest() {", testSuite.Name))
+	g.indent()
+	g.writeLine("// Cleanup after each test")
+	
+	// Look for @AfterEach decorators on methods
+	for _, method := range testSuite.Methods {
+		if g.hasDecorator(method.Decorators, "AfterEach") {
+			g.writeLine(fmt.Sprintf("%s()", method.Name))
+		}
+	}
+	
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+
+	// Generate TearDownSuite method (AfterAll equivalent)
+	g.writeLine(fmt.Sprintf("func (suite *%s) TearDownSuite() {", testSuite.Name))
+	g.indent()
+	g.writeLine("// Cleanup after all tests")
+	
+	// Look for @AfterAll decorators on methods
+	for _, method := range testSuite.Methods {
+		if g.hasDecorator(method.Decorators, "AfterAll") {
+			g.writeLine(fmt.Sprintf("%s()", method.Name))
+		}
+	}
+	
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+}
+
+// generateTestMethod generates a test method
+func (g *CodeGenerator) generateTestMethod(testSuite *TestSuiteDeclaration, method *MethodNode) error {
+	// Skip methods that are setup/teardown methods
+	if g.hasDecorator(method.Decorators, "BeforeEach") || 
+	   g.hasDecorator(method.Decorators, "AfterEach") ||
+	   g.hasDecorator(method.Decorators, "BeforeAll") || 
+	   g.hasDecorator(method.Decorators, "AfterAll") {
+		return nil
+	}
+
+	// Generate test method - ensure it starts with "Test"
+	methodName := method.Name
+	if !strings.HasPrefix(methodName, "Test") {
+		if strings.HasPrefix(methodName, "test") {
+			methodName = "T" + methodName[1:] // testSomething -> TestSomething
+		} else {
+			methodName = "Test" + strings.Title(methodName) // something -> TestSomething
+		}
+	}
+
+	g.writeLine(fmt.Sprintf("func (suite *%s) %s() {", testSuite.Name, methodName))
+	g.indent()
+
+	// Add test description as comment if @Test decorator has a description
+	testDecorator := g.findDecorator(method.Decorators, "Test")
+	if testDecorator != nil && len(testDecorator.Args) > 0 {
+		if description, ok := testDecorator.Args[0].Value.(string); ok {
+			g.writeLine(fmt.Sprintf("// %s", description))
+		}
+	}
+
+	// Generate basic test structure
+	g.writeLine("// TODO: Implement test logic")
+	g.writeLine("// Use suite.Assert() methods for assertions")
+	g.writeLine("assert := suite.Assert()")
+	g.writeLine("_ = assert // Remove unused variable warning")
+
+	g.unindent()
+	g.writeLine("}")
+
+	return nil
+}
+
+// generateTestSuiteRunner generates the test runner function
+func (g *CodeGenerator) generateTestSuiteRunner(testSuite *TestSuiteDeclaration) {
+	g.writeLine(fmt.Sprintf("func Test%s(t *testing.T) {", testSuite.Name))
+	g.indent()
+	g.writeLine(fmt.Sprintf("suite.Run(t, new(%s))", testSuite.Name))
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+}
+
+// findDecorator finds a decorator by name in a list of decorators
+func (g *CodeGenerator) findDecorator(decorators []*DecoratorNode, name string) *DecoratorNode {
+	for _, decorator := range decorators {
+		if decorator.Name == name {
+			return decorator
+		}
+	}
+	return nil
+}
+
+// generateFactoryConstructor generates the factory constructor method
+func (g *CodeGenerator) generateFactoryConstructor(factory *FactoryDeclaration) {
+	g.writeLine(fmt.Sprintf("func New%s() *%s {", factory.Name, factory.Name))
+	g.indent()
+	g.writeLine("return &" + factory.Name + "{")
+	g.indent()
+	g.writeLine("sequenceCounters: make(map[string]int),")
+	g.writeLine("rand: rand.New(rand.NewSource(time.Now().UnixNano())),")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
+}
+
+// generateFactoryBuildMethod generates the Build method for the factory
+func (g *CodeGenerator) generateFactoryBuildMethod(factory *FactoryDeclaration) {
+	g.writeLine(fmt.Sprintf("func (f *%s) Build(overrides interface{}) *%s {", factory.Name, factory.TargetType))
+	g.indent()
+	
+	// Generate default instance creation
+	g.writeLine(fmt.Sprintf("instance := &%s{", factory.TargetType))
+	g.indent()
+	
+	// Generate default field values (this would be customizable based on field types)
+	// For now, we will generate basic examples
+	g.writeLine("// TODO: Add default field values here")
+	g.writeLine("// Example: ID: f.getSequence(\"id\"),")
+	g.writeLine("// Example: Name: f.generateRandomString(),")
+	
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	
+	// Apply overrides
+	g.writeLine("// Apply overrides")
+	g.writeLine("if overrides != nil {")
+	g.indent()
+	g.writeLine("// TODO: Implement override application logic")
+	g.writeLine("_ = overrides // Use parameter to avoid unused variable warning")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	g.writeLine("return instance")
+	
+	g.unindent()
+	g.writeLine("}")
+}
+
+// generateFactoryHelperMethods generates helper methods for the factory
+func (g *CodeGenerator) generateFactoryHelperMethods(factory *FactoryDeclaration) {
+	// Generate sequence counter method
+	g.writeLine(fmt.Sprintf("func (f *%s) getSequence(name string) int {", factory.Name))
+	g.indent()
+	g.writeLine("f.sequenceCounters[name]++")
+	g.writeLine("return f.sequenceCounters[name]")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	
+	// Generate random string method
+	g.writeLine(fmt.Sprintf("func (f *%s) generateRandomString() string {", factory.Name))
+	g.indent()
+	g.writeLine("const charset = \"abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789\"")
+	g.writeLine("length := 10")
+	g.writeLine("result := make([]byte, length)")
+	g.writeLine("for i := range result {")
+	g.indent()
+	g.writeLine("result[i] = charset[f.rand.Intn(len(charset))]")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("return string(result)")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	
+	// Generate random int method
+	g.writeLine(fmt.Sprintf("func (f *%s) generateRandomInt(min, max int) int {", factory.Name))
+	g.indent()
+	g.writeLine("return f.rand.Intn(max-min) + min")
+	g.unindent()
+	g.writeLine("}")
+}
+
+// hasTraitDecorator checks if a method has a @Trait decorator
+func (g *CodeGenerator) hasTraitDecorator(method *MethodNode) bool {
+	return g.hasDecorator(method.Decorators, "Trait")
+}
+
+// generateFactoryTraitMethod generates a trait method for the factory
+func (g *CodeGenerator) generateFactoryTraitMethod(factory *FactoryDeclaration, method *MethodNode) error {
+	traitDecorator := g.findDecorator(method.Decorators, "Trait")
+	if traitDecorator == nil {
+		return fmt.Errorf("trait method %s missing @Trait decorator", method.Name)
+	}
+	
+	// Get trait name from decorator argument
+	traitName := method.Name
+	if len(traitDecorator.Args) > 0 {
+		if strVal, ok := traitDecorator.Args[0].Value.(string); ok {
+			traitName = strVal
+		}
+	}
+	
+	// Generate trait method signature
+	g.writeLine(fmt.Sprintf("func (f *%s) %s(instance *%s) *%s {", 
+		factory.Name, method.Name, factory.TargetType, factory.TargetType))
+	g.indent()
+	
+	// Generate method body
+	g.writeLine(fmt.Sprintf("// Trait: %s", traitName))
+	g.writeLine("// TODO: Add trait-specific modifications here")
+	g.writeLine("return instance")
+	
+	g.unindent()
+	g.writeLine("}")
+	
+	return nil
+}
+
+// generateMockSupportStructures generates support structures for mock tracking
+func (g *CodeGenerator) generateMockSupportStructures(mock *MockDeclaration) {
+	// Generate MockCall structure
+	g.writeLine("// MockCall represents a method call made to the mock")
+	g.writeLine("type MockCall struct {")
+	g.indent()
+	g.writeLine("Method string")
+	g.writeLine("Args   []interface{}")
+	g.writeLine("Result []interface{}")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	
+	// Generate MockExpectation structure
+	g.writeLine("// MockExpectation represents an expected method call")
+	g.writeLine("type MockExpectation struct {")
+	g.indent()
+	g.writeLine("Method   string")
+	g.writeLine("Args     []interface{}")
+	g.writeLine("Returns  []interface{}")
+	g.writeLine("Error    error")
+	g.writeLine("Called   bool")
+	g.unindent()
+	g.writeLine("}")
+}
+
+// generateMockConstructor generates the mock constructor
+func (g *CodeGenerator) generateMockConstructor(mock *MockDeclaration) {
+	g.writeLine(fmt.Sprintf("func New%s(t *testing.T) *%s {", mock.Name, mock.Name))
+	g.indent()
+	g.writeLine("return &" + mock.Name + "{")
+	g.indent()
+	g.writeLine("CallLog: make([]MockCall, 0),")
+	g.writeLine("expectations: make([]MockExpectation, 0),")
+	g.writeLine("t: t,")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
+}
+
+// generateMockExpectationMethods generates expectation setup methods
+func (g *CodeGenerator) generateMockExpectationMethods(mock *MockDeclaration) {
+	// Generate On method for setting expectations
+	g.writeLine(fmt.Sprintf("func (m *%s) On(method string, args ...interface{}) *MockExpectation {", mock.Name))
+	g.indent()
+	g.writeLine("expectation := MockExpectation{")
+	g.indent()
+	g.writeLine("Method: method,")
+	g.writeLine("Args:   args,")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("m.expectations = append(m.expectations, expectation)")
+	g.writeLine("return &m.expectations[len(m.expectations)-1]")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	
+	// Generate Return method for setting return values
+	g.writeLine("func (e *MockExpectation) Return(values ...interface{}) *MockExpectation {")
+	g.indent()
+	g.writeLine("e.Returns = values")
+	g.writeLine("return e")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	
+	// Generate verification methods
+	g.writeLine(fmt.Sprintf("func (m *%s) AssertExpectations(t *testing.T) {", mock.Name))
+	g.indent()
+	g.writeLine("for _, expectation := range m.expectations {")
+	g.indent()
+	g.writeLine("if !expectation.Called {")
+	g.indent()
+	g.writeLine("t.Errorf(\"Expected method %s was not called\", expectation.Method)")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
+}
+
+// generateMockMethod generates a mock method implementation
+func (g *CodeGenerator) generateMockMethod(mock *MockDeclaration, method *MethodNode) error {
+	g.writeLine(fmt.Sprintf("func (m *%s) %s() {", mock.Name, method.Name))
+	g.indent()
+	
+	// Generate call logging
+	g.writeLine("call := MockCall{")
+	g.indent()
+	g.writeLine(fmt.Sprintf("Method: \"%s\",", method.Name))
+	g.writeLine("Args:   []interface{}{},")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("m.CallLog = append(m.CallLog, call)")
+	g.writeLine("")
+	
+	// Generate expectation matching
+	g.writeLine("// Find matching expectation")
+	g.writeLine("for i := range m.expectations {")
+	g.indent()
+	g.writeLine(fmt.Sprintf("if m.expectations[i].Method == \"%s\" {", method.Name))
+	g.indent()
+	g.writeLine("m.expectations[i].Called = true")
+	g.writeLine("// TODO: Return expected values")
+	g.writeLine("return")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	
+	g.writeLine("// Method was called but not expected")
+	g.writeLine(fmt.Sprintf("m.t.Errorf(\"Unexpected call to method %s\")", method.Name))
+	
+	g.unindent()
+	g.writeLine("}")
+	
+	return nil
 }

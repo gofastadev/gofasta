@@ -1,0 +1,83 @@
+package main
+
+// DatabaseIntegrationTests demonstrates @TestSuite() with @DatabaseTest() for database testing
+// This generates test suite with database setup and migration handling
+@TestSuite()
+@DatabaseTest({migrations: "./testdata/migrations"})
+type DatabaseIntegrationTests struct {
+	@Inject("database")
+	db         *TestDatabase
+	
+	@Inject()
+	repository *UserRepository
+	
+	@Inject("testFactory")
+	factory    *TestDataFactory
+}
+
+@BeforeAll()
+func setupDatabaseTestEnvironment() {
+	// Setup database test environment
+	// Run migrations, setup test database connection, etc.
+	// This runs once before all database tests
+}
+
+@BeforeEach()
+func setupDatabaseTest() {
+	// Setup for each database test
+	// Begin transaction, insert test data, etc.
+}
+
+@Test("should save user entity to database")
+func testSaveUser() {
+	// Test saving user entity to database
+	// Test database persistence layer
+}
+
+@Test("should retrieve user by ID from database")
+func testFindUserById() {
+	// Test retrieving user by ID from database
+	// Test database query functionality
+}
+
+@Test("should update existing user in database")
+func testUpdateUser() {
+	// Test updating existing user in database
+	// Test database update operations
+}
+
+@Test("should delete user from database")
+func testDeleteUser() {
+	// Test deleting user from database
+	// Test database deletion operations
+}
+
+@Test("should handle database constraints and foreign keys")
+func testDatabaseConstraints() {
+	// Test database constraints (unique keys, foreign keys, etc.)
+	// Test constraint violation handling
+}
+
+@Test("should support complex queries with joins")
+func testComplexQueries() {
+	// Test complex database queries involving joins
+	// Test advanced query functionality
+}
+
+@Test("should handle database transactions correctly")
+func testTransactionHandling() {
+	// Test database transaction handling
+	// Test rollback, commit operations
+}
+
+@AfterEach()
+func cleanupDatabaseTest() {
+	// Cleanup after each database test
+	// Rollback transaction, cleanup test data, etc.
+}
+
+@AfterAll()
+func teardownDatabaseTestEnvironment() {
+	// Cleanup database test environment
+	// Drop test database, cleanup connections, etc.
+}

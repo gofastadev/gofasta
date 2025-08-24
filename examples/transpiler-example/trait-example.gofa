@@ -1,0 +1,58 @@
+package main
+
+// Factory with multiple traits for creating different types of users
+@Factory()
+type UserFactory struct {
+	@Inject("database")
+	db *Database
+	
+	@Inject("logger")
+	logger *Logger
+}
+
+@Trait("admin")
+func AdminUser() *User {
+	// Create admin user with special privileges
+}
+
+@Trait("premium")
+func PremiumUser() *User {
+	// Create premium user with enhanced features  
+}
+
+@Trait("guest")
+func GuestUser() *User {
+	// Create guest user with limited access
+}
+
+@Trait("moderator")
+func ModeratorUser() *User {
+	// Create moderator user with moderation capabilities
+}
+
+// Factory for creating different product types
+@Factory()
+type ProductFactory struct {
+	@Inject("inventory")
+	inventory *InventoryService
+}
+
+@Trait("electronic")
+func ElectronicProduct() *Product {
+	// Electronic product trait with warranty and specifications
+}
+
+@Trait("book")
+func BookProduct() *Product {
+	// Book product trait with author, ISBN, and genre
+}
+
+@Trait("clothing")
+func ClothingProduct() *Product {
+	// Clothing product trait with size, color, and material
+}
+
+@Trait("digital")
+func DigitalProduct() *Product {
+	// Digital product trait with download link and license
+}

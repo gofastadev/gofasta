@@ -1,0 +1,24 @@
+package main
+
+// UserFactory demonstrates @Factory() decorator usage
+// This generates a complete factory with build methods and helper utilities
+@Factory()
+type UserFactory struct {
+	@Inject("database")
+	database *Database
+	
+	@Inject()
+	logger *Logger
+	
+	// Custom configuration
+	defaultRole string
+}
+
+// Build method creates User instances with default or custom values
+func Build(overrides interface{}) *User {
+	// The transpiler generates the full factory implementation:
+	// - Sequential ID generation with f.getSequence("user_id") 
+	// - Random string generation with f.generateRandomString()
+	// - Random number generation with f.generateRandomInt(min, max)
+	// - Override support for custom test data scenarios
+}

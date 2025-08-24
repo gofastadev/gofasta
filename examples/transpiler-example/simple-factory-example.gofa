@@ -1,0 +1,8 @@
+package main
+
+@Factory()
+type UserFactory struct {}
+
+func Build(overrides interface{}) *User {
+	// Build logic  
+}
