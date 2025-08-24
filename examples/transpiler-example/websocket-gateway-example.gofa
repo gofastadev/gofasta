@@ -28,7 +28,7 @@ type AdvancedChatGateway struct {
 
 // Message handling methods with WebSocket decorators
 @SubscribeMessage("message")
-func (g *ChatGateway) HandleMessage(
+func HandleMessage(
 	@MessageBody() data *ChatMessage,
 	@ConnectedSocket() client *WebSocketClient,
 	@MessageAck() ack *AckCallback

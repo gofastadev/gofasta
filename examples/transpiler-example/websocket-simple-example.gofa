@@ -9,31 +9,28 @@ type SimpleGateway struct {
 
 // Basic message handling
 @SubscribeMessage("chat")
-func (g *SimpleGateway) HandleChat(
+func HandleChat(
 	@MessageBody() message string,
 	@ConnectedSocket() client *WebSocketClient
 ) {
 	// Echo the message back to all clients
-	client.Broadcast().Emit("chat", message)
 }
 
 // Connection lifecycle
 @OnGatewayConnection()
-func (g *SimpleGateway) OnConnect(@ConnectedSocket() client *WebSocketClient) {
-	client.Emit("welcome", "Connected to simple gateway!")
+func OnConnect(@ConnectedSocket() client *WebSocketClient) {
+	// Welcome message
 }
 
 @OnGatewayDisconnect()
-func (g *SimpleGateway) OnDisconnect(@ConnectedSocket() client *WebSocketClient) {
-	client.Broadcast().Emit("user_left", client.ID())
+func OnDisconnect(@ConnectedSocket() client *WebSocketClient) {
+	// Handle disconnection
 }
 
 @Injectable()
 type MessageService struct{}
 
-// WebSocket interfaces for AST demonstration
-type WebSocketClient interface {
-	ID() string
-	Emit(event string, data interface{})
-	Broadcast() WebSocketClient
+// WebSocket client struct for AST demonstration  
+type WebSocketClient struct {
+	id string
 }
