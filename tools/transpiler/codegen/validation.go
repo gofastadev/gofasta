@@ -154,7 +154,7 @@ func (g *CodeGenerator) generateValidationHelperFunctions() {
 // generateDTOValidationFunction generates validation function for a DTO
 func (g *CodeGenerator) generateDTOValidationFunction(dto *ValidationStructInfo) {
 	g.writeLine(fmt.Sprintf("// Validate%s validates the %s struct", dto.Name, dto.Name))
-	g.writeLine(fmt.Sprintf("func Validate%s(obj *%s) ValidationErrors {", dto.Name, dto.Name))
+	g.writeLine(fmt.Sprintf("func Validate%s(dto *%s) ValidationErrors {", dto.Name, dto.Name))
 	g.indent()
 	g.writeLine("var errors ValidationErrors")
 	g.writeLine("")
@@ -184,26 +184,26 @@ func (g *CodeGenerator) generateFieldValidation(field *ValidationFieldInfo) {
 func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule ValidationRule) {
 	switch rule.Type {
 	case "Required":
-		g.writeLine(fmt.Sprintf("if obj.%s == nil || obj.%s == \"\" {", field.Name, field.Name))
+		g.writeLine(fmt.Sprintf("if dto.%s == nil || dto.%s == \"\" {", field.Name, field.Name))
 		g.indent()
 		g.writeLine(fmt.Sprintf("errors = append(errors, ValidationError{Field: \"%s\", Message: \"%s\", Code: \"%s\"})", field.Name, rule.Message, rule.Code))
 		g.unindent()
 		g.writeLine("}")
 	case "IsEmail":
-		g.writeLine(fmt.Sprintf("if obj.%s != \"\" && !isValidEmail(obj.%s) {", field.Name, field.Name))
+		g.writeLine(fmt.Sprintf("if dto.%s != \"\" && !isValidEmail(dto.%s) {", field.Name, field.Name))
 		g.indent()
-		g.writeLine(fmt.Sprintf("errors = append(errors, ValidationError{Field: \"%s\", Message: \"%s\", Code: \"%s\"})", field.Name, rule.Message, rule.Code))
+		g.writeLine(fmt.Sprintf("errors = append(errors, ValidationError{Field: \"%s\", Message: \"%s\", Code: \"%s\", Value: dto.%s})", field.Name, rule.Message, rule.Code, field.Name))
 		g.unindent()
 		g.writeLine("}")
 	case "IsNotEmpty":
-		g.writeLine(fmt.Sprintf("if obj.%s == \"\" {", field.Name))
+		g.writeLine(fmt.Sprintf("if dto.%s == \"\" {", field.Name))
 		g.indent()
 		g.writeLine(fmt.Sprintf("errors = append(errors, ValidationError{Field: \"%s\", Message: \"%s\", Code: \"%s\"})", field.Name, rule.Message, rule.Code))
 		g.unindent()
 		g.writeLine("}")
 	case "Min":
 		if len(rule.Args) > 0 {
-			g.writeLine(fmt.Sprintf("if obj.%s < %v {", field.Name, rule.Args[0]))
+			g.writeLine(fmt.Sprintf("if dto.%s < %v {", field.Name, rule.Args[0]))
 			g.indent()
 			g.writeLine(fmt.Sprintf("errors = append(errors, ValidationError{Field: \"%s\", Message: \"%s\", Code: \"%s\"})", field.Name, rule.Message, rule.Code))
 			g.unindent()
@@ -211,7 +211,7 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 		}
 	case "Max":
 		if len(rule.Args) > 0 {
-			g.writeLine(fmt.Sprintf("if obj.%s > %v {", field.Name, rule.Args[0]))
+			g.writeLine(fmt.Sprintf("if dto.%s > %v {", field.Name, rule.Args[0]))
 			g.indent()
 			g.writeLine(fmt.Sprintf("errors = append(errors, ValidationError{Field: \"%s\", Message: \"%s\", Code: \"%s\"})", field.Name, rule.Message, rule.Code))
 			g.unindent()
@@ -219,21 +219,21 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 		}
 	case "Length":
 		if len(rule.Args) >= 2 {
-			g.writeLine(fmt.Sprintf("if len(obj.%s) < %v || len(obj.%s) > %v {", field.Name, rule.Args[0], field.Name, rule.Args[1]))
+			g.writeLine(fmt.Sprintf("if len(dto.%s) < %v || len(dto.%s) > %v {", field.Name, rule.Args[0], field.Name, rule.Args[1]))
 			g.indent()
 			g.writeLine(fmt.Sprintf("errors = append(errors, ValidationError{Field: \"%s\", Message: \"%s\", Code: \"%s\"})", field.Name, rule.Message, rule.Code))
 			g.unindent()
 			g.writeLine("}")
 		}
 	case "IsArray":
-		g.writeLine(fmt.Sprintf("if reflect.TypeOf(obj.%s).Kind() != reflect.Slice {", field.Name))
+		g.writeLine(fmt.Sprintf("if reflect.TypeOf(dto.%s).Kind() != reflect.Slice {", field.Name))
 		g.indent()
 		g.writeLine(fmt.Sprintf("errors = append(errors, ValidationError{Field: \"%s\", Message: \"%s\", Code: \"%s\"})", field.Name, rule.Message, rule.Code))
 		g.unindent()
 		g.writeLine("}")
 	case "ArrayMinSize":
 		if len(rule.Args) > 0 {
-			g.writeLine(fmt.Sprintf("if len(obj.%s) < %v {", field.Name, rule.Args[0]))
+			g.writeLine(fmt.Sprintf("if len(dto.%s) < %v {", field.Name, rule.Args[0]))
 			g.indent()
 			g.writeLine(fmt.Sprintf("errors = append(errors, ValidationError{Field: \"%s\", Message: \"%s\", Code: \"%s\"})", field.Name, rule.Message, rule.Code))
 			g.unindent()
@@ -241,100 +241,100 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 		}
 	case "ArrayMaxSize":
 		if len(rule.Args) > 0 {
-			g.writeLine(fmt.Sprintf("if len(obj.%s) > %v {", field.Name, rule.Args[0]))
+			g.writeLine(fmt.Sprintf("if len(dto.%s) > %v {", field.Name, rule.Args[0]))
 			g.indent()
 			g.writeLine(fmt.Sprintf("errors = append(errors, ValidationError{Field: \"%s\", Message: \"%s\", Code: \"%s\"})", field.Name, rule.Message, rule.Code))
 			g.unindent()
 			g.writeLine("}")
 		}
 	case "ArrayNotEmpty":
-		g.writeLine(fmt.Sprintf("if len(obj.%s) == 0 {", field.Name))
+		g.writeLine(fmt.Sprintf("if len(dto.%s) == 0 {", field.Name))
 		g.indent()
 		g.writeLine(fmt.Sprintf("errors = append(errors, ValidationError{Field: \"%s\", Message: \"%s\", Code: \"%s\"})", field.Name, rule.Message, rule.Code))
 		g.unindent()
 		g.writeLine("}")
 	case "IsURL":
-		g.writeLine(fmt.Sprintf("if obj.%s != \"\" && !isValidURL(obj.%s) {", field.Name, field.Name))
+		g.writeLine(fmt.Sprintf("if dto.%s != \"\" && !isValidURL(dto.%s) {", field.Name, field.Name))
 		g.indent()
-		g.writeLine(fmt.Sprintf("errors = append(errors, ValidationError{Field: \"%s\", Message: \"%s\", Code: \"%s\"})", field.Name, rule.Message, rule.Code))
+		g.writeLine(fmt.Sprintf("errors = append(errors, ValidationError{Field: \"%s\", Message: \"%s\", Code: \"%s\", Value: dto.%s})", field.Name, rule.Message, rule.Code, field.Name))
 		g.unindent()
 		g.writeLine("}")
 	case "IsNumeric":
-		g.writeLine(fmt.Sprintf("if obj.%s != \"\" && !isNumeric(obj.%s) {", field.Name, field.Name))
+		g.writeLine(fmt.Sprintf("if dto.%s != \"\" && !isNumeric(dto.%s) {", field.Name, field.Name))
 		g.indent()
 		g.writeLine(fmt.Sprintf("errors = append(errors, ValidationError{Field: \"%s\", Message: \"%s\", Code: \"%s\"})", field.Name, rule.Message, rule.Code))
 		g.unindent()
 		g.writeLine("}")
 	case "IsAlphanumeric":
-		g.writeLine(fmt.Sprintf("if obj.%s != \"\" && !isAlphanumeric(obj.%s) {", field.Name, field.Name))
+		g.writeLine(fmt.Sprintf("if dto.%s != \"\" && !isAlphanumeric(dto.%s) {", field.Name, field.Name))
 		g.indent()
 		g.writeLine(fmt.Sprintf("errors = append(errors, ValidationError{Field: \"%s\", Message: \"%s\", Code: \"%s\"})", field.Name, rule.Message, rule.Code))
 		g.unindent()
 		g.writeLine("}")
 	case "IsAlpha":
-		g.writeLine(fmt.Sprintf("if obj.%s != \"\" && !isAlpha(obj.%s) {", field.Name, field.Name))
+		g.writeLine(fmt.Sprintf("if dto.%s != \"\" && !isAlpha(dto.%s) {", field.Name, field.Name))
 		g.indent()
 		g.writeLine(fmt.Sprintf("errors = append(errors, ValidationError{Field: \"%s\", Message: \"%s\", Code: \"%s\"})", field.Name, rule.Message, rule.Code))
 		g.unindent()
 		g.writeLine("}")
 	case "IsPositive":
-		g.writeLine(fmt.Sprintf("if obj.%s <= 0 {", field.Name))
+		g.writeLine(fmt.Sprintf("if dto.%s <= 0 {", field.Name))
 		g.indent()
 		g.writeLine(fmt.Sprintf("errors = append(errors, ValidationError{Field: \"%s\", Message: \"%s\", Code: \"%s\"})", field.Name, rule.Message, rule.Code))
 		g.unindent()
 		g.writeLine("}")
 	case "IsFloat":
-		g.writeLine(fmt.Sprintf("if _, err := strconv.ParseFloat(fmt.Sprintf(\"%%v\", obj.%s), 64); err != nil {", field.Name))
+		g.writeLine(fmt.Sprintf("if dto.%s != nil && !isFloat(dto.%s) {", field.Name, field.Name))
 		g.indent()
-		g.writeLine(fmt.Sprintf("errors = append(errors, ValidationError{Field: \"%s\", Message: \"%s\", Code: \"%s\"})", field.Name, rule.Message, rule.Code))
+		g.writeLine(fmt.Sprintf("errors = append(errors, ValidationError{Field: \"%s\", Message: \"%s\", Code: \"%s\", Value: dto.%s})", field.Name, rule.Message, rule.Code, field.Name))
 		g.unindent()
 		g.writeLine("}")
 	case "IsInt":
-		g.writeLine(fmt.Sprintf("if _, err := strconv.Atoi(fmt.Sprintf(\"%%v\", obj.%s)); err != nil {", field.Name))
+		g.writeLine("// IsInt validation")
+		g.writeLine(fmt.Sprintf("if !isInt(dto.%s) {", field.Name))
 		g.indent()
-		g.writeLine(fmt.Sprintf("errors = append(errors, ValidationError{Field: \"%s\", Message: \"%s\", Code: \"%s\"})", field.Name, rule.Message, rule.Code))
+		g.writeLine(fmt.Sprintf("errors = append(errors, ValidationError{Field: \"%s\", Message: \"%s\", Code: \"%s\", Value: dto.%s})", field.Name, rule.Message, rule.Code, field.Name))
 		g.unindent()
 		g.writeLine("}")
 	case "IsBoolean":
-		g.writeLine(fmt.Sprintf("if _, err := strconv.ParseBool(fmt.Sprintf(\"%%v\", obj.%s)); err != nil {", field.Name))
+		g.writeLine(fmt.Sprintf("if dto.%s != nil && !isBoolean(dto.%s) {", field.Name, field.Name))
 		g.indent()
-		g.writeLine(fmt.Sprintf("errors = append(errors, ValidationError{Field: \"%s\", Message: \"%s\", Code: \"%s\"})", field.Name, rule.Message, rule.Code))
+		g.writeLine(fmt.Sprintf("errors = append(errors, ValidationError{Field: \"%s\", Message: \"%s\", Code: \"%s\", Value: dto.%s})", field.Name, rule.Message, rule.Code, field.Name))
 		g.unindent()
 		g.writeLine("}")
 	case "IsDate":
-		g.writeLine(fmt.Sprintf("if _, err := time.Parse(time.RFC3339, fmt.Sprintf(\"%%v\", obj.%s)); err != nil {", field.Name))
+		g.writeLine(fmt.Sprintf("if dto.%s != nil && !isDate(dto.%s) {", field.Name, field.Name))
 		g.indent()
-		g.writeLine(fmt.Sprintf("errors = append(errors, ValidationError{Field: \"%s\", Message: \"%s\", Code: \"%s\"})", field.Name, rule.Message, rule.Code))
+		g.writeLine(fmt.Sprintf("errors = append(errors, ValidationError{Field: \"%s\", Message: \"%s\", Code: \"%s\", Value: dto.%s})", field.Name, rule.Message, rule.Code, field.Name))
 		g.unindent()
 		g.writeLine("}")
 	case "IsIP":
-		g.writeLine(fmt.Sprintf("if net.ParseIP(fmt.Sprintf(\"%%v\", obj.%s)) == nil {", field.Name))
+		g.writeLine(fmt.Sprintf("if dto.%s != nil && !isIP(dto.%s) {", field.Name, field.Name))
 		g.indent()
-		g.writeLine(fmt.Sprintf("errors = append(errors, ValidationError{Field: \"%s\", Message: \"%s\", Code: \"%s\"})", field.Name, rule.Message, rule.Code))
+		g.writeLine(fmt.Sprintf("errors = append(errors, ValidationError{Field: \"%s\", Message: \"%s\", Code: \"%s\", Value: dto.%s})", field.Name, rule.Message, rule.Code, field.Name))
 		g.unindent()
 		g.writeLine("}")
 	case "IsJSON":
-		g.writeLine(fmt.Sprintf("var jsonData interface{}"))
-		g.writeLine(fmt.Sprintf("if err := json.Unmarshal([]byte(fmt.Sprintf(\"%%v\", obj.%s)), &jsonData); err != nil {", field.Name))
+		g.writeLine(fmt.Sprintf("if dto.%s != nil && !isJSON(dto.%s) {", field.Name, field.Name))
 		g.indent()
-		g.writeLine(fmt.Sprintf("errors = append(errors, ValidationError{Field: \"%s\", Message: \"%s\", Code: \"%s\"})", field.Name, rule.Message, rule.Code))
+		g.writeLine(fmt.Sprintf("errors = append(errors, ValidationError{Field: \"%s\", Message: \"%s\", Code: \"%s\", Value: dto.%s})", field.Name, rule.Message, rule.Code, field.Name))
 		g.unindent()
 		g.writeLine("}")
 	case "IsBase64":
-		g.writeLine(fmt.Sprintf("if _, err := base64.StdEncoding.DecodeString(fmt.Sprintf(\"%%v\", obj.%s)); err != nil {", field.Name))
+		g.writeLine(fmt.Sprintf("if dto.%s != nil && !isBase64(dto.%s) {", field.Name, field.Name))
 		g.indent()
-		g.writeLine(fmt.Sprintf("errors = append(errors, ValidationError{Field: \"%s\", Message: \"%s\", Code: \"%s\"})", field.Name, rule.Message, rule.Code))
+		g.writeLine(fmt.Sprintf("errors = append(errors, ValidationError{Field: \"%s\", Message: \"%s\", Code: \"%s\", Value: dto.%s})", field.Name, rule.Message, rule.Code, field.Name))
 		g.unindent()
 		g.writeLine("}")
 	case "IsEmpty":
-		g.writeLine(fmt.Sprintf("if fmt.Sprintf(\"%%v\", obj.%s) != \"\" {", field.Name))
+		g.writeLine(fmt.Sprintf("if fmt.Sprintf(\"%%v\", dto.%s) != \"\" {", field.Name))
 		g.indent()
 		g.writeLine(fmt.Sprintf("errors = append(errors, ValidationError{Field: \"%s\", Message: \"%s\", Code: \"%s\"})", field.Name, rule.Message, rule.Code))
 		g.unindent()
 		g.writeLine("}")
 	case "MinLength":
 		if len(rule.Args) > 0 {
-			g.writeLine(fmt.Sprintf("if len(fmt.Sprintf(\"%%v\", obj.%s)) < %v {", field.Name, rule.Args[0]))
+			g.writeLine(fmt.Sprintf("if len(fmt.Sprintf(\"%%v\", dto.%s)) < %v {", field.Name, rule.Args[0]))
 			g.indent()
 			g.writeLine(fmt.Sprintf("errors = append(errors, ValidationError{Field: \"%s\", Message: \"%s\", Code: \"%s\"})", field.Name, rule.Message, rule.Code))
 			g.unindent()
@@ -342,7 +342,7 @@ func (g *CodeGenerator) generateValidationRule(field *ValidationFieldInfo, rule 
 		}
 	case "MaxLength":
 		if len(rule.Args) > 0 {
-			g.writeLine(fmt.Sprintf("if len(fmt.Sprintf(\"%%v\", obj.%s)) > %v {", field.Name, rule.Args[0]))
+			g.writeLine(fmt.Sprintf("if len(fmt.Sprintf(\"%%v\", dto.%s)) > %v {", field.Name, rule.Args[0]))
 			g.indent()
 			g.writeLine(fmt.Sprintf("errors = append(errors, ValidationError{Field: \"%s\", Message: \"%s\", Code: \"%s\"})", field.Name, rule.Message, rule.Code))
 			g.unindent()
@@ -566,7 +566,7 @@ func (g *CodeGenerator) getValidationMessage(ruleType string, args []interface{}
 	case "IsFloat":
 		return "must be a valid float number"
 	case "IsInt":
-		return "must be a valid integer"
+		return "must be an integer"
 	case "IsBoolean":
 		return "must be a valid boolean"
 	case "IsDate":
@@ -703,6 +703,173 @@ func (g *CodeGenerator) generateAlphanumericValidationHelper() {
 	g.indent()
 	g.writeLine("matched, _ := regexp.MatchString(alphanumericRegex, str)")
 	g.writeLine("return matched")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+}
+
+// generateIntValidationHelper generates integer validation helper
+func (g *CodeGenerator) generateIntValidationHelper() {
+	g.writeLine("// Integer validation helper")
+	g.writeLine("func isInt(value interface{}) bool {")
+	g.indent()
+	g.writeLine("switch v := value.(type) {")
+	g.writeLine("case int, int8, int16, int32, int64:")
+	g.indent()
+	g.writeLine("return true")
+	g.unindent()
+	g.writeLine("case string:")
+	g.indent()
+	g.writeLine("_, err := strconv.Atoi(v)")
+	g.writeLine("return err == nil")
+	g.unindent()
+	g.writeLine("default:")
+	g.indent()
+	g.writeLine("return false")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+}
+
+// generateFloatValidationHelper generates float validation helper
+func (g *CodeGenerator) generateFloatValidationHelper() {
+	g.writeLine("// Float validation helper")
+	g.writeLine("func isFloat(value interface{}) bool {")
+	g.indent()
+	g.writeLine("switch v := value.(type) {")
+	g.writeLine("case float32, float64:")
+	g.indent()
+	g.writeLine("return true")
+	g.unindent()
+	g.writeLine("case string:")
+	g.indent()
+	g.writeLine("_, err := strconv.ParseFloat(v, 64)")
+	g.writeLine("return err == nil")
+	g.unindent()
+	g.writeLine("default:")
+	g.indent()
+	g.writeLine("return false")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+}
+
+// generateBooleanValidationHelper generates boolean validation helper
+func (g *CodeGenerator) generateBooleanValidationHelper() {
+	g.writeLine("// Boolean validation helper")
+	g.writeLine("func isBoolean(value interface{}) bool {")
+	g.indent()
+	g.writeLine("switch v := value.(type) {")
+	g.writeLine("case bool:")
+	g.indent()
+	g.writeLine("return true")
+	g.unindent()
+	g.writeLine("case string:")
+	g.indent()
+	g.writeLine("_, err := strconv.ParseBool(v)")
+	g.writeLine("return err == nil")
+	g.unindent()
+	g.writeLine("default:")
+	g.indent()
+	g.writeLine("return false")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+}
+
+// generateDateValidationHelper generates date validation helper
+func (g *CodeGenerator) generateDateValidationHelper() {
+	g.writeLine("// Date validation helper")
+	g.writeLine("func isDate(value interface{}) bool {")
+	g.indent()
+	g.writeLine("switch v := value.(type) {")
+	g.writeLine("case time.Time:")
+	g.indent()
+	g.writeLine("return true")
+	g.unindent()
+	g.writeLine("case string:")
+	g.indent()
+	g.writeLine("dateFormats := []string{")
+	g.indent()
+	g.writeLine("time.RFC3339,")
+	g.writeLine("\"2006-01-02\",")
+	g.writeLine("\"2006-01-02T15:04:05\",")
+	g.writeLine("\"01/02/2006\",")
+	g.writeLine("\"01-02-2006\",")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("for _, format := range dateFormats {")
+	g.indent()
+	g.writeLine("if _, err := time.Parse(format, v); err == nil {")
+	g.indent()
+	g.writeLine("return true")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("return false")
+	g.unindent()
+	g.writeLine("default:")
+	g.indent()
+	g.writeLine("return false")
+	g.unindent()
+	g.writeLine("}")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+}
+
+// generateIPValidationHelper generates IP validation helper
+func (g *CodeGenerator) generateIPValidationHelper() {
+	g.writeLine("// IP validation helper")
+	g.writeLine("func isIP(value interface{}) bool {")
+	g.indent()
+	g.writeLine("if str, ok := value.(string); ok {")
+	g.indent()
+	g.writeLine("return net.ParseIP(str) != nil")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("return false")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+}
+
+// generateJSONValidationHelper generates JSON validation helper
+func (g *CodeGenerator) generateJSONValidationHelper() {
+	g.writeLine("// JSON validation helper")
+	g.writeLine("func isJSON(value interface{}) bool {")
+	g.indent()
+	g.writeLine("if str, ok := value.(string); ok {")
+	g.indent()
+	g.writeLine("var jsonData interface{}")
+	g.writeLine("return json.Unmarshal([]byte(str), &jsonData) == nil")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("return false")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+}
+
+// generateBase64ValidationHelper generates Base64 validation helper
+func (g *CodeGenerator) generateBase64ValidationHelper() {
+	g.writeLine("// Base64 validation helper")
+	g.writeLine("func isBase64(value interface{}) bool {")
+	g.indent()
+	g.writeLine("if str, ok := value.(string); ok {")
+	g.indent()
+	g.writeLine("_, err := base64.StdEncoding.DecodeString(str)")
+	g.writeLine("return err == nil")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("return false")
 	g.unindent()
 	g.writeLine("}")
 	g.writeLine("")
