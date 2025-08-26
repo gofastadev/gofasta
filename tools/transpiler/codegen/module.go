@@ -39,9 +39,14 @@ func (g *CodeGenerator) generateModuleConfigureMethod(module *ModuleDeclaration)
 	if len(config.Providers) > 0 {
 		g.writeLine("// Register providers")
 		for _, provider := range config.Providers {
-			g.writeLine(fmt.Sprintf("// TODO: Register %s provider", provider))
+			providerFuncName := fmt.Sprintf("Register%sProvider", provider)
+			g.writeLine(fmt.Sprintf("if err := %s(container); err != nil {", providerFuncName))
+			g.indent()
+			g.writeLine("return err")
+			g.unindent()
+			g.writeLine("}")
+			g.writeLine("")
 		}
-		g.writeLine("")
 	}
 
 	// Import other modules

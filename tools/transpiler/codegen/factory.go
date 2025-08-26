@@ -7,7 +7,17 @@ func (g *CodeGenerator) generateFactoryDeclaration(factory *FactoryDeclaration) 
 	// Generate factory struct
 	g.writeLine(fmt.Sprintf("type %s struct {", factory.Name))
 	g.indent()
-	g.writeLine("rand *rand.Rand")
+	
+	// Add built-in factory fields
+	g.writeLine("sequenceCounters map[string]int")
+	g.writeLine("rand             *rand.Rand")
+	
+	// Add user-defined fields with proper inject tags
+	for _, field := range factory.Fields {
+		injectTag := g.generateFactoryFieldInjectTag(field)
+		g.writeLine(fmt.Sprintf("%-16s %s %s", field.Name, field.Type, injectTag))
+	}
+	
 	g.unindent()
 	g.writeLine("}")
 	g.writeLine("")
@@ -42,6 +52,7 @@ func (g *CodeGenerator) generateFactoryConstructor(factory *FactoryDeclaration) 
 	g.indent()
 	g.writeLine("return &" + factory.Name + "{")
 	g.indent()
+	g.writeLine("sequenceCounters: make(map[string]int),")
 	g.writeLine("rand: rand.New(rand.NewSource(time.Now().UnixNano())),")
 	g.unindent()
 	g.writeLine("}")
@@ -51,19 +62,32 @@ func (g *CodeGenerator) generateFactoryConstructor(factory *FactoryDeclaration) 
 
 // generateFactoryBuildMethod generates factory build method
 func (g *CodeGenerator) generateFactoryBuildMethod(factory *FactoryDeclaration) {
-	g.writeLine(fmt.Sprintf("func (f *%s) Build() *%s {", factory.Name, factory.TargetType))
+	g.writeLine(fmt.Sprintf("func (f *%s) Build(overrides interface{}) *%s {", factory.Name, factory.TargetType))
 	g.indent()
-	g.writeLine(fmt.Sprintf("return &%s{", factory.TargetType))
+	g.writeLine(fmt.Sprintf("instance := &%s{", factory.TargetType))
 	g.indent()
 	g.writeLine("// TODO: Add default field values")
 	g.unindent()
 	g.writeLine("}")
+	g.writeLine("")
+	g.writeLine("// TODO: Apply overrides if provided")
+	g.writeLine("")
+	g.writeLine("return instance")
 	g.unindent()
 	g.writeLine("}")
 }
 
 // generateFactoryHelperMethods generates helper methods for factory
 func (g *CodeGenerator) generateFactoryHelperMethods(factory *FactoryDeclaration) {
+	// Generate getSequence method
+	g.writeLine(fmt.Sprintf("func (f *%s) getSequence(name string) int {", factory.Name))
+	g.indent()
+	g.writeLine("f.sequenceCounters[name]++")
+	g.writeLine("return f.sequenceCounters[name]")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+
 	// Generate random string method
 	g.writeLine(fmt.Sprintf("func (f *%s) generateRandomString() string {", factory.Name))
 	g.indent()
@@ -132,6 +156,13 @@ func (g *CodeGenerator) generateMockDeclaration(mock *MockDeclaration) error {
 	g.writeLine("CallLog      []MockCall")
 	g.writeLine("expectations []MockExpectation")
 	g.writeLine("t            *testing.T")
+	
+	// Add mock fields with inject tags
+	for _, field := range mock.Fields {
+		injectTag := g.generateFactoryFieldInjectTag(field)
+		g.writeLine(fmt.Sprintf("%-13s %s %s", field.Name, field.Type, injectTag))
+	}
+	
 	g.unindent()
 	g.writeLine("}")
 	g.writeLine("")
@@ -279,4 +310,24 @@ func (g *CodeGenerator) generateMockMethod(mock *MockDeclaration, method *Method
 	g.writeLine("}")
 
 	return nil
+}
+
+// generateFactoryFieldInjectTag generates inject tag for factory field based on decorators
+func (g *CodeGenerator) generateFactoryFieldInjectTag(field *FieldNode) string {
+	// Look for @Inject decorator on the field
+	for _, decorator := range field.Decorators {
+		if decorator.Name == "Inject" {
+			if len(decorator.Args) > 0 {
+				// Use the provided inject name
+				if strVal, ok := decorator.Args[0].Value.(string); ok {
+					return fmt.Sprintf("`inject:\"%s\"`", strVal)
+				}
+			}
+			// Default to field name if no argument provided
+			return fmt.Sprintf("`inject:\"%s\"`", field.Name)
+		}
+	}
+	
+	// Field without @Inject decorator gets empty inject tag
+	return "`inject:\"\"`"
 }

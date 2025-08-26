@@ -82,6 +82,18 @@ func (g *CodeGenerator) generateHeaderParameterExtraction(param *ParameterNode, 
 		g.writeLine("}")
 	}
 	
+	// Apply transformations before type conversion
+	if options.Transform != "" {
+		switch options.Transform {
+		case "lowercase":
+			g.writeLine("headerValue = strings.ToLower(headerValue)")
+		case "uppercase":
+			g.writeLine("headerValue = strings.ToUpper(headerValue)")
+		case "trim":
+			g.writeLine("headerValue = strings.TrimSpace(headerValue)")
+		}
+	}
+
 	// Handle type conversion based on parameter type and options
 	g.generateHeaderTypeConversion(param, "headerValue", options)
 	
@@ -141,16 +153,71 @@ func (g *CodeGenerator) generateSessionParameterExtraction(param *ParameterNode,
 		g.writeLine(fmt.Sprintf("var %s %s", param.Name, param.Type))
 		g.writeLine(fmt.Sprintf("if sessionValue := ctx.GetSession(\"%s\"); sessionValue != nil {", sessionKey))
 		g.indent()
-		g.writeLine(fmt.Sprintf("if typedValue, ok := sessionValue.(%s); ok {", param.Type))
-		g.indent()
-		g.writeLine(fmt.Sprintf("%s = typedValue", param.Name))
-		g.unindent()
-		g.writeLine("}")
+		
+		// Generate type-specific extraction logic
+		switch param.Type {
+		case "int":
+			// First try direct int cast, then fallback to string conversion
+			g.writeLine("if intValue, ok := sessionValue.(int); ok {")
+			g.indent()
+			g.writeLine(fmt.Sprintf("%s = intValue", param.Name))
+			g.unindent()
+			g.writeLine("} else if strValue, ok := sessionValue.(string); ok {")
+			g.indent()
+			g.writeLine("if parsedInt, err := strconv.Atoi(strValue); err == nil {")
+			g.indent()
+			g.writeLine(fmt.Sprintf("%s = parsedInt", param.Name))
+			g.unindent()
+			g.writeLine("}")
+			g.unindent()
+			g.writeLine("}")
+			g.addImport("strconv")
+			
+		case "bool":
+			// First try direct bool cast, then fallback to string conversion
+			g.writeLine("if boolValue, ok := sessionValue.(bool); ok {")
+			g.indent()
+			g.writeLine(fmt.Sprintf("%s = boolValue", param.Name))
+			g.unindent()
+			g.writeLine("} else if strValue, ok := sessionValue.(string); ok {")
+			g.indent()
+			g.writeLine("if parsedBool, err := strconv.ParseBool(strValue); err == nil {")
+			g.indent()
+			g.writeLine(fmt.Sprintf("%s = parsedBool", param.Name))
+			g.unindent()
+			g.writeLine("}")
+			g.unindent()
+			g.writeLine("}")
+			g.addImport("strconv")
+			
+		case "string":
+			// Simple string cast
+			g.writeLine("if strValue, ok := sessionValue.(string); ok {")
+			g.indent()
+			g.writeLine(fmt.Sprintf("%s = strValue", param.Name))
+			g.unindent()
+			g.writeLine("}")
+			
+		default:
+			// Custom types - use typedValue
+			g.writeLine(fmt.Sprintf("if typedValue, ok := sessionValue.(%s); ok {", param.Type))
+			g.indent()
+			g.writeLine(fmt.Sprintf("%s = typedValue", param.Name))
+			g.unindent()
+			g.writeLine("}")
+		}
+		
 		g.unindent()
 		g.writeLine("}")
 	} else {
-		// Extract entire session object
-		g.writeLine(fmt.Sprintf("%s := ctx.GetSessionStore()", param.Name))
+		// Extract entire session object - check for special types
+		if param.Type == "map[string]interface{}" || param.Type == "interface{}" {
+			// For map and interface{} types, use GetAllSessionData()
+			g.writeLine(fmt.Sprintf("%s := ctx.GetAllSessionData()", param.Name))
+		} else {
+			// For other types like *Session, use GetSessionStore()
+			g.writeLine(fmt.Sprintf("%s := ctx.GetSessionStore()", param.Name))
+		}
 	}
 	
 	g.writeLine("")
@@ -222,6 +289,7 @@ func (g *CodeGenerator) getQueryParameterOptions(decorator *DecoratorNode) Query
 func (g *CodeGenerator) getHeaderParameterOptions(decorator *DecoratorNode) HeaderParameterOptions {
 	options := HeaderParameterOptions{
 		Type: "string",
+		Separator: ",", // default separator for arrays
 		CaseInsensitive: true,
 	}
 	
@@ -234,9 +302,24 @@ func (g *CodeGenerator) getHeaderParameterOptions(decorator *DecoratorNode) Head
 						options.DefaultValue = strVal
 					}
 				}
+				if defaultVal, exists := objValue["defaultValue"]; exists {
+					if strVal, ok := defaultVal.(string); ok {
+						options.DefaultValue = strVal
+					}
+				}
 				if required, exists := objValue["required"]; exists {
 					if boolVal, ok := required.(bool); ok {
 						options.Required = boolVal
+					}
+				}
+				if separator, exists := objValue["separator"]; exists {
+					if strVal, ok := separator.(string); ok {
+						options.Separator = strVal
+					}
+				}
+				if transform, exists := objValue["transform"]; exists {
+					if strVal, ok := transform.(string); ok {
+						options.Transform = strVal
 					}
 				}
 			}
@@ -378,18 +461,68 @@ func (g *CodeGenerator) generateHeaderTypeConversion(param *ParameterNode, value
 	paramType := strings.ToLower(param.Type)
 	
 	switch {
+	case strings.Contains(paramType, "[]") || strings.Contains(paramType, "array"):
+		// Array type - split by separator and trim spaces
+		g.writeLine(fmt.Sprintf("if %s != \"\" {", valueVar))
+		g.indent()
+		g.writeLine(fmt.Sprintf("%s = strings.Split(%s, \"%s\")", param.Name, valueVar, options.Separator))
+		// Trim whitespace from array elements
+		g.writeLine(fmt.Sprintf("for i, v := range %s {", param.Name))
+		g.indent()
+		g.writeLine(fmt.Sprintf("%s[i] = strings.TrimSpace(v)", param.Name))
+		g.unindent()
+		g.writeLine("}")
+		g.unindent()
+		g.writeLine("}")
+		
 	case strings.Contains(paramType, "int"):
-		g.writeLine(fmt.Sprintf("if intValue, err := strconv.Atoi(%s); err == nil {", valueVar))
+		g.writeLine(fmt.Sprintf("if %s != \"\" {", valueVar))
 		g.indent()
-		g.writeLine(fmt.Sprintf("%s = intValue", param.Name))
+		g.writeLine(fmt.Sprintf("if parsedInt, err := strconv.Atoi(%s); err == nil {", valueVar))
+		g.indent()
+		g.writeLine(fmt.Sprintf("%s = parsedInt", param.Name))
+		g.unindent()
+		g.writeLine("} else {")
+		g.indent()
+		g.writeLine(fmt.Sprintf("ctx.JSON(400, map[string]string{\"error\": \"Invalid integer value for header '%s'\"})", param.Name))
+		g.writeLine("return")
 		g.unindent()
 		g.writeLine("}")
+		g.unindent()
+		g.writeLine("}")
+		
+	case strings.Contains(paramType, "float"):
+		g.writeLine(fmt.Sprintf("if %s != \"\" {", valueVar))
+		g.indent()
+		g.writeLine(fmt.Sprintf("if parsedFloat, err := strconv.ParseFloat(%s, 64); err == nil {", valueVar))
+		g.indent()
+		g.writeLine(fmt.Sprintf("%s = parsedFloat", param.Name))
+		g.unindent()
+		g.writeLine("} else {")
+		g.indent()
+		g.writeLine(fmt.Sprintf("ctx.JSON(400, map[string]string{\"error\": \"Invalid float value for header '%s'\"})", param.Name))
+		g.writeLine("return")
+		g.unindent()
+		g.writeLine("}")
+		g.unindent()
+		g.writeLine("}")
+		
 	case strings.Contains(paramType, "bool"):
-		g.writeLine(fmt.Sprintf("if boolValue, err := strconv.ParseBool(%s); err == nil {", valueVar))
+		g.writeLine(fmt.Sprintf("if %s != \"\" {", valueVar))
 		g.indent()
-		g.writeLine(fmt.Sprintf("%s = boolValue", param.Name))
+		g.writeLine(fmt.Sprintf("if parsedBool, err := strconv.ParseBool(%s); err == nil {", valueVar))
+		g.indent()
+		g.writeLine(fmt.Sprintf("%s = parsedBool", param.Name))
+		g.unindent()
+		g.writeLine("} else {")
+		g.indent()
+		g.writeLine(fmt.Sprintf("ctx.JSON(400, map[string]string{\"error\": \"Invalid boolean value for header '%s' (use true/false)\"})", param.Name))
+		g.writeLine("return")
 		g.unindent()
 		g.writeLine("}")
+		g.unindent()
+		g.writeLine("}")
+		
 	default:
 		// String type or others
 		g.writeLine(fmt.Sprintf("%s = %s", param.Name, valueVar))
