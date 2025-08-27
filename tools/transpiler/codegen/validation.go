@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	
+	"github.com/healtronlabs/gofasta/tools/transpiler/core"
 )
 
 // addValidationImportsIfNeeded adds validation imports if needed
@@ -46,7 +48,8 @@ func (g *CodeGenerator) hasValidationDecorators(file *GofaFile) bool {
 			// Check if this is a DTO-like service with validation decorators
 			for _, field := range service.Fields {
 				for _, decorator := range field.Decorators {
-					if IsValidationDecorator(decorator.Name) {
+					decoratorType := core.GetDecoratorType(decorator.Name)
+					if core.IsValidationDecorator(decoratorType) {
 						return true
 					}
 				}
@@ -635,8 +638,8 @@ func (g *CodeGenerator) parseValidationDecoratorsFromField(field *FieldNode) []V
 	var rules []ValidationRule
 
 	for _, decorator := range field.Decorators {
-		decoratorType := GetDecoratorType(decorator.Name)
-		if IsValidationDecorator(decoratorType) {
+		decoratorType := core.GetDecoratorType(decorator.Name)
+		if core.IsValidationDecorator(decoratorType) {
 			rule := g.parseValidationRuleFromDecorator(decorator)
 			if rule != nil {
 				rules = append(rules, *rule)
@@ -657,29 +660,6 @@ func (g *CodeGenerator) parseValidationRuleFromDecorator(decorator *DecoratorNod
 	}
 }
 
-// IsValidationDecorator checks if a decorator is a validation decorator
-func IsValidationDecorator(decoratorType interface{}) bool {
-	if str, ok := decoratorType.(string); ok {
-		validationDecorators := []string{
-			"IsEmail", "IsOptional", "IsNotEmpty", "IsString", "IsBoolean", 
-			"IsNumber", "IsInt", "IsArray", "IsObject", "IsURL", "IsUUID",
-			"MinLength", "MaxLength", "Length", "Min", "Max", "IsAlpha",
-			"IsAlphanumeric", "IsDecimal", "IsHexColor", "IsIP", "IsJSON",
-			"Matches", "Contains", "IsDate", "IsDateString", "IsCreditCard",
-			"IsISBN", "IsPhoneNumber", "IsPostalCode", "IsLatitude", "IsLongitude",
-			"IsNumeric", "IsPositive", "ArrayMinSize", "ArrayMaxSize", "ArrayNotEmpty",
-			"IsFloat", "IsBase64", "IsEmpty", "IsDefined", "NotEquals", "Equals",
-			"NotContains", "IsIn", "IsNotIn", "IsLowercase", "IsUppercase", "Custom",
-			"ValidateNested", "IsNegative", "IsPastDate", "IsFutureDate", "ValidateIf",
-		}
-		for _, vd := range validationDecorators {
-			if str == vd {
-				return true
-			}
-		}
-	}
-	return false
-}
 
 // parseValidationDecorators parses validation decorators from struct tags
 func (g *CodeGenerator) parseValidationDecorators(tag string) []ValidationRule {
