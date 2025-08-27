@@ -1,15 +1,9 @@
 package main
 
 import (
-	"fmt"
-	"github.com/healtronlabs/gofasta/packages/core"
-	"github.com/healtronlabs/gofasta/packages/http"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/suite"
-	"net/http"
-	"strconv"
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/suite"
 )
 
 type UserTests struct {
