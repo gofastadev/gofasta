@@ -364,9 +364,9 @@ func TestFindGofaFiles(t *testing.T) {
 
 	transpiler := NewParallelTranspiler(TranspileOptions{})
 	
-	files, err := transpiler.findGofaFiles(tempDir)
+	files, err := transpiler.FindGofaFiles(tempDir)
 	if err != nil {
-		t.Fatalf("findGofaFiles failed: %v", err)
+		t.Fatalf("FindGofaFiles failed: %v", err)
 	}
 
 	expectedCount := 5
@@ -382,7 +382,7 @@ func TestFindGofaFiles(t *testing.T) {
 	}
 
 	// Test with non-existent directory
-	_, err = transpiler.findGofaFiles("/non/existent/path")
+	_, err = transpiler.FindGofaFiles("/non/existent/path")
 	if err == nil {
 		t.Error("Expected error for non-existent directory")
 	}
@@ -432,7 +432,7 @@ func TestGetOutputPath(t *testing.T) {
 			}
 			
 			transpiler := NewParallelTranspiler(opts)
-			result := transpiler.getOutputPath(tt.inputDir, tt.gofaFile)
+			result := transpiler.GetOutputPath(tt.inputDir, tt.gofaFile)
 			
 			if result != tt.expected {
 				t.Errorf("Expected %s, got %s", tt.expected, result)

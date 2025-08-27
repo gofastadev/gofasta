@@ -5,52 +5,53 @@ import (
 	"go/format"
 	"strings"
 	
-	transpiler "github.com/healtronlabs/gofasta/tools/transpiler"
+	"github.com/healtronlabs/gofasta/tools/transpiler/core"
+	"github.com/healtronlabs/gofasta/tools/transpiler/parsing"
 )
 
-// Use AST types from parent package
-type GofaDeclaration = transpiler.GofaDeclaration
-type GofaFile = transpiler.GofaFile
-type DecoratorNode = transpiler.DecoratorNode
-type DecoratorArg = transpiler.DecoratorArg
-type ControllerDeclaration = transpiler.ControllerDeclaration
-type ServiceDeclaration = transpiler.ServiceDeclaration
-type ModuleDeclaration = transpiler.ModuleDeclaration
-type TestSuiteDeclaration = transpiler.TestSuiteDeclaration
-type FactoryDeclaration = transpiler.FactoryDeclaration
-type MockDeclaration = transpiler.MockDeclaration
-type TestModuleDeclaration = transpiler.TestModuleDeclaration
-type WebSocketGatewayDeclaration = transpiler.WebSocketGatewayDeclaration
-type FieldNode = transpiler.FieldNode
-type MethodNode = transpiler.MethodNode
-type ParameterNode = transpiler.ParameterNode
+// Use core types
+type GofaDeclaration = core.GofaDeclaration
+type GofaFile = core.GofaFile
+type DecoratorNode = core.DecoratorNode
+type DecoratorArg = core.DecoratorArg
+type ControllerDeclaration = core.ControllerDeclaration
+type ServiceDeclaration = core.ServiceDeclaration
+type ModuleDeclaration = core.ModuleDeclaration
+type TestSuiteDeclaration = core.TestSuiteDeclaration
+type FactoryDeclaration = core.FactoryDeclaration
+type MockDeclaration = core.MockDeclaration
+type TestModuleDeclaration = core.TestModuleDeclaration
+type WebSocketGatewayDeclaration = core.WebSocketGatewayDeclaration
+type FieldNode = core.FieldNode
+type MethodNode = core.MethodNode
+type ParameterNode = core.ParameterNode
 
-// Parser types
-type Lexer = transpiler.Lexer
-type Parser = transpiler.Parser
-
-// ParseGofaFile parses a Gofasta file using the parent package parser
+// ParseGofaFile parses a Gofasta file using the parsing package
 func ParseGofaFile(input string) (*GofaFile, error) {
-	// Use the real parser from parent package
-	lexer := transpiler.NewLexer(input)
-	parser := transpiler.NewParser(lexer)
-	return parser.ParseFile()
+	return parsing.ParseGofaFile(input)
 }
 
 // GetDecoratorType returns the decorator type for tests
-func GetDecoratorType(name string) interface{} {
-	return name
+func GetDecoratorType(name string) core.DecoratorType {
+	return core.GetDecoratorType(name)
 }
 
 // IsErrorHandlingDecorator checks if decorator is for error handling
-func IsErrorHandlingDecorator(decoratorType interface{}) bool {
-	if str, ok := decoratorType.(string); ok {
-		return str == "Catch"
-	}
-	return false
+func IsErrorHandlingDecorator(decoratorType core.DecoratorType) bool {
+	return core.IsErrorHandlingDecorator(decoratorType)
 }
 
-// Decorator constants for tests
+// Legacy compatibility for tests - convert string to DecoratorType
+func IsErrorHandlingDecoratorString(decoratorName string) bool {
+	return core.IsErrorHandlingDecorator(core.GetDecoratorType(decoratorName))
+}
+
+// GetDecoratorTypeString returns decorator type as string for backward compatibility
+func GetDecoratorTypeString(name string) string {
+	return name // For backward compatibility, just return the string
+}
+
+// Decorator constants for backward compatibility with tests  
 const (
 	CatchDecorator      = "Catch"
 	HeaderDecorator     = "Header"
@@ -61,6 +62,19 @@ const (
 	InjectDecorator     = "Inject"
 	ControllerDecorator = "Controller"
 	RedirectDecorator   = "Redirect"
+)
+
+// Decorator type constants for backward compatibility
+var (
+	CatchDecoratorType      = core.CatchDecorator
+	HeaderDecoratorType     = core.HeaderDecorator
+	HttpCodeDecoratorType   = core.HttpCodeDecorator
+	QueryDecoratorType      = core.QueryDecorator
+	BodyDecoratorType       = core.BodyDecorator
+	ParamDecoratorType      = core.ParamDecorator
+	InjectDecoratorType     = core.InjectDecorator
+	ControllerDecoratorType = core.ControllerDecorator
+	RedirectDecoratorType   = core.RedirectDecorator
 )
 
 // CodeGenerator generates Go code from Gofasta AST
@@ -202,12 +216,12 @@ type GofaASTNode interface{}
 // Visitor interface for tests
 type Visitor interface{}
 
-// NewLexer creates a new lexer - bridge to parent package
-func NewLexer(input string) *Lexer {
-	return transpiler.NewLexer(input)
+// NewLexer creates a new lexer - bridge to parsing package
+func NewLexer(input string) *parsing.Lexer {
+	return parsing.NewLexer(input)
 }
 
-// NewParser creates a new parser - bridge to parent package  
-func NewParser(lexer *Lexer) *Parser {
-	return transpiler.NewParser(lexer)
+// NewParser creates a new parser - bridge to parsing package  
+func NewParser(lexer *parsing.Lexer) *parsing.Parser {
+	return parsing.NewParser(lexer)
 }

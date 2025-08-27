@@ -324,8 +324,8 @@ func ServerError() {}
 func TestHttpCodeDecoratorTypeMapping(t *testing.T) {
 	// Test that @HttpCode decorator is properly mapped
 	decoratorType := GetDecoratorType("HttpCode")
-	if decoratorType != HttpCodeDecorator {
-		t.Errorf("Expected HttpCodeDecorator, got %v", decoratorType)
+	if decoratorType != HttpCodeDecoratorType {
+		t.Errorf("Expected HttpCodeDecoratorType, got %v", decoratorType)
 	}
 }
 

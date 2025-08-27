@@ -1,4 +1,4 @@
-package transpiler
+package cli
 
 import (
 	"context"
@@ -30,10 +30,55 @@ type Command struct {
 	Handler     func(args []string) error
 }
 
+// TranspileFunc is the function signature for transpile operations
+type TranspileFunc func(inputPath string, inputContent string) (string, error)
+
+// BatchTranspiler interface for batch operations
+type BatchTranspiler interface {
+	TranspileProject(inputDir string) error
+}
+
+// ParallelTranspiler interface for parallel operations
+type ParallelTranspiler interface {
+	FindGofaFiles(inputDir string) ([]string, error)
+	GetOutputPath(inputDir, gofaFile string) string
+}
+
+// WatchMode interface for watch operations
+type WatchMode interface {
+	Start() error
+	Stop()
+}
+
+// TranspileOptions represents options for transpilation
+type TranspileOptions struct {
+	MaxWorkers     int
+	OutputDir      string
+	FileExtension  string
+	PreserveStruct bool
+	Verbose        bool
+}
+
+// Dependencies that need to be injected
+type Dependencies struct {
+	TranspileFile         TranspileFunc
+	NewBatchTranspiler    func(opts TranspileOptions) BatchTranspiler
+	NewParallelTranspiler func(opts TranspileOptions) ParallelTranspiler
+	NewWatchMode          func(opts TranspileOptions, inputDir string, debounce time.Duration) WatchMode
+}
+
+// cliWithDeps holds the CLI instance and its injected dependencies
+type cliWithDeps struct {
+	*CLI
+	deps Dependencies
+}
+
 // Run runs the CLI with given arguments
-func (cli *CLI) Run(args []string) error {
+func (cli *CLI) Run(args []string, deps Dependencies) error {
+	cliWithDeps := &cliWithDeps{CLI: cli, deps: deps}
+	
 	if len(args) < 2 {
-		cli.printUsage()
+		cliWithDeps.printUsage()
 		return nil
 	}
 
@@ -42,22 +87,22 @@ func (cli *CLI) Run(args []string) error {
 
 	switch command {
 	case "transpile", "t":
-		return cli.transpileCommand(commandArgs)
+		return cliWithDeps.transpileCommand(commandArgs)
 	case "watch", "w":
-		return cli.watchCommand(commandArgs)
+		return cliWithDeps.watchCommand(commandArgs)
 	case "version", "v":
-		return cli.versionCommand(commandArgs)
+		return cliWithDeps.versionCommand(commandArgs)
 	case "help", "h":
-		return cli.helpCommand(commandArgs)
+		return cliWithDeps.helpCommand(commandArgs)
 	default:
 		fmt.Printf("Unknown command: %s\n\n", command)
-		cli.printUsage()
+		cliWithDeps.printUsage()
 		return fmt.Errorf("unknown command: %s", command)
 	}
 }
 
 // transpileCommand handles the transpile command
-func (cli *CLI) transpileCommand(args []string) error {
+func (cli *cliWithDeps) transpileCommand(args []string) error {
 	fs := flag.NewFlagSet("transpile", flag.ContinueOnError)
 
 	var (
@@ -130,12 +175,12 @@ func (cli *CLI) transpileCommand(args []string) error {
 	}
 
 	// Create and run batch transpiler
-	batchTranspiler := NewBatchTranspiler(opts)
+	batchTranspiler := cli.deps.NewBatchTranspiler(opts)
 	return batchTranspiler.TranspileProject(*inputDir)
 }
 
 // watchCommand handles the watch command
-func (cli *CLI) watchCommand(args []string) error {
+func (cli *cliWithDeps) watchCommand(args []string) error {
 	fs := flag.NewFlagSet("watch", flag.ContinueOnError)
 
 	var (
@@ -182,7 +227,7 @@ func (cli *CLI) watchCommand(args []string) error {
 	}
 
 	// Create and start watch mode
-	watchMode := NewWatchMode(opts, *inputDir, *debounce)
+	watchMode := cli.deps.NewWatchMode(opts, *inputDir, *debounce)
 
 	fmt.Println("Press Ctrl+C to stop watching...")
 
@@ -203,7 +248,7 @@ func (cli *CLI) watchCommand(args []string) error {
 }
 
 // versionCommand handles the version command
-func (cli *CLI) versionCommand(args []string) error {
+func (cli *cliWithDeps) versionCommand(args []string) error {
 	fmt.Printf("Gofasta Transpiler v%s\n", cli.version)
 	fmt.Println("Transform .gofa files with decorators to Go code")
 	fmt.Println("")
@@ -218,7 +263,7 @@ func (cli *CLI) versionCommand(args []string) error {
 }
 
 // helpCommand handles the help command
-func (cli *CLI) helpCommand(args []string) error {
+func (cli *cliWithDeps) helpCommand(args []string) error {
 	if len(args) > 0 {
 		// Show help for specific command
 		switch args[0] {
@@ -239,7 +284,7 @@ func (cli *CLI) helpCommand(args []string) error {
 }
 
 // printUsage prints general usage information
-func (cli *CLI) printUsage() {
+func (cli *cliWithDeps) printUsage() {
 	fmt.Printf("Gofasta Transpiler v%s\n", cli.version)
 	fmt.Println("Transform .gofa files with decorators to Go code")
 	fmt.Println("")
@@ -263,7 +308,7 @@ func (cli *CLI) printUsage() {
 }
 
 // transpileSingleFile transpiles a single .gofa file
-func (cli *CLI) transpileSingleFile(inputFile, outputDir string, verbose, dryRun, force bool) error {
+func (cli *cliWithDeps) transpileSingleFile(inputFile, outputDir string, verbose, dryRun, force bool) error {
 	if !strings.HasSuffix(inputFile, ".gofa") {
 		return fmt.Errorf("input file must have .gofa extension: %s", inputFile)
 	}
@@ -302,7 +347,7 @@ func (cli *CLI) transpileSingleFile(inputFile, outputDir string, verbose, dryRun
 
 	// Transpile
 	start := time.Now()
-	goCode, err := TranspileFile(inputFile, string(content))
+	goCode, err := cli.deps.TranspileFile(inputFile, string(content))
 	duration := time.Since(start)
 
 	if err != nil {
@@ -327,11 +372,11 @@ func (cli *CLI) transpileSingleFile(inputFile, outputDir string, verbose, dryRun
 }
 
 // dryRunTranspile performs a dry run showing what would be transpiled
-func (cli *CLI) dryRunTranspile(inputDir string, opts TranspileOptions) error {
+func (cli *cliWithDeps) dryRunTranspile(inputDir string, opts TranspileOptions) error {
 	fmt.Printf("🔍 Dry run: scanning %s for .gofa files...\n", inputDir)
 
-	transpiler := NewParallelTranspiler(opts)
-	gofaFiles, err := transpiler.findGofaFiles(inputDir)
+	transpiler := cli.deps.NewParallelTranspiler(opts)
+	gofaFiles, err := transpiler.FindGofaFiles(inputDir)
 	if err != nil {
 		return fmt.Errorf("failed to find .gofa files: %w", err)
 	}
@@ -343,31 +388,31 @@ func (cli *CLI) dryRunTranspile(inputDir string, opts TranspileOptions) error {
 
 	fmt.Printf("\nFound %d .gofa files:\n", len(gofaFiles))
 	for i, file := range gofaFiles {
-		outputPath := transpiler.getOutputPath(inputDir, file)
+		outputPath := transpiler.GetOutputPath(inputDir, file)
 		fmt.Printf("  %d. %s -> %s\n", i+1, file, outputPath)
 	}
 
-	fmt.Printf("\nTranspilation would use %d workers\n", transpiler.maxWorkers)
+	fmt.Printf("\nTranspilation would use unlimited workers\n")
 	fmt.Println("Run without -dry-run to perform actual transpilation")
 
 	return nil
 }
 
 // checkExistingFiles checks if output files already exist
-func (cli *CLI) checkExistingFiles(inputDir, outputDir string, preserveStruct bool) error {
-	transpiler := NewParallelTranspiler(TranspileOptions{
+func (cli *cliWithDeps) checkExistingFiles(inputDir, outputDir string, preserveStruct bool) error {
+	transpiler := cli.deps.NewParallelTranspiler(TranspileOptions{
 		OutputDir:      outputDir,
 		PreserveStruct: preserveStruct,
 	})
 
-	gofaFiles, err := transpiler.findGofaFiles(inputDir)
+	gofaFiles, err := transpiler.FindGofaFiles(inputDir)
 	if err != nil {
 		return err
 	}
 
 	var existingFiles []string
 	for _, gofaFile := range gofaFiles {
-		outputPath := transpiler.getOutputPath(inputDir, gofaFile)
+		outputPath := transpiler.GetOutputPath(inputDir, gofaFile)
 		if _, err := os.Stat(outputPath); err == nil {
 			existingFiles = append(existingFiles, outputPath)
 		}
@@ -383,14 +428,4 @@ func (cli *CLI) checkExistingFiles(inputDir, outputDir string, preserveStruct bo
 	}
 
 	return nil
-}
-
-// RunMain is the main entry point for the CLI
-func RunMain() {
-	cli := NewCLI("1.0.0")
-
-	if err := cli.Run(os.Args); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
 }

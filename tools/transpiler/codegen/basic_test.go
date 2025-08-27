@@ -85,7 +85,7 @@ func TestDecoratorTypes(t *testing.T) {
 	
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := GetDecoratorType(tt.decorator)
+			result := GetDecoratorTypeString(tt.decorator)
 			if result != tt.expected {
 				t.Errorf("Expected %v, got %v", tt.expected, result)
 			}
@@ -105,7 +105,7 @@ func TestIsErrorHandlingDecorator(t *testing.T) {
 	
 	for _, tt := range tests {
 		t.Run(tt.decorator, func(t *testing.T) {
-			result := IsErrorHandlingDecorator(tt.decorator)
+			result := IsErrorHandlingDecoratorString(tt.decorator)
 			if result != tt.expected {
 				t.Errorf("Expected %v, got %v", tt.expected, result)
 			}

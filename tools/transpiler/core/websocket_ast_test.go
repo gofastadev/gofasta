@@ -1,4 +1,4 @@
-package transpiler
+package core
 
 import (
 	"go/token"

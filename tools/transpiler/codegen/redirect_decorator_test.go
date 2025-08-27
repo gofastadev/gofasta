@@ -356,8 +356,8 @@ func TestRedirect4() {}
 func TestRedirectDecoratorTypeMapping(t *testing.T) {
 	// Test that @Redirect decorator is properly mapped
 	decoratorType := GetDecoratorType("Redirect")
-	if decoratorType != RedirectDecorator {
-		t.Errorf("Expected RedirectDecorator, got %v", decoratorType)
+	if decoratorType != RedirectDecoratorType {
+		t.Errorf("Expected RedirectDecoratorType, got %v", decoratorType)
 	}
 }
 

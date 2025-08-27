@@ -339,8 +339,8 @@ func GetSecure() {}
 func TestHeaderDecoratorTypeMapping(t *testing.T) {
 	// Test that @Header decorator is properly mapped
 	decoratorType := GetDecoratorType("Header")
-	if decoratorType != HeaderDecorator {
-		t.Errorf("Expected HeaderDecorator, got %v", decoratorType)
+	if decoratorType != HeaderDecoratorType {
+		t.Errorf("Expected HeaderDecoratorType, got %v", decoratorType)
 	}
 }
 

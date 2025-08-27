@@ -320,8 +320,8 @@ type UserController struct {}
 func TestCatchDecoratorTypeMapping(t *testing.T) {
 	// Test that @Catch decorator is properly mapped
 	decoratorType := GetDecoratorType("Catch")
-	if decoratorType != CatchDecorator {
-		t.Errorf("Expected CatchDecorator, got %v", decoratorType)
+	if decoratorType != CatchDecoratorType {
+		t.Errorf("Expected CatchDecoratorType, got %v", decoratorType)
 	}
 
 	// Test that it's recognized as an error handling decorator

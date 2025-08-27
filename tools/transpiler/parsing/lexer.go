@@ -1,4 +1,4 @@
-package transpiler
+package parsing
 
 import (
 	"fmt"

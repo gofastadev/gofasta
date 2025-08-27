@@ -70,7 +70,7 @@ func NewParallelTranspiler(opts TranspileOptions) *ParallelTranspiler {
 // TranspileDirectory transpiles all .gofa files in a directory recursively
 func (pt *ParallelTranspiler) TranspileDirectory(ctx context.Context, inputDir string) ([]TranspileResult, error) {
 	// Find all .gofa files
-	gofaFiles, err := pt.findGofaFiles(inputDir)
+	gofaFiles, err := pt.FindGofaFiles(inputDir)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find .gofa files: %w", err)
 	}
@@ -86,7 +86,7 @@ func (pt *ParallelTranspiler) TranspileDirectory(ctx context.Context, inputDir s
 	// Create transpile jobs
 	jobs := make([]TranspileJob, 0, len(gofaFiles))
 	for _, gofaFile := range gofaFiles {
-		outputPath := pt.getOutputPath(inputDir, gofaFile)
+		outputPath := pt.GetOutputPath(inputDir, gofaFile)
 
 		// Read file content
 		content, err := os.ReadFile(gofaFile)
@@ -243,8 +243,8 @@ func (pt *ParallelTranspiler) processJob(job TranspileJob) TranspileResult {
 	return result
 }
 
-// findGofaFiles finds all .gofa files in a directory recursively
-func (pt *ParallelTranspiler) findGofaFiles(rootDir string) ([]string, error) {
+// FindGofaFiles finds all .gofa files in a directory recursively
+func (pt *ParallelTranspiler) FindGofaFiles(rootDir string) ([]string, error) {
 	var gofaFiles []string
 
 	err := filepath.WalkDir(rootDir, func(path string, d fs.DirEntry, err error) error {
@@ -266,8 +266,8 @@ func (pt *ParallelTranspiler) findGofaFiles(rootDir string) ([]string, error) {
 	return gofaFiles, nil
 }
 
-// getOutputPath generates output path for a .gofa file
-func (pt *ParallelTranspiler) getOutputPath(inputDir, gofaFile string) string {
+// GetOutputPath generates output path for a .gofa file
+func (pt *ParallelTranspiler) GetOutputPath(inputDir, gofaFile string) string {
 	if pt.preserveStruct {
 		// Preserve directory structure
 		relPath, _ := filepath.Rel(inputDir, gofaFile)

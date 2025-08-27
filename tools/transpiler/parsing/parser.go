@@ -1,4 +1,4 @@
-package transpiler
+package parsing
 
 import (
 	"fmt"
@@ -6,6 +6,8 @@ import (
 	"go/token"
 	"strconv"
 	"strings"
+
+	"github.com/healtronlabs/gofasta/tools/transpiler/core"
 )
 
 // Parser represents the parser state
@@ -60,11 +62,11 @@ func (p *Parser) Errors() []string {
 }
 
 // ParseFile parses a complete .gofa file
-func (p *Parser) ParseFile() (*GofaFile, error) {
-	file := &GofaFile{
+func (p *Parser) ParseFile() (*core.GofaFile, error) {
+	file := &core.GofaFile{
 		Position:     p.currToken.Position,
-		Declarations: []GofaDeclaration{},
-		Decorators:   []*DecoratorNode{},
+		Declarations: []core.GofaDeclaration{},
+		Decorators:   []*core.DecoratorNode{},
 		Comments:     []*ast.CommentGroup{},
 	}
 	
@@ -96,7 +98,7 @@ func (p *Parser) ParseFile() (*GofaFile, error) {
 		
 		if p.currToken.Type == DECORATOR {
 			// Collect all consecutive decorators
-			var decorators []*DecoratorNode
+			var decorators []*core.DecoratorNode
 			for p.currToken.Type == DECORATOR {
 				decorator := p.parseDecorator()
 				if decorator != nil {
@@ -113,7 +115,7 @@ func (p *Parser) ParseFile() (*GofaFile, error) {
 				if p.currToken.Type == FUNC {
 					// Check if this is a method for the last controller or test suite
 					if len(file.Declarations) > 0 {
-						if controller, ok := file.Declarations[len(file.Declarations)-1].(*ControllerDeclaration); ok {
+						if controller, ok := file.Declarations[len(file.Declarations)-1].(*core.ControllerDeclaration); ok {
 							// Parse as method and attach to controller
 							method := p.parseMethod()
 							if method != nil {
@@ -124,7 +126,7 @@ func (p *Parser) ParseFile() (*GofaFile, error) {
 								controller.Methods = append(controller.Methods, method)
 							}
 							continue
-						} else if testSuite, ok := file.Declarations[len(file.Declarations)-1].(*TestSuiteDeclaration); ok {
+						} else if testSuite, ok := file.Declarations[len(file.Declarations)-1].(*core.TestSuiteDeclaration); ok {
 							// Parse as method and attach to test suite
 							method := p.parseMethod()
 							if method != nil {
@@ -135,7 +137,7 @@ func (p *Parser) ParseFile() (*GofaFile, error) {
 								testSuite.Methods = append(testSuite.Methods, method)
 							}
 							continue
-						} else if factory, ok := file.Declarations[len(file.Declarations)-1].(*FactoryDeclaration); ok {
+						} else if factory, ok := file.Declarations[len(file.Declarations)-1].(*core.FactoryDeclaration); ok {
 							// Parse as method and attach to factory (for @Trait methods)
 							method := p.parseMethod()
 							if method != nil {
@@ -173,7 +175,6 @@ func (p *Parser) ParseFile() (*GofaFile, error) {
 			if decl != nil {
 				file.Declarations = append(file.Declarations, decl)
 			}
-			// Note: parseDeclaration() handles its own token consumption, including for functions
 		} else {
 			// Unknown token, add error and advance to avoid infinite loop
 			if p.currToken.Type == ILLEGAL {
@@ -220,12 +221,12 @@ func (p *Parser) parseImport() *ast.ImportSpec {
 }
 
 // parseDeclaration parses a top-level declaration
-func (p *Parser) parseDeclaration() GofaDeclaration {
+func (p *Parser) parseDeclaration() core.GofaDeclaration {
 	return p.parseDeclarationWithDecorators(nil)
 }
 
 // parseDeclarationWithDecorators parses a declaration with access to decorators
-func (p *Parser) parseDeclarationWithDecorators(decorators []*DecoratorNode) GofaDeclaration {
+func (p *Parser) parseDeclarationWithDecorators(decorators []*core.DecoratorNode) core.GofaDeclaration {
 	switch p.currToken.Type {
 	case TYPE:
 		return p.parseTypeDeclarationWithDecorators(decorators)
@@ -242,7 +243,7 @@ func (p *Parser) parseDeclarationWithDecorators(decorators []*DecoratorNode) Gof
 }
 
 // parseTypeDeclarationWithDecorators parses a type declaration with access to decorators
-func (p *Parser) parseTypeDeclarationWithDecorators(decorators []*DecoratorNode) GofaDeclaration {
+func (p *Parser) parseTypeDeclarationWithDecorators(decorators []*core.DecoratorNode) core.GofaDeclaration {
 	if !p.expectToken(TYPE) {
 		return nil
 	}
@@ -263,22 +264,19 @@ func (p *Parser) parseTypeDeclarationWithDecorators(decorators []*DecoratorNode)
 		return nil
 	}
 	
-	// Check for explicit @TestSuite() decorator first
+	// Check for explicit decorator types first
 	if p.hasTestSuiteDecorator(decorators) {
 		return p.parseTestSuiteDeclaration(typeName)
 	}
 	
-	// Check for explicit @Factory() decorator
 	if p.hasFactoryDecorator(decorators) {
 		return p.parseFactoryDeclaration(typeName, decorators)
 	}
 	
-	// Check for explicit @Mock() decorator
 	if p.hasMockDecorator(decorators) {
 		return p.parseMockDeclaration(typeName, decorators)
 	}
 	
-	// Check for explicit @TestModule() decorator
 	if p.hasTestModuleDecorator(decorators) {
 		return p.parseTestModuleDeclaration(typeName, decorators)
 	}
@@ -298,8 +296,8 @@ func (p *Parser) parseTypeDeclarationWithDecorators(decorators []*DecoratorNode)
 	return p.parseServiceDeclaration(typeName)
 }
 
-// hasTestSuiteDecorator checks if decorators contain @TestSuite() decorator
-func (p *Parser) hasTestSuiteDecorator(decorators []*DecoratorNode) bool {
+// Helper functions for decorator checking
+func (p *Parser) hasTestSuiteDecorator(decorators []*core.DecoratorNode) bool {
 	if decorators == nil {
 		return false
 	}
@@ -311,8 +309,7 @@ func (p *Parser) hasTestSuiteDecorator(decorators []*DecoratorNode) bool {
 	return false
 }
 
-// hasFactoryDecorator checks if decorators contain @Factory() decorator
-func (p *Parser) hasFactoryDecorator(decorators []*DecoratorNode) bool {
+func (p *Parser) hasFactoryDecorator(decorators []*core.DecoratorNode) bool {
 	if decorators == nil {
 		return false
 	}
@@ -324,8 +321,7 @@ func (p *Parser) hasFactoryDecorator(decorators []*DecoratorNode) bool {
 	return false
 }
 
-// hasMockDecorator checks if decorators contain @Mock() decorator
-func (p *Parser) hasMockDecorator(decorators []*DecoratorNode) bool {
+func (p *Parser) hasMockDecorator(decorators []*core.DecoratorNode) bool {
 	if decorators == nil {
 		return false
 	}
@@ -337,8 +333,7 @@ func (p *Parser) hasMockDecorator(decorators []*DecoratorNode) bool {
 	return false
 }
 
-// hasTestModuleDecorator checks if decorators contain @TestModule() decorator
-func (p *Parser) hasTestModuleDecorator(decorators []*DecoratorNode) bool {
+func (p *Parser) hasTestModuleDecorator(decorators []*core.DecoratorNode) bool {
 	if decorators == nil {
 		return false
 	}
@@ -351,20 +346,20 @@ func (p *Parser) hasTestModuleDecorator(decorators []*DecoratorNode) bool {
 }
 
 // parseControllerDeclaration parses a controller declaration
-func (p *Parser) parseControllerDeclaration(name string) *ControllerDeclaration {
-	controller := &ControllerDeclaration{
+func (p *Parser) parseControllerDeclaration(name string) *core.ControllerDeclaration {
+	controller := &core.ControllerDeclaration{
 		Name:       name,
 		Position:   p.currToken.Position,
-		Decorators: []*DecoratorNode{},
-		Fields:     []*FieldNode{},
-		Methods:    []*MethodNode{},
+		Decorators: []*core.DecoratorNode{},
+		Fields:     []*core.FieldNode{},
+		Methods:    []*core.MethodNode{},
 	}
 	
-	// Parse fields (including field decorators)
+	// Parse fields
 	for p.currToken.Type != RBRACE && p.currToken.Type != EOF {
 		if p.currToken.Type == DECORATOR {
 			// Parse field decorators
-			var decorators []*DecoratorNode
+			var decorators []*core.DecoratorNode
 			for p.currToken.Type == DECORATOR {
 				decorator := p.parseDecorator()
 				if decorator != nil {
@@ -379,14 +374,12 @@ func (p *Parser) parseControllerDeclaration(name string) *ControllerDeclaration 
 			if p.currToken.Type == IDENT {
 				field := p.parseField()
 				if field != nil {
-					// Attach decorators to field
 					field.Decorators = decorators
 					controller.Fields = append(controller.Fields, field)
 				} else {
 					p.nextToken()
 				}
 			} else {
-				// Invalid field after decorators
 				p.addError("expected field after decorator")
 				p.nextToken()
 			}
@@ -395,7 +388,6 @@ func (p *Parser) parseControllerDeclaration(name string) *ControllerDeclaration 
 			if field != nil {
 				controller.Fields = append(controller.Fields, field)
 			} else {
-				// If field parsing failed, advance token to avoid infinite loop
 				p.nextToken()
 			}
 		} else {
@@ -407,13 +399,12 @@ func (p *Parser) parseControllerDeclaration(name string) *ControllerDeclaration 
 		return nil
 	}
 	
-	// Parse standalone functions immediately following the struct as methods
+	// Parse standalone functions following the struct as methods
 	for p.currToken.Type == FUNC {
 		method := p.parseMethod()
 		if method != nil {
 			controller.Methods = append(controller.Methods, method)
 		} else {
-			// If method parsing failed, break to avoid infinite loop
 			break
 		}
 	}
@@ -422,20 +413,19 @@ func (p *Parser) parseControllerDeclaration(name string) *ControllerDeclaration 
 }
 
 // parseServiceDeclaration parses a service declaration
-func (p *Parser) parseServiceDeclaration(name string) *ServiceDeclaration {
-	service := &ServiceDeclaration{
+func (p *Parser) parseServiceDeclaration(name string) *core.ServiceDeclaration {
+	service := &core.ServiceDeclaration{
 		Name:       name,
 		Position:   p.currToken.Position,
-		Decorators: []*DecoratorNode{},
-		Fields:     []*FieldNode{},
-		Methods:    []*MethodNode{},
+		Decorators: []*core.DecoratorNode{},
+		Fields:     []*core.FieldNode{},
+		Methods:    []*core.MethodNode{},
 	}
 	
-	// Parse fields (including field decorators)
+	// Parse fields
 	for p.currToken.Type != RBRACE && p.currToken.Type != EOF {
 		if p.currToken.Type == DECORATOR {
-			// Parse field decorators
-			var decorators []*DecoratorNode
+			var decorators []*core.DecoratorNode
 			for p.currToken.Type == DECORATOR {
 				decorator := p.parseDecorator()
 				if decorator != nil {
@@ -446,18 +436,15 @@ func (p *Parser) parseServiceDeclaration(name string) *ServiceDeclaration {
 				}
 			}
 			
-			// Parse the field after decorators
 			if p.currToken.Type == IDENT {
 				field := p.parseField()
 				if field != nil {
-					// Attach decorators to field
 					field.Decorators = decorators
 					service.Fields = append(service.Fields, field)
 				} else {
 					p.nextToken()
 				}
 			} else {
-				// Invalid field after decorators
 				p.addError("expected field after decorator")
 				p.nextToken()
 			}
@@ -466,7 +453,6 @@ func (p *Parser) parseServiceDeclaration(name string) *ServiceDeclaration {
 			if field != nil {
 				service.Fields = append(service.Fields, field)
 			} else {
-				// If field parsing failed, advance token to avoid infinite loop
 				p.nextToken()
 			}
 		} else {
@@ -478,13 +464,12 @@ func (p *Parser) parseServiceDeclaration(name string) *ServiceDeclaration {
 		return nil
 	}
 	
-	// Parse standalone functions immediately following the struct as methods
+	// Parse standalone functions following the struct as methods
 	for p.currToken.Type == FUNC {
 		method := p.parseMethod()
 		if method != nil {
 			service.Methods = append(service.Methods, method)
 		} else {
-			// If method parsing failed, break to avoid infinite loop
 			break
 		}
 	}
@@ -493,11 +478,11 @@ func (p *Parser) parseServiceDeclaration(name string) *ServiceDeclaration {
 }
 
 // parseModuleDeclaration parses a module declaration
-func (p *Parser) parseModuleDeclaration(name string) *ModuleDeclaration {
-	module := &ModuleDeclaration{
+func (p *Parser) parseModuleDeclaration(name string) *core.ModuleDeclaration {
+	module := &core.ModuleDeclaration{
 		Name:       name,
 		Position:   p.currToken.Position,
-		Decorators: []*DecoratorNode{},
+		Decorators: []*core.DecoratorNode{},
 	}
 	
 	// Skip to closing brace
@@ -513,20 +498,19 @@ func (p *Parser) parseModuleDeclaration(name string) *ModuleDeclaration {
 }
 
 // parseTestSuiteDeclaration parses a test suite declaration
-func (p *Parser) parseTestSuiteDeclaration(name string) *TestSuiteDeclaration {
-	testSuite := &TestSuiteDeclaration{
+func (p *Parser) parseTestSuiteDeclaration(name string) *core.TestSuiteDeclaration {
+	testSuite := &core.TestSuiteDeclaration{
 		Name:       name,
 		Position:   p.currToken.Position,
-		Decorators: []*DecoratorNode{},
-		Fields:     []*FieldNode{},
-		Methods:    []*MethodNode{},
+		Decorators: []*core.DecoratorNode{},
+		Fields:     []*core.FieldNode{},
+		Methods:    []*core.MethodNode{},
 	}
 	
-	// Parse fields (including field decorators for mocks and dependencies)
+	// Parse fields
 	for p.currToken.Type != RBRACE && p.currToken.Type != EOF {
 		if p.currToken.Type == DECORATOR {
-			// Parse field decorators
-			var decorators []*DecoratorNode
+			var decorators []*core.DecoratorNode
 			for p.currToken.Type == DECORATOR {
 				decorator := p.parseDecorator()
 				if decorator != nil {
@@ -537,18 +521,15 @@ func (p *Parser) parseTestSuiteDeclaration(name string) *TestSuiteDeclaration {
 				}
 			}
 			
-			// Parse the field after decorators
 			if p.currToken.Type == IDENT {
 				field := p.parseField()
 				if field != nil {
-					// Attach decorators to field
 					field.Decorators = decorators
 					testSuite.Fields = append(testSuite.Fields, field)
 				} else {
 					p.nextToken()
 				}
 			} else {
-				// Invalid field after decorators
 				p.addError("expected field after decorator")
 				p.nextToken()
 			}
@@ -557,7 +538,6 @@ func (p *Parser) parseTestSuiteDeclaration(name string) *TestSuiteDeclaration {
 			if field != nil {
 				testSuite.Fields = append(testSuite.Fields, field)
 			} else {
-				// If field parsing failed, advance token to avoid infinite loop
 				p.nextToken()
 			}
 		} else {
@@ -569,13 +549,12 @@ func (p *Parser) parseTestSuiteDeclaration(name string) *TestSuiteDeclaration {
 		return nil
 	}
 	
-	// Parse standalone functions immediately following the struct as methods
+	// Parse standalone functions following the struct as methods
 	for p.currToken.Type == FUNC {
 		method := p.parseMethod()
 		if method != nil {
 			testSuite.Methods = append(testSuite.Methods, method)
 		} else {
-			// If method parsing failed, break to avoid infinite loop
 			break
 		}
 	}
@@ -584,27 +563,25 @@ func (p *Parser) parseTestSuiteDeclaration(name string) *TestSuiteDeclaration {
 }
 
 // parseFactoryDeclaration parses a factory declaration
-func (p *Parser) parseFactoryDeclaration(name string, decorators []*DecoratorNode) *FactoryDeclaration {
-	// Extract target type from factory name (e.g., "UserFactory" -> "User")
+func (p *Parser) parseFactoryDeclaration(name string, decorators []*core.DecoratorNode) *core.FactoryDeclaration {
 	targetType := name
 	if strings.HasSuffix(name, "Factory") {
 		targetType = strings.TrimSuffix(name, "Factory")
 	}
 
-	factory := &FactoryDeclaration{
+	factory := &core.FactoryDeclaration{
 		Name:       name,
 		TargetType: targetType,
 		Position:   p.currToken.Position,
 		Decorators: decorators,
-		Fields:     []*FieldNode{},
-		Methods:    []*MethodNode{},
+		Fields:     []*core.FieldNode{},
+		Methods:    []*core.MethodNode{},
 	}
 	
-	// Parse fields (factory configuration and dependencies)
+	// Parse fields
 	for p.currToken.Type != RBRACE && p.currToken.Type != EOF {
 		if p.currToken.Type == DECORATOR {
-			// Parse field decorators
-			var fieldDecorators []*DecoratorNode
+			var fieldDecorators []*core.DecoratorNode
 			for p.currToken.Type == DECORATOR {
 				decorator := p.parseDecorator()
 				if decorator != nil {
@@ -615,18 +592,15 @@ func (p *Parser) parseFactoryDeclaration(name string, decorators []*DecoratorNod
 				}
 			}
 			
-			// Parse the field after decorators
 			if p.currToken.Type == IDENT {
 				field := p.parseField()
 				if field != nil {
-					// Attach decorators to field
 					field.Decorators = fieldDecorators
 					factory.Fields = append(factory.Fields, field)
 				} else {
 					p.nextToken()
 				}
 			} else {
-				// Invalid field after decorators
 				p.addError("expected field after decorator")
 				p.nextToken()
 			}
@@ -635,7 +609,6 @@ func (p *Parser) parseFactoryDeclaration(name string, decorators []*DecoratorNod
 			if field != nil {
 				factory.Fields = append(factory.Fields, field)
 			} else {
-				// If field parsing failed, advance token to avoid infinite loop
 				p.nextToken()
 			}
 		} else {
@@ -647,7 +620,6 @@ func (p *Parser) parseFactoryDeclaration(name string, decorators []*DecoratorNod
 		return nil
 	}
 	
-	// Parse standalone functions immediately following the struct as methods
 	for p.currToken.Type == FUNC {
 		method := p.parseMethod()
 		if method != nil {
@@ -659,27 +631,25 @@ func (p *Parser) parseFactoryDeclaration(name string, decorators []*DecoratorNod
 }
 
 // parseMockDeclaration parses a mock declaration
-func (p *Parser) parseMockDeclaration(name string, decorators []*DecoratorNode) *MockDeclaration {
-	// Extract target type from mock name (e.g., "MockUserRepository" -> "UserRepository")
+func (p *Parser) parseMockDeclaration(name string, decorators []*core.DecoratorNode) *core.MockDeclaration {
 	targetType := name
 	if strings.HasPrefix(name, "Mock") {
 		targetType = strings.TrimPrefix(name, "Mock")
 	}
 
-	mock := &MockDeclaration{
+	mock := &core.MockDeclaration{
 		Name:       name,
 		TargetType: targetType,
 		Position:   p.currToken.Position,
 		Decorators: decorators,
-		Fields:     []*FieldNode{},
-		Methods:    []*MethodNode{},
+		Fields:     []*core.FieldNode{},
+		Methods:    []*core.MethodNode{},
 	}
 	
-	// Parse fields (mock configuration and dependencies)
+	// Parse fields
 	for p.currToken.Type != RBRACE && p.currToken.Type != EOF {
 		if p.currToken.Type == DECORATOR {
-			// Parse field decorators
-			var fieldDecorators []*DecoratorNode
+			var fieldDecorators []*core.DecoratorNode
 			for p.currToken.Type == DECORATOR {
 				decorator := p.parseDecorator()
 				if decorator != nil {
@@ -690,18 +660,15 @@ func (p *Parser) parseMockDeclaration(name string, decorators []*DecoratorNode) 
 				}
 			}
 			
-			// Parse the field after decorators
 			if p.currToken.Type == IDENT {
 				field := p.parseField()
 				if field != nil {
-					// Attach decorators to field
 					field.Decorators = fieldDecorators
 					mock.Fields = append(mock.Fields, field)
 				} else {
 					p.nextToken()
 				}
 			} else {
-				// Invalid field after decorators
 				p.addError("expected field after decorator")
 				p.nextToken()
 			}
@@ -710,7 +677,6 @@ func (p *Parser) parseMockDeclaration(name string, decorators []*DecoratorNode) 
 			if field != nil {
 				mock.Fields = append(mock.Fields, field)
 			} else {
-				// If field parsing failed, advance token to avoid infinite loop
 				p.nextToken()
 			}
 		} else {
@@ -722,7 +688,6 @@ func (p *Parser) parseMockDeclaration(name string, decorators []*DecoratorNode) 
 		return nil
 	}
 	
-	// Parse standalone functions immediately following the struct as methods
 	for p.currToken.Type == FUNC {
 		method := p.parseMethod()
 		if method != nil {
@@ -734,22 +699,21 @@ func (p *Parser) parseMockDeclaration(name string, decorators []*DecoratorNode) 
 }
 
 // parseTestModuleDeclaration parses a test module declaration
-func (p *Parser) parseTestModuleDeclaration(name string, decorators []*DecoratorNode) *TestModuleDeclaration {
-	testModule := &TestModuleDeclaration{
+func (p *Parser) parseTestModuleDeclaration(name string, decorators []*core.DecoratorNode) *core.TestModuleDeclaration {
+	testModule := &core.TestModuleDeclaration{
 		Name:       name,
 		Position:   p.currToken.Position,
 		Decorators: decorators,
 		Providers:  []string{},
 		Imports:    []string{},
-		Fields:     []*FieldNode{},
-		Methods:    []*MethodNode{},
+		Fields:     []*core.FieldNode{},
+		Methods:    []*core.MethodNode{},
 	}
 	
 	// Extract providers and imports from @TestModule() decorator arguments
 	for _, decorator := range decorators {
 		if decorator.Name == "TestModule" {
 			for _, arg := range decorator.Args {
-				// Handle case where argument is a map (object syntax like {providers: [...], imports: [...]})
 				if argMap, ok := arg.Value.(map[string]interface{}); ok {
 					if providers, exists := argMap["providers"]; exists {
 						if providerArray, ok := providers.([]interface{}); ok {
@@ -769,28 +733,15 @@ func (p *Parser) parseTestModuleDeclaration(name string, decorators []*Decorator
 							}
 						}
 					}
-				} else if arg.Key == "providers" && arg.Value != nil {
-					// Handle direct key-value arguments (if supported)
-					if valueStr, ok := arg.Value.(string); ok {
-						providers := p.parseArrayArgument(valueStr)
-						testModule.Providers = providers
-					}
-				} else if arg.Key == "imports" && arg.Value != nil {
-					// Handle direct key-value arguments (if supported)
-					if valueStr, ok := arg.Value.(string); ok {
-						imports := p.parseArrayArgument(valueStr)
-						testModule.Imports = imports
-					}
 				}
 			}
 		}
 	}
 	
-	// Parse fields (test module configuration and dependencies)
+	// Parse fields
 	for p.currToken.Type != RBRACE && p.currToken.Type != EOF {
 		if p.currToken.Type == DECORATOR {
-			// Parse field decorators
-			var fieldDecorators []*DecoratorNode
+			var fieldDecorators []*core.DecoratorNode
 			for p.currToken.Type == DECORATOR {
 				decorator := p.parseDecorator()
 				if decorator != nil {
@@ -798,20 +749,17 @@ func (p *Parser) parseTestModuleDeclaration(name string, decorators []*Decorator
 				}
 			}
 			
-			// Parse field
 			field := p.parseField()
 			if field != nil {
 				field.Decorators = fieldDecorators
 				testModule.Fields = append(testModule.Fields, field)
 			}
 		} else if p.currToken.Type == FUNC {
-			// Parse methods (setup methods)
 			method := p.parseMethod()
 			if method != nil {
 				testModule.Methods = append(testModule.Methods, method)
 			}
 		} else {
-			// Parse field
 			field := p.parseField()
 			if field != nil {
 				testModule.Fields = append(testModule.Fields, field)
@@ -823,7 +771,6 @@ func (p *Parser) parseTestModuleDeclaration(name string, decorators []*Decorator
 		return nil
 	}
 	
-	// Parse standalone functions immediately following the struct as methods
 	for p.currToken.Type == FUNC {
 		method := p.parseMethod()
 		if method != nil {
@@ -834,37 +781,16 @@ func (p *Parser) parseTestModuleDeclaration(name string, decorators []*Decorator
 	return testModule
 }
 
-// parseArrayArgument parses array arguments from decorator like [UserService, MockDatabase]
-func (p *Parser) parseArrayArgument(value string) []string {
-	// Remove brackets and split by comma
-	value = strings.Trim(value, "[]")
-	if value == "" {
-		return []string{}
-	}
-	
-	parts := strings.Split(value, ",")
-	result := make([]string, 0, len(parts))
-	
-	for _, part := range parts {
-		trimmed := strings.TrimSpace(part)
-		if trimmed != "" {
-			result = append(result, trimmed)
-		}
-	}
-	
-	return result
-}
-
-// parseField parses a struct field with possible injection tags
-func (p *Parser) parseField() *FieldNode {
+// parseField parses a struct field
+func (p *Parser) parseField() *core.FieldNode {
 	if p.currToken.Type != IDENT {
 		return nil
 	}
 	
-	field := &FieldNode{
+	field := &core.FieldNode{
 		Name:       p.currToken.Literal,
 		Position:   p.currToken.Position,
-		Decorators: []*DecoratorNode{},
+		Decorators: []*core.DecoratorNode{},
 	}
 	p.nextToken()
 	
@@ -881,15 +807,14 @@ func (p *Parser) parseField() *FieldNode {
 	return field
 }
 
-// parseMethod parses a method declaration (standalone function)
-func (p *Parser) parseMethod() *MethodNode {
+// parseMethod parses a method declaration
+func (p *Parser) parseMethod() *core.MethodNode {
 	if !p.expectToken(FUNC) {
 		return nil
 	}
 	
 	// Check if this has a receiver (method) or is a standalone function
 	if p.currToken.Type == LPAREN {
-		// Might be a receiver, check if it's followed by identifier and type
 		p.nextToken()
 		
 		// Skip receiver type
@@ -908,11 +833,11 @@ func (p *Parser) parseMethod() *MethodNode {
 		return nil
 	}
 	
-	method := &MethodNode{
+	method := &core.MethodNode{
 		Name:       p.currToken.Literal,
 		Position:   p.currToken.Position,
-		Params:     []*ParameterNode{},
-		Decorators: []*DecoratorNode{},
+		Params:     []*core.ParameterNode{},
+		Decorators: []*core.DecoratorNode{},
 	}
 	p.nextToken()
 	
@@ -925,11 +850,9 @@ func (p *Parser) parseMethod() *MethodNode {
 				method.Params = append(method.Params, param)
 			}
 			
-			// Handle comma separation properly
 			if p.currToken.Type == COMMA {
 				p.nextToken()
 			} else if p.currToken.Type != RPAREN {
-				// If not a comma or closing paren, we might be stuck
 				p.addError("expected ',' or ')' in parameter list")
 				break
 			}
@@ -939,51 +862,47 @@ func (p *Parser) parseMethod() *MethodNode {
 		}
 	}
 	
-	// Parse return type if present (can be complex: (result []string, err error))
+	// Parse return type if present
 	if p.currToken.Type != LBRACE && p.currToken.Type != EOF {
 		if p.currToken.Type == LPAREN {
-			// Complex return type with named returns: (result []string, err error)
-			p.nextToken() // consume (
+			// Complex return type
+			p.nextToken()
 			var returnTypes []string
 			for p.currToken.Type != RPAREN && p.currToken.Type != EOF {
 				if p.currToken.Type == IDENT {
-					// Skip parameter name
 					p.nextToken()
 				}
-				// Parse type
 				if p.currToken.Type != COMMA && p.currToken.Type != RPAREN {
 					returnTypes = append(returnTypes, p.parseType())
 				}
-				// Skip comma
 				if p.currToken.Type == COMMA {
 					p.nextToken()
 				}
 			}
 			if p.currToken.Type == RPAREN {
-				p.nextToken() // consume )
+				p.nextToken()
 			}
 			if len(returnTypes) > 0 {
-				method.ReturnType = returnTypes[0] // Use first return type for simplicity
+				method.ReturnType = returnTypes[0]
 			}
 		} else {
-			// Simple return type
 			method.ReturnType = p.parseType()
 		}
 	}
 	
 	// Parse method body
 	if p.currToken.Type == LBRACE {
-		p.parseBlockStatement() // Just skip the body for now
+		p.parseBlockStatement()
 	}
 	
 	return method
 }
 
-// parseParameter parses a method parameter with possible decorators
-func (p *Parser) parseParameter() *ParameterNode {
-	param := &ParameterNode{
+// parseParameter parses a method parameter
+func (p *Parser) parseParameter() *core.ParameterNode {
+	param := &core.ParameterNode{
 		Position:   p.currToken.Position,
-		Decorators: []*DecoratorNode{},
+		Decorators: []*core.DecoratorNode{},
 	}
 	
 	// Parse decorators first
@@ -1013,13 +932,13 @@ func (p *Parser) parseParameter() *ParameterNode {
 func (p *Parser) parseType() string {
 	var typeStr strings.Builder
 	
-	// Handle multiple pointer types (**Type)
+	// Handle multiple pointer types
 	for p.currToken.Type == MULTIPLY {
 		typeStr.WriteString("*")
 		p.nextToken()
 	}
 	
-	// Handle slice types including nested slices ([][]Type)
+	// Handle slice types
 	for p.currToken.Type == LBRACKET {
 		typeStr.WriteString("[")
 		p.nextToken()
@@ -1029,11 +948,10 @@ func (p *Parser) parseType() string {
 		}
 	}
 	
-	// Handle channel types (chan Type)
+	// Handle channel types
 	if p.currToken.Type == GO_CHAN {
 		typeStr.WriteString("chan")
 		p.nextToken()
-		// Handle directional channels - simplified for now
 		if p.currToken.Type == LT {
 			typeStr.WriteString("<")
 			p.nextToken()
@@ -1047,34 +965,29 @@ func (p *Parser) parseType() string {
 		return typeStr.String()
 	}
 	
-	// Handle map types (map[KeyType]ValueType)
+	// Handle map types
 	if p.currToken.Type == GO_MAP {
 		typeStr.WriteString("map[")
 		p.nextToken()
-		// Should be at the LBRACKET after "map"
 		if p.currToken.Type == LBRACKET {
-			p.nextToken() // consume the [
+			p.nextToken()
 		}
-		// Parse key type
 		keyType := p.parseType()
 		typeStr.WriteString(keyType)
-		// Should be at RBRACKET
 		if p.currToken.Type == RBRACKET {
 			typeStr.WriteString("]")
-			p.nextToken() // consume the ]
+			p.nextToken()
 		}
-		// Parse value type
 		valueType := p.parseType()
 		typeStr.WriteString(valueType)
 		return typeStr.String()
 	}
 	
-	// Handle function types (func(Type) ReturnType)
+	// Handle function types
 	if p.currToken.Type == FUNC {
 		typeStr.WriteString("func")
 		p.nextToken()
 		
-		// Parse parameters
 		if p.currToken.Type == LPAREN {
 			typeStr.WriteString("(")
 			p.nextToken()
@@ -1096,7 +1009,6 @@ func (p *Parser) parseType() string {
 			}
 		}
 		
-		// Parse return type if present
 		if p.currToken.Type != EOF && p.currToken.Type != RBRACE && 
 		   p.currToken.Type != COMMA && p.currToken.Type != STRING {
 			typeStr.WriteString(" ")
@@ -1111,7 +1023,6 @@ func (p *Parser) parseType() string {
 	if p.currToken.Type == INTERFACE {
 		typeStr.WriteString("interface{}")
 		p.nextToken()
-		// Skip the {} part
 		if p.currToken.Type == LBRACE {
 			p.nextToken()
 			if p.currToken.Type == RBRACE {
@@ -1121,7 +1032,7 @@ func (p *Parser) parseType() string {
 		return typeStr.String()
 	}
 	
-	// Handle anonymous struct types (struct { ... })
+	// Handle struct types
 	if p.currToken.Type == STRUCT {
 		typeStr.WriteString("struct")
 		p.nextToken()
@@ -1130,28 +1041,22 @@ func (p *Parser) parseType() string {
 			typeStr.WriteString(" {")
 			p.nextToken()
 			
-			// Parse struct fields recursively
 			for p.currToken.Type != RBRACE && p.currToken.Type != EOF {
-				// Skip whitespace and newlines by advancing
 				if p.currToken.Type == IDENT {
-					// Field name
 					typeStr.WriteString("\n\t\t")
 					typeStr.WriteString(p.currToken.Literal)
 					p.nextToken()
 					
-					// Field type
 					typeStr.WriteString(" ")
 					fieldType := p.parseType()
 					typeStr.WriteString(fieldType)
 					
-					// Optional struct tag
 					if p.currToken.Type == STRING {
 						typeStr.WriteString(" ")
 						typeStr.WriteString(p.currToken.Literal)
 						p.nextToken()
 					}
 				} else {
-					// Skip unexpected tokens to avoid infinite loop
 					p.nextToken()
 				}
 			}
@@ -1174,7 +1079,7 @@ func (p *Parser) parseType() string {
 }
 
 // parseDecorator parses a decorator
-func (p *Parser) parseDecorator() *DecoratorNode {
+func (p *Parser) parseDecorator() *core.DecoratorNode {
 	if !p.expectToken(DECORATOR) {
 		return nil
 	}
@@ -1184,10 +1089,10 @@ func (p *Parser) parseDecorator() *DecoratorNode {
 		return nil
 	}
 	
-	decorator := &DecoratorNode{
+	decorator := &core.DecoratorNode{
 		Name:     p.currToken.Literal,
 		Position: p.currToken.Position,
-		Args:     []DecoratorArg{},
+		Args:     []core.DecoratorArg{},
 	}
 	p.nextToken()
 	
@@ -1199,14 +1104,12 @@ func (p *Parser) parseDecorator() *DecoratorNode {
 			if arg != nil {
 				decorator.Args = append(decorator.Args, *arg)
 			} else {
-				// If arg parsing failed, advance token to avoid infinite loop
 				p.nextToken()
 			}
 			
 			if p.currToken.Type == COMMA {
 				p.nextToken()
 			} else if p.currToken.Type != RPAREN {
-				// If not comma or rparen, we might be stuck
 				p.addError("expected ',' or ')' in decorator arguments")
 				break
 			}
@@ -1220,8 +1123,8 @@ func (p *Parser) parseDecorator() *DecoratorNode {
 }
 
 // parseDecoratorArg parses a decorator argument
-func (p *Parser) parseDecoratorArg() *DecoratorArg {
-	arg := &DecoratorArg{
+func (p *Parser) parseDecoratorArg() *core.DecoratorArg {
+	arg := &core.DecoratorArg{
 		Position: p.currToken.Position,
 	}
 	
@@ -1243,13 +1146,11 @@ func (p *Parser) parseDecoratorArg() *DecoratorArg {
 		arg.Value = p.currToken.Literal == "true"
 		p.nextToken()
 	case IDENT:
-		// Could be a named argument or reference
 		arg.Key = p.currToken.Literal
-		arg.Value = p.currToken.Literal // Default to the identifier value
+		arg.Value = p.currToken.Literal
 		p.nextToken()
 		if p.currToken.Type == COLON {
 			p.nextToken()
-			// Parse simple values only (avoid recursion)
 			switch p.currToken.Type {
 			case STRING:
 				arg.Value = p.currToken.Literal
@@ -1263,9 +1164,8 @@ func (p *Parser) parseDecoratorArg() *DecoratorArg {
 				arg.Value = p.currToken.Literal == "true"
 				p.nextToken()
 			case LBRACKET:
-				// Parse array values like ["item1", "item2"]
 				arrayValues := []interface{}{}
-				p.nextToken() // consume [
+				p.nextToken()
 				for p.currToken.Type != RBRACKET && p.currToken.Type != EOF {
 					switch p.currToken.Type {
 					case STRING:
@@ -1283,14 +1183,14 @@ func (p *Parser) parseDecoratorArg() *DecoratorArg {
 						arrayValues = append(arrayValues, p.currToken.Literal)
 						p.nextToken()
 					default:
-						p.nextToken() // skip unknown tokens
+						p.nextToken()
 					}
 					if p.currToken.Type == COMMA {
 						p.nextToken()
 					}
 				}
 				if p.currToken.Type == RBRACKET {
-					p.nextToken() // consume ]
+					p.nextToken()
 				}
 				arg.Value = arrayValues
 			default:
@@ -1299,27 +1199,23 @@ func (p *Parser) parseDecoratorArg() *DecoratorArg {
 			}
 		}
 	case LBRACE:
-		// Parse object literal like { key: value, key2: [array] }
 		objectValue := make(map[string]interface{})
-		p.nextToken() // consume {
+		p.nextToken()
 		
 		for p.currToken.Type != RBRACE && p.currToken.Type != EOF {
-			// Parse key
 			if p.currToken.Type != IDENT {
-				p.nextToken() // skip non-ident
+				p.nextToken()
 				continue
 			}
 			key := p.currToken.Literal
 			p.nextToken()
 			
-			// Expect colon
 			if p.currToken.Type != COLON {
-				p.nextToken() // skip if no colon
+				p.nextToken()
 				continue
 			}
-			p.nextToken() // consume :
+			p.nextToken()
 			
-			// Parse value
 			switch p.currToken.Type {
 			case STRING:
 				objectValue[key] = p.currToken.Literal
@@ -1333,9 +1229,8 @@ func (p *Parser) parseDecoratorArg() *DecoratorArg {
 				objectValue[key] = p.currToken.Literal == "true"
 				p.nextToken()
 			case LBRACKET:
-				// Parse array value
 				arrayValues := []interface{}{}
-				p.nextToken() // consume [
+				p.nextToken()
 				for p.currToken.Type != RBRACKET && p.currToken.Type != EOF {
 					switch p.currToken.Type {
 					case STRING:
@@ -1345,14 +1240,14 @@ func (p *Parser) parseDecoratorArg() *DecoratorArg {
 						arrayValues = append(arrayValues, p.currToken.Literal)
 						p.nextToken()
 					default:
-						p.nextToken() // skip
+						p.nextToken()
 					}
 					if p.currToken.Type == COMMA {
 						p.nextToken()
 					}
 				}
 				if p.currToken.Type == RBRACKET {
-					p.nextToken() // consume ]
+					p.nextToken()
 				}
 				objectValue[key] = arrayValues
 			default:
@@ -1360,34 +1255,31 @@ func (p *Parser) parseDecoratorArg() *DecoratorArg {
 				p.nextToken()
 			}
 			
-			// Handle comma
 			if p.currToken.Type == COMMA {
 				p.nextToken()
 			}
 		}
 		
 		if p.currToken.Type == RBRACE {
-			p.nextToken() // consume }
+			p.nextToken()
 		}
 		arg.Value = objectValue
 	default:
 		p.addError(fmt.Sprintf("unexpected decorator argument type %d at line %d", 
 			int(p.currToken.Type), p.currToken.Line))
-		p.nextToken() // Advance to avoid infinite loop
+		p.nextToken()
 		return nil
 	}
 	
 	return arg
 }
 
-// parseFunctionDeclaration parses a standalone function (not method)
-func (p *Parser) parseFunctionDeclaration() GofaDeclaration {
-	// Skip the func keyword
+// parseFunctionDeclaration parses a standalone function
+func (p *Parser) parseFunctionDeclaration() core.GofaDeclaration {
 	if !p.expectToken(FUNC) {
 		return nil
 	}
 	
-	// Skip function name
 	if p.currToken.Type == IDENT {
 		p.nextToken()
 	} else {
@@ -1409,21 +1301,20 @@ func (p *Parser) parseFunctionDeclaration() GofaDeclaration {
 		}
 	}
 	
-	// Skip return type if present
+	// Skip return type
 	for p.currToken.Type != LBRACE && p.currToken.Type != EOF {
 		p.nextToken()
 	}
 	
-	// Skip function body if present
+	// Skip function body
 	if p.currToken.Type == LBRACE {
 		p.parseBlockStatement()
 	}
 	
-	// For now, we don't create a declaration for standalone functions
 	return nil
 }
 
-// parseBlockStatement parses a block statement (method body)
+// parseBlockStatement parses a block statement
 func (p *Parser) parseBlockStatement() {
 	if !p.expectToken(LBRACE) {
 		return
@@ -1440,8 +1331,6 @@ func (p *Parser) parseBlockStatement() {
 	}
 }
 
-// Helper functions
-
 // skipComments skips comment tokens
 func (p *Parser) skipComments() {
 	for p.currToken.Type == COMMENT {
@@ -1449,30 +1338,26 @@ func (p *Parser) skipComments() {
 	}
 }
 
-
 // attachDecoratorToDeclaration attaches a decorator to a declaration
-func (p *Parser) attachDecoratorToDeclaration(decorator *DecoratorNode, decl GofaDeclaration) {
+func (p *Parser) attachDecoratorToDeclaration(decorator *core.DecoratorNode, decl core.GofaDeclaration) {
 	switch d := decl.(type) {
-	case *ControllerDeclaration:
+	case *core.ControllerDeclaration:
 		d.Decorators = append(d.Decorators, decorator)
-	case *ServiceDeclaration:
+	case *core.ServiceDeclaration:
 		d.Decorators = append(d.Decorators, decorator)
-	case *ModuleDeclaration:
+	case *core.ModuleDeclaration:
 		d.Decorators = append(d.Decorators, decorator)
-	case *TestSuiteDeclaration:
+	case *core.TestSuiteDeclaration:
 		d.Decorators = append(d.Decorators, decorator)
 	}
 }
 
 // skipToNextDeclaration skips tokens until the next declaration
 func (p *Parser) skipToNextDeclaration() {
-	// Skip current token
 	prevTokenType := p.currToken.Type
 	p.nextToken()
 	
-	// Continue skipping until we find a declaration token
 	for p.currToken.Type != TYPE && p.currToken.Type != FUNC && p.currToken.Type != EOF && p.currToken.Type != DECORATOR {
-		// Prevent infinite loop by ensuring token actually advances
 		if p.currToken.Type == prevTokenType {
 			p.nextToken()
 			break
@@ -1488,7 +1373,7 @@ func isGoType(tokenType TokenType) bool {
 }
 
 // ParseGofaFile is the main entry point for parsing .gofa files
-func ParseGofaFile(input string) (*GofaFile, error) {
+func ParseGofaFile(input string) (*core.GofaFile, error) {
 	lexer := NewLexer(input)
 	parser := NewParser(lexer)
 	return parser.ParseFile()

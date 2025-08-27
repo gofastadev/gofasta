@@ -1,8 +1,10 @@
-package transpiler
+package parsing
 
 import (
 	"strings"
 	"testing"
+	
+	"github.com/healtronlabs/gofasta/tools/transpiler/core"
 )
 
 // TestParserFixForInfiniteLoop tests that parser no longer hangs on complex input
@@ -65,7 +67,7 @@ type TestController struct {
 		t.Error("Failed to parse decorated struct")
 	}
 	
-	controller, ok := file.Declarations[0].(*ControllerDeclaration)
+	controller, ok := file.Declarations[0].(*core.ControllerDeclaration)
 	if !ok {
 		t.Error("Expected ControllerDeclaration")
 	} else if len(controller.Decorators) != 1 {
