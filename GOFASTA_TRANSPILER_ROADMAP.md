@@ -56,7 +56,7 @@
 
 | Feature Category                | Progress       | Status                          | Priority         | Details                                  |
 | ------------------------------- | -------------- | ------------------------------- | ---------------- | ---------------------------------------- |
-| **🌐 WebSocket Support**  | 0%             | 🔄**Detailed Plan Ready** | 🔥**High** | 15+ decorators planned across 5 phases   |
+| **🌐 WebSocket Support**  | 20%            | 🔄**Partial Implementation** | 🔥**High** | AST complete, parsing/codegen missing |
 | **📊 GraphQL Decorators** | 0%             | ❌ Pending                      | 🟡 Medium        | @Resolver, @Query, @Mutation             |
 | **🔄 Route Versioning**   | **100%** | ✅ Complete                     | ✅**Done** | @Version decorator -**COMPLETED!** |
 | **📡 Microservices**      | 0%             | ❌ Pending                      | 🟢 Low           | @MessagePattern, event handling          |
@@ -460,28 +460,40 @@ func (s *{{.Name}}WSServer) Start() {
 
 ### **Phase 1: AST & Parsing Foundation (Week 1-2)**
 
-- [X] **1.1** Add WebSocket AST node structures to `parser/ast.go`
+- [X] **1.1** Add WebSocket AST node structures to `core/ast.go` - **✅ COMPLETE**
   ```go
-  type WebSocketGatewayDecorator struct {
-      BaseDecorator
-      Port      *int
-      Namespace *string 
-      Config    map[string]interface{}
+  type WebSocketGatewayDeclaration struct {
+      Name       string
+      Decorators []*DecoratorNode
+      Fields     []*FieldNode
+      Methods    []*MethodNode
+      Port       *int
+      Namespace  *string
+      Config     map[string]interface{}
+      Position   token.Pos
   }
   ```
-- [ ] **1.2** Implement `@WebSocketGateway()` decorator parsing in `parser.go`
-- [ ] **1.3** Implement `@SubscribeMessage()` decorator parsing with event arrays
-- [ ] **1.4** Implement `@OnGatewayConnection()` decorator parsing
-- [ ] **1.5** Implement `@OnGatewayDisconnect()` decorator parsing
-- [ ] **1.6** Implement `@OnGatewayInit()` decorator parsing
-- [ ] **1.7** Add WebSocket decorator validation and error handling
-- [ ] **1.8** Create WebSocket AST traversal and analysis
-- [ ] **1.9** Implement WebSocket decorator inheritance patterns
-- [ ] **1.10** Add WebSocket decorator unit tests
+- [X] **1.1b** Add all WebSocket decorator constants to `core/decorators.go` - **✅ COMPLETE**
+- [X] **1.1c** Add WebSocket decorator type mapping - **✅ COMPLETE**  
+- [X] **1.1d** Add WebSocket helper functions (IsWebSocketDecorator, etc.) - **✅ COMPLETE**
+- [X] **1.1e** Add WebSocket AST traversal and walking support - **✅ COMPLETE**
+- [X] **1.1f** Add comprehensive WebSocket AST unit tests - **✅ COMPLETE**
+- [ ] **1.2** Implement `@WebSocketGateway()` decorator parsing in `parsing/parser.go` - **❌ MISSING**
+- [ ] **1.3** Implement `@SubscribeMessage()` decorator parsing with event arrays - **❌ MISSING**
+- [ ] **1.4** Implement `@OnGatewayConnection()` decorator parsing - **❌ MISSING**
+- [ ] **1.5** Implement `@OnGatewayDisconnect()` decorator parsing - **❌ MISSING**
+- [ ] **1.6** Implement `@OnGatewayInit()` decorator parsing - **❌ MISSING**
+- [ ] **1.7** Add WebSocket decorator validation and error handling - **❌ MISSING**
+- [ ] **1.8** Integrate WebSocket parsing into main parser flow - **❌ MISSING**
+- [ ] **1.9** Implement WebSocket decorator inheritance patterns - **❌ MISSING**
+- [ ] **1.10** Add WebSocket parsing unit tests - **❌ MISSING**
 
 ### **Phase 2: Code Generation Templates (Week 2-3)**
 
-- [ ] **2.1** Create WebSocket gateway code generation templates
+- [X] **2.1** Basic WebSocket gateway code generation type alias in `codegen/codegen.go` - **⚠️ MINIMAL STUB**
+- [X] **2.2** Basic WebSocket gateway generation dispatcher in `codegen/codegen.go:162-163` - **⚠️ MINIMAL STUB**
+- [X] **2.3** WebSocket gateway generation function in `codegen/controller.go:9-18` - **⚠️ DELEGATES TO CONTROLLER**
+- [ ] **2.4** Create proper WebSocket gateway code generation templates - **❌ MISSING**
   ```go
   const WebSocketGatewayTemplate = `
   type {{.Name}}WSServer struct {
@@ -491,38 +503,39 @@ func (s *{{.Name}}WSServer) Start() {
       {{end}}
   }`
   ```
-- [ ] **2.2** Implement WebSocket message handler code generation
-- [ ] **2.3** Add WebSocket lifecycle method generation (connect/disconnect)
-- [ ] **2.4** Create WebSocket middleware integration code generation
-- [ ] **2.5** Implement WebSocket guard decorator code generation
-- [ ] **2.6** Add WebSocket interceptor decorator code generation
-- [ ] **2.7** Create WebSocket pipe decorator code generation
-- [ ] **2.8** Implement WebSocket configuration parsing and generation
-- [ ] **2.9** Add WebSocket import statement generation
-- [ ] **2.10** Create WebSocket route registration code generation
+- [ ] **2.5** Implement WebSocket message handler code generation - **❌ MISSING**
+- [ ] **2.6** Add WebSocket lifecycle method generation (connect/disconnect) - **❌ MISSING**
+- [ ] **2.7** Create WebSocket middleware integration code generation - **❌ MISSING**
+- [ ] **2.8** Implement WebSocket guard decorator code generation - **❌ MISSING**
+- [ ] **2.9** Add WebSocket interceptor decorator code generation - **❌ MISSING**
+- [ ] **2.10** Create WebSocket pipe decorator code generation - **❌ MISSING**
+- [ ] **2.11** Implement WebSocket configuration parsing and generation - **❌ MISSING**
+- [ ] **2.12** Add WebSocket import statement generation - **❌ MISSING**
+- [ ] **2.13** Create WebSocket route registration code generation - **❌ MISSING**
 
 ### **Phase 3: Parameter Decorator Implementation (Week 3)**
 
 #### **3.1 Extend Existing HTTP Decorators for WebSocket Context**
 
 > **Efficiency**: Reuse existing parsing logic, only modify code generation
+> **Status**: ❌ **ALL MISSING** - No WebSocket context detection exists
 
-- [ ] **3.1** Extend `@Headers()` for WebSocket handshake context
+- [ ] **3.1** Extend `@Headers()` for WebSocket handshake context - **❌ MISSING**
   ```go
   // HTTP: ctx.Request.Header.Get("auth")  
   // WebSocket: client.Handshake().Header.Get("auth")
   ```
-- [ ] **3.2** Extend `@Query()` for WebSocket connection URL context
+- [ ] **3.2** Extend `@Query()` for WebSocket connection URL context - **❌ MISSING**
   ```go
   // HTTP: ctx.Request.URL.Query().Get("room")
   // WebSocket: client.Handshake().URL.Query().Get("room")
   ```
-- [ ] **3.3** Extend `@Session()` for WebSocket session context
+- [ ] **3.3** Extend `@Session()` for WebSocket session context - **❌ MISSING**
   ```go
   // HTTP: ctx.Session.Get("user")
   // WebSocket: client.Session().Get("user")  
   ```
-- [ ] **3.4** Extend `@Catch()` for WebSocket error handling context
+- [ ] **3.4** Extend `@Catch()` for WebSocket error handling context - **❌ MISSING**
   ```go
   // Add WebSocket error context to existing @Catch implementation
   ```
@@ -530,51 +543,74 @@ func (s *{{.Name}}WSServer) Start() {
 #### **3.2 Implement WebSocket-Specific Parameter Decorators**
 
 > **New**: WebSocket-only decorators with unique functionality
+> **Status**: ❌ **ALL MISSING** - No WebSocket parameter parsing or generation exists
 
-- [ ] **3.5** Implement `@MessageBody()` parameter decorator
+- [X] **3.5a** Define `@MessageBody()` parameter decorator constant - **✅ COMPLETE**
+- [ ] **3.5b** Implement `@MessageBody()` parameter decorator parsing - **❌ MISSING**
+- [ ] **3.5c** Implement `@MessageBody()` parameter decorator code generation - **❌ MISSING**
   ```go
   // Extract and deserialize WebSocket message payload
   ```
-- [ ] **3.6** Implement `@ConnectedSocket()` parameter decorator
+- [X] **3.6a** Define `@ConnectedSocket()` parameter decorator constant - **✅ COMPLETE**
+- [ ] **3.6b** Implement `@ConnectedSocket()` parameter decorator parsing - **❌ MISSING**
+- [ ] **3.6c** Implement `@ConnectedSocket()` parameter decorator code generation - **❌ MISSING**
   ```go
   // Inject current WebSocket client connection
   ```
-- [ ] **3.7** Implement `@MessageAck()` parameter decorator
+- [X] **3.7a** Define `@MessageAck()` parameter decorator constant - **✅ COMPLETE**
+- [ ] **3.7b** Implement `@MessageAck()` parameter decorator parsing - **❌ MISSING**
+- [ ] **3.7c** Implement `@MessageAck()` parameter decorator code generation - **❌ MISSING**
   ```go
   // Inject acknowledgment callback for WebSocket messages
   ```
-- [ ] **3.8** Implement `@Rooms()` parameter decorator
+- [X] **3.8a** Define `@Rooms()` parameter decorator constant - **✅ COMPLETE**
+- [ ] **3.8b** Implement `@Rooms()` parameter decorator parsing - **❌ MISSING**
+- [ ] **3.8c** Implement `@Rooms()` parameter decorator code generation - **❌ MISSING**
   ```go
   // Inject array of rooms client has joined
   ```
-- [ ] **3.9** Implement `@Namespace()` parameter decorator
+- [X] **3.9a** Define `@Namespace()` parameter decorator constant - **✅ COMPLETE**
+- [ ] **3.9b** Implement `@Namespace()` parameter decorator parsing - **❌ MISSING**
+- [ ] **3.9c** Implement `@Namespace()` parameter decorator code generation - **❌ MISSING**
   ```go
   // Inject current WebSocket namespace
   ```
-- [ ] **3.10** Implement `@CurrentUser()` parameter decorator (WebSocket context)
+- [X] **3.10a** Define `@CurrentUser()` parameter decorator constant - **✅ COMPLETE**
+- [ ] **3.10b** Implement `@CurrentUser()` parameter decorator parsing (WebSocket context) - **❌ MISSING**
+- [ ] **3.10c** Implement `@CurrentUser()` parameter decorator code generation (WebSocket context) - **❌ MISSING**
   ```go
   // Extract authenticated user from WebSocket connection
   ```
-- [ ] **3.11** Implement `@ClientIP()` parameter decorator (WebSocket context)
+- [X] **3.11a** Define `@ClientIP()` parameter decorator constant - **✅ COMPLETE**
+- [ ] **3.11b** Implement `@ClientIP()` parameter decorator parsing (WebSocket context) - **❌ MISSING**
+- [ ] **3.11c** Implement `@ClientIP()` parameter decorator code generation (WebSocket context) - **❌ MISSING**
   ```go
   // Extract client IP from WebSocket connection
   ```
-- [ ] **3.12** Implement `@MessagePattern()` parameter decorator
+- [X] **3.12a** Define `@MessagePattern()` parameter decorator constant - **✅ COMPLETE**
+- [ ] **3.12b** Implement `@MessagePattern()` parameter decorator parsing - **❌ MISSING**
+- [ ] **3.12c** Implement `@MessagePattern()` parameter decorator code generation - **❌ MISSING**
   ```go
   // Inject matched message pattern string
   ```
-- [ ] **3.13** Implement `@Server()` parameter decorator
+- [X] **3.13a** Define `@Server()` parameter decorator constant - **✅ COMPLETE**
+- [ ] **3.13b** Implement `@Server()` parameter decorator parsing - **❌ MISSING**
+- [ ] **3.13c** Implement `@Server()` parameter decorator code generation - **❌ MISSING**
   ```go
   // Inject WebSocket server instance
   ```
-- [ ] **3.14** Implement `@EventName()` parameter decorator
+- [X] **3.14a** Define `@EventName()` parameter decorator constant - **✅ COMPLETE**
+- [ ] **3.14b** Implement `@EventName()` parameter decorator parsing - **❌ MISSING**
+- [ ] **3.14c** Implement `@EventName()` parameter decorator code generation - **❌ MISSING**
   ```go
   // Inject original WebSocket event name
   ```
 
 #### **3.3 Context-Aware Parameter Processing**
 
-- [ ] **3.15** Add context detection logic to existing parameter parser
+> **Status**: ❌ **ALL MISSING** - No context-aware parameter processing exists
+
+- [ ] **3.15** Add context detection logic to existing parameter parser - **❌ MISSING**
   ```go
   func (p *Parser) parseParameterDecorator() *ParameterDecorator {
       if p.isWebSocketContext() {
@@ -583,49 +619,128 @@ func (s *{{.Name}}WSServer) Start() {
       return p.parseHTTPParameterDecorator()
   }
   ```
-- [ ] **3.16** Create shared parameter validation and type checking
-- [ ] **3.17** Add WebSocket parameter code generation templates
+- [ ] **3.16** Create shared parameter validation and type checking - **❌ MISSING**
+- [ ] **3.17** Add WebSocket parameter code generation templates - **❌ MISSING**
 
 ### **Phase 4: Advanced Decorator Features (Week 4)**
 
-- [ ] **4.1** Add WebSocket-specific error handling template generation
-- [ ] **4.2** Implement `@WebSocketClient()` decorator parsing & codegen
-- [ ] **4.3** Add `@OnMessage()` decorator for external client connections
-- [ ] **4.4** Implement WebSocket namespace and room decorator support
-- [ ] **4.5** Add WebSocket authentication decorator integration
-- [ ] **4.6** Create WebSocket custom decorator support
-- [ ] **4.7** Implement WebSocket decorator composition and chaining
-- [ ] **4.8** Add WebSocket configuration validation and type checking
-- [ ] **4.9** Create WebSocket decorator precedence and order handling
-- [ ] **4.10** Add WebSocket middleware decorator integration templates
+> **Status**: ❌ **ALL MISSING** - No advanced WebSocket features implemented
+
+- [X] **4.1a** Define WebSocket client decorator constants - **✅ COMPLETE**
+- [ ] **4.1b** Add WebSocket-specific error handling template generation - **❌ MISSING**
+- [ ] **4.2a** Implement `@WebSocketClient()` decorator parsing - **❌ MISSING**
+- [ ] **4.2b** Implement `@WebSocketClient()` decorator code generation - **❌ MISSING**
+- [ ] **4.3a** Add `@OnMessage()` decorator parsing for external client connections - **❌ MISSING**
+- [ ] **4.3b** Add `@OnMessage()` decorator code generation for external client connections - **❌ MISSING**
+- [ ] **4.4** Implement WebSocket namespace and room decorator support - **❌ MISSING**
+- [ ] **4.5** Add WebSocket authentication decorator integration - **❌ MISSING**
+- [ ] **4.6** Create WebSocket custom decorator support - **❌ MISSING**
+- [ ] **4.7** Implement WebSocket decorator composition and chaining - **❌ MISSING**
+- [ ] **4.8** Add WebSocket configuration validation and type checking - **❌ MISSING**
+- [ ] **4.9** Create WebSocket decorator precedence and order handling - **❌ MISSING**
+- [ ] **4.10** Add WebSocket middleware decorator integration templates - **❌ MISSING**
 
 ### **Phase 5: Testing & Documentation (Week 5)**
 
-- [ ] **5.1** Implement `@WebSocketTestClient()` decorator parsing & codegen
-- [ ] **5.2** Add `@WebSocketIntegrationTest()` decorator transpilation
-- [ ] **5.3** Create WebSocket testing helper code generation
-- [ ] **5.4** Implement WebSocket mock generation templates
-- [ ] **5.5** Add comprehensive WebSocket transpiler test suite
-- [ ] **5.6** Create WebSocket transpilation performance tests
-- [ ] **5.7** Add WebSocket AST validation tests
-- [ ] **5.8** Create WebSocket code generation integration tests
-- [ ] **5.9** Add WebSocket decorator examples for transpiler
-- [ ] **5.10** Create WebSocket transpilation documentation
+> **Status**: ❌ **ALL MISSING** - No WebSocket testing support implemented
+
+- [X] **5.1a** Define `@WebSocketTestClient()` decorator constants - **✅ COMPLETE**
+- [ ] **5.1b** Implement `@WebSocketTestClient()` decorator parsing - **❌ MISSING**
+- [ ] **5.1c** Implement `@WebSocketTestClient()` decorator code generation - **❌ MISSING**
+- [X] **5.2a** Define `@WebSocketIntegrationTest()` decorator constants - **✅ COMPLETE**
+- [ ] **5.2b** Add `@WebSocketIntegrationTest()` decorator parsing - **❌ MISSING**
+- [ ] **5.2c** Add `@WebSocketIntegrationTest()` decorator code generation - **❌ MISSING**
+- [ ] **5.3** Create WebSocket testing helper code generation - **❌ MISSING**
+- [ ] **5.4** Implement WebSocket mock generation templates - **❌ MISSING**
+- [ ] **5.5** Add comprehensive WebSocket transpiler test suite - **❌ MISSING**
+- [ ] **5.6** Create WebSocket transpilation performance tests - **❌ MISSING**
+- [ ] **5.7** Add WebSocket AST validation tests - **❌ MISSING**
+- [ ] **5.8** Create WebSocket code generation integration tests - **❌ MISSING**
+- [ ] **5.9** Add WebSocket decorator examples for transpiler - **❌ MISSING**
+- [ ] **5.10** Create WebSocket transpilation documentation - **❌ MISSING**
 
 ### **Transpiler Integration & Testing**
 
-- [ ] **T.1** Test WebSocket decorator precedence with HTTP decorators
-- [ ] **T.2** Verify WebSocket dependency injection transpilation
-- [ ] **T.3** Test WebSocket middleware decorator integration
-- [ ] **T.4** Validate WebSocket error handling transpilation
-- [ ] **T.5** Test WebSocket validation decorator integration
-- [ ] **T.6** Verify WebSocket import generation and dependencies
-- [ ] **T.7** Test WebSocket code generation performance
-- [ ] **T.8** Validate WebSocket AST parsing performance
-- [ ] **T.9** Integration test with existing transpiler features
-- [ ] **T.10** End-to-end transpilation testing
+> **Status**: ❌ **ALL MISSING** - No integration testing implemented
 
-**Total Transpiler Tasks: 44 checkboxes focused on code generation**
+- [ ] **T.1** Test WebSocket decorator precedence with HTTP decorators - **❌ MISSING**
+- [ ] **T.2** Verify WebSocket dependency injection transpilation - **❌ MISSING**
+- [ ] **T.3** Test WebSocket middleware decorator integration - **❌ MISSING**
+- [ ] **T.4** Validate WebSocket error handling transpilation - **❌ MISSING**
+- [ ] **T.5** Test WebSocket validation decorator integration - **❌ MISSING**
+- [ ] **T.6** Verify WebSocket import generation and dependencies - **❌ MISSING**
+- [ ] **T.7** Test WebSocket code generation performance - **❌ MISSING**
+- [ ] **T.8** Validate WebSocket AST parsing performance - **❌ MISSING**
+- [ ] **T.9** Integration test with existing transpiler features - **❌ MISSING**
+- [ ] **T.10** End-to-end transpilation testing - **❌ MISSING**
+
+## 📊 **WebSocket Implementation Status Summary**
+
+### **Current Status: 20% Complete (AST Foundation Only)**
+
+| Phase | Component | Progress | Status | Details |
+|-------|-----------|----------|--------|---------|
+| **Phase 1** | AST Definitions | **100%** | ✅ **Complete** | All WebSocket AST nodes, constants, mappings, helpers, tests |
+| **Phase 1** | Parsing Logic | **0%** | ❌ **Missing** | No parsing functions, decorator recognition, or parser integration |
+| **Phase 2** | Code Generation | **5%** | ❌ **Stub Only** | Only delegation stub, no real WebSocket code generation |
+| **Phase 3** | Parameter Support | **15%** | ❌ **Constants Only** | Decorator constants defined, no parsing/generation |
+| **Phase 4** | Advanced Features | **5%** | ❌ **Constants Only** | Only decorator constants, no implementation |
+| **Phase 5** | Testing Support | **10%** | ❌ **Constants Only** | Decorator constants defined, no implementation |
+
+### **✅ What IS Implemented (Foundation Complete)**
+- **WebSocketGatewayDeclaration** AST node (`core/ast.go:116-136`)
+- **21 WebSocket decorator constants** (`core/decorators.go:132-162`)  
+- **WebSocket decorator type mapping** (`core/decorators.go:280-301`)
+- **6 WebSocket helper functions** (`core/decorators.go:383-410`)
+- **Comprehensive AST tests** (`core/websocket_ast_test.go`)
+- **Basic code generation dispatcher** (`codegen/codegen.go:162-163`)
+
+### **❌ What is MISSING (Core Functionality)**
+- **Parsing Implementation**: No `.gofa` file parsing for any WebSocket decorators
+- **Code Generation**: No actual Go code generation for WebSocket features  
+- **Parameter Handling**: No WebSocket parameter decorator processing
+- **Context Detection**: No WebSocket vs HTTP context differentiation
+- **Templates**: No WebSocket-specific code generation templates
+- **Integration**: No parser integration or end-to-end functionality
+
+**Total Transpiler Tasks: 80+ tasks identified**  
+**✅ Completed: 15 tasks (AST definitions and constants)**  
+**❌ Missing: 65+ tasks (all parsing and code generation)**
+
+### **🚨 Critical Implementation Gap - CONFIRMED BY TESTING**
+
+**The WebSocket transpiler is NOT functional.** Testing with existing WebSocket examples confirms:
+
+#### **🔍 Example Testing Results:**
+- **4 WebSocket example files exist**: `websocket-gateway-example.gofa`, `websocket-simple-example.gofa`, `websocket-client-example.gofa`, `websocket-test-parsing.gofa`
+- **Transpiler claims "success"** but generates **incomplete Go code**
+- **Generated output shows**:
+  - ✅ Dependency injection works (`@Injectable`, `@Inject`) 
+  - ❌ **WebSocket decorators completely ignored**: No `@WebSocketGateway`, `@SubscribeMessage`, or parameter decorators processed
+  - ❌ **No WebSocket server code**: Missing gateway servers, message handlers, lifecycle methods
+  - ❌ **No WebSocket methods**: All WebSocket methods stripped from output
+  - ❌ **No parameter processing**: WebSocket parameter decorators (`@MessageBody`, `@ConnectedSocket`, etc.) not processed
+
+#### **Example Comparison:**
+**Input (.gofa)**:
+```gofa
+@WebSocketGateway(8080)
+type ChatGateway struct { ... }
+
+@SubscribeMessage("message")
+func HandleMessage(@MessageBody() data *ChatMessage, @ConnectedSocket() client *WebSocketClient) { ... }
+```
+
+**Output (.go)**:
+```go
+type ChatGateway struct {
+    chatService *ChatService `inject:"chatService"`
+    logger      *Logger      `inject:"logger"`
+}
+// No WebSocket server code, no message handlers, no methods!
+```
+
+**This confirms the transpiler silently ignores all WebSocket functionality while processing only non-WebSocket decorators.**
 
 ### **🚀 Efficiency Gains from Reusing Existing HTTP Decorators**
 
