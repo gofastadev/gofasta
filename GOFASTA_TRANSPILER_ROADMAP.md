@@ -478,7 +478,7 @@ func (s *{{.Name}}WSServer) Start() {
 - [X] **1.1d** Add WebSocket helper functions (IsWebSocketDecorator, etc.) - **✅ COMPLETE**
 - [X] **1.1e** Add WebSocket AST traversal and walking support - **✅ COMPLETE**
 - [X] **1.1f** Add comprehensive WebSocket AST unit tests - **✅ COMPLETE**
-- [ ] **1.2** Implement `@WebSocketGateway()` decorator parsing in `parsing/parser.go` - **❌ MISSING**
+- [X] **1.2** Implement `@WebSocketGateway()` decorator parsing in `parsing/parser.go` - **✅ COMPLETE**
 - [ ] **1.3** Implement `@SubscribeMessage()` decorator parsing with event arrays - **❌ MISSING**
 - [ ] **1.4** Implement `@OnGatewayConnection()` decorator parsing - **❌ MISSING**
 - [ ] **1.5** Implement `@OnGatewayDisconnect()` decorator parsing - **❌ MISSING**
@@ -681,7 +681,7 @@ func (s *{{.Name}}WSServer) Start() {
 | Phase | Component | Progress | Status | Details |
 |-------|-----------|----------|--------|---------|
 | **Phase 1** | AST Definitions | **100%** | ✅ **Complete** | All WebSocket AST nodes, constants, mappings, helpers, tests |
-| **Phase 1** | Parsing Logic | **0%** | ❌ **Missing** | No parsing functions, decorator recognition, or parser integration |
+| **Phase 1** | Parsing Logic | **10%** | 🔄 **Partial** | @WebSocketGateway parsing complete, other decorators missing |
 | **Phase 2** | Code Generation | **5%** | ❌ **Stub Only** | Only delegation stub, no real WebSocket code generation |
 | **Phase 3** | Parameter Support | **15%** | ❌ **Constants Only** | Decorator constants defined, no parsing/generation |
 | **Phase 4** | Advanced Features | **5%** | ❌ **Constants Only** | Only decorator constants, no implementation |
@@ -704,8 +704,8 @@ func (s *{{.Name}}WSServer) Start() {
 - **Integration**: No parser integration or end-to-end functionality
 
 **Total Transpiler Tasks: 80+ tasks identified**  
-**✅ Completed: 15 tasks (AST definitions and constants)**  
-**❌ Missing: 65+ tasks (all parsing and code generation)**
+**✅ Completed: 16 tasks (AST definitions, constants, and @WebSocketGateway parsing)**  
+**❌ Missing: 64+ tasks (remaining parsing and code generation)**
 
 ### **🚨 Critical Implementation Gap - CONFIRMED BY TESTING**
 

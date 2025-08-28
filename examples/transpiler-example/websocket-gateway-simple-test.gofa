@@ -1,0 +1,11 @@
+package main
+
+// Simple WebSocket Gateway test for basic port configuration parsing
+@WebSocketGateway(8080)
+type SimpleTestGateway struct {
+	@Inject("messageService")
+	messageService *MessageService
+}
+
+@Injectable()
+type MessageService struct {}

@@ -265,6 +265,10 @@ func (p *Parser) parseTypeDeclarationWithDecorators(decorators []*core.Decorator
 	}
 	
 	// Check for explicit decorator types first
+	if p.hasWebSocketGatewayDecorator(decorators) {
+		return p.parseWebSocketGatewayDeclaration(typeName, decorators)
+	}
+	
 	if p.hasTestSuiteDecorator(decorators) {
 		return p.parseTestSuiteDeclaration(typeName)
 	}
@@ -339,6 +343,19 @@ func (p *Parser) hasTestModuleDecorator(decorators []*core.DecoratorNode) bool {
 	}
 	for _, decorator := range decorators {
 		if decorator.Name == "TestModule" {
+			return true
+		}
+	}
+	return false
+}
+
+// hasWebSocketGatewayDecorator checks if decorators contain a WebSocketGateway decorator
+func (p *Parser) hasWebSocketGatewayDecorator(decorators []*core.DecoratorNode) bool {
+	if decorators == nil {
+		return false
+	}
+	for _, decorator := range decorators {
+		if decorator.Name == "WebSocketGateway" {
 			return true
 		}
 	}
@@ -1250,6 +1267,52 @@ func (p *Parser) parseDecoratorArg() *core.DecoratorArg {
 					p.nextToken()
 				}
 				objectValue[key] = arrayValues
+			case LBRACE:
+				// Handle nested objects
+				nestedObject := make(map[string]interface{})
+				p.nextToken()
+				
+				for p.currToken.Type != RBRACE && p.currToken.Type != EOF {
+					if p.currToken.Type != IDENT {
+						p.nextToken()
+						continue
+					}
+					nestedKey := p.currToken.Literal
+					p.nextToken()
+					
+					if p.currToken.Type != COLON {
+						p.nextToken()
+						continue
+					}
+					p.nextToken()
+					
+					// Parse nested object values
+					switch p.currToken.Type {
+					case STRING:
+						nestedObject[nestedKey] = p.currToken.Literal
+						p.nextToken()
+					case INT:
+						if val, err := strconv.Atoi(p.currToken.Literal); err == nil {
+							nestedObject[nestedKey] = val
+						}
+						p.nextToken()
+					case BOOLEAN:
+						nestedObject[nestedKey] = p.currToken.Literal == "true"
+						p.nextToken()
+					default:
+						nestedObject[nestedKey] = p.currToken.Literal
+						p.nextToken()
+					}
+					
+					if p.currToken.Type == COMMA {
+						p.nextToken()
+					}
+				}
+				
+				if p.currToken.Type == RBRACE {
+					p.nextToken()
+				}
+				objectValue[key] = nestedObject
 			default:
 				objectValue[key] = p.currToken.Literal
 				p.nextToken()
@@ -1331,6 +1394,126 @@ func (p *Parser) parseBlockStatement() {
 	}
 }
 
+// parseWebSocketGatewayDeclaration parses a WebSocket gateway declaration
+func (p *Parser) parseWebSocketGatewayDeclaration(name string, decorators []*core.DecoratorNode) *core.WebSocketGatewayDeclaration {
+	gateway := &core.WebSocketGatewayDeclaration{
+		Name:       name,
+		Position:   p.currToken.Position,
+		Decorators: []*core.DecoratorNode{}, // Empty - will be populated by attachDecoratorToDeclaration
+		Fields:     []*core.FieldNode{},
+		Methods:    []*core.MethodNode{},
+		Config:     make(map[string]interface{}),
+	}
+	
+	// Extract configuration from WebSocketGateway decorator
+	for _, decorator := range decorators {
+		if decorator.Name == "WebSocketGateway" {
+			// Parse decorator arguments to extract port, namespace, and other config
+			if len(decorator.Args) > 0 {
+				// Handle simple port argument: @WebSocketGateway(8080)
+				if len(decorator.Args) == 1 && decorator.Args[0].Key == "" {
+					if port, ok := decorator.Args[0].Value.(int); ok {
+						gateway.Port = &port
+					} else if port, ok := decorator.Args[0].Value.(int64); ok {
+						portInt := int(port)
+						gateway.Port = &portInt
+					} else if portStr, ok := decorator.Args[0].Value.(string); ok {
+						if port, err := strconv.Atoi(portStr); err == nil {
+							gateway.Port = &port
+						}
+					} else if configMap, ok := decorator.Args[0].Value.(map[string]interface{}); ok {
+						// Handle object configuration: @WebSocketGateway({port: 8080, namespace: "/chat"})
+						for key, value := range configMap {
+							switch key {
+							case "port":
+								if port, ok := value.(int); ok {
+									gateway.Port = &port
+								} else if port, ok := value.(int64); ok {
+									portInt := int(port)
+									gateway.Port = &portInt
+								} else if portStr, ok := value.(string); ok {
+									if port, err := strconv.Atoi(portStr); err == nil {
+										gateway.Port = &port
+									}
+								}
+							case "namespace":
+								if namespace, ok := value.(string); ok {
+									gateway.Namespace = &namespace
+								}
+							default:
+								// Store other configuration options
+								gateway.Config[key] = value
+							}
+						}
+					}
+				} else {
+					// Handle multiple separate arguments (less likely case)
+					for _, arg := range decorator.Args {
+						switch arg.Key {
+						case "port":
+							if port, ok := arg.Value.(int); ok {
+								gateway.Port = &port
+							} else if port, ok := arg.Value.(int64); ok {
+								portInt := int(port)
+								gateway.Port = &portInt
+							} else if portStr, ok := arg.Value.(string); ok {
+								if port, err := strconv.Atoi(portStr); err == nil {
+									gateway.Port = &port
+								}
+							}
+						case "namespace":
+							if namespace, ok := arg.Value.(string); ok {
+								gateway.Namespace = &namespace
+							}
+						default:
+							// Store other configuration options
+							gateway.Config[arg.Key] = arg.Value
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	// Parse fields (same as other declarations)
+	for p.currToken.Type != RBRACE && p.currToken.Type != EOF {
+		if p.currToken.Type == DECORATOR {
+			var fieldDecorators []*core.DecoratorNode
+			for p.currToken.Type == DECORATOR {
+				decorator := p.parseDecorator()
+				if decorator != nil {
+					fieldDecorators = append(fieldDecorators, decorator)
+				} else {
+					p.nextToken()
+					break
+				}
+			}
+			// Field with decorators
+			if p.currToken.Type == IDENT {
+				field := p.parseField()
+				if field != nil {
+					field.Decorators = fieldDecorators
+					gateway.Fields = append(gateway.Fields, field)
+				}
+			}
+		} else if p.currToken.Type == IDENT {
+			// Field without decorators
+			field := p.parseField()
+			if field != nil {
+				gateway.Fields = append(gateway.Fields, field)
+			}
+		} else {
+			p.nextToken()
+		}
+	}
+	
+	if !p.expectToken(RBRACE) {
+		return nil
+	}
+	
+	return gateway
+}
+
 // skipComments skips comment tokens
 func (p *Parser) skipComments() {
 	for p.currToken.Type == COMMENT {
@@ -1348,6 +1531,8 @@ func (p *Parser) attachDecoratorToDeclaration(decorator *core.DecoratorNode, dec
 	case *core.ModuleDeclaration:
 		d.Decorators = append(d.Decorators, decorator)
 	case *core.TestSuiteDeclaration:
+		d.Decorators = append(d.Decorators, decorator)
+	case *core.WebSocketGatewayDeclaration:
 		d.Decorators = append(d.Decorators, decorator)
 	}
 }
