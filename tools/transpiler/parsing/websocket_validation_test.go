@@ -3,6 +3,7 @@ package parsing
 import (
 	"strings"
 	"testing"
+	"github.com/healtronlabs/gofasta/tools/transpiler/core"
 )
 
 func TestWebSocketFunctionValidation(t *testing.T) {
@@ -742,6 +743,157 @@ func HandleGameDisconnection(
 				if !found {
 					t.Errorf("Expected error containing \"%s\" but got: %v", test.errorMsg, parser.errors)
 				}
+			}
+		})
+	}
+}
+
+// TestWebSocketFullIntegration tests complete WebSocket file parsing through main parser flow
+func TestWebSocketFullIntegration(t *testing.T) {
+	tests := []struct {
+		name        string
+		input       string
+		expectError bool
+		validate    func(*core.GofaFile) bool
+	}{
+		{
+			name: "Complete WebSocket Gateway with lifecycle methods and message handlers",
+			input: `package main
+
+@WebSocketGateway(8080)
+type GameGateway struct {
+	@Inject("gameService")
+	gameService *GameService
+	
+	@Inject("userService") 
+	userService *UserService
+}
+
+@OnGatewayConnection()
+func HandlePlayerConnection(
+	@ConnectedSocket() client *WebSocketClient,
+	@CurrentUser() user *User,
+	@Headers() headers map[string]string
+) {
+	// Handle player connection
+}
+
+@OnGatewayDisconnect()
+func HandlePlayerDisconnection(
+	@ConnectedSocket() client *WebSocketClient,
+	@CurrentUser() user *User,
+	@DisconnectReason() reason string
+) {
+	// Handle player disconnection  
+}
+
+@SubscribeMessage("join_game")
+func HandleJoinGame(
+	@MessageBody() data *JoinGameRequest,
+	@ConnectedSocket() client *WebSocketClient,
+	@CurrentUser() user *User
+) {
+	// Handle join game
+}
+
+@SubscribeMessage(["move", "action"]) 
+func HandleGameActions(
+	@MessageBody() action *GameAction,
+	@ConnectedSocket() client *WebSocketClient,
+	@Rooms() rooms []string
+) {
+	// Handle game actions
+}
+
+@Injectable()
+type GameService struct {}
+
+@Injectable() 
+type UserService struct {}
+
+type JoinGameRequest struct {
+	GameID string
+	PlayerName string
+}
+
+type GameAction struct {
+	Type string
+	Data interface{}
+}
+
+type User struct {
+	ID string
+	Name string
+}`,
+			expectError: false,
+			validate: func(file *core.GofaFile) bool {
+				// Should have declarations for Gateway, functions, and services
+				if len(file.Declarations) < 6 {
+					return false
+				}
+				
+				// First should be WebSocket Gateway
+				if gateway, ok := file.Declarations[0].(*core.WebSocketGatewayDeclaration); ok {
+					if gateway.Name != "GameGateway" || len(gateway.Fields) != 2 {
+						return false
+					}
+				} else {
+					return false
+				}
+				
+				// Should have WebSocket function declarations
+				wsFunc1, ok1 := file.Declarations[1].(*core.WebSocketFunctionDeclaration)
+				wsFunc2, ok2 := file.Declarations[2].(*core.WebSocketFunctionDeclaration)
+				wsFunc3, ok3 := file.Declarations[3].(*core.WebSocketFunctionDeclaration)
+				wsFunc4, ok4 := file.Declarations[4].(*core.WebSocketFunctionDeclaration)
+				
+				if !ok1 || !ok2 || !ok3 || !ok4 {
+					return false
+				}
+				
+				// Validate function names
+				expectedFuncs := []string{"HandlePlayerConnection", "HandlePlayerDisconnection", "HandleJoinGame", "HandleGameActions"}
+				actualFuncs := []string{wsFunc1.Name, wsFunc2.Name, wsFunc3.Name, wsFunc4.Name}
+				
+				for i, expected := range expectedFuncs {
+					if actualFuncs[i] != expected {
+						return false
+					}
+				}
+				
+				return true
+			},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			lexer := NewLexer(test.input)
+			parser := NewParser(lexer)
+			
+			// Parse complete file using main parser flow
+			file, err := parser.ParseFile()
+			
+			hasError := err != nil
+			if hasError != test.expectError {
+				if test.expectError {
+					t.Errorf("Expected parsing error but got none")
+				} else {
+					t.Errorf("Expected no parsing error but got: %v", err)
+				}
+				return
+			}
+			
+			// If parsing succeeded and we have validation, run it
+			if !test.expectError && test.validate != nil {
+				if !test.validate(file) {
+					t.Errorf("File validation failed")
+				}
+			}
+			
+			// Verify no parser errors accumulated
+			if len(parser.Errors()) > 0 {
+				t.Errorf("Parser accumulated errors: %v", parser.Errors())
 			}
 		})
 	}

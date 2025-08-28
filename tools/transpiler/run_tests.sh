@@ -32,8 +32,15 @@ print_error() {
     printf "${RED}[ERROR]${NC} %s\n" "$1"
 }
 
-# Change to transpiler package directory
-cd "$(dirname "$0")"
+# Find the workspace root (contains go.work file)
+SCRIPT_DIR="$(dirname "$0")"
+WORKSPACE_ROOT="$(cd "$SCRIPT_DIR" && cd ../.. && pwd)"
+
+print_status "Script directory: $SCRIPT_DIR"
+print_status "Workspace root: $WORKSPACE_ROOT"
+
+# Change to workspace root to ensure proper module resolution
+cd "$WORKSPACE_ROOT"
 
 print_status "Current directory: $(pwd)"
 
@@ -41,15 +48,14 @@ print_status "Current directory: $(pwd)"
 print_status "Cleaning up previous test artifacts..."
 go clean -testcache
 
-# Download dependencies
-print_status "Downloading dependencies..."
-go mod download
-go mod tidy
+# Download dependencies (skip mod download as workspace handles this)
+print_status "Preparing workspace dependencies..."
 
 # Run comprehensive tests for improved coverage and capture detailed results
 print_status "Running comprehensive test suite for improved coverage..."
 TEST_OUTPUT=$(mktemp)
-if go test -v -coverprofile=coverage.out -timeout=5m ./... 2>&1 | tee "$TEST_OUTPUT"; then
+COVERAGE_FILE="$SCRIPT_DIR/coverage.out"
+if go test -v -coverprofile="$COVERAGE_FILE" -timeout=5m ./tools/transpiler/... 2>&1 | tee "$TEST_OUTPUT"; then
     TEST_RESULT="PASSED"
     print_success "Comprehensive test suite passed!"
 else
@@ -59,17 +65,18 @@ fi
 
 # Generate coverage report
 print_status "Generating coverage report..."
-go tool cover -html=coverage.out -o coverage.html
-COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}')
+COVERAGE_HTML="$SCRIPT_DIR/coverage.html"
+go tool cover -html="$COVERAGE_FILE" -o "$COVERAGE_HTML"
+COVERAGE=$(go tool cover -func="$COVERAGE_FILE" | grep total | awk '{print $3}')
 print_status "Test coverage: $COVERAGE"
 
 # Show detailed coverage breakdown
 print_status "Functions with 0% coverage (first 20):"
-go tool cover -func=coverage.out | grep "0\.0%" | head -20 || echo "No functions with 0% coverage found"
+go tool cover -func="$COVERAGE_FILE" | grep "0\.0%" | head -20 || echo "No functions with 0% coverage found"
 
 # Run go vet
 print_status "Running go vet..."
-if go vet ./...; then
+if go vet ./tools/transpiler/...; then
     print_success "go vet passed!"
 else
     print_warning "go vet found issues (non-critical for core functionality)"
@@ -108,7 +115,8 @@ PASSED_TEST_NAMES=$(grep "^--- PASS:" "$TEST_OUTPUT" | sed 's/^--- PASS: //' | s
 
 # Generate comprehensive test summary
 print_status "Generating comprehensive test summary..."
-cat > test_summary.txt << EOF
+SUMMARY_FILE="$SCRIPT_DIR/test_summary.txt"
+cat > "$SUMMARY_FILE" << EOF
 Gofasta Transpiler Package Comprehensive Test Summary
 ===================================================
 Generated: $(date)
@@ -134,7 +142,7 @@ EOF
 
 # Add failed tests section if any
 if [ $FAILED_TESTS -gt 0 ]; then
-cat >> test_summary.txt << EOF
+cat >> "$SUMMARY_FILE" << EOF
 FAILED TESTS ($FAILED_TESTS):
 $FAILED_TEST_NAMES
 
@@ -143,7 +151,7 @@ fi
 
 # Add passed tests section (first 20 to avoid huge lists)
 if [ $PASSED_TESTS -gt 0 ]; then
-cat >> test_summary.txt << EOF
+cat >> "$SUMMARY_FILE" << EOF
 PASSED TESTS ($PASSED_TESTS):
 $(echo "$PASSED_TEST_NAMES" | head -20)
 $(if [ $PASSED_TESTS -gt 20 ]; then echo "... and $((PASSED_TESTS - 20)) more"; fi)
@@ -151,7 +159,7 @@ $(if [ $PASSED_TESTS -gt 20 ]; then echo "... and $((PASSED_TESTS - 20)) more"; 
 EOF
 fi
 
-cat >> test_summary.txt << EOF
+cat >> "$SUMMARY_FILE" << EOF
 GENERATED FILES:
 - coverage.out: Coverage data
 - coverage.html: HTML coverage report  

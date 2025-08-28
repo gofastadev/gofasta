@@ -1,0 +1,104 @@
+package main
+
+// Simple WebSocket quickstart example - Perfect for getting started!
+@WebSocketGateway(8080)
+type ChatGateway struct {
+	@Inject("chatService")
+	chatService *ChatService
+}
+
+// Connection handling - runs when user connects
+@OnGatewayConnection()
+func HandleConnection(
+	@ConnectedSocket() client *WebSocketClient,
+	@CurrentUser() user *User,
+	@Headers() headers map[string]string
+) {
+	// Welcome new user, add to online users
+}
+
+// Disconnection handling - runs when user disconnects
+@OnGatewayDisconnect()
+func HandleDisconnection(
+	@ConnectedSocket() client *WebSocketClient,
+	@CurrentUser() user *User,
+	@DisconnectReason() reason string
+) {
+	// Clean up user session, notify other users
+}
+
+// Message handling - handles chat messages
+@SubscribeMessage("chat_message")
+func HandleChatMessage(
+	@MessageBody() message *ChatMessage,
+	@ConnectedSocket() client *WebSocketClient,
+	@CurrentUser() user *User
+) {
+	// Process and broadcast chat message to all users
+}
+
+// Room management - join/leave chat rooms
+@SubscribeMessage(["join_room", "leave_room"])
+func HandleRoomActions(
+	@MessageBody() action *RoomAction,
+	@ConnectedSocket() client *WebSocketClient,
+	@CurrentUser() user *User,
+	@MessageAck() ack *AckCallback
+) {
+	// Handle joining or leaving chat rooms
+}
+
+// User typing indicator
+@SubscribeMessage("typing")
+func HandleTyping(
+	@MessageBody() data *TypingData,
+	@ConnectedSocket() client *WebSocketClient,
+	@Rooms() rooms []string
+) {
+	// Show typing indicator to other users in the room
+}
+
+// === Data Types ===
+
+type ChatMessage struct {
+	Content    string
+	RoomID     string
+	UserID     string
+	Timestamp  string
+}
+
+type RoomAction struct {
+	RoomID string
+	Action string  // "join" or "leave"
+}
+
+type TypingData struct {
+	RoomID   string
+	IsTyping bool
+}
+
+type User struct {
+	ID   string
+	Name string
+}
+
+// === Services ===
+
+@Injectable()
+type ChatService struct {
+	@Inject("database")
+	db *Database
+}
+
+@Injectable() 
+type Database struct {}
+
+// === WebSocket Types (provided by framework) ===
+
+type WebSocketClient struct {
+	id string
+}
+
+type AckCallback struct {
+	callback func(interface{})
+}
