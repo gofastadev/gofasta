@@ -17,6 +17,81 @@ func (g *CodeGenerator) generateWebSocketGatewayDeclaration(gateway *WebSocketGa
 	})
 }
 
+// generateWebSocketFunctionDeclaration generates a WebSocket lifecycle function
+func (g *CodeGenerator) generateWebSocketFunctionDeclaration(wsFunc *WebSocketFunctionDeclaration) error {
+	// Generate function signature
+	funcSignature := fmt.Sprintf("func %s(", wsFunc.Name)
+	
+	// Add parameters
+	var params []string
+	for _, param := range wsFunc.Params {
+		paramStr := ""
+		if param.Name != "" {
+			paramStr = param.Name + " "
+		}
+		paramStr += param.Type
+		params = append(params, paramStr)
+	}
+	
+	funcSignature += strings.Join(params, ", ") + ")"
+	
+	// Add return type if present
+	if wsFunc.ReturnType != "" {
+		funcSignature += " " + wsFunc.ReturnType
+	}
+	
+	// Generate function
+	g.writeLine(funcSignature + " {")
+	g.indent()
+	
+	// Add function body based on decorator type
+	addedComment := false
+	for _, decorator := range wsFunc.Decorators {
+		if !addedComment {
+			switch decorator.Name {
+			case "OnGatewayConnection":
+				g.writeLine("// Handle new WebSocket connection")
+				g.writeLine("// Add connection logic here")
+			case "OnGatewayDisconnect":
+				g.writeLine("// Handle WebSocket disconnection")
+				g.writeLine("// Add cleanup logic here")
+			case "OnGatewayInit":
+				g.writeLine("// Initialize WebSocket gateway")
+				g.writeLine("// Add initialization logic here")
+			case "SubscribeMessage":
+				if len(decorator.Args) > 0 {
+					if argValue, ok := decorator.Args[0].Value.(string); ok {
+						g.writeLine(fmt.Sprintf("// Handle WebSocket message: %s", argValue))
+					} else if argArray, ok := decorator.Args[0].Value.([]interface{}); ok {
+						var events []string
+						for _, event := range argArray {
+							if eventStr, ok := event.(string); ok {
+								events = append(events, eventStr)
+							}
+						}
+						g.writeLine(fmt.Sprintf("// Handle WebSocket messages: %s", strings.Join(events, ", ")))
+					}
+				}
+				g.writeLine("// Add message handling logic here")
+			}
+			addedComment = true
+		}
+	}
+	
+	// Add return statement if function has return type
+	if wsFunc.ReturnType != "" {
+		if wsFunc.ReturnType == "error" {
+			g.writeLine("return nil")
+		}
+	}
+	
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	
+	return nil
+}
+
 // generateControllerDeclaration generates Go code for a controller
 func (g *CodeGenerator) generateControllerDeclaration(controller *ControllerDeclaration) error {
 	// Generate struct declaration

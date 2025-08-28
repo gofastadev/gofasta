@@ -22,6 +22,7 @@ type FactoryDeclaration = core.FactoryDeclaration
 type MockDeclaration = core.MockDeclaration
 type TestModuleDeclaration = core.TestModuleDeclaration
 type WebSocketGatewayDeclaration = core.WebSocketGatewayDeclaration
+type WebSocketFunctionDeclaration = core.WebSocketFunctionDeclaration
 type FieldNode = core.FieldNode
 type MethodNode = core.MethodNode
 type ParameterNode = core.ParameterNode
@@ -161,6 +162,8 @@ func (g *CodeGenerator) generateDeclaration(decl GofaDeclaration) error {
 		return g.generateTestModuleDeclaration(d)
 	case *WebSocketGatewayDeclaration:
 		return g.generateWebSocketGatewayDeclaration(d)
+	case *WebSocketFunctionDeclaration:
+		return g.generateWebSocketFunctionDeclaration(d)
 	default:
 		return fmt.Errorf("unsupported declaration type: %T", decl)
 	}

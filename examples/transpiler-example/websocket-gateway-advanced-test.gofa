@@ -1,0 +1,22 @@
+package main
+
+// Advanced WebSocket Gateway test for object configuration parsing
+@WebSocketGateway({
+	port: 8080,
+	namespace: "/chat",
+	cors: true,
+	transports: ["websocket", "polling"]
+})
+type AdvancedTestGateway struct {
+	@Inject("chatService")
+	chatService *ChatService
+	
+	@Inject("logger")
+	logger *Logger
+}
+
+@Injectable()
+type ChatService struct {}
+
+@Injectable()
+type Logger struct {}

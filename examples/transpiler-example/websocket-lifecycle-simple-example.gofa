@@ -1,0 +1,73 @@
+package main
+
+// WebSocket Gateway Declaration
+@WebSocketGateway({
+	port: 8080,
+	namespace: "/chat"
+})
+type ChatGateway struct {
+	@Inject("chatService")
+	chatService *ChatService
+}
+
+// Gateway initialization - called when gateway is initialized
+@OnGatewayInit()
+func HandleGatewayInit() {
+	// Initialize gateway resources
+	// Set up connection pools, initialize services, etc.
+}
+
+// Connection handler - called when a client connects
+@OnGatewayConnection()
+func HandleConnection(
+	@ConnectedSocket() client *WebSocketClient,
+	@Headers() headers map[string]string,
+	@ClientIP() ip string
+) {
+	// Handle new client connection
+	// Log connection, authenticate user, join default rooms, etc.
+}
+
+// Disconnection handler - called when a client disconnects
+@OnGatewayDisconnect()
+func HandleDisconnection(
+	@ConnectedSocket() client *WebSocketClient,
+	@DisconnectReason() reason string,
+	@Rooms() rooms []string
+) {
+	// Handle client disconnection
+	// Clean up resources, log disconnection, notify other users, etc.
+}
+
+// Message handlers
+@SubscribeMessage("join_chat")
+func HandleJoinChat(
+	@MessageBody() data *JoinChatData,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Handle joining a chat room
+}
+
+@SubscribeMessage("send_message")
+func HandleSendMessage(
+	@MessageBody() data *ChatMessageData,
+	@ConnectedSocket() client *WebSocketClient,
+	@MessageAck() ack *AckCallback
+) {
+	// Handle sending a message
+}
+
+// Data structures
+type JoinChatData struct {
+	RoomID string
+	UserID string
+}
+
+type ChatMessageData struct {
+	RoomID string
+	Message string
+	UserID string
+}
+
+@Injectable()
+type ChatService struct {}

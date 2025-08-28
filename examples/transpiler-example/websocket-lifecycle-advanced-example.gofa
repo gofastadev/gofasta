@@ -1,0 +1,141 @@
+package main
+
+// Advanced WebSocket Gateway with comprehensive lifecycle handling
+@WebSocketGateway({
+	port: 3000,
+	namespace: "/game",
+	cors: {
+		origin: "*",
+		credentials: true
+	},
+	transports: ["websocket"],
+	pingTimeout: 30000,
+	pingInterval: 15000
+})
+type GameGateway struct {
+	@Inject("gameService")
+	gameService *GameService
+	
+	@Inject("authService") 
+	authService *AuthService
+	
+	@Inject("logger")
+	logger *Logger
+}
+
+// Gateway initialization with comprehensive setup
+@OnGatewayInit()
+func InitializeGameGateway() {
+	// Initialize game systems, load configurations, setup monitoring
+}
+
+// Advanced connection handler with authentication
+@OnGatewayConnection()
+func HandlePlayerConnection(
+	@ConnectedSocket() client *WebSocketClient,
+	@Headers() headers map[string]string,
+	@ClientIP() ip string,
+	@CurrentUser() user *User,
+	@Session() session *Session
+) error {
+	// Authenticate user, validate session, setup player state
+	// Return error if authentication fails
+	return nil
+}
+
+// Advanced disconnection handler with cleanup
+@OnGatewayDisconnect()
+func HandlePlayerDisconnection(
+	@ConnectedSocket() client *WebSocketClient,
+	@DisconnectReason() reason string,
+	@Rooms() rooms []string,
+	@CurrentUser() user *User,
+	@Namespace() namespace string
+) {
+	// Clean up player state, save game progress, notify teammates
+}
+
+// Multiple message handlers for different game events
+@SubscribeMessage(["join_game", "spectate_game"])
+func HandleGameJoin(
+	@MessageBody() data *GameJoinData,
+	@ConnectedSocket() client *WebSocketClient,
+	@MessageAck() ack *AckCallback,
+	@CurrentUser() user *User
+) {
+	// Handle joining game as player or spectator
+}
+
+@SubscribeMessage(["move", "attack", "cast_spell", "use_item"])
+func HandleGameActions(
+	@MessageBody() data *GameActionData,
+	@ConnectedSocket() client *WebSocketClient,
+	@MessageAck() ack *AckCallback,
+	@CurrentUser() user *User,
+	@Rooms() rooms []string
+) {
+	// Handle various game actions with validation
+}
+
+@SubscribeMessage("chat")
+func HandleGameChat(
+	@MessageBody() data *ChatData,
+	@ConnectedSocket() client *WebSocketClient,
+	@CurrentUser() user *User,
+	@Headers() headers map[string]string
+) {
+	// Handle in-game chat with moderation
+}
+
+// Helper function without decorator
+func validatePlayerConnection(client *WebSocketClient, headers map[string]string) error {
+	// Validation logic for player connections
+	return nil
+}
+
+// Data structures
+type GameJoinData struct {
+	GameID string
+	Mode string // "player" or "spectator"
+	Team string
+}
+
+type GameActionData struct {
+	ActionType string
+	TargetID string
+	Position *Position
+	Data map[string]interface{}
+}
+
+type ChatData struct {
+	Message string
+	Channel string // "team", "all", "whisper"
+	TargetUserID string
+}
+
+type Position struct {
+	X float64
+	Y float64
+	Z float64
+}
+
+// Service dependencies
+@Injectable()
+type GameService struct {}
+
+@Injectable()
+type AuthService struct {}
+
+@Injectable()
+type Logger struct {}
+
+type User struct {
+	ID string
+	Username string
+	Level int
+}
+
+type Session struct {
+	ID string
+	Data map[string]interface{}
+}

@@ -135,6 +135,26 @@ func (w *WebSocketGatewayDeclaration) Pos() token.Pos {
 
 func (w *WebSocketGatewayDeclaration) isDeclaration() {}
 
+// WebSocketFunctionDeclaration represents a standalone WebSocket lifecycle function
+type WebSocketFunctionDeclaration struct {
+	Name       string           // function name
+	Decorators []*DecoratorNode // @OnGatewayConnection, @OnGatewayDisconnect, @OnGatewayInit, @SubscribeMessage
+	Params     []*ParameterNode // method parameters with WebSocket decorators
+	ReturnType string           // return type
+	Body       []ast.Stmt       // function body statements
+	Position   token.Pos
+}
+
+func (w *WebSocketFunctionDeclaration) String() string {
+	return "WebSocketFunction: " + w.Name
+}
+
+func (w *WebSocketFunctionDeclaration) Pos() token.Pos {
+	return w.Position
+}
+
+func (w *WebSocketFunctionDeclaration) isDeclaration() {}
+
 // TestSuiteDeclaration represents a test suite class
 type TestSuiteDeclaration struct {
 	Name       string           // test suite name
@@ -333,6 +353,14 @@ func Walk(v Visitor, node GofaASTNode) {
 		}
 		for _, method := range n.Methods {
 			Walk(v, method)
+		}
+
+	case *WebSocketFunctionDeclaration:
+		for _, decorator := range n.Decorators {
+			Walk(v, decorator)
+		}
+		for _, param := range n.Params {
+			Walk(v, param)
 		}
 
 	case *MethodNode:

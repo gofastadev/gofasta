@@ -1,0 +1,104 @@
+package main
+
+@WebSocketGateway({
+	port: 4000,
+	namespace: "/notifications", 
+	cors: {
+		origin: "*",
+		credentials: true
+	}
+})
+type NotificationGateway struct {
+	@Inject("notificationService")
+	notificationService *NotificationService
+	
+	@Inject("userService")
+	userService *UserService
+}
+
+// Single event handler
+@SubscribeMessage("subscribe_to_notifications")
+func handleSubscribeToNotifications(
+	@MessageBody() data *SubscribeData,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Handle subscription to notifications
+}
+
+// Multiple event handler for notification actions
+@SubscribeMessage(["mark_as_read", "mark_as_unread", "delete_notification"])
+func handleNotificationActions(
+	@MessageBody() data *NotificationActionData,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Handle notification actions based on action type
+}
+
+// Another single event handler
+@SubscribeMessage("get_notification_settings")
+func handleGetNotificationSettings(
+	@MessageBody() data *UserRequestData,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Handle getting notification settings
+}
+
+// Multiple event handler for settings
+@SubscribeMessage(["update_email_notifications", "update_push_notifications", "update_sms_notifications"])
+func handleNotificationSettingsUpdate(
+	@MessageBody() data *SettingsUpdateData,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Handle notification settings updates
+}
+
+// Regular helper function without decorator
+func validateUserPermissions(userID string, action string) bool {
+	// Validate user permissions
+	return true
+}
+
+// Another helper function without decorator
+func broadcastToCategory(category string, message interface{}) {
+	// Implementation for broadcasting to category subscribers
+}
+
+type SubscribeData struct {
+	UserID string
+	Categories []string
+}
+
+type NotificationActionData struct {
+	Action string
+	UserID string
+	NotificationID string
+}
+
+type UserRequestData struct {
+	UserID string
+}
+
+type SettingsUpdateData struct {
+	SettingType string
+	UserID string
+	Enabled bool
+	Preferences map[string]interface{}
+}
+
+@Injectable()
+type NotificationService struct {}
+
+@Injectable()
+type UserService struct {}
+
+type User struct {
+	ID string
+	Name string
+}
+
+type NotificationSettings struct {
+	EmailEnabled bool
+	PushEnabled bool
+	SMSEnabled bool
+	Categories []string
+}

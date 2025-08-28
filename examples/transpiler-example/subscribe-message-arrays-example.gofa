@@ -1,0 +1,69 @@
+package main
+
+@WebSocketGateway({
+	port: 3000,
+	namespace: "/game"
+})
+type GameGateway struct {
+	@Inject("gameService") 
+	gameService *GameService
+	
+	@Inject("playerService")
+	playerService *PlayerService
+}
+
+// Handle multiple room-related events with a single handler
+@SubscribeMessage(["join_room", "leave_room", "switch_room"])
+func handleRoomEvents(
+	@MessageBody() data *RoomEventData,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Handle room events based on event type
+}
+
+// Handle multiple game action events
+@SubscribeMessage(["move_player", "cast_spell", "use_item"])
+func handleGameActions(
+	@MessageBody() data *GameActionData,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Handle game actions based on action type
+}
+
+// Handle multiple admin events
+@SubscribeMessage(["admin_kick", "admin_ban", "admin_mute"])
+func handleAdminActions(
+	@MessageBody() data *AdminActionData,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Handle admin actions with permission verification
+}
+
+type RoomEventData struct {
+	EventType string
+	PlayerID string
+	RoomID string
+	FromRoomID string // For switch_room
+}
+
+type GameActionData struct {
+	ActionType string
+	PlayerID string
+	Position *Position // For move_player
+	SpellID string // For cast_spell
+	ItemID string // For use_item
+	Target *Target // For cast_spell
+}
+
+type AdminActionData struct {
+	ActionType string
+	AdminID string
+	TargetPlayerID string
+	Duration int // For ban/mute actions
+}
+
+@Injectable()
+type GameService struct {}
+
+@Injectable()
+type PlayerService struct {}

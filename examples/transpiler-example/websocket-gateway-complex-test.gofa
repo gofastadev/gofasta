@@ -1,0 +1,56 @@
+package main
+
+// Complex WebSocket Gateway test demonstrating parsing capabilities
+@WebSocketGateway({
+	port: 3000,
+	namespace: "/api/v1/websocket", 
+	cors: {
+		origin: "*",
+		credentials: true
+	},
+	transports: ["websocket"],
+	pingTimeout: 5000,
+	pingInterval: 2500
+})
+type ComplexTestGateway struct {
+	@Inject("gameService")
+	gameService *GameService
+	
+	@Inject("userService")
+	userService *UserService
+	
+	@Inject("authService")
+	authService *AuthService
+	
+	@Inject("redis")
+	redis *RedisService
+	
+	connectionCount int
+}
+
+@Injectable()
+type GameService struct {
+	@Inject("database")
+	db *Database
+}
+
+@Injectable()
+type UserService struct {
+	@Inject("database")
+	db *Database
+}
+
+@Injectable()
+type AuthService struct {
+	@Inject("jwt")
+	jwtService *JWTService
+}
+
+@Injectable()
+type RedisService struct {}
+
+@Injectable()
+type Database struct {}
+
+@Injectable()
+type JWTService struct {}
