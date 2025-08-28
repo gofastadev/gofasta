@@ -1,0 +1,198 @@
+package main
+
+// Complete WebSocket application demonstrating all lifecycle decorators
+@WebSocketGateway({
+	port: 4000,
+	namespace: "/realtime",
+	cors: {
+		origin: ["http://localhost:3000", "https://app.example.com"],
+		credentials: true
+	}
+})
+type RealtimeGateway struct {
+	@Inject("userService")
+	userService *UserService
+	
+	@Inject("notificationService")
+	notificationService *NotificationService
+	
+	@Inject("metricsService")
+	metricsService *MetricsService
+}
+
+// === LIFECYCLE HANDLERS ===
+
+// Gateway initialization - runs once when server starts
+@OnGatewayInit()
+func InitializeRealtimeGateway() {
+	// Load configuration, initialize connection pools, setup monitoring
+}
+
+// Connection lifecycle - runs for each new connection
+@OnGatewayConnection()
+func HandleUserConnection(
+	@ConnectedSocket() client *WebSocketClient,
+	@Headers() headers map[string]string,
+	@ClientIP() ip string
+) {
+	// User authentication, session setup, initial data sync
+}
+
+// Disconnection lifecycle - runs when connection is lost
+@OnGatewayDisconnect()
+func HandleUserDisconnection(
+	@ConnectedSocket() client *WebSocketClient,
+	@DisconnectReason() reason string,
+	@Rooms() rooms []string
+) {
+	// Cleanup resources, save state, notify contacts
+}
+
+// === MESSAGE HANDLERS ===
+
+// User presence and status
+@SubscribeMessage("user_online")
+func HandleUserOnline(
+	@MessageBody() data *UserStatusData,
+	@ConnectedSocket() client *WebSocketClient,
+	@CurrentUser() user *User
+) {
+	// Update user online status, broadcast to contacts
+}
+
+@SubscribeMessage("user_typing")
+func HandleUserTyping(
+	@MessageBody() data *TypingData,
+	@ConnectedSocket() client *WebSocketClient,
+	@Rooms() rooms []string
+) {
+	// Handle typing indicators in conversations
+}
+
+// Real-time notifications
+@SubscribeMessage(["subscribe_notifications", "unsubscribe_notifications"])
+func HandleNotificationSubscription(
+	@MessageBody() data *NotificationSubscriptionData,
+	@ConnectedSocket() client *WebSocketClient,
+	@MessageAck() ack *AckCallback
+) {
+	// Subscribe/unsubscribe from notification channels
+}
+
+// Live data updates
+@SubscribeMessage("subscribe_live_data")
+func HandleLiveDataSubscription(
+	@MessageBody() data *LiveDataSubscriptionData,
+	@ConnectedSocket() client *WebSocketClient,
+	@Session() session *Session
+) {
+	// Subscribe to live data feeds (stock prices, game scores, etc.)
+}
+
+// Collaboration features
+@SubscribeMessage(["join_document", "leave_document"])
+func HandleDocumentCollaboration(
+	@MessageBody() data *DocumentActionData,
+	@ConnectedSocket() client *WebSocketClient,
+	@CurrentUser() user *User,
+	@MessageAck() ack *AckCallback
+) {
+	// Real-time document collaboration
+}
+
+@SubscribeMessage("document_edit")
+func HandleDocumentEdit(
+	@MessageBody() data *DocumentEditData,
+	@ConnectedSocket() client *WebSocketClient,
+	@CurrentUser() user *User,
+	@Rooms() rooms []string
+) {
+	// Handle real-time document edits
+}
+
+// Voice/video call signaling
+@SubscribeMessage(["call_start", "call_answer", "call_end"])
+func HandleCallSignaling(
+	@MessageBody() data *CallSignalingData,
+	@ConnectedSocket() client *WebSocketClient,
+	@CurrentUser() user *User,
+	@MessageAck() ack *AckCallback
+) {
+	// WebRTC signaling for voice/video calls
+}
+
+// Helper function for connection validation
+func validateConnection(client *WebSocketClient, headers map[string]string, ip string) error {
+	// Validation logic for connections
+	return nil
+}
+
+// === DATA STRUCTURES ===
+
+type UserStatusData struct {
+	Status string // "online", "away", "busy", "offline"
+	Message string
+}
+
+type TypingData struct {
+	ConversationID string
+	IsTyping bool
+}
+
+type NotificationSubscriptionData struct {
+	Action string // "subscribe" or "unsubscribe"
+	Channels []string
+	UserID string
+}
+
+type LiveDataSubscriptionData struct {
+	DataType string // "stocks", "sports", "weather"
+	Symbols []string
+	UpdateFrequency int // milliseconds
+}
+
+type DocumentActionData struct {
+	DocumentID string
+	Action string // "join" or "leave"
+}
+
+type DocumentEditData struct {
+	DocumentID string
+	Operation string // "insert", "delete", "format"
+	Position int
+	Content string
+	UserID string
+}
+
+type CallSignalingData struct {
+	CallID string
+	Action string // "start", "answer", "end"
+	Participants []string
+	SignalingData map[string]interface{}
+}
+
+// === SERVICES ===
+
+@Injectable()
+type UserService struct {}
+
+@Injectable()
+type NotificationService struct {}
+
+@Injectable()
+type MetricsService struct {}
+
+// === TYPES ===
+
+type User struct {
+	ID string
+	Name string
+	Email string
+	Status string
+}
+
+type Session struct {
+	UserID string
+	ConnectionTime string
+	Data map[string]interface{}
+}

@@ -1,0 +1,6 @@
+@OnGatewayConnection()
+func HandleConnection(
+    client *WebSocketClient,
+    headers map[string]string
+) {
+}
