@@ -1,0 +1,45 @@
+package main
+
+@WebSocketGateway(8080)
+type ChatGateway struct {
+	@Inject("chatService")
+	chatService *ChatService
+}
+
+@SubscribeMessage("message")
+func handleMessage(
+	@MessageBody() data *ChatMessage,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Handle incoming chat message
+	// response := chatService.ProcessMessage(data)
+}
+
+@SubscribeMessage("typing")
+func handleTyping(
+	@MessageBody() data *TypingData,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Handle typing indicator
+}
+
+type ChatMessage struct {
+	content string
+	userID  string
+	roomID  string
+}
+
+type TypingData struct {
+	userID string
+	isTyping bool
+}
+
+@Injectable()
+type ChatService struct {}
+
+type ChatResponse struct {
+	ID string
+	Content string
+	UserID string
+	Timestamp string
+}

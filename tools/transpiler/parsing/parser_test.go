@@ -237,3 +237,270 @@ type AdvancedGateway struct {
 	}
 }
 
+// TestSubscribeMessageParsingSimple tests basic @SubscribeMessage decorator parsing
+func TestSubscribeMessageParsingSimple(t *testing.T) {
+	input := `package main
+
+@WebSocketGateway(8080)
+type ChatGateway struct {
+	service *ChatService
+
+	@SubscribeMessage("message")
+	func handleMessage(client *WebSocketClient, data *ChatMessage) {
+		// Handle message
+	}
+}`
+
+	file, err := ParseGofaFile(input)
+	if err != nil {
+		t.Fatalf("SubscribeMessage parse failed: %v", err)
+	}
+	
+	if file == nil || len(file.Declarations) != 1 {
+		t.Fatalf("Expected 1 declaration, got %d", len(file.Declarations))
+	}
+	
+	gateway, ok := file.Declarations[0].(*core.WebSocketGatewayDeclaration)
+	if !ok {
+		t.Fatalf("Expected WebSocketGatewayDeclaration, got %T", file.Declarations[0])
+	}
+	
+	// Check that we have one method
+	if len(gateway.Methods) != 1 {
+		t.Fatalf("Expected 1 method, got %d", len(gateway.Methods))
+	}
+	
+	method := gateway.Methods[0]
+	if method.Name != "handleMessage" {
+		t.Errorf("Expected method name \"handleMessage\", got \"%s\"", method.Name)
+	}
+	
+	// Check that the method has the SubscribeMessage decorator
+	if len(method.Decorators) != 1 {
+		t.Fatalf("Expected 1 decorator on method, got %d", len(method.Decorators))
+	}
+	
+	decorator := method.Decorators[0]
+	if decorator.Name != "SubscribeMessage" {
+		t.Errorf("Expected decorator name \"SubscribeMessage\", got \"%s\"", decorator.Name)
+	}
+	
+	// Check decorator argument
+	if len(decorator.Args) != 1 {
+		t.Fatalf("Expected 1 decorator argument, got %d", len(decorator.Args))
+	}
+	
+	arg := decorator.Args[0]
+	if arg.Key != "" {
+		t.Errorf("Expected no key for decorator argument, got \"%s\"", arg.Key)
+	}
+	
+	if argValue, ok := arg.Value.(string); !ok || argValue != "message" {
+		t.Errorf("Expected argument value \"message\", got %v", arg.Value)
+	}
+}
+
+// TestSubscribeMessageParsingMultiple tests multiple @SubscribeMessage decorators
+func TestSubscribeMessageParsingMultiple(t *testing.T) {
+	input := `package main
+
+@WebSocketGateway(3000)
+type GameGateway struct {
+	@SubscribeMessage("join_game")
+	func handleJoinGame(client *WebSocketClient, data *JoinGameData) {
+		// Handle join game
+	}
+
+	@SubscribeMessage("leave_game") 
+	func handleLeaveGame(client *WebSocketClient, data *LeaveGameData) {
+		// Handle leave game
+	}
+
+	@SubscribeMessage("game_action")
+	func handleGameAction(client *WebSocketClient, data *GameActionData) {
+		// Handle game action
+	}
+}`
+
+	file, err := ParseGofaFile(input)
+	if err != nil {
+		t.Fatalf("Multiple SubscribeMessage parse failed: %v", err)
+	}
+	
+	gateway, ok := file.Declarations[0].(*core.WebSocketGatewayDeclaration)
+	if !ok {
+		t.Fatalf("Expected WebSocketGatewayDeclaration, got %T", file.Declarations[0])
+	}
+	
+	// Check that we have three methods
+	if len(gateway.Methods) != 3 {
+		t.Fatalf("Expected 3 methods, got %d", len(gateway.Methods))
+	}
+	
+	expectedMethods := []struct {
+		name    string
+		message string
+	}{
+		{"handleJoinGame", "join_game"},
+		{"handleLeaveGame", "leave_game"},
+		{"handleGameAction", "game_action"},
+	}
+	
+	for i, expected := range expectedMethods {
+		method := gateway.Methods[i]
+		if method.Name != expected.name {
+			t.Errorf("Expected method name \"%s\", got \"%s\"", expected.name, method.Name)
+		}
+		
+		if len(method.Decorators) != 1 {
+			t.Errorf("Expected 1 decorator on method %s, got %d", method.Name, len(method.Decorators))
+			continue
+		}
+		
+		decorator := method.Decorators[0]
+		if decorator.Name != "SubscribeMessage" {
+			t.Errorf("Expected decorator \"SubscribeMessage\" on method %s, got \"%s\"", method.Name, decorator.Name)
+		}
+		
+		if len(decorator.Args) != 1 {
+			t.Errorf("Expected 1 argument on decorator for method %s, got %d", method.Name, len(decorator.Args))
+			continue
+		}
+		
+		arg := decorator.Args[0]
+		if argValue, ok := arg.Value.(string); !ok || argValue != expected.message {
+			t.Errorf("Expected argument \"%s\" on method %s, got %v", expected.message, method.Name, arg.Value)
+		}
+	}
+}
+
+// TestSubscribeMessageParsingWithEventArrays tests @SubscribeMessage with event arrays
+func TestSubscribeMessageParsingWithEventArrays(t *testing.T) {
+	input := `package main
+
+@WebSocketGateway({port: 3000})
+type MultiEventGateway struct {
+	@SubscribeMessage(["join_room", "leave_room"])
+	func handleRoomEvents(client *WebSocketClient, data *RoomEventData) {
+		// Handle multiple room events
+	}
+}`
+
+	file, err := ParseGofaFile(input)
+	if err != nil {
+		t.Fatalf("SubscribeMessage with arrays parse failed: %v", err)
+	}
+	
+	gateway, ok := file.Declarations[0].(*core.WebSocketGatewayDeclaration)
+	if !ok {
+		t.Fatalf("Expected WebSocketGatewayDeclaration, got %T", file.Declarations[0])
+	}
+	
+	// Check that we have one method
+	if len(gateway.Methods) != 1 {
+		t.Fatalf("Expected 1 method, got %d", len(gateway.Methods))
+	}
+	
+	method := gateway.Methods[0]
+	if method.Name != "handleRoomEvents" {
+		t.Errorf("Expected method name \"handleRoomEvents\", got \"%s\"", method.Name)
+	}
+	
+	// Check decorator
+	if len(method.Decorators) != 1 {
+		t.Fatalf("Expected 1 decorator, got %d", len(method.Decorators))
+	}
+	
+	decorator := method.Decorators[0]
+	if decorator.Name != "SubscribeMessage" {
+		t.Errorf("Expected decorator \"SubscribeMessage\", got \"%s\"", decorator.Name)
+	}
+	
+	// Check decorator argument is array
+	if len(decorator.Args) != 1 {
+		t.Fatalf("Expected 1 decorator argument, got %d", len(decorator.Args))
+	}
+	
+	arg := decorator.Args[0]
+	if argArray, ok := arg.Value.([]interface{}); !ok {
+		t.Errorf("Expected array argument, got %T", arg.Value)
+	} else {
+		expectedEvents := []string{"join_room", "leave_room"}
+		if len(argArray) != len(expectedEvents) {
+			t.Errorf("Expected %d events, got %d", len(expectedEvents), len(argArray))
+		} else {
+			for i, expected := range expectedEvents {
+				if event, ok := argArray[i].(string); !ok || event != expected {
+					t.Errorf("Expected event \"%s\" at index %d, got %v", expected, i, argArray[i])
+				}
+			}
+		}
+	}
+}
+
+// TestSubscribeMessageParsingMixed tests mixed methods with and without decorators
+func TestSubscribeMessageParsingMixed(t *testing.T) {
+	input := `package main
+
+@WebSocketGateway(8080)
+type MixedGateway struct {
+	service *Service
+	
+	@SubscribeMessage("user_message")
+	func handleUserMessage(client *WebSocketClient, message *UserMessage) {
+		// Handle user message
+	}
+	
+	func helperMethod() {
+		// Regular method without decorator
+	}
+	
+	@SubscribeMessage("admin_action")
+	func handleAdminAction(client *WebSocketClient, action *AdminAction) {
+		// Handle admin action
+	}
+}`
+
+	file, err := ParseGofaFile(input)
+	if err != nil {
+		t.Fatalf("Mixed methods parse failed: %v", err)
+	}
+	
+	gateway, ok := file.Declarations[0].(*core.WebSocketGatewayDeclaration)
+	if !ok {
+		t.Fatalf("Expected WebSocketGatewayDeclaration, got %T", file.Declarations[0])
+	}
+	
+	// Check that we have three methods
+	if len(gateway.Methods) != 3 {
+		t.Fatalf("Expected 3 methods, got %d", len(gateway.Methods))
+	}
+	
+	// First method should have SubscribeMessage decorator
+	method1 := gateway.Methods[0]
+	if method1.Name != "handleUserMessage" {
+		t.Errorf("Expected first method name \"handleUserMessage\", got \"%s\"", method1.Name)
+	}
+	if len(method1.Decorators) != 1 {
+		t.Errorf("Expected 1 decorator on first method, got %d", len(method1.Decorators))
+	}
+	
+	// Second method should have no decorators
+	method2 := gateway.Methods[1]
+	if method2.Name != "helperMethod" {
+		t.Errorf("Expected second method name \"helperMethod\", got \"%s\"", method2.Name)
+	}
+	if len(method2.Decorators) != 0 {
+		t.Errorf("Expected 0 decorators on helper method, got %d", len(method2.Decorators))
+	}
+	
+	// Third method should have SubscribeMessage decorator
+	method3 := gateway.Methods[2]
+	if method3.Name != "handleAdminAction" {
+		t.Errorf("Expected third method name \"handleAdminAction\", got \"%s\"", method3.Name)
+	}
+	if len(method3.Decorators) != 1 {
+		t.Errorf("Expected 1 decorator on third method, got %d", len(method3.Decorators))
+	}
+}
+

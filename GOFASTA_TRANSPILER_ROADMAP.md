@@ -54,12 +54,12 @@
 
 ### 🎯 **Advanced Features (25% Complete)**
 
-| Feature Category                | Progress       | Status                          | Priority         | Details                                  |
-| ------------------------------- | -------------- | ------------------------------- | ---------------- | ---------------------------------------- |
-| **🌐 WebSocket Support**  | 20%            | 🔄**Partial Implementation** | 🔥**High** | AST complete, parsing/codegen missing |
-| **📊 GraphQL Decorators** | 0%             | ❌ Pending                      | 🟡 Medium        | @Resolver, @Query, @Mutation             |
-| **🔄 Route Versioning**   | **100%** | ✅ Complete                     | ✅**Done** | @Version decorator -**COMPLETED!** |
-| **📡 Microservices**      | 0%             | ❌ Pending                      | 🟢 Low           | @MessagePattern, event handling          |
+| Feature Category                | Progress       | Status                             | Priority         | Details                                  |
+| ------------------------------- | -------------- | ---------------------------------- | ---------------- | ---------------------------------------- |
+| **🌐 WebSocket Support**  | 20%            | 🔄**Partial Implementation** | 🔥**High** | AST complete, parsing/codegen missing    |
+| **📊 GraphQL Decorators** | 0%             | ❌ Pending                         | 🟡 Medium        | @Resolver, @Query, @Mutation             |
+| **🔄 Route Versioning**   | **100%** | ✅ Complete                        | ✅**Done** | @Version decorator -**COMPLETED!** |
+| **📡 Microservices**      | 0%             | ❌ Pending                         | 🟢 Low           | @MessagePattern, event handling          |
 
 ### 🎯 **Developer Experience (20% Complete)**
 
@@ -474,12 +474,12 @@ func (s *{{.Name}}WSServer) Start() {
   }
   ```
 - [X] **1.1b** Add all WebSocket decorator constants to `core/decorators.go` - **✅ COMPLETE**
-- [X] **1.1c** Add WebSocket decorator type mapping - **✅ COMPLETE**  
+- [X] **1.1c** Add WebSocket decorator type mapping - **✅ COMPLETE**
 - [X] **1.1d** Add WebSocket helper functions (IsWebSocketDecorator, etc.) - **✅ COMPLETE**
 - [X] **1.1e** Add WebSocket AST traversal and walking support - **✅ COMPLETE**
 - [X] **1.1f** Add comprehensive WebSocket AST unit tests - **✅ COMPLETE**
 - [X] **1.2** Implement `@WebSocketGateway()` decorator parsing in `parsing/parser.go` - **✅ COMPLETE**
-- [ ] **1.3** Implement `@SubscribeMessage()` decorator parsing with event arrays - **❌ MISSING**
+- [X] **1.3** Implement `@SubscribeMessage()` decorator parsing with event arrays - **✅ COMPLETE**
 - [ ] **1.4** Implement `@OnGatewayConnection()` decorator parsing - **❌ MISSING**
 - [ ] **1.5** Implement `@OnGatewayDisconnect()` decorator parsing - **❌ MISSING**
 - [ ] **1.6** Implement `@OnGatewayInit()` decorator parsing - **❌ MISSING**
@@ -676,53 +676,64 @@ func (s *{{.Name}}WSServer) Start() {
 
 ## 📊 **WebSocket Implementation Status Summary**
 
-### **Current Status: 20% Complete (AST Foundation Only)**
+### **Current Status: 25% Complete (AST + WebSocket Gateway + SubscribeMessage Parsing)**
 
-| Phase | Component | Progress | Status | Details |
-|-------|-----------|----------|--------|---------|
-| **Phase 1** | AST Definitions | **100%** | ✅ **Complete** | All WebSocket AST nodes, constants, mappings, helpers, tests |
-| **Phase 1** | Parsing Logic | **10%** | 🔄 **Partial** | @WebSocketGateway parsing complete, other decorators missing |
-| **Phase 2** | Code Generation | **5%** | ❌ **Stub Only** | Only delegation stub, no real WebSocket code generation |
-| **Phase 3** | Parameter Support | **15%** | ❌ **Constants Only** | Decorator constants defined, no parsing/generation |
-| **Phase 4** | Advanced Features | **5%** | ❌ **Constants Only** | Only decorator constants, no implementation |
-| **Phase 5** | Testing Support | **10%** | ❌ **Constants Only** | Decorator constants defined, no implementation |
+| Phase             | Component         | Progress       | Status                     | Details                                                      |
+| ----------------- | ----------------- | -------------- | -------------------------- | ------------------------------------------------------------ |
+| **Phase 1** | AST Definitions   | **100%** | ✅**Complete**       | All WebSocket AST nodes, constants, mappings, helpers, tests |
+| **Phase 1** | Parsing Logic     | **30%**  | 🔄**Partial**        | @WebSocketGateway + @SubscribeMessage complete, lifecycle decorators missing |
+| **Phase 2** | Code Generation   | **5%**   | ❌**Stub Only**      | Only delegation stub, no real WebSocket code generation      |
+| **Phase 3** | Parameter Support | **15%**  | ❌**Constants Only** | Decorator constants defined, no parsing/generation           |
+| **Phase 4** | Advanced Features | **5%**   | ❌**Constants Only** | Only decorator constants, no implementation                  |
+| **Phase 5** | Testing Support   | **10%**  | ❌**Constants Only** | Decorator constants defined, no implementation               |
 
-### **✅ What IS Implemented (Foundation Complete)**
+### **✅ What IS Implemented (Foundation + Core Parsing)**
+
 - **WebSocketGatewayDeclaration** AST node (`core/ast.go:116-136`)
-- **21 WebSocket decorator constants** (`core/decorators.go:132-162`)  
+- **21 WebSocket decorator constants** (`core/decorators.go:132-162`)
 - **WebSocket decorator type mapping** (`core/decorators.go:280-301`)
 - **6 WebSocket helper functions** (`core/decorators.go:383-410`)
 - **Comprehensive AST tests** (`core/websocket_ast_test.go`)
+- **@WebSocketGateway() parsing** with complex configuration support (`parsing/parser.go:1397-1515`)
+- **@SubscribeMessage() parsing** with event arrays support (`parsing/parser.go:1492-1500`)
+- **Array argument parsing** for decorators (`parsing/parser.go:1218-1247`)
+- **Method decorator support** in WebSocket gateways
+- **Comprehensive parsing tests** (4 SubscribeMessage + 2 WebSocketGateway tests)
+- **Working example files** (3 comprehensive examples demonstrating features)
 - **Basic code generation dispatcher** (`codegen/codegen.go:162-163`)
 
-### **❌ What is MISSING (Core Functionality)**
-- **Parsing Implementation**: No `.gofa` file parsing for any WebSocket decorators
+### **❌ What is MISSING (Remaining Core Functionality)**
+
+- **Lifecycle Decorator Parsing**: @OnGatewayConnection, @OnGatewayDisconnect, @OnGatewayInit parsing
 - **Code Generation**: No actual Go code generation for WebSocket features  
-- **Parameter Handling**: No WebSocket parameter decorator processing
+- **Parameter Handling**: No WebSocket parameter decorator processing (@MessageBody, @ConnectedSocket, etc.)
 - **Context Detection**: No WebSocket vs HTTP context differentiation
 - **Templates**: No WebSocket-specific code generation templates
-- **Integration**: No parser integration or end-to-end functionality
+- **Integration**: No end-to-end WebSocket transpilation functionality
 
-**Total Transpiler Tasks: 80+ tasks identified**  
-**✅ Completed: 16 tasks (AST definitions, constants, and @WebSocketGateway parsing)**  
-**❌ Missing: 64+ tasks (remaining parsing and code generation)**
+**Total Transpiler Tasks: 80+ tasks identified**
+**✅ Completed: 20 tasks (AST definitions, constants, @WebSocketGateway + @SubscribeMessage parsing)**
+**❌ Missing: 60+ tasks (lifecycle decorators, parameter decorators, and code generation)**
 
 ### **🚨 Critical Implementation Gap - CONFIRMED BY TESTING**
 
 **The WebSocket transpiler is NOT functional.** Testing with existing WebSocket examples confirms:
 
 #### **🔍 Example Testing Results:**
+
 - **4 WebSocket example files exist**: `websocket-gateway-example.gofa`, `websocket-simple-example.gofa`, `websocket-client-example.gofa`, `websocket-test-parsing.gofa`
 - **Transpiler claims "success"** but generates **incomplete Go code**
 - **Generated output shows**:
-  - ✅ Dependency injection works (`@Injectable`, `@Inject`) 
+  - ✅ Dependency injection works (`@Injectable`, `@Inject`)
   - ❌ **WebSocket decorators completely ignored**: No `@WebSocketGateway`, `@SubscribeMessage`, or parameter decorators processed
   - ❌ **No WebSocket server code**: Missing gateway servers, message handlers, lifecycle methods
   - ❌ **No WebSocket methods**: All WebSocket methods stripped from output
   - ❌ **No parameter processing**: WebSocket parameter decorators (`@MessageBody`, `@ConnectedSocket`, etc.) not processed
 
 #### **Example Comparison:**
+
 **Input (.gofa)**:
+
 ```gofa
 @WebSocketGateway(8080)
 type ChatGateway struct { ... }
@@ -732,6 +743,7 @@ func HandleMessage(@MessageBody() data *ChatMessage, @ConnectedSocket() client *
 ```
 
 **Output (.go)**:
+
 ```go
 type ChatGateway struct {
     chatService *ChatService `inject:"chatService"`

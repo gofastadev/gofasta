@@ -1215,6 +1215,36 @@ func (p *Parser) parseDecoratorArg() *core.DecoratorArg {
 				p.nextToken()
 			}
 		}
+	case LBRACKET:
+		arrayValues := []interface{}{}
+		p.nextToken()
+		for p.currToken.Type != RBRACKET && p.currToken.Type != EOF {
+			switch p.currToken.Type {
+			case STRING:
+				arrayValues = append(arrayValues, p.currToken.Literal)
+				p.nextToken()
+			case INT:
+				if val, err := strconv.Atoi(p.currToken.Literal); err == nil {
+					arrayValues = append(arrayValues, val)
+				}
+				p.nextToken()
+			case BOOLEAN:
+				arrayValues = append(arrayValues, p.currToken.Literal == "true")
+				p.nextToken()
+			case IDENT:
+				arrayValues = append(arrayValues, p.currToken.Literal)
+				p.nextToken()
+			default:
+				p.nextToken()
+			}
+			if p.currToken.Type == COMMA {
+				p.nextToken()
+			}
+		}
+		if p.currToken.Type == RBRACKET {
+			p.nextToken()
+		}
+		arg.Value = arrayValues
 	case LBRACE:
 		objectValue := make(map[string]interface{})
 		p.nextToken()
@@ -1475,26 +1505,43 @@ func (p *Parser) parseWebSocketGatewayDeclaration(name string, decorators []*cor
 		}
 	}
 	
-	// Parse fields (same as other declarations)
+	// Parse fields and methods (same as other declarations)
 	for p.currToken.Type != RBRACE && p.currToken.Type != EOF {
 		if p.currToken.Type == DECORATOR {
-			var fieldDecorators []*core.DecoratorNode
+			var decorators []*core.DecoratorNode
 			for p.currToken.Type == DECORATOR {
 				decorator := p.parseDecorator()
 				if decorator != nil {
-					fieldDecorators = append(fieldDecorators, decorator)
+					decorators = append(decorators, decorator)
 				} else {
 					p.nextToken()
 					break
 				}
 			}
-			// Field with decorators
-			if p.currToken.Type == IDENT {
+			// Check if this is a method (starts with func) or field (ident)
+			if p.currToken.Type == FUNC {
+				// Method with decorators (like @SubscribeMessage)
+				method := p.parseMethod()
+				if method != nil {
+					for _, decorator := range decorators {
+						method.Decorators = append(method.Decorators, decorator)
+					}
+					gateway.Methods = append(gateway.Methods, method)
+				}
+				continue
+			} else if p.currToken.Type == IDENT {
+				// Field with decorators
 				field := p.parseField()
 				if field != nil {
-					field.Decorators = fieldDecorators
+					field.Decorators = decorators
 					gateway.Fields = append(gateway.Fields, field)
 				}
+			}
+		} else if p.currToken.Type == FUNC {
+			// Method without decorators
+			method := p.parseMethod()
+			if method != nil {
+				gateway.Methods = append(gateway.Methods, method)
 			}
 		} else if p.currToken.Type == IDENT {
 			// Field without decorators
