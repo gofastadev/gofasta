@@ -231,6 +231,9 @@ func (p *Parser) parseDeclarationWithDecorators(decorators []*core.DecoratorNode
 	case TYPE:
 		return p.parseTypeDeclarationWithDecorators(decorators)
 	case FUNC:
+		if p.hasWebSocketFunctionDecorator(decorators) {
+			return p.parseWebSocketFunctionDeclaration(decorators)
+		}
 		return p.parseFunctionDeclaration()
 	case EOF:
 		return nil
@@ -356,6 +359,21 @@ func (p *Parser) hasWebSocketGatewayDecorator(decorators []*core.DecoratorNode) 
 	}
 	for _, decorator := range decorators {
 		if decorator.Name == "WebSocketGateway" {
+			return true
+		}
+	}
+	return false
+}
+
+// hasWebSocketFunctionDecorator checks if any decorator is a WebSocket function decorator
+func (p *Parser) hasWebSocketFunctionDecorator(decorators []*core.DecoratorNode) bool {
+	if decorators == nil {
+		return false
+	}
+	for _, decorator := range decorators {
+		switch decorator.Name {
+		case "SubscribeMessage", "OnMessage", "MessagePattern",
+			"OnGatewayConnection", "OnGatewayDisconnect", "OnGatewayInit":
 			return true
 		}
 	}
@@ -1561,6 +1579,75 @@ func (p *Parser) parseWebSocketGatewayDeclaration(name string, decorators []*cor
 	return gateway
 }
 
+// parseWebSocketFunctionDeclaration parses a standalone WebSocket function (OnGatewayConnection, etc.)
+func (p *Parser) parseWebSocketFunctionDeclaration(decorators []*core.DecoratorNode) *core.WebSocketFunctionDeclaration {
+	if !p.expectToken(FUNC) {
+		return nil
+	}
+	
+	if p.currToken.Type != IDENT {
+		p.addError("expected function name after 'func'")
+		return nil
+	}
+	
+	wsFunc := &core.WebSocketFunctionDeclaration{
+		Name:       p.currToken.Literal,
+		Position:   p.currToken.Position,
+		Decorators: []*core.DecoratorNode{},
+		Params:     []*core.ParameterNode{},
+	}
+	p.nextToken()
+	
+	// Add decorators to the function
+	for _, decorator := range decorators {
+		wsFunc.Decorators = append(wsFunc.Decorators, decorator)
+	}
+	
+	// Parse parameters
+	if p.currToken.Type == LPAREN {
+		p.nextToken()
+		for p.currToken.Type != RPAREN && p.currToken.Type != EOF {
+			param := p.parseParameter()
+			if param != nil {
+				wsFunc.Params = append(wsFunc.Params, param)
+			}
+			
+			if p.currToken.Type == COMMA {
+				p.nextToken()
+			} else if p.currToken.Type != RPAREN {
+				p.addError("expected ',' or ')' in parameter list")
+				break
+			}
+		}
+		if !p.expectToken(RPAREN) {
+			return nil
+		}
+	}
+	
+	// Parse return type if present
+	if p.currToken.Type != LBRACE && p.currToken.Type != EOF {
+		if p.currToken.Type == LPAREN {
+			// Complex return type
+			p.nextToken()
+			for p.currToken.Type != RPAREN && p.currToken.Type != EOF {
+				p.nextToken()
+			}
+			if p.currToken.Type == RPAREN {
+				p.nextToken()
+			}
+		} else {
+			wsFunc.ReturnType = p.parseType()
+		}
+	}
+	
+	// Parse function body
+	if p.currToken.Type == LBRACE {
+		p.parseBlockStatement()
+	}
+	
+	return wsFunc
+}
+
 // skipComments skips comment tokens
 func (p *Parser) skipComments() {
 	for p.currToken.Type == COMMENT {
@@ -1580,6 +1667,8 @@ func (p *Parser) attachDecoratorToDeclaration(decorator *core.DecoratorNode, dec
 	case *core.TestSuiteDeclaration:
 		d.Decorators = append(d.Decorators, decorator)
 	case *core.WebSocketGatewayDeclaration:
+		d.Decorators = append(d.Decorators, decorator)
+	case *core.WebSocketFunctionDeclaration:
 		d.Decorators = append(d.Decorators, decorator)
 	}
 }

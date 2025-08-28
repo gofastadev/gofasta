@@ -504,3 +504,290 @@ type MixedGateway struct {
 	}
 }
 
+// TestOnGatewayConnectionParsingSimple tests basic @OnGatewayConnection decorator parsing
+func TestOnGatewayConnectionParsingSimple(t *testing.T) {
+	input := `package main
+
+@OnGatewayConnection()
+func HandleConnection(
+	@ConnectedSocket() client *WebSocketClient,
+	@Headers() headers map[string]string
+) {
+	// Handle new connection
+}`
+
+	file, err := ParseGofaFile(input)
+	if err != nil {
+		t.Fatalf("OnGatewayConnection parse failed: %v", err)
+	}
+	
+	if file == nil || len(file.Declarations) != 1 {
+		t.Fatalf("Expected 1 declaration, got %d", len(file.Declarations))
+	}
+	
+	wsFunc, ok := file.Declarations[0].(*core.WebSocketFunctionDeclaration)
+	if !ok {
+		t.Fatalf("Expected WebSocketFunctionDeclaration, got %T", file.Declarations[0])
+	}
+	
+	// Check function name
+	if wsFunc.Name != "HandleConnection" {
+		t.Errorf("Expected function name \"HandleConnection\", got \"%s\"", wsFunc.Name)
+	}
+	
+	// Check that the function has the OnGatewayConnection decorator
+	if len(wsFunc.Decorators) == 0 {
+		t.Fatalf("Expected decorators on function, got none")
+	}
+	
+	found := false
+	for _, decorator := range wsFunc.Decorators {
+		if decorator.Name == "OnGatewayConnection" {
+			found = true
+			// Check decorator has no arguments (empty parentheses)
+			if len(decorator.Args) != 0 {
+				t.Errorf("Expected no decorator arguments, got %d", len(decorator.Args))
+			}
+			break
+		}
+	}
+	if !found {
+		t.Error("Expected to find OnGatewayConnection decorator")
+	}
+	
+	// Check parameters
+	if len(wsFunc.Params) != 2 {
+		t.Fatalf("Expected 2 parameters, got %d", len(wsFunc.Params))
+	}
+	
+	// First parameter should have ConnectedSocket decorator
+	param1 := wsFunc.Params[0]
+	if len(param1.Decorators) == 0 {
+		t.Error("Expected decorators on first parameter")
+	} else {
+		found := false
+		for _, decorator := range param1.Decorators {
+			if decorator.Name == "ConnectedSocket" {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Error("Expected ConnectedSocket decorator on first parameter")
+		}
+	}
+	
+	// Second parameter should have Headers decorator
+	param2 := wsFunc.Params[1]
+	if len(param2.Decorators) == 0 {
+		t.Error("Expected decorators on second parameter")
+	} else {
+		found := false
+		for _, decorator := range param2.Decorators {
+			if decorator.Name == "Headers" {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Error("Expected Headers decorator on second parameter")
+		}
+	}
+}
+
+// TestOnGatewayDisconnectParsing tests @OnGatewayDisconnect decorator parsing
+func TestOnGatewayDisconnectParsing(t *testing.T) {
+	input := `package main
+
+@OnGatewayDisconnect()
+func HandleDisconnect(
+	@ConnectedSocket() client *WebSocketClient,
+	@DisconnectReason() reason string
+) {
+	// Handle disconnection
+}`
+
+	file, err := ParseGofaFile(input)
+	if err != nil {
+		t.Fatalf("OnGatewayDisconnect parse failed: %v", err)
+	}
+	
+	if file == nil || len(file.Declarations) != 1 {
+		t.Fatalf("Expected 1 declaration, got %d", len(file.Declarations))
+	}
+	
+	wsFunc, ok := file.Declarations[0].(*core.WebSocketFunctionDeclaration)
+	if !ok {
+		t.Fatalf("Expected WebSocketFunctionDeclaration, got %T", file.Declarations[0])
+	}
+	
+	// Check function name
+	if wsFunc.Name != "HandleDisconnect" {
+		t.Errorf("Expected function name \"HandleDisconnect\", got \"%s\"", wsFunc.Name)
+	}
+	
+	// Check OnGatewayDisconnect decorator
+	found := false
+	for _, decorator := range wsFunc.Decorators {
+		if decorator.Name == "OnGatewayDisconnect" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("Expected to find OnGatewayDisconnect decorator")
+	}
+}
+
+// TestOnGatewayInitParsing tests @OnGatewayInit decorator parsing
+func TestOnGatewayInitParsing(t *testing.T) {
+	input := `package main
+
+@OnGatewayInit()
+func HandleInit() {
+	// Handle gateway initialization
+}`
+
+	file, err := ParseGofaFile(input)
+	if err != nil {
+		t.Fatalf("OnGatewayInit parse failed: %v", err)
+	}
+	
+	if file == nil || len(file.Declarations) != 1 {
+		t.Fatalf("Expected 1 declaration, got %d", len(file.Declarations))
+	}
+	
+	wsFunc, ok := file.Declarations[0].(*core.WebSocketFunctionDeclaration)
+	if !ok {
+		t.Fatalf("Expected WebSocketFunctionDeclaration, got %T", file.Declarations[0])
+	}
+	
+	// Check function name
+	if wsFunc.Name != "HandleInit" {
+		t.Errorf("Expected function name \"HandleInit\", got \"%s\"", wsFunc.Name)
+	}
+	
+	// Check OnGatewayInit decorator
+	found := false
+	for _, decorator := range wsFunc.Decorators {
+		if decorator.Name == "OnGatewayInit" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Error("Expected to find OnGatewayInit decorator")
+	}
+	
+	// OnGatewayInit typically has no parameters
+	if len(wsFunc.Params) != 0 {
+		t.Errorf("Expected no parameters for OnGatewayInit, got %d", len(wsFunc.Params))
+	}
+}
+
+// TestMultipleWebSocketLifecycleFunctions tests multiple WebSocket lifecycle functions
+func TestMultipleWebSocketLifecycleFunctions(t *testing.T) {
+	input := `package main
+
+@OnGatewayInit()
+func HandleInit() {
+	// Initialize gateway
+}
+
+@OnGatewayConnection()
+func HandleConnection(
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Handle connection
+}
+
+@OnGatewayDisconnect()
+func HandleDisconnect(
+	@ConnectedSocket() client *WebSocketClient,
+	@DisconnectReason() reason string
+) {
+	// Handle disconnection
+}
+
+@SubscribeMessage("test")
+func HandleTestMessage(
+	@MessageBody() data *TestData,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Handle test message
+}`
+
+	file, err := ParseGofaFile(input)
+	if err != nil {
+		t.Fatalf("Multiple WebSocket functions parse failed: %v", err)
+	}
+	
+	if file == nil || len(file.Declarations) != 4 {
+		t.Fatalf("Expected 4 declarations, got %d", len(file.Declarations))
+	}
+	
+	expectedFunctions := []struct {
+		name      string
+		decorator string
+	}{
+		{"HandleInit", "OnGatewayInit"},
+		{"HandleConnection", "OnGatewayConnection"},
+		{"HandleDisconnect", "OnGatewayDisconnect"},
+		{"HandleTestMessage", "SubscribeMessage"},
+	}
+	
+	for i, expected := range expectedFunctions {
+		wsFunc, ok := file.Declarations[i].(*core.WebSocketFunctionDeclaration)
+		if !ok {
+			t.Errorf("Expected declaration %d to be WebSocketFunctionDeclaration, got %T", i, file.Declarations[i])
+			continue
+		}
+		
+		if wsFunc.Name != expected.name {
+			t.Errorf("Expected function name \"%s\", got \"%s\"", expected.name, wsFunc.Name)
+		}
+		
+		found := false
+		for _, decorator := range wsFunc.Decorators {
+			if decorator.Name == expected.decorator {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("Expected to find %s decorator on function %s", expected.decorator, expected.name)
+		}
+	}
+}
+
+// TestWebSocketFunctionWithReturnType tests WebSocket function with return type
+func TestWebSocketFunctionWithReturnType(t *testing.T) {
+	input := `package main
+
+@OnGatewayConnection()
+func HandleConnectionWithReturn(
+	@ConnectedSocket() client *WebSocketClient
+) error {
+	// Handle connection with error return
+}`
+
+	file, err := ParseGofaFile(input)
+	if err != nil {
+		t.Fatalf("WebSocket function with return type parse failed: %v", err)
+	}
+	
+	if file == nil || len(file.Declarations) != 1 {
+		t.Fatalf("Expected 1 declaration, got %d", len(file.Declarations))
+	}
+	
+	wsFunc, ok := file.Declarations[0].(*core.WebSocketFunctionDeclaration)
+	if !ok {
+		t.Fatalf("Expected WebSocketFunctionDeclaration, got %T", file.Declarations[0])
+	}
+	
+	// Check return type
+	if wsFunc.ReturnType != "error" {
+		t.Errorf("Expected return type \"error\", got \"%s\"", wsFunc.ReturnType)
+	}
+}
+
