@@ -483,7 +483,7 @@ func (s *{{.Name}}WSServer) Start() {
 - [X] **1.4** Implement `@OnGatewayConnection()` decorator parsing - **✅ COMPLETE**
 - [X] **1.5** Implement `@OnGatewayDisconnect()` decorator parsing - **✅ COMPLETE**
 - [X] **1.6** Implement `@OnGatewayInit()` decorator parsing - **✅ COMPLETE**
-- [ ] **1.7** Add WebSocket decorator validation and error handling - **❌ MISSING**
+- [X] **1.7** Add WebSocket decorator validation and error handling - **✅ COMPLETE**
 - [ ] **1.8** Integrate WebSocket parsing into main parser flow - **❌ MISSING**
 - [ ] **1.9** Implement WebSocket decorator inheritance patterns - **❌ MISSING**
 - [ ] **1.10** Add WebSocket parsing unit tests - **❌ MISSING**
@@ -677,12 +677,12 @@ func (s *{{.Name}}WSServer) Start() {
 
 ## 📊 **WebSocket Implementation Status Summary**
 
-### **Current Status: 55% Complete (AST + Core WebSocket Parsing + Lifecycle Decorators + Code Generation)**
+### **Current Status: 60% Complete (AST + Core WebSocket Parsing + Lifecycle Decorators + Code Generation + Validation)**
 
 | Phase             | Component         | Progress       | Status                     | Details                                                      |
 | ----------------- | ----------------- | -------------- | -------------------------- | ------------------------------------------------------------ |
 | **Phase 1** | AST Definitions   | **100%** | ✅**Complete**       | All WebSocket AST nodes, constants, mappings, helpers, tests |
-| **Phase 1** | Parsing Logic     | **60%**  | 🔄**Major Progress** | @WebSocketGateway + @SubscribeMessage + All lifecycle decorators complete |
+| **Phase 1** | Parsing Logic     | **70%**  | 🔄**Major Progress** | @WebSocketGateway + @SubscribeMessage + All lifecycle decorators + Validation complete |
 | **Phase 2** | Code Generation   | **80%**  | ✅**Mostly Complete** | Full WebSocket lifecycle function code generation implemented |
 | **Phase 3** | Parameter Support | **15%**  | ❌**Constants Only** | Decorator constants defined, no parsing/generation           |
 | **Phase 4** | Advanced Features | **5%**   | ❌**Constants Only** | Only decorator constants, no implementation                  |

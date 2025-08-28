@@ -243,6 +243,7 @@ func TestSubscribeMessageParsingSimple(t *testing.T) {
 
 @WebSocketGateway(8080)
 type ChatGateway struct {
+	@Inject("chatService")
 	service *ChatService
 
 	@SubscribeMessage("message")
@@ -444,6 +445,7 @@ func TestSubscribeMessageParsingMixed(t *testing.T) {
 
 @WebSocketGateway(8080)
 type MixedGateway struct {
+	@Inject("service")
 	service *Service
 	
 	@SubscribeMessage("user_message")
