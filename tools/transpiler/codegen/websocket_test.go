@@ -421,3 +421,265 @@ func TestWebSocketHelperFunctions(t *testing.T) {
 		}
 	}
 }
+
+// TestWebSocketLifecycleEnhancement tests enhanced WebSocket lifecycle method generation
+func TestWebSocketLifecycleEnhancement(t *testing.T) {
+	generator := NewCodeGenerator("test")
+	
+	// Test OnGatewayConnection handler generation
+	t.Run("OnGatewayConnection", func(t *testing.T) {
+		method := &MethodNode{
+			Name:       "HandleConnection",
+			ReturnType: "",
+			Decorators: []*DecoratorNode{
+				{Name: "OnGatewayConnection", Args: []DecoratorArg{}},
+			},
+			Params: []*ParameterNode{
+				{
+					Name: "client", 
+					Type: "*WebSocketClient",
+					Decorators: []*DecoratorNode{{Name: "ConnectedSocket"}},
+				},
+				{
+					Name: "headers", 
+					Type: "map[string]string",
+					Decorators: []*DecoratorNode{{Name: "Headers"}},
+				},
+			},
+		}
+		
+		generator.generateOnConnectionHandler(method)
+		
+		result := generator.generatedCode.String()
+		
+		// Check for essential connection handler elements
+		expectedElements := []string{
+			"// WebSocket connection established",
+			"client := wsCtx.Client()",
+			"headers := wsCtx.Headers()",
+			"fmt.Printf(\"Client connected:",
+			"// Authentication and authorization",
+			"client.Join(\"global\")",
+			"client.Broadcast().Emit(\"user_connected\"",
+		}
+		
+		for _, element := range expectedElements {
+			if !strings.Contains(result, element) {
+				t.Errorf("Expected connection handler to contain: %s", element)
+			}
+		}
+	})
+	
+	// Test OnGatewayDisconnect handler generation
+	t.Run("OnGatewayDisconnect", func(t *testing.T) {
+		method := &MethodNode{
+			Name:       "HandleDisconnect",
+			ReturnType: "",
+			Decorators: []*DecoratorNode{
+				{Name: "OnGatewayDisconnect", Args: []DecoratorArg{}},
+			},
+			Params: []*ParameterNode{
+				{
+					Name: "reason", 
+					Type: "string",
+					Decorators: []*DecoratorNode{{Name: "DisconnectReason"}},
+				},
+			},
+		}
+		
+		generator.reset() // Reset generator state
+		generator.generateOnDisconnectHandler(method)
+		
+		result := generator.generatedCode.String()
+		
+		// Check for essential disconnect handler elements
+		expectedElements := []string{
+			"// WebSocket connection terminated",
+			"client := wsCtx.Client()",
+			"reason := wsCtx.DisconnectReason()",
+			"fmt.Printf(\"Client disconnected:",
+			"client.LeaveAllRooms()",
+			"client.Broadcast().Emit(\"user_disconnected\"",
+			"// Cleanup resources",
+		}
+		
+		for _, element := range expectedElements {
+			if !strings.Contains(result, element) {
+				t.Errorf("Expected disconnect handler to contain: %s", element)
+			}
+		}
+	})
+	
+	// Test OnGatewayInit handler generation
+	t.Run("OnGatewayInit", func(t *testing.T) {
+		method := &MethodNode{
+			Name:       "AfterInit",
+			ReturnType: "",
+			Decorators: []*DecoratorNode{
+				{Name: "OnGatewayInit", Args: []DecoratorArg{}},
+			},
+			Params: []*ParameterNode{},
+		}
+		
+		generator.reset() // Reset generator state
+		generator.generateOnInitHandler(method)
+		
+		result := generator.generatedCode.String()
+		
+		// Check for essential init handler elements
+		expectedElements := []string{
+			"// WebSocket gateway initialization",
+			"fmt.Println(\"Initializing WebSocket gateway...\")",
+			"// Initialize gateway state",
+			"// Connect to external services",
+			"// Start background services",
+			"// Load configuration",
+			"fmt.Println(\"WebSocket gateway initialized successfully\")",
+		}
+		
+		for _, element := range expectedElements {
+			if !strings.Contains(result, element) {
+				t.Errorf("Expected init handler to contain: %s", element)
+			}
+		}
+	})
+}
+
+// TestWebSocketLifecycleParameterExtraction tests parameter extraction for lifecycle handlers
+func TestWebSocketLifecycleParameterExtraction(t *testing.T) {
+	generator := NewCodeGenerator("test")
+	
+	method := &MethodNode{
+		Name: "TestLifecycleMethod",
+		Params: []*ParameterNode{
+			{
+				Name: "client", 
+				Type: "*WebSocketClient",
+				Decorators: []*DecoratorNode{{Name: "ConnectedSocket"}},
+			},
+			{
+				Name: "headers", 
+				Type: "map[string]string",
+				Decorators: []*DecoratorNode{{Name: "Headers"}},
+			},
+			{
+				Name: "userIP", 
+				Type: "string",
+				Decorators: []*DecoratorNode{{Name: "ClientIP"}},
+			},
+			{
+				Name: "user", 
+				Type: "*User",
+				Decorators: []*DecoratorNode{{Name: "CurrentUser"}},
+			},
+		},
+	}
+	
+	generator.generateWebSocketLifecycleParameterExtraction(method)
+	result := generator.generatedCode.String()
+	
+	// Check for parameter extraction
+	expectedExtractions := []string{
+		"client := wsCtx.Client()",
+		"headers := wsCtx.Headers()",
+		"userIP := wsCtx.ClientIP()",
+		"user := wsCtx.User()",
+	}
+	
+	for _, extraction := range expectedExtractions {
+		if !strings.Contains(result, extraction) {
+			t.Errorf("Expected parameter extraction to contain: %s", extraction)
+		}
+	}
+}
+
+// TestHasWebSocketParameterDecorators tests detection of WebSocket parameter decorators
+func TestHasWebSocketParameterDecorators(t *testing.T) {
+	generator := NewCodeGenerator("test")
+	
+	// Test method with WebSocket parameter decorators
+	methodWithWS := &MethodNode{
+		Params: []*ParameterNode{
+			{
+				Name: "client", 
+				Type: "*WebSocketClient",
+				Decorators: []*DecoratorNode{{Name: "ConnectedSocket"}},
+			},
+		},
+	}
+	
+	if !generator.hasWebSocketParameterDecorators(methodWithWS) {
+		t.Error("Expected method with WebSocket decorators to return true")
+	}
+	
+	// Test method without WebSocket parameter decorators
+	methodWithoutWS := &MethodNode{
+		Params: []*ParameterNode{
+			{
+				Name: "data", 
+				Type: "string",
+				Decorators: []*DecoratorNode{{Name: "Body"}}, // HTTP decorator
+			},
+		},
+	}
+	
+	if generator.hasWebSocketParameterDecorators(methodWithoutWS) {
+		t.Error("Expected method without WebSocket decorators to return false")
+	}
+}
+
+// TestWebSocketLifecycleIntegration tests full WebSocket lifecycle handler generation
+func TestWebSocketLifecycleIntegration(t *testing.T) {
+	generator := NewCodeGenerator("test")
+	
+	// Test complete lifecycle handler generation
+	gateway := &WebSocketGatewayDeclaration{
+		Name: "ChatGateway",
+		Fields: []*FieldNode{},
+		Methods: []*MethodNode{
+			{
+				Name:       "HandleConnection",
+				ReturnType: "",
+				Decorators: []*DecoratorNode{
+					{Name: "OnGatewayConnection", Args: []DecoratorArg{}},
+				},
+				Params: []*ParameterNode{
+					{
+						Name: "client", 
+						Type: "*WebSocketClient",
+						Decorators: []*DecoratorNode{{Name: "ConnectedSocket"}},
+					},
+				},
+			},
+		},
+		Decorators: []*DecoratorNode{
+			{Name: "WebSocketGateway", Args: []DecoratorArg{
+				{Value: 8080},
+			}},
+		},
+	}
+	
+	method := gateway.Methods[0]
+	err := generator.generateWebSocketLifecycleHandler(gateway, method)
+	if err != nil {
+		t.Errorf("Failed to generate lifecycle handler: %v", err)
+	}
+	
+	result := generator.generatedCode.String()
+	
+	// Check for complete lifecycle handler structure
+	expectedElements := []string{
+		"func (ws *ChatGateway) HandleConnection(wsCtx *websocket.LifecycleContext)",
+		"// Extract parameters from WebSocket lifecycle context",
+		"client := wsCtx.Client()",
+		"// WebSocket connection established",
+		"client.Join(\"global\")",
+		"return",
+	}
+	
+	for _, element := range expectedElements {
+		if !strings.Contains(result, element) {
+			t.Errorf("Expected complete lifecycle handler to contain: %s\nActual output: %s", element, result)
+		}
+	}
+}

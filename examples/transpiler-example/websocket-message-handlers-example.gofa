@@ -169,41 +169,156 @@ func HandleComplexAction(
 	// Handle complex multi-parameter action
 }
 
-// === LIFECYCLE HANDLERS ===
+// === ENHANCED LIFECYCLE HANDLERS (Section 2.6) ===
 
-// Handle new WebSocket connections
+// Enhanced WebSocket connection handler with comprehensive authentication and setup
 @OnGatewayConnection()
 func HandleConnection(
 	@ConnectedSocket() client *WebSocketClient,
 	@Headers() headers map[string]string,
-	@ClientIP() clientIP string
+	@ClientIP() clientIP string,
+	@Query() query map[string]string,
+	@Session() session *Session
 ) {
-	// Authenticate client
-	// Log connection
-	// Join default rooms
-	// Send welcome message
+	// Advanced authentication with multiple strategies
+	token := headers["Authorization"]
+	roomID := query["room"]
+	
+	// Validate and authenticate user
+	if user := authenticateUser(token); user != nil {
+		client.SetUser(user)
+		
+		// Join user-specific and public rooms
+		client.Join("global-chat")
+		if roomID != "" {
+			client.Join(roomID)
+		}
+		client.Join("user_" + user.ID)
+		
+		// Update user online status
+		updateUserStatus(user.ID, "online")
+		
+		// Send personalized welcome message
+		client.Emit("welcome", WelcomeMessage{
+			Message:   "Welcome to the chat!",
+			UserID:    user.ID,
+			Username:  user.Username,
+			Timestamp: time.Now(),
+			Rooms:     []string{"global-chat", roomID},
+		})
+		
+		// Notify other users in rooms
+		client.Broadcast().To("global-chat").Emit("user_joined", UserEvent{
+			UserID:    user.ID,
+			Username:  user.Username,
+			Action:    "joined",
+			Timestamp: time.Now(),
+		})
+		
+		// Log successful connection
+		logger.Info("User connected", map[string]interface{}{
+			"user_id":   user.ID,
+			"username":  user.Username,
+			"client_ip": clientIP,
+			"room_id":   roomID,
+		})
+	} else {
+		// Authentication failed - disconnect with reason
+		client.Emit("auth_error", AuthError{
+			Message: "Invalid authentication token",
+			Code:    "AUTH_FAILED",
+		})
+		client.Disconnect("Authentication failed")
+	}
 }
 
-// Handle WebSocket disconnections
+// Enhanced WebSocket disconnection handler with comprehensive cleanup
 @OnGatewayDisconnect()
 func HandleDisconnect(
 	@ConnectedSocket() client *WebSocketClient,
 	@DisconnectReason() reason string,
+	@CurrentUser() user *User,
 	@Rooms() rooms []string
 ) {
-	// Clean up client resources
-	// Update user status
-	// Notify rooms of disconnect
-	// Log disconnection
+	if user != nil {
+		// Update user offline status
+		updateUserStatus(user.ID, "offline", time.Now())
+		
+		// Notify all rooms the user was in
+		for _, roomID := range rooms {
+			client.Broadcast().To(roomID).Emit("user_left", UserEvent{
+				UserID:    user.ID,
+				Username:  user.Username,
+				Action:    "left",
+				Reason:    reason,
+				Timestamp: time.Now(),
+			})
+		}
+		
+		// Clean up user-specific resources
+		cleanupUserSession(user.ID)
+		removeUserFromActiveGames(user.ID)
+		
+		// Log disconnection with context
+		logger.Info("User disconnected", map[string]interface{}{
+			"user_id":  user.ID,
+			"username": user.Username,
+			"reason":   reason,
+			"rooms":    rooms,
+			"duration": calculateSessionDuration(user.ID),
+		})
+	} else {
+		// Anonymous client disconnected
+		logger.Debug("Anonymous client disconnected", map[string]interface{}{
+			"client_id": client.ID(),
+			"reason":    reason,
+		})
+	}
+	
+	// Perform final cleanup
+	client.LeaveAllRooms()
 }
 
-// Initialize WebSocket gateway
+// Enhanced WebSocket gateway initialization with comprehensive setup
 @OnGatewayInit()
 func InitializeGateway() {
-	// Set up gateway state
-	// Initialize external connections
-	// Load configuration
+	logger.Info("🚀 Initializing WebSocket Gateway with enhanced features...")
+	
+	// Initialize connection pool and rate limiting
+	initializeConnectionPool(1000) // Max 1000 concurrent connections
+	initializeRateLimiter(100)     // Max 100 messages per minute per client
+	
+	// Set up room management
+	createDefaultRooms()
+	initializeRoomPersistence()
+	
+	// Initialize message broadcasting system
+	setupMessageBroadcasting()
+	setupMessagePersistence()
+	
+	// Connect to external services
+	connectToUserService()
+	connectToNotificationService()
+	connectToAnalyticsService()
+	
+	// Start background services
+	startHeartbeatService(30) // Ping clients every 30 seconds
+	startInactiveUserCleanup(300) // Clean up inactive users every 5 minutes
+	startMetricsCollection()
+	
+	// Load gateway configuration
+	loadGatewayConfiguration()
+	applySecurityPolicies()
+	
+	// Set up monitoring and alerts
+	initializeHealthChecks()
+	setupPerformanceMonitoring()
+	
+	logger.Info("✅ WebSocket Gateway initialized successfully!")
 }
+
+// Note: Gateway-level lifecycle handlers would be defined as methods within
+// the gateway struct declarations above, not as standalone functions
 
 // === DATA STRUCTURES ===
 
@@ -260,6 +375,41 @@ type User struct {
 	Username string `json:"username"`
 	Role     string `json:"role"`
 	Status   string `json:"status"`
+}
+
+// Enhanced lifecycle handler data structures (Section 2.6)
+type WelcomeMessage struct {
+	Message   string    `json:"message"`
+	UserID    string    `json:"userId"`
+	Username  string    `json:"username"`
+	Timestamp time.Time `json:"timestamp"`
+	Rooms     []string  `json:"rooms"`
+}
+
+type UserEvent struct {
+	UserID    string    `json:"userId"`
+	Username  string    `json:"username"`
+	Action    string    `json:"action"` // "joined", "left", "connected", "disconnected"
+	Reason    string    `json:"reason,omitempty"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
+type AuthError struct {
+	Message string `json:"message"`
+	Code    string `json:"code"`
+}
+
+type PlayerEvent struct {
+	GameID   string `json:"gameId"`
+	PlayerID string `json:"playerId"`
+	Action   string `json:"action"`
+}
+
+type Session struct {
+	ID        string            `json:"id"`
+	UserID    string            `json:"userId"`
+	Data      map[string]string `json:"data"`
+	CreatedAt time.Time         `json:"createdAt"`
 }
 
 // === SERVICE DEPENDENCIES ===

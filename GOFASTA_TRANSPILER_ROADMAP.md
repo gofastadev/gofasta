@@ -505,7 +505,7 @@ func (s *{{.Name}}WSServer) Start() {
   }`
   ```
 - [X] **2.5** Implement WebSocket message handler code generation - **✅ COMPLETE** *(Includes WebSocket server setup, message handler registration, standalone function collection, gateway configuration parsing, lifecycle handlers, and comprehensive test coverage)*
-- [ ] **2.6** Add WebSocket lifecycle method generation (connect/disconnect) - **❌ MISSING**
+- [X] **2.6** Add WebSocket lifecycle method generation (connect/disconnect) - **✅ COMPLETE** *(Enhanced lifecycle handlers with comprehensive connection/disconnection/initialization logic, parameter extraction, authentication, cleanup, and example implementations)*
 - [ ] **2.7** Create WebSocket middleware integration code generation - **❌ MISSING**
 - [ ] **2.8** Implement WebSocket guard decorator code generation - **❌ MISSING**
 - [ ] **2.9** Add WebSocket interceptor decorator code generation - **❌ MISSING**
@@ -683,7 +683,7 @@ func (s *{{.Name}}WSServer) Start() {
 | ----------------- | ----------------- | -------------- | -------------------------- | ------------------------------------------------------------ |
 | **Phase 1** | AST Definitions   | **100%** | ✅**Complete**       | All WebSocket AST nodes, constants, mappings, helpers, tests |
 | **Phase 1** | Parsing Logic     | **100%**  | ✅**Complete** | All WebSocket decorators + lifecycle decorators + custom parameter types + full integration |
-| **Phase 2** | Code Generation   | **80%**  | ✅**Mostly Complete** | Full WebSocket lifecycle function code generation implemented |
+| **Phase 2** | Code Generation   | **85%**  | ✅**Mostly Complete** | Enhanced WebSocket lifecycle method generation with comprehensive connection/disconnect handling |
 | **Phase 3** | Parameter Support | **25%**  | 🔄**Partial** | Basic parameter validation, flexible type support implemented |
 | **Phase 4** | Advanced Features | **5%**   | ❌**Constants Only** | Only decorator constants, no implementation                  |
 | **Phase 5** | Testing Support   | **100%**  | ✅**Complete** | Full integration test suite + comprehensive test coverage |

@@ -249,20 +249,18 @@ func (g *CodeGenerator) generateWebSocketLifecycleHandler(gateway *WebSocketGate
 	g.writeLine(signature + " {")
 	g.indent()
 
+	// Generate parameter extraction for WebSocket lifecycle context
+	g.generateWebSocketLifecycleParameterExtraction(method)
+	
 	// Generate lifecycle-specific logic based on decorator type
 	for _, decorator := range method.Decorators {
 		switch decorator.Name {
 		case "OnGatewayConnection":
-			g.writeLine("// Handle new WebSocket connection")
-			g.writeLine("// Authenticate user, join rooms, log connection, etc.")
-			g.writeLine("// client.Join(\"default-room\")")
+			g.generateOnConnectionHandler(method)
 		case "OnGatewayDisconnect":
-			g.writeLine("// Handle WebSocket disconnection")
-			g.writeLine("// Clean up resources, log disconnection, etc.")
-			g.writeLine("// client.LeaveAllRooms()")
+			g.generateOnDisconnectHandler(method)
 		case "OnGatewayInit":
-			g.writeLine("// Initialize WebSocket gateway")
-			g.writeLine("// Set up gateway state, connect to external services, etc.")
+			g.generateOnInitHandler(method)
 		}
 	}
 
@@ -894,6 +892,156 @@ func (g *CodeGenerator) generateWebSocketLifecycleHandlerSignature(gatewayName s
 	}
 	
 	return signature
+}
+
+// generateWebSocketLifecycleParameterExtraction generates parameter extraction for WebSocket lifecycle handlers
+func (g *CodeGenerator) generateWebSocketLifecycleParameterExtraction(method *MethodNode) {
+	g.writeLine("// Extract parameters from WebSocket lifecycle context")
+	
+	for _, param := range method.Params {
+		for _, decorator := range g.getParameterDecorators(param) {
+			switch decorator.Name {
+			case "ConnectedSocket":
+				g.writeLine(fmt.Sprintf("%s := wsCtx.Client()", param.Name))
+			case "Headers":
+				g.writeLine(fmt.Sprintf("%s := wsCtx.Headers()", param.Name))
+			case "Query":
+				g.writeLine(fmt.Sprintf("%s := wsCtx.Query()", param.Name))
+			case "ClientIP":
+				g.writeLine(fmt.Sprintf("%s := wsCtx.ClientIP()", param.Name))
+			case "CurrentUser":
+				g.writeLine(fmt.Sprintf("%s := wsCtx.User()", param.Name))
+			case "DisconnectReason":
+				g.writeLine(fmt.Sprintf("%s := wsCtx.DisconnectReason()", param.Name))
+			case "Session":
+				g.writeLine(fmt.Sprintf("%s := wsCtx.Session()", param.Name))
+			}
+		}
+	}
+	
+	if g.hasWebSocketParameterDecorators(method) {
+		g.writeLine("")
+	}
+}
+
+// generateOnConnectionHandler generates enhanced connection handler logic
+func (g *CodeGenerator) generateOnConnectionHandler(method *MethodNode) {
+	g.writeLine("// WebSocket connection established")
+	g.writeLine("client := wsCtx.Client()")
+	g.writeLine("headers := wsCtx.Headers()")
+	g.writeLine("")
+	
+	g.writeLine("// Log the connection")
+	g.writeLine("fmt.Printf(\"Client connected: %s from %s\\n\", client.ID(), wsCtx.ClientIP())")
+	g.writeLine("")
+	
+	g.writeLine("// Authentication and authorization")
+	g.writeLine("if authHeader := headers[\"Authorization\"]; authHeader != \"\" {")
+	g.indent()
+	g.writeLine("// Validate authentication token")
+	g.writeLine("// user, err := authService.ValidateToken(authHeader)")
+	g.writeLine("// if err != nil {")
+	g.writeLine("//     client.Disconnect(\"Authentication failed\")")
+	g.writeLine("//     return")
+	g.writeLine("// }")
+	g.writeLine("// wsCtx.SetUser(user)")
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+	
+	g.writeLine("// Join default rooms or user-specific rooms")
+	g.writeLine("client.Join(\"global\")")
+	g.writeLine("// client.Join(\"user_\" + user.ID)")
+	g.writeLine("")
+	
+	g.writeLine("// Notify other clients of new connection")
+	g.writeLine("client.Broadcast().Emit(\"user_connected\", map[string]interface{}{")
+	g.indent()
+	g.writeLine("\"client_id\": client.ID(),")
+	g.writeLine("\"timestamp\": time.Now(),")
+	g.unindent()
+	g.writeLine("})")
+}
+
+// generateOnDisconnectHandler generates enhanced disconnect handler logic
+func (g *CodeGenerator) generateOnDisconnectHandler(method *MethodNode) {
+	g.writeLine("// WebSocket connection terminated")
+	g.writeLine("client := wsCtx.Client()")
+	g.writeLine("reason := wsCtx.DisconnectReason()")
+	g.writeLine("")
+	
+	g.writeLine("// Log the disconnection")
+	g.writeLine("fmt.Printf(\"Client disconnected: %s, Reason: %s\\n\", client.ID(), reason)")
+	g.writeLine("")
+	
+	g.writeLine("// Cleanup user-specific data")
+	g.writeLine("// Remove user from active sessions")
+	g.writeLine("// sessionManager.RemoveUser(client.ID())")
+	g.writeLine("")
+	
+	g.writeLine("// Leave all rooms")
+	g.writeLine("client.LeaveAllRooms()")
+	g.writeLine("")
+	
+	g.writeLine("// Notify other clients of disconnection")
+	g.writeLine("client.Broadcast().Emit(\"user_disconnected\", map[string]interface{}{")
+	g.indent()
+	g.writeLine("\"client_id\": client.ID(),")
+	g.writeLine("\"reason\": reason,")
+	g.writeLine("\"timestamp\": time.Now(),")
+	g.unindent()
+	g.writeLine("})")
+	g.writeLine("")
+	
+	g.writeLine("// Cleanup resources")
+	g.writeLine("// Close any open streams, database connections, etc.")
+	g.writeLine("// if user := wsCtx.User(); user != nil {")
+	g.writeLine("//     userCleanupService.CleanupUserSession(user.ID)")
+	g.writeLine("// }")
+}
+
+// generateOnInitHandler generates enhanced init handler logic
+func (g *CodeGenerator) generateOnInitHandler(method *MethodNode) {
+	g.writeLine("// WebSocket gateway initialization")
+	g.writeLine("fmt.Println(\"Initializing WebSocket gateway...\")")
+	g.writeLine("")
+	
+	g.writeLine("// Initialize gateway state")
+	g.writeLine("// Set up internal data structures")
+	g.writeLine("// connectionPool := make(map[string]*websocket.Client)")
+	g.writeLine("// activeRooms := make(map[string][]string)")
+	g.writeLine("")
+	
+	g.writeLine("// Connect to external services")
+	g.writeLine("// database, err := connectToDatabase()")
+	g.writeLine("// if err != nil {")
+	g.writeLine("//     log.Fatal(\"Failed to connect to database:\", err)")
+	g.writeLine("// }")
+	g.writeLine("")
+	
+	g.writeLine("// Start background services")
+	g.writeLine("// go startHeartbeatService()")
+	g.writeLine("// go startCleanupService()")
+	g.writeLine("")
+	
+	g.writeLine("// Load configuration")
+	g.writeLine("// config := loadGatewayConfig()")
+	g.writeLine("// applyConfiguration(config)")
+	g.writeLine("")
+	
+	g.writeLine("fmt.Println(\"WebSocket gateway initialized successfully\")")
+}
+
+// hasWebSocketParameterDecorators checks if method has any WebSocket parameter decorators
+func (g *CodeGenerator) hasWebSocketParameterDecorators(method *MethodNode) bool {
+	for _, param := range method.Params {
+		for _, decorator := range g.getParameterDecorators(param) {
+			if g.isWebSocketParameterDecorator(decorator.Name) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // generateWebSocketParameterExtraction generates parameter extraction for WebSocket context

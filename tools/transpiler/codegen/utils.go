@@ -90,6 +90,7 @@ func (g *CodeGenerator) collectImports(file *GofaFile) {
 	g.addImport("strings")
 	g.addImport("net/http")
 	g.addImport("fmt")
+	g.addImport("time")
 
 	// Check if we need additional imports based on decorators
 	for _, decl := range file.Declarations {
