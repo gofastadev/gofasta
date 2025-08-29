@@ -10,6 +10,7 @@ func (g *CodeGenerator) reset() {
 	g.generatedCode.Reset()
 	g.indentLevel = 0
 	g.imports = []string{}
+	g.webSocketFunctions = []*WebSocketFunctionDeclaration{}
 }
 
 // writeLine writes a line with proper indentation

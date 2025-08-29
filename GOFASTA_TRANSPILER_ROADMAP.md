@@ -504,7 +504,7 @@ func (s *{{.Name}}WSServer) Start() {
       {{end}}
   }`
   ```
-- [ ] **2.5** Implement WebSocket message handler code generation - **❌ MISSING**
+- [X] **2.5** Implement WebSocket message handler code generation - **✅ COMPLETE** *(Includes WebSocket server setup, message handler registration, standalone function collection, gateway configuration parsing, lifecycle handlers, and comprehensive test coverage)*
 - [ ] **2.6** Add WebSocket lifecycle method generation (connect/disconnect) - **❌ MISSING**
 - [ ] **2.7** Create WebSocket middleware integration code generation - **❌ MISSING**
 - [ ] **2.8** Implement WebSocket guard decorator code generation - **❌ MISSING**

@@ -1,0 +1,362 @@
+package main
+
+// WebSocket Message Handler Example
+// Demonstrates Section 2.5: WebSocket message handler code generation
+// Shows comprehensive WebSocket decorator support and message handling
+
+// Basic Chat Gateway with message handlers
+@WebSocketGateway(8080)
+type ChatGateway struct {
+	@Inject("chatService")
+	chatService *ChatService
+	
+	@Inject("logger") 
+	logger *Logger
+	
+	@Inject("userService")
+	userService *UserService
+}
+
+// Advanced Game Gateway with full configuration
+@WebSocketGateway({
+	port: 9000,
+	namespace: "/game",
+	cors: true
+})
+type GameGateway struct {
+	@Inject("gameService")
+	gameService *GameService
+	
+	@Inject("roomManager")
+	roomManager *RoomManager
+}
+
+// Real-time Notification Gateway
+@WebSocketGateway({
+	port: 9001,
+	namespace: "/notifications",
+	cors: true
+})
+type NotificationGateway struct {
+	@Inject("notificationService")
+	notificationService *NotificationService
+}
+
+// === MESSAGE HANDLERS ===
+
+// Basic message handling with acknowledgment
+@SubscribeMessage("chat_message")
+func HandleChatMessage(
+	@MessageBody() message *ChatMessage,
+	@ConnectedSocket() client *WebSocketClient,
+	@MessageAck() ack *AckCallback
+) error {
+	// Validate message
+	if message.Content == "" {
+		return fmt.Errorf("message content cannot be empty")
+	}
+	
+	// Process and broadcast message
+	// ack.Send(map[string]interface{}{"status": "received"})
+	return nil
+}
+
+// Room management with multiple parameters
+@SubscribeMessage("join_room")
+func HandleJoinRoom(
+	@MessageBody() roomData *RoomJoinData,
+	@ConnectedSocket() client *WebSocketClient,
+	@CurrentUser() user *User,
+	@EventName() event string,
+	@ClientIP() clientIP string
+) {
+	// client.Join(roomData.RoomID)
+	// Notify other users in room
+}
+
+@SubscribeMessage("leave_room")
+func HandleLeaveRoom(
+	@MessageBody() roomData *RoomLeaveData,
+	@ConnectedSocket() client *WebSocketClient,
+	@Rooms() currentRooms []string
+) {
+	// client.Leave(roomData.RoomID)
+	// Update room state
+}
+
+// Private messaging with user context
+@SubscribeMessage("private_message")
+func HandlePrivateMessage(
+	@MessageBody() pm *PrivateMessage,
+	@ConnectedSocket() sender *WebSocketClient,
+	@CurrentUser() senderUser *User,
+	@Session() session *Session
+) error {
+	// Validate sender permissions
+	// Find recipient and send message
+	return nil
+}
+
+// Game action handling
+@SubscribeMessage("game_move")
+func HandleGameMove(
+	@MessageBody() move *GameMove,
+	@ConnectedSocket() player *WebSocketClient,
+	@MessageAck() ack *AckCallback,
+	@Headers() headers map[string]string
+) error {
+	// Validate game move
+	// Update game state
+	// Broadcast to other players
+	return nil
+}
+
+// Typing indicators
+@SubscribeMessage("typing_start")
+func HandleTypingStart(
+	@MessageBody() data *TypingData,
+	@ConnectedSocket() client *WebSocketClient,
+	@Namespace() ns string
+) {
+	// Broadcast typing indicator to room
+}
+
+@SubscribeMessage("typing_stop")
+func HandleTypingStop(
+	@MessageBody() data *TypingData,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Stop typing indicator
+}
+
+// File sharing
+@SubscribeMessage("file_share")
+func HandleFileShare(
+	@MessageBody() fileData *FileShareData,
+	@ConnectedSocket() client *WebSocketClient,
+	@MessageAck() ack *AckCallback
+) error {
+	// Process file metadata
+	// Generate secure download links
+	return nil
+}
+
+// Notifications
+@SubscribeMessage("subscribe_notifications")
+func HandleNotificationSubscription(
+	@MessageBody() subData *NotificationSubscription,
+	@ConnectedSocket() client *WebSocketClient,
+	@CurrentUser() user *User
+) {
+	// Subscribe user to notification channels
+}
+
+// Complex handler with all parameter types
+@SubscribeMessage("complex_action")
+func HandleComplexAction(
+	@MessageBody() body interface{},
+	@ConnectedSocket() client *WebSocketClient,
+	@MessageAck() ack *AckCallback,
+	@MessagePattern() pattern string,
+	@Headers() headers map[string]string,
+	@Session() session *Session,
+	@Rooms() rooms []string,
+	@Namespace() ns string,
+	@CurrentUser() user *User,
+	@ClientIP() ip string,
+	@EventName() event string
+) {
+	// Handle complex multi-parameter action
+}
+
+// === LIFECYCLE HANDLERS ===
+
+// Handle new WebSocket connections
+@OnGatewayConnection()
+func HandleConnection(
+	@ConnectedSocket() client *WebSocketClient,
+	@Headers() headers map[string]string,
+	@ClientIP() clientIP string
+) {
+	// Authenticate client
+	// Log connection
+	// Join default rooms
+	// Send welcome message
+}
+
+// Handle WebSocket disconnections
+@OnGatewayDisconnect()
+func HandleDisconnect(
+	@ConnectedSocket() client *WebSocketClient,
+	@DisconnectReason() reason string,
+	@Rooms() rooms []string
+) {
+	// Clean up client resources
+	// Update user status
+	// Notify rooms of disconnect
+	// Log disconnection
+}
+
+// Initialize WebSocket gateway
+@OnGatewayInit()
+func InitializeGateway() {
+	// Set up gateway state
+	// Initialize external connections
+	// Load configuration
+}
+
+// === DATA STRUCTURES ===
+
+type ChatMessage struct {
+	ID        string `json:"id"`
+	Content   string `json:"content"`
+	UserID    string `json:"userId"`
+	RoomID    string `json:"roomId"`
+	Timestamp int64  `json:"timestamp"`
+	Type      string `json:"type"`
+}
+
+type RoomJoinData struct {
+	RoomID   string `json:"roomId"`
+	Password string `json:"password,omitempty"`
+}
+
+type RoomLeaveData struct {
+	RoomID string `json:"roomId"`
+}
+
+type PrivateMessage struct {
+	RecipientID string `json:"recipientId"`
+	Content     string `json:"content"`
+	Encrypted   bool   `json:"encrypted"`
+}
+
+type GameMove struct {
+	GameID   string      `json:"gameId"`
+	PlayerID string      `json:"playerId"`
+	Move     interface{} `json:"move"`
+	Turn     int         `json:"turn"`
+}
+
+type TypingData struct {
+	RoomID string `json:"roomId"`
+	UserID string `json:"userId"`
+}
+
+type FileShareData struct {
+	FileName string `json:"fileName"`
+	FileSize int64  `json:"fileSize"`
+	MimeType string `json:"mimeType"`
+	RoomID   string `json:"roomId"`
+}
+
+type NotificationSubscription struct {
+	Channels []string `json:"channels"`
+	UserID   string   `json:"userId"`
+}
+
+type User struct {
+	ID       string `json:"id"`
+	Username string `json:"username"`
+	Role     string `json:"role"`
+	Status   string `json:"status"`
+}
+
+// === SERVICE DEPENDENCIES ===
+
+@Injectable()
+type ChatService struct {
+	@Inject("database")
+	db *Database
+	
+	@Inject("redis")
+	cache *RedisClient
+}
+
+@Injectable()
+type GameService struct {
+	@Inject("database")
+	db *Database
+	
+	@Inject("gameEngine")
+	engine *GameEngine
+}
+
+@Injectable()
+type UserService struct {
+	@Inject("database")
+	db *Database
+	
+	@Inject("authService")
+	auth *AuthService
+}
+
+@Injectable()
+type NotificationService struct {
+	@Inject("database")
+	db *Database
+	
+	@Inject("pushService")
+	push *PushService
+}
+
+@Injectable()
+type RoomManager struct {
+	@Inject("redis")
+	cache *RedisClient
+}
+
+@Injectable()
+type Logger struct {
+	level string
+}
+
+@Injectable()
+type Database struct {
+	connectionString string
+}
+
+@Injectable()
+type RedisClient struct {
+	host string
+	port int
+}
+
+@Injectable()
+type GameEngine struct {
+	version string
+}
+
+@Injectable()
+type AuthService struct {
+	jwtSecret string
+}
+
+@Injectable()
+type PushService struct {
+	apiKey string
+}
+
+// === WEBSOCKET TYPES (for demonstration) ===
+
+type WebSocketClient struct {
+	id        string
+	userID    string
+	rooms     []string
+	connected bool
+}
+
+type WebSocketServer struct {
+	port      int
+	namespace string
+}
+
+type AckCallback struct {
+	id       string
+	callback func(data interface{}) error
+}
+
+type Session struct {
+	sessionID string
+	data      map[string]interface{}
+}

@@ -7,14 +7,278 @@ import (
 
 // generateWebSocketGatewayDeclaration generates a WebSocket gateway declaration
 func (g *CodeGenerator) generateWebSocketGatewayDeclaration(gateway *WebSocketGatewayDeclaration) error {
-	// WebSocket gateways are similar to controllers but handle WebSocket connections
-	// For now, treat them like controllers
-	return g.generateControllerDeclaration(&ControllerDeclaration{
-		Name:       gateway.Name,
-		Fields:     gateway.Fields,
-		Methods:    gateway.Methods,
-		Decorators: gateway.Decorators,
-	})
+	// Generate the WebSocket gateway struct
+	g.writeLine(fmt.Sprintf("type %s struct {", gateway.Name))
+	g.indent()
+
+	// Generate fields with injection tags
+	for _, field := range gateway.Fields {
+		tag := g.generateInjectionTag(field)
+		if tag != "" {
+			g.writeLine(fmt.Sprintf("%s %s `%s`", field.Name, field.Type, tag))
+		} else {
+			g.writeLine(fmt.Sprintf("%s %s", field.Name, field.Type))
+		}
+	}
+
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+
+	// Generate WebSocket server setup function
+	g.generateWebSocketServerSetup(gateway)
+	g.writeLine("")
+
+	// Generate message handler registration function
+	g.generateWebSocketHandlerRegistration(gateway)
+	g.writeLine("")
+
+	// Generate methods (message handlers and lifecycle handlers)
+	for _, method := range gateway.Methods {
+		if err := g.generateWebSocketMethod(gateway, method); err != nil {
+			return err
+		}
+		g.writeLine("")
+	}
+
+	return nil
+}
+
+// generateWebSocketServerSetup generates the WebSocket server setup function
+func (g *CodeGenerator) generateWebSocketServerSetup(gateway *WebSocketGatewayDeclaration) {
+	// Extract WebSocket gateway configuration
+	wsConfig := g.getWebSocketGatewayConfig(gateway)
+	
+	g.writeLine(fmt.Sprintf("// Setup%s initializes the WebSocket server for %s", gateway.Name, gateway.Name))
+	g.writeLine(fmt.Sprintf("func (ws *%s) Setup%s() *websocket.WebSocketServer {", gateway.Name, gateway.Name))
+	g.indent()
+	
+	// Create WebSocket server with configuration
+	g.writeLine(fmt.Sprintf("server := websocket.NewWebSocketServer(&websocket.Config{"))
+	g.indent()
+	g.writeLine(fmt.Sprintf("Port: %d,", wsConfig.Port))
+	if wsConfig.Namespace != "" {
+		g.writeLine(fmt.Sprintf("Namespace: \"%s\",", wsConfig.Namespace))
+	}
+	if wsConfig.CORS {
+		g.writeLine("CORS: true,")
+	}
+	g.unindent()
+	g.writeLine("})")
+	g.writeLine("")
+	
+	// Register lifecycle handlers
+	g.writeLine("// Register lifecycle handlers")
+	if g.hasWebSocketLifecycleHandler(gateway, "OnGatewayConnection") {
+		g.writeLine("server.OnConnection(ws.HandleConnection)")
+	}
+	if g.hasWebSocketLifecycleHandler(gateway, "OnGatewayDisconnect") {
+		g.writeLine("server.OnDisconnection(ws.HandleDisconnect)")
+	}
+	if g.hasWebSocketLifecycleHandler(gateway, "OnGatewayInit") {
+		g.writeLine("server.OnInit(ws.AfterInit)")
+	}
+	g.writeLine("")
+	
+	// Register message handlers
+	g.writeLine("// Register message handlers")
+	g.generateMessageHandlerRegistrations(gateway)
+	
+	g.writeLine("return server")
+	g.unindent()
+	g.writeLine("}")
+}
+
+// generateWebSocketHandlerRegistration generates message handler registration function
+func (g *CodeGenerator) generateWebSocketHandlerRegistration(gateway *WebSocketGatewayDeclaration) {
+	g.writeLine(fmt.Sprintf("// Register%sHandlers registers all WebSocket message handlers", gateway.Name))
+	g.writeLine(fmt.Sprintf("func (ws *%s) Register%sHandlers(server *websocket.WebSocketServer) {", gateway.Name, gateway.Name))
+	g.indent()
+	
+	g.generateMessageHandlerRegistrations(gateway)
+	
+	g.unindent()
+	g.writeLine("}")
+}
+
+// generateMessageHandlerRegistrations generates the message handler registrations
+func (g *CodeGenerator) generateMessageHandlerRegistrations(gateway *WebSocketGatewayDeclaration) {
+	// Register methods from the gateway itself
+	for _, method := range gateway.Methods {
+		// Look for @SubscribeMessage decorators
+		for _, decorator := range method.Decorators {
+			if decorator.Name == "SubscribeMessage" && len(decorator.Args) > 0 {
+				if eventName, ok := decorator.Args[0].Value.(string); ok {
+					g.writeLine(fmt.Sprintf("server.OnMessage(\"%s\", ws.%s)", eventName, method.Name))
+				} else if eventArray, ok := decorator.Args[0].Value.([]interface{}); ok {
+					// Handle multiple events
+					for _, event := range eventArray {
+						if eventStr, ok := event.(string); ok {
+							g.writeLine(fmt.Sprintf("server.OnMessage(\"%s\", ws.%s)", eventStr, method.Name))
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	// Register standalone WebSocket functions (need to be collected globally)
+	// This is a temporary approach - ideally we should collect these during file parsing
+	g.registerStandaloneWebSocketFunctions()
+}
+
+// registerStandaloneWebSocketFunctions registers standalone WebSocket handler functions
+func (g *CodeGenerator) registerStandaloneWebSocketFunctions() {
+	// Keep track of registered handlers to avoid duplicates
+	registeredMessages := make(map[string]bool)
+	registeredLifecycle := make(map[string]bool)
+	
+	// Register collected standalone WebSocket functions
+	for _, wsFunc := range g.webSocketFunctions {
+		// Look for @SubscribeMessage decorators in standalone functions
+		for _, decorator := range wsFunc.Decorators {
+			if decorator.Name == "SubscribeMessage" && len(decorator.Args) > 0 {
+				if eventName, ok := decorator.Args[0].Value.(string); ok {
+					registrationKey := fmt.Sprintf("%s:%s", eventName, wsFunc.Name)
+					if !registeredMessages[registrationKey] {
+						g.writeLine(fmt.Sprintf("server.OnMessage(\"%s\", %s)", eventName, wsFunc.Name))
+						registeredMessages[registrationKey] = true
+					}
+				} else if eventArray, ok := decorator.Args[0].Value.([]interface{}); ok {
+					// Handle multiple events
+					for _, event := range eventArray {
+						if eventStr, ok := event.(string); ok {
+							registrationKey := fmt.Sprintf("%s:%s", eventStr, wsFunc.Name)
+							if !registeredMessages[registrationKey] {
+								g.writeLine(fmt.Sprintf("server.OnMessage(\"%s\", %s)", eventStr, wsFunc.Name))
+								registeredMessages[registrationKey] = true
+							}
+						}
+					}
+				}
+			}
+		}
+		
+		// Register lifecycle handlers
+		for _, decorator := range wsFunc.Decorators {
+			switch decorator.Name {
+			case "OnGatewayConnection":
+				if !registeredLifecycle[wsFunc.Name] {
+					g.writeLine(fmt.Sprintf("server.OnConnection(%s)", wsFunc.Name))
+					registeredLifecycle[wsFunc.Name] = true
+				}
+			case "OnGatewayDisconnect":
+				if !registeredLifecycle[wsFunc.Name] {
+					g.writeLine(fmt.Sprintf("server.OnDisconnection(%s)", wsFunc.Name))
+					registeredLifecycle[wsFunc.Name] = true
+				}
+			case "OnGatewayInit":
+				if !registeredLifecycle[wsFunc.Name] {
+					g.writeLine(fmt.Sprintf("server.OnInit(%s)", wsFunc.Name))
+					registeredLifecycle[wsFunc.Name] = true
+				}
+			}
+		}
+	}
+}
+
+// generateWebSocketMethod generates a WebSocket message handler or lifecycle method
+func (g *CodeGenerator) generateWebSocketMethod(gateway *WebSocketGatewayDeclaration, method *MethodNode) error {
+	// Check if this is a message handler or lifecycle handler
+	isMessageHandler := g.hasDecoratorByName(method, "SubscribeMessage")
+	isLifecycleHandler := g.hasWebSocketLifecycleDecorator(method)
+	
+	if isMessageHandler {
+		return g.generateWebSocketMessageHandler(gateway, method)
+	} else if isLifecycleHandler {
+		return g.generateWebSocketLifecycleHandler(gateway, method)
+	}
+	
+	// Regular method - generate as normal controller method
+	return g.generateControllerMethod(&ControllerDeclaration{
+		Name:    gateway.Name,
+		Fields:  gateway.Fields,
+		Methods: []*MethodNode{method},
+	}, method)
+}
+
+// generateWebSocketMessageHandler generates a WebSocket message handler method
+func (g *CodeGenerator) generateWebSocketMessageHandler(gateway *WebSocketGatewayDeclaration, method *MethodNode) error {
+	// Generate method signature with WebSocket context
+	signature := g.generateWebSocketMessageHandlerSignature(gateway.Name, method)
+	g.writeLine(signature + " {")
+	g.indent()
+
+	// Generate parameter extraction for WebSocket context
+	g.generateWebSocketParameterExtraction(method)
+
+	// Get the message event name for context
+	eventName := g.getSubscribeMessageEventName(method)
+	
+	g.writeLine(fmt.Sprintf("// Handle WebSocket message: %s", eventName))
+	g.writeLine("// Extract message data and process")
+	g.writeLine("")
+	
+	// Generate message validation if needed
+	g.generateWebSocketMessageValidation(method)
+	
+	// Generate business logic placeholder
+	g.writeLine("// TODO: Implement WebSocket message handling logic")
+	g.writeLine("// Process the incoming message and send responses if needed")
+	g.writeLine("")
+	
+	// Generate response/acknowledgment logic
+	g.generateWebSocketResponseLogic(method)
+
+	// Generate return statement if method has return type
+	if method.ReturnType != "" {
+		if method.ReturnType == "error" {
+			g.writeLine("return nil")
+		}
+	}
+
+	g.unindent()
+	g.writeLine("}")
+	return nil
+}
+
+// generateWebSocketLifecycleHandler generates a WebSocket lifecycle handler method
+func (g *CodeGenerator) generateWebSocketLifecycleHandler(gateway *WebSocketGatewayDeclaration, method *MethodNode) error {
+	// Generate method signature
+	signature := g.generateWebSocketLifecycleHandlerSignature(gateway.Name, method)
+	g.writeLine(signature + " {")
+	g.indent()
+
+	// Generate lifecycle-specific logic based on decorator type
+	for _, decorator := range method.Decorators {
+		switch decorator.Name {
+		case "OnGatewayConnection":
+			g.writeLine("// Handle new WebSocket connection")
+			g.writeLine("// Authenticate user, join rooms, log connection, etc.")
+			g.writeLine("// client.Join(\"default-room\")")
+		case "OnGatewayDisconnect":
+			g.writeLine("// Handle WebSocket disconnection")
+			g.writeLine("// Clean up resources, log disconnection, etc.")
+			g.writeLine("// client.LeaveAllRooms()")
+		case "OnGatewayInit":
+			g.writeLine("// Initialize WebSocket gateway")
+			g.writeLine("// Set up gateway state, connect to external services, etc.")
+		}
+	}
+
+	g.writeLine("")
+	g.writeLine("// TODO: Implement lifecycle handler logic")
+
+	// Generate return statement if method has return type
+	if method.ReturnType != "" {
+		if method.ReturnType == "error" {
+			g.writeLine("return nil")
+		}
+	}
+
+	g.unindent()
+	g.writeLine("}")
+	return nil
 }
 
 // generateWebSocketFunctionDeclaration generates a WebSocket lifecycle function
@@ -498,4 +762,284 @@ func (g *CodeGenerator) generateParameterExtraction(method *MethodNode) {
 			}
 		}
 	}
+}
+
+// WebSocket helper functions
+
+// getWebSocketGatewayConfig extracts WebSocket configuration from gateway decorators
+func (g *CodeGenerator) getWebSocketGatewayConfig(gateway *WebSocketGatewayDeclaration) WebSocketConfig {
+	config := WebSocketConfig{
+		Port: 8080, // Default port
+		CORS: false,
+	}
+
+	// Look for @WebSocketGateway decorator
+	wsGatewayDecorator := g.getDecorator(gateway.Decorators, "WebSocketGateway")
+	if wsGatewayDecorator != nil && len(wsGatewayDecorator.Args) > 0 {
+		// Handle different argument types
+		if portNum, ok := wsGatewayDecorator.Args[0].Value.(int); ok {
+			config.Port = portNum
+		} else if configMap, ok := wsGatewayDecorator.Args[0].Value.(map[string]interface{}); ok {
+			// Handle configuration object
+			if port, ok := configMap["port"].(int); ok {
+				config.Port = port
+			}
+			if namespace, ok := configMap["namespace"].(string); ok {
+				config.Namespace = namespace
+			}
+			if cors, ok := configMap["cors"].(bool); ok {
+				config.CORS = cors
+			}
+		}
+	}
+
+	return config
+}
+
+// hasWebSocketLifecycleHandler checks if gateway has a specific lifecycle handler
+func (g *CodeGenerator) hasWebSocketLifecycleHandler(gateway *WebSocketGatewayDeclaration, handlerType string) bool {
+	for _, method := range gateway.Methods {
+		for _, decorator := range method.Decorators {
+			if decorator.Name == handlerType {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// hasDecoratorByName checks if method has a decorator with the given name
+func (g *CodeGenerator) hasDecoratorByName(method *MethodNode, decoratorName string) bool {
+	for _, decorator := range method.Decorators {
+		if decorator.Name == decoratorName {
+			return true
+		}
+	}
+	return false
+}
+
+// hasWebSocketLifecycleDecorator checks if method has any WebSocket lifecycle decorator
+func (g *CodeGenerator) hasWebSocketLifecycleDecorator(method *MethodNode) bool {
+	lifecycleDecorators := []string{"OnGatewayConnection", "OnGatewayDisconnect", "OnGatewayInit"}
+	for _, decorator := range method.Decorators {
+		for _, lifecycle := range lifecycleDecorators {
+			if decorator.Name == lifecycle {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// generateWebSocketMessageHandlerSignature generates method signature for WebSocket message handlers
+func (g *CodeGenerator) generateWebSocketMessageHandlerSignature(gatewayName string, method *MethodNode) string {
+	signature := fmt.Sprintf("func (ws *%s) %s(", gatewayName, method.Name)
+	
+	// Add WebSocket context as first parameter
+	signature += "wsCtx *websocket.MessageContext"
+	
+	// Add original parameters
+	for _, param := range method.Params {
+		// Skip WebSocket-specific parameter decorators as they're handled by context
+		hasWSDecorator := false
+		for _, decorator := range g.getParameterDecorators(param) {
+			if g.isWebSocketParameterDecorator(decorator.Name) {
+				hasWSDecorator = true
+				break
+			}
+		}
+		
+		if !hasWSDecorator {
+			signature += fmt.Sprintf(", %s %s", param.Name, param.Type)
+		}
+	}
+	
+	signature += ")"
+	
+	// Add return type if present
+	if method.ReturnType != "" {
+		signature += " " + method.ReturnType
+	}
+	
+	return signature
+}
+
+// generateWebSocketLifecycleHandlerSignature generates method signature for WebSocket lifecycle handlers
+func (g *CodeGenerator) generateWebSocketLifecycleHandlerSignature(gatewayName string, method *MethodNode) string {
+	signature := fmt.Sprintf("func (ws *%s) %s(", gatewayName, method.Name)
+	
+	// Add WebSocket context parameter
+	signature += "wsCtx *websocket.LifecycleContext"
+	
+	// Add original parameters (filtered for WebSocket context)
+	for _, param := range method.Params {
+		hasWSDecorator := false
+		for _, decorator := range g.getParameterDecorators(param) {
+			if g.isWebSocketParameterDecorator(decorator.Name) {
+				hasWSDecorator = true
+				break
+			}
+		}
+		
+		if !hasWSDecorator {
+			signature += fmt.Sprintf(", %s %s", param.Name, param.Type)
+		}
+	}
+	
+	signature += ")"
+	
+	// Add return type if present
+	if method.ReturnType != "" {
+		signature += " " + method.ReturnType
+	}
+	
+	return signature
+}
+
+// generateWebSocketParameterExtraction generates parameter extraction for WebSocket context
+func (g *CodeGenerator) generateWebSocketParameterExtraction(method *MethodNode) {
+	for _, param := range method.Params {
+		paramDecorators := g.getParameterDecorators(param)
+		
+		for _, decorator := range paramDecorators {
+			switch decorator.Name {
+			case "MessageBody":
+				g.writeLine(fmt.Sprintf("// Extract message body"))
+				g.writeLine(fmt.Sprintf("var %s %s", param.Name, param.Type))
+				g.writeLine(fmt.Sprintf("if err := wsCtx.ParseMessageBody(&%s); err != nil {", param.Name))
+				g.indent()
+				g.writeLine("wsCtx.SendError(\"Invalid message body\")")
+				g.writeLine("return")
+				g.unindent()
+				g.writeLine("}")
+			case "ConnectedSocket":
+				g.writeLine(fmt.Sprintf("%s := wsCtx.Client", param.Name))
+			case "MessageAck":
+				g.writeLine(fmt.Sprintf("%s := wsCtx.AckCallback", param.Name))
+			case "Headers":
+				g.writeLine(fmt.Sprintf("%s := wsCtx.Headers", param.Name))
+			case "Session":
+				g.writeLine(fmt.Sprintf("%s := wsCtx.Session", param.Name))
+			case "Rooms":
+				g.writeLine(fmt.Sprintf("%s := wsCtx.Client.GetRooms()", param.Name))
+			case "Namespace":
+				g.writeLine(fmt.Sprintf("%s := wsCtx.Namespace", param.Name))
+			case "CurrentUser":
+				g.writeLine(fmt.Sprintf("%s := wsCtx.User", param.Name))
+			case "ClientIP":
+				g.writeLine(fmt.Sprintf("%s := wsCtx.Client.RemoteAddr()", param.Name))
+			case "EventName":
+				g.writeLine(fmt.Sprintf("%s := wsCtx.EventName", param.Name))
+			case "MessagePattern":
+				g.writeLine(fmt.Sprintf("%s := wsCtx.Pattern", param.Name))
+			}
+		}
+	}
+}
+
+// getSubscribeMessageEventName extracts event name from @SubscribeMessage decorator
+func (g *CodeGenerator) getSubscribeMessageEventName(method *MethodNode) string {
+	for _, decorator := range method.Decorators {
+		if decorator.Name == "SubscribeMessage" && len(decorator.Args) > 0 {
+			if eventName, ok := decorator.Args[0].Value.(string); ok {
+				return eventName
+			}
+		}
+	}
+	return "unknown"
+}
+
+// generateWebSocketMessageValidation generates message validation logic
+func (g *CodeGenerator) generateWebSocketMessageValidation(method *MethodNode) {
+	// Check if method has validation decorators
+	hasValidation := false
+	for _, param := range method.Params {
+		paramDecorators := g.getParameterDecorators(param)
+		for _, decorator := range paramDecorators {
+			if g.isValidationDecorator(decorator.Name) {
+				hasValidation = true
+				break
+			}
+		}
+		if hasValidation {
+			break
+		}
+	}
+	
+	if hasValidation {
+		g.writeLine("// Validate message parameters")
+		g.writeLine("if err := wsCtx.ValidateMessage(); err != nil {")
+		g.indent()
+		g.writeLine("wsCtx.SendValidationError(err)")
+		g.writeLine("return")
+		g.unindent()
+		g.writeLine("}")
+		g.writeLine("")
+	}
+}
+
+// generateWebSocketResponseLogic generates response/acknowledgment logic
+func (g *CodeGenerator) generateWebSocketResponseLogic(method *MethodNode) {
+	// Check if method has @MessageAck parameter
+	hasAck := false
+	for _, param := range method.Params {
+		paramDecorators := g.getParameterDecorators(param)
+		for _, decorator := range paramDecorators {
+			if decorator.Name == "MessageAck" {
+				hasAck = true
+				break
+			}
+		}
+		if hasAck {
+			break
+		}
+	}
+	
+	if hasAck {
+		g.writeLine("// Send acknowledgment if callback is provided")
+		g.writeLine("if ack != nil {")
+		g.indent()
+		g.writeLine("ack.Send(map[string]interface{}{\"status\": \"success\"})")
+		g.unindent()
+		g.writeLine("}")
+	}
+}
+
+// isWebSocketParameterDecorator checks if decorator is WebSocket-specific
+func (g *CodeGenerator) isWebSocketParameterDecorator(decoratorName string) bool {
+	wsParameterDecorators := []string{
+		"MessageBody", "ConnectedSocket", "MessageAck", "MessagePattern",
+		"Rooms", "Namespace", "CurrentUser", "ClientIP", "EventName", "Server",
+		"DisconnectReason", "RawMessage",
+	}
+	
+	for _, wsDecorator := range wsParameterDecorators {
+		if decoratorName == wsDecorator {
+			return true
+		}
+	}
+	return false
+}
+
+// isValidationDecorator checks if decorator is for validation
+func (g *CodeGenerator) isValidationDecorator(decoratorName string) bool {
+	validationDecorators := []string{
+		"IsString", "IsNumber", "IsEmail", "IsNotEmpty", "MinLength", "MaxLength",
+		"Min", "Max", "IsPositive", "IsNegative", "Custom", // Add more as needed
+	}
+	
+	for _, validation := range validationDecorators {
+		if decoratorName == validation {
+			return true
+		}
+	}
+	return false
+}
+
+
+// WebSocketConfig represents WebSocket gateway configuration
+type WebSocketConfig struct {
+	Port      int
+	Namespace string
+	CORS      bool
 }

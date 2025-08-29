@@ -85,6 +85,7 @@ type CodeGenerator struct {
 	decoratorRegistry map[string]*DecoratorNode
 	generatedCode     strings.Builder
 	indentLevel       int
+	webSocketFunctions []*WebSocketFunctionDeclaration // Track standalone WebSocket functions
 }
 
 // NewCodeGenerator creates a new code generator
@@ -93,6 +94,7 @@ func NewCodeGenerator(packageName string) *CodeGenerator {
 		packageName:       packageName,
 		imports:           []string{},
 		decoratorRegistry: make(map[string]*DecoratorNode),
+		webSocketFunctions: []*WebSocketFunctionDeclaration{},
 	}
 }
 
@@ -106,6 +108,9 @@ func (g *CodeGenerator) GenerateGoCode(file *GofaFile) (string, error) {
 
 	// Add validation imports if needed
 	g.addValidationImportsIfNeeded(file)
+	
+	// Add WebSocket imports if needed
+	g.addWebSocketImportsIfNeeded(file)
 	
 	// Collect imports
 	g.collectImports(file)
@@ -125,6 +130,9 @@ func (g *CodeGenerator) GenerateGoCode(file *GofaFile) (string, error) {
 	// Generate validation code if needed
 	g.generateValidationCodeIfNeeded(file)
 
+	// First, collect all WebSocket function declarations for later registration
+	g.collectWebSocketFunctions(file)
+	
 	// Generate declarations
 	for _, decl := range file.Declarations {
 		if err := g.generateDeclaration(decl); err != nil {
@@ -163,6 +171,7 @@ func (g *CodeGenerator) generateDeclaration(decl GofaDeclaration) error {
 	case *WebSocketGatewayDeclaration:
 		return g.generateWebSocketGatewayDeclaration(d)
 	case *WebSocketFunctionDeclaration:
+		// WebSocket functions are already collected, just generate them
 		return g.generateWebSocketFunctionDeclaration(d)
 	default:
 		return fmt.Errorf("unsupported declaration type: %T", decl)
@@ -227,4 +236,49 @@ func NewLexer(input string) *parsing.Lexer {
 // NewParser creates a new parser - bridge to parsing package  
 func NewParser(lexer *parsing.Lexer) *parsing.Parser {
 	return parsing.NewParser(lexer)
+}
+
+// addWebSocketImportsIfNeeded adds WebSocket imports if needed
+func (g *CodeGenerator) addWebSocketImportsIfNeeded(file *GofaFile) {
+	hasWebSocket := false
+	
+	// Check if file has WebSocket declarations
+	for _, decl := range file.Declarations {
+		switch decl.(type) {
+		case *WebSocketGatewayDeclaration:
+			hasWebSocket = true
+		case *WebSocketFunctionDeclaration:
+			hasWebSocket = true
+		}
+		if hasWebSocket {
+			break
+		}
+	}
+	
+	if hasWebSocket {
+		// Add WebSocket package import
+		g.imports = append(g.imports, "github.com/healtronlabs/gofasta/packages/websocket")
+		
+		// Ensure HTTP package is also imported for WebSocket integration
+		httpImportExists := false
+		for _, imp := range g.imports {
+			if strings.Contains(imp, "github.com/healtronlabs/gofasta/packages/http") {
+				httpImportExists = true
+				break
+			}
+		}
+		
+		if !httpImportExists {
+			g.imports = append(g.imports, "github.com/healtronlabs/gofasta/packages/http")
+		}
+	}
+}
+
+// collectWebSocketFunctions collects all WebSocket function declarations for registration
+func (g *CodeGenerator) collectWebSocketFunctions(file *GofaFile) {
+	for _, decl := range file.Declarations {
+		if wsFunc, ok := decl.(*WebSocketFunctionDeclaration); ok {
+			g.webSocketFunctions = append(g.webSocketFunctions, wsFunc)
+		}
+	}
 }
