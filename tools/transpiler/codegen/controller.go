@@ -41,6 +41,12 @@ func (g *CodeGenerator) generateWebSocketGatewayDeclaration(gateway *WebSocketGa
 		g.writeLine("")
 	}
 
+	// Generate WebSocket middleware functions
+	g.generateWebSocketGuardMiddlewareFunctions(gateway)
+	g.generateWebSocketInterceptorMiddlewareFunctions(gateway)
+	g.generateWebSocketPipeMiddlewareFunctions(gateway)
+	g.generateWebSocketFilterMiddlewareFunctions(gateway)
+
 	return nil
 }
 
@@ -79,6 +85,9 @@ func (g *CodeGenerator) generateWebSocketServerSetup(gateway *WebSocketGatewayDe
 		g.writeLine("server.OnInit(ws.AfterInit)")
 	}
 	g.writeLine("")
+	
+	// Register middleware
+	g.generateWebSocketMiddlewareRegistration(gateway)
 	
 	// Register message handlers
 	g.writeLine("// Register message handlers")
@@ -1190,4 +1199,349 @@ type WebSocketConfig struct {
 	Port      int
 	Namespace string
 	CORS      bool
+}
+
+// ===================== WebSocket Middleware Generation =====================
+
+// generateWebSocketGuardMiddlewareFunctions generates guard middleware methods for WebSocket gateways
+func (g *CodeGenerator) generateWebSocketGuardMiddlewareFunctions(gateway *WebSocketGatewayDeclaration) {
+	allGuards := make(map[string]bool)
+	
+	// Collect all unique guards from gateway and methods
+	gatewayGuards := g.getWebSocketGuardDecorators(gateway.Decorators)
+	for _, guard := range gatewayGuards {
+		allGuards[guard] = true
+	}
+	
+	for _, method := range gateway.Methods {
+		methodGuards := g.getWebSocketGuardDecorators(method.Decorators)
+		for _, guard := range methodGuards {
+			allGuards[guard] = true
+		}
+	}
+	
+	// Collect from standalone WebSocket functions
+	for _, wsFunc := range g.webSocketFunctions {
+		funcGuards := g.getWebSocketGuardDecorators(wsFunc.Decorators)
+		for _, guard := range funcGuards {
+			allGuards[guard] = true
+		}
+	}
+	
+	if len(allGuards) == 0 {
+		return
+	}
+	
+	// Generate WebSocket guard middleware methods for the gateway
+	g.writeLine("// WebSocket Guard middleware methods")
+	
+	for guard := range allGuards {
+		g.generateWebSocketGuardMethod(gateway.Name, guard)
+		g.writeLine("")
+	}
+}
+
+// generateWebSocketInterceptorMiddlewareFunctions generates interceptor middleware methods for WebSocket gateways
+func (g *CodeGenerator) generateWebSocketInterceptorMiddlewareFunctions(gateway *WebSocketGatewayDeclaration) {
+	allInterceptors := make(map[string]bool)
+	
+	// Collect all unique interceptors from gateway and methods
+	gatewayInterceptors := g.getWebSocketInterceptorDecorators(gateway.Decorators)
+	for _, interceptor := range gatewayInterceptors {
+		allInterceptors[interceptor] = true
+	}
+	
+	for _, method := range gateway.Methods {
+		methodInterceptors := g.getWebSocketInterceptorDecorators(method.Decorators)
+		for _, interceptor := range methodInterceptors {
+			allInterceptors[interceptor] = true
+		}
+	}
+	
+	// Collect from standalone WebSocket functions
+	for _, wsFunc := range g.webSocketFunctions {
+		funcInterceptors := g.getWebSocketInterceptorDecorators(wsFunc.Decorators)
+		for _, interceptor := range funcInterceptors {
+			allInterceptors[interceptor] = true
+		}
+	}
+	
+	if len(allInterceptors) == 0 {
+		return
+	}
+	
+	// Generate WebSocket interceptor middleware methods for the gateway
+	g.writeLine("// WebSocket Interceptor middleware methods")
+	
+	for interceptor := range allInterceptors {
+		g.generateWebSocketInterceptorMethod(gateway.Name, interceptor)
+		g.writeLine("")
+	}
+}
+
+// generateWebSocketPipeMiddlewareFunctions generates pipe middleware methods for WebSocket gateways
+func (g *CodeGenerator) generateWebSocketPipeMiddlewareFunctions(gateway *WebSocketGatewayDeclaration) {
+	allPipes := make(map[string]bool)
+	
+	// Collect all unique pipes from gateway and methods
+	gatewayPipes := g.getWebSocketPipeDecorators(gateway.Decorators)
+	for _, pipe := range gatewayPipes {
+		allPipes[pipe] = true
+	}
+	
+	for _, method := range gateway.Methods {
+		methodPipes := g.getWebSocketPipeDecorators(method.Decorators)
+		for _, pipe := range methodPipes {
+			allPipes[pipe] = true
+		}
+	}
+	
+	// Collect from standalone WebSocket functions
+	for _, wsFunc := range g.webSocketFunctions {
+		funcPipes := g.getWebSocketPipeDecorators(wsFunc.Decorators)
+		for _, pipe := range funcPipes {
+			allPipes[pipe] = true
+		}
+	}
+	
+	if len(allPipes) == 0 {
+		return
+	}
+	
+	// Generate WebSocket pipe middleware methods for the gateway
+	g.writeLine("// WebSocket Pipe middleware methods")
+	
+	for pipe := range allPipes {
+		g.generateWebSocketPipeMethod(gateway.Name, pipe)
+		g.writeLine("")
+	}
+}
+
+// generateWebSocketFilterMiddlewareFunctions generates filter middleware methods for WebSocket gateways
+func (g *CodeGenerator) generateWebSocketFilterMiddlewareFunctions(gateway *WebSocketGatewayDeclaration) {
+	allFilters := make(map[string]bool)
+	
+	// Collect all unique filters from gateway and methods
+	gatewayFilters := g.getWebSocketFilterDecorators(gateway.Decorators)
+	for _, filter := range gatewayFilters {
+		allFilters[filter] = true
+	}
+	
+	for _, method := range gateway.Methods {
+		methodFilters := g.getWebSocketFilterDecorators(method.Decorators)
+		for _, filter := range methodFilters {
+			allFilters[filter] = true
+		}
+	}
+	
+	// Collect from standalone WebSocket functions
+	for _, wsFunc := range g.webSocketFunctions {
+		funcFilters := g.getWebSocketFilterDecorators(wsFunc.Decorators)
+		for _, filter := range funcFilters {
+			allFilters[filter] = true
+		}
+	}
+	
+	if len(allFilters) == 0 {
+		return
+	}
+	
+	// Generate WebSocket filter middleware methods for the gateway
+	g.writeLine("// WebSocket Filter middleware methods")
+	
+	for filter := range allFilters {
+		g.generateWebSocketFilterMethod(gateway.Name, filter)
+		g.writeLine("")
+	}
+}
+
+// ===================== Helper Functions for WebSocket Middleware Decorators =====================
+
+// getWebSocketGuardDecorators extracts WebSocket guard decorator names
+func (g *CodeGenerator) getWebSocketGuardDecorators(decorators []*DecoratorNode) []string {
+	var guards []string
+	
+	for _, decorator := range decorators {
+		if decorator.Name == "UseGuards" {
+			// Extract guard names from decorator arguments
+			for _, arg := range decorator.Args {
+				if guardName, ok := arg.Value.(string); ok {
+					guards = append(guards, guardName)
+				}
+			}
+		}
+	}
+	
+	return guards
+}
+
+// getWebSocketInterceptorDecorators extracts WebSocket interceptor decorator names
+func (g *CodeGenerator) getWebSocketInterceptorDecorators(decorators []*DecoratorNode) []string {
+	var interceptors []string
+	
+	for _, decorator := range decorators {
+		if decorator.Name == "UseInterceptors" {
+			// Extract interceptor names from decorator arguments
+			for _, arg := range decorator.Args {
+				if interceptorName, ok := arg.Value.(string); ok {
+					interceptors = append(interceptors, interceptorName)
+				}
+			}
+		}
+	}
+	
+	return interceptors
+}
+
+// getWebSocketPipeDecorators extracts WebSocket pipe decorator names
+func (g *CodeGenerator) getWebSocketPipeDecorators(decorators []*DecoratorNode) []string {
+	var pipes []string
+	
+	for _, decorator := range decorators {
+		if decorator.Name == "UsePipes" {
+			// Extract pipe names from decorator arguments
+			for _, arg := range decorator.Args {
+				if pipeName, ok := arg.Value.(string); ok {
+					pipes = append(pipes, pipeName)
+				}
+			}
+		}
+	}
+	
+	return pipes
+}
+
+// getWebSocketFilterDecorators extracts WebSocket filter decorator names (UseFilters)
+func (g *CodeGenerator) getWebSocketFilterDecorators(decorators []*DecoratorNode) []string {
+	var filters []string
+	
+	for _, decorator := range decorators {
+		if decorator.Name == "UseFilters" {
+			// Extract filter names from decorator arguments
+			for _, arg := range decorator.Args {
+				if filterName, ok := arg.Value.(string); ok {
+					filters = append(filters, filterName)
+				}
+			}
+		}
+	}
+	
+	return filters
+}
+
+// generateWebSocketMiddlewareRegistration generates middleware registration for WebSocket gateways
+func (g *CodeGenerator) generateWebSocketMiddlewareRegistration(gateway *WebSocketGatewayDeclaration) {
+	// Collect all middleware from gateway and methods
+	allGuards := make(map[string]bool)
+	allInterceptors := make(map[string]bool)
+	allPipes := make(map[string]bool)
+	allFilters := make(map[string]bool)
+	
+	// Collect from gateway decorators
+	gatewayGuards := g.getWebSocketGuardDecorators(gateway.Decorators)
+	for _, guard := range gatewayGuards {
+		allGuards[guard] = true
+	}
+	
+	gatewayInterceptors := g.getWebSocketInterceptorDecorators(gateway.Decorators)
+	for _, interceptor := range gatewayInterceptors {
+		allInterceptors[interceptor] = true
+	}
+	
+	gatewayPipes := g.getWebSocketPipeDecorators(gateway.Decorators)
+	for _, pipe := range gatewayPipes {
+		allPipes[pipe] = true
+	}
+	
+	gatewayFilters := g.getWebSocketFilterDecorators(gateway.Decorators)
+	for _, filter := range gatewayFilters {
+		allFilters[filter] = true
+	}
+	
+	// Collect from method decorators
+	for _, method := range gateway.Methods {
+		methodGuards := g.getWebSocketGuardDecorators(method.Decorators)
+		for _, guard := range methodGuards {
+			allGuards[guard] = true
+		}
+		
+		methodInterceptors := g.getWebSocketInterceptorDecorators(method.Decorators)
+		for _, interceptor := range methodInterceptors {
+			allInterceptors[interceptor] = true
+		}
+		
+		methodPipes := g.getWebSocketPipeDecorators(method.Decorators)
+		for _, pipe := range methodPipes {
+			allPipes[pipe] = true
+		}
+		
+		methodFilters := g.getWebSocketFilterDecorators(method.Decorators)
+		for _, filter := range methodFilters {
+			allFilters[filter] = true
+		}
+	}
+	
+	// Collect from standalone WebSocket functions
+	for _, wsFunc := range g.webSocketFunctions {
+		funcGuards := g.getWebSocketGuardDecorators(wsFunc.Decorators)
+		for _, guard := range funcGuards {
+			allGuards[guard] = true
+		}
+		
+		funcInterceptors := g.getWebSocketInterceptorDecorators(wsFunc.Decorators)
+		for _, interceptor := range funcInterceptors {
+			allInterceptors[interceptor] = true
+		}
+		
+		funcPipes := g.getWebSocketPipeDecorators(wsFunc.Decorators)
+		for _, pipe := range funcPipes {
+			allPipes[pipe] = true
+		}
+		
+		funcFilters := g.getWebSocketFilterDecorators(wsFunc.Decorators)
+		for _, filter := range funcFilters {
+			allFilters[filter] = true
+		}
+	}
+	
+	// Register middleware if any exist
+	if len(allGuards) > 0 || len(allInterceptors) > 0 || len(allPipes) > 0 || len(allFilters) > 0 {
+		g.writeLine("// Register middleware")
+	}
+	
+	// Register guards
+	if len(allGuards) > 0 {
+		g.writeLine("// Register guards")
+		for guard := range allGuards {
+			g.writeLine(fmt.Sprintf("server.UseGuard(\"%s\", ws.%s)", guard, guard))
+		}
+		g.writeLine("")
+	}
+	
+	// Register interceptors
+	if len(allInterceptors) > 0 {
+		g.writeLine("// Register interceptors")
+		for interceptor := range allInterceptors {
+			g.writeLine(fmt.Sprintf("server.UseInterceptor(\"%s\", ws.%s)", interceptor, interceptor))
+		}
+		g.writeLine("")
+	}
+	
+	// Register pipes
+	if len(allPipes) > 0 {
+		g.writeLine("// Register pipes")
+		for pipe := range allPipes {
+			g.writeLine(fmt.Sprintf("server.UsePipe(\"%s\", ws.%s)", pipe, pipe))
+		}
+		g.writeLine("")
+	}
+	
+	// Register filters
+	if len(allFilters) > 0 {
+		g.writeLine("// Register filters")
+		for filter := range allFilters {
+			g.writeLine(fmt.Sprintf("server.UseFilter(\"%s\", ws.%s)", filter, filter))
+		}
+		g.writeLine("")
+	}
 }

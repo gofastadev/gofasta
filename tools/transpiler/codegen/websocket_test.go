@@ -683,3 +683,171 @@ func TestWebSocketLifecycleIntegration(t *testing.T) {
 		}
 	}
 }
+
+// ===================== WebSocket Middleware Integration Tests =====================
+
+// TestWebSocketMiddlewareIntegration tests WebSocket middleware generation
+func TestWebSocketMiddlewareIntegration(t *testing.T) {
+	input := `package test
+
+@WebSocketGateway(8080)
+@UseGuards("WSAuthGuard", "WSRoleGuard")
+@UseInterceptors("WSLoggingInterceptor")
+@UseFilters("WSGlobalExceptionFilter")
+type SecureGateway struct {
+    @Inject("authService")
+    authService *AuthService
+}
+
+@SubscribeMessage("secure_message")
+@UseGuards("WSPermissionGuard")
+@UseInterceptors("WSValidationInterceptor")
+@UsePipes("WSValidationPipe")
+func HandleSecureMessage(
+    @MessageBody() data *SecureMessage,
+    @ConnectedSocket() client *WebSocketClient
+) error {
+    return nil
+}`
+
+	file, err := ParseGofaFile(input)
+	if err != nil {
+		t.Fatalf("Failed to parse file: %v", err)
+	}
+
+	generator := NewCodeGenerator("test")
+	output, err := generator.GenerateGoCode(file)
+	if err != nil {
+		t.Fatalf("Failed to generate code: %v", err)
+	}
+
+	// Test middleware registration in setup function
+	expectedMiddlewareRegistrations := []string{
+		"server.UseGuard(\"WSAuthGuard\", ws.WSAuthGuard)",
+		"server.UseGuard(\"WSRoleGuard\", ws.WSRoleGuard)",
+		"server.UseGuard(\"WSPermissionGuard\", ws.WSPermissionGuard)",
+		"server.UseInterceptor(\"WSLoggingInterceptor\", ws.WSLoggingInterceptor)",
+		"server.UseInterceptor(\"WSValidationInterceptor\", ws.WSValidationInterceptor)",
+		"server.UsePipe(\"WSValidationPipe\", ws.WSValidationPipe)",
+		"server.UseFilter(\"WSGlobalExceptionFilter\", ws.WSGlobalExceptionFilter)",
+	}
+
+	for _, registration := range expectedMiddlewareRegistrations {
+		if !strings.Contains(output, registration) {
+			t.Errorf("Expected middleware registration not found: %s", registration)
+		}
+	}
+
+	// Test guard methods generation
+	expectedGuardMethods := []string{
+		"func (ws *SecureGateway) WSAuthGuard(wsCtx *websocket.GuardContext) bool {",
+		"func (ws *SecureGateway) WSRoleGuard(wsCtx *websocket.GuardContext) bool {",
+		"func (ws *SecureGateway) WSPermissionGuard(wsCtx *websocket.GuardContext) bool {",
+	}
+
+	for _, method := range expectedGuardMethods {
+		if !strings.Contains(output, method) {
+			t.Errorf("Expected guard method not found: %s", method)
+		}
+	}
+
+	// Test interceptor methods generation
+	expectedInterceptorMethods := []string{
+		"func (ws *SecureGateway) WSLoggingInterceptor(wsCtx *websocket.InterceptorContext) {",
+		"func (ws *SecureGateway) WSValidationInterceptor(wsCtx *websocket.InterceptorContext) {",
+	}
+
+	for _, method := range expectedInterceptorMethods {
+		if !strings.Contains(output, method) {
+			t.Errorf("Expected interceptor method not found: %s", method)
+		}
+	}
+
+	// Test pipe methods generation
+	if !strings.Contains(output, "func (ws *SecureGateway) WSValidationPipe(wsCtx *websocket.PipeContext) interface{} {") {
+		t.Errorf("Expected pipe method not found")
+	}
+
+	// Test filter methods generation
+	if !strings.Contains(output, "func (ws *SecureGateway) WSGlobalExceptionFilter(wsCtx *websocket.FilterContext, err error) {") {
+		t.Errorf("Expected filter method not found")
+	}
+}
+
+// TestWebSocketMiddlewareDecoratorExtraction tests middleware decorator extraction
+func TestWebSocketMiddlewareDecoratorExtraction(t *testing.T) {
+	generator := NewCodeGenerator("test")
+	
+	// Test guard decorators extraction
+	guardDecorators := []*DecoratorNode{
+		{Name: "UseGuards", Args: []DecoratorArg{{Value: "WSAuthGuard"}, {Value: "WSRoleGuard"}}},
+		{Name: "SubscribeMessage", Args: []DecoratorArg{{Value: "test_message"}}},
+	}
+	
+	guards := generator.getWebSocketGuardDecorators(guardDecorators)
+	expectedGuards := []string{"WSAuthGuard", "WSRoleGuard"}
+	
+	if len(guards) != len(expectedGuards) {
+		t.Errorf("Expected %d guards, got %d", len(expectedGuards), len(guards))
+	}
+	
+	for i, expectedGuard := range expectedGuards {
+		if guards[i] != expectedGuard {
+			t.Errorf("Expected guard '%s', got '%s'", expectedGuard, guards[i])
+		}
+	}
+	
+	// Test interceptor decorators extraction
+	interceptorDecorators := []*DecoratorNode{
+		{Name: "UseInterceptors", Args: []DecoratorArg{{Value: "WSLoggingInterceptor"}, {Value: "WSValidationInterceptor"}}},
+	}
+	
+	interceptors := generator.getWebSocketInterceptorDecorators(interceptorDecorators)
+	expectedInterceptors := []string{"WSLoggingInterceptor", "WSValidationInterceptor"}
+	
+	if len(interceptors) != len(expectedInterceptors) {
+		t.Errorf("Expected %d interceptors, got %d", len(expectedInterceptors), len(interceptors))
+	}
+	
+	for i, expectedInterceptor := range expectedInterceptors {
+		if interceptors[i] != expectedInterceptor {
+			t.Errorf("Expected interceptor '%s', got '%s'", expectedInterceptor, interceptors[i])
+		}
+	}
+	
+	// Test pipe decorators extraction
+	pipeDecorators := []*DecoratorNode{
+		{Name: "UsePipes", Args: []DecoratorArg{{Value: "WSValidationPipe"}, {Value: "WSParseIntPipe"}}},
+	}
+	
+	pipes := generator.getWebSocketPipeDecorators(pipeDecorators)
+	expectedPipes := []string{"WSValidationPipe", "WSParseIntPipe"}
+	
+	if len(pipes) != len(expectedPipes) {
+		t.Errorf("Expected %d pipes, got %d", len(expectedPipes), len(pipes))
+	}
+	
+	for i, expectedPipe := range expectedPipes {
+		if pipes[i] != expectedPipe {
+			t.Errorf("Expected pipe '%s', got '%s'", expectedPipe, pipes[i])
+		}
+	}
+	
+	// Test filter decorators extraction
+	filterDecorators := []*DecoratorNode{
+		{Name: "UseFilters", Args: []DecoratorArg{{Value: "WSGlobalExceptionFilter"}, {Value: "WSAuthExceptionFilter"}}},
+	}
+	
+	filters := generator.getWebSocketFilterDecorators(filterDecorators)
+	expectedFilters := []string{"WSGlobalExceptionFilter", "WSAuthExceptionFilter"}
+	
+	if len(filters) != len(expectedFilters) {
+		t.Errorf("Expected %d filters, got %d", len(expectedFilters), len(filters))
+	}
+	
+	for i, expectedFilter := range expectedFilters {
+		if filters[i] != expectedFilter {
+			t.Errorf("Expected filter '%s', got '%s'", expectedFilter, filters[i])
+		}
+	}
+}
