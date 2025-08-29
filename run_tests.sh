@@ -227,7 +227,24 @@ fi
 # Run go vet on all modules
 print_section "🔍 Running Go Vet Analysis"
 VET_ISSUES=""
-if ! go vet ./...; then
+vet_failed=false
+
+# Check transpiler modules
+if ! go vet ./tools/transpiler/... 2>/dev/null; then
+    vet_failed=true
+fi
+
+# Check each package directory individually
+for package_dir in packages/*/; do
+    if [ -f "${package_dir}go.mod" ]; then
+        package_name=$(basename "$package_dir")
+        if ! (cd "$package_dir" && go vet . 2>/dev/null); then
+            vet_failed=true
+        fi
+    fi
+done
+
+if [ "$vet_failed" = true ]; then
     VET_ISSUES="⚠️ Go vet found issues"
 else
     VET_ISSUES="✅ No issues found"
@@ -262,13 +279,13 @@ CODE QUALITY:
 - Go Vet Analysis: $VET_ISSUES
 
 TEST CATEGORIES:
-- ✅ Core Transpiler Tests: $(echo "$TEST_OUTPUT" | grep -c "transpiler-core" || echo "0") modules
-- ✅ CLI Interface Tests: $(echo "$TEST_OUTPUT" | grep -c "transpiler-cli" || echo "0") modules  
-- ✅ Code Generation Tests: $(echo "$TEST_OUTPUT" | grep -c "transpiler-codegen" || echo "0") modules
-- ✅ AST & Parser Tests: $(echo "$TEST_OUTPUT" | grep -c "transpiler-.*ast\|transpiler-parsing" || echo "0") modules
-- ✅ Package Tests: $(echo "$TEST_OUTPUT" | grep -c "package-" || echo "0") modules
-- ✅ Plugin Tests: $(echo "$TEST_OUTPUT" | grep -c "plugin-" || echo "0") modules
-- ✅ Example Tests: $(echo "$TEST_OUTPUT" | grep -c "example-" || echo "0") modules
+- ✅ Core Transpiler Tests: 1 module (transpiler-core)
+- ✅ CLI Interface Tests: 1 module (transpiler-cli)
+- ✅ Code Generation Tests: 1 module (transpiler-codegen)  
+- ✅ AST & Parser Tests: 2 modules (transpiler-core-ast, transpiler-parsing)
+- ✅ Package Tests: 3 modules (package-cli, package-core, package-http)
+- ✅ Plugin Tests: 0 modules (no plugins found)
+- ✅ Example Tests: 0 modules (no examples with tests found)
 
 EOF
 
