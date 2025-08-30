@@ -30,25 +30,37 @@ Gofasta brings enterprise-grade architectural patterns to the Go backend ecosyst
 ## 🏗️ Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    Gofasta Framework                        │
-├─────────────────────────────────────────────────────────────┤
-│  @gofasta/http    │  @gofasta/validation │  @gofasta/auth   │
-│  Web Server &     │  Input Validation &  │  JWT & Guards &  │
-│  Routing          │  Transformation      │  Authorization   │
-├─────────────────────────────────────────────────────────────┤
-│                    @gofasta/core                            │
-│           Dependency Injection & Module System              │
-├─────────────────────────────────────────────────────────────┤
-│                    @gofasta/orm                             │
-│              Unified Database Abstraction                    │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐          │
-│  │    GORM     │  │ mongo-driver│  │   Redis     │          │
-│  │ PostgreSQL  │  │  MongoDB    │  │   Cache     │          │
-│  │   MySQL     │  │             │  │             │          │
-│  │  SQLite     │  │             │  │             │          │
-│  └─────────────┘  └─────────────┘  └─────────────┘          │
-└─────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────┐
+│                          Gofa Language                            │
+│    Superset of Go  |  Decorators  |  Less Boilerplate             │
+└───────────────────────────────────────────────────────────────────┘
+                               │
+                               ▼
+┌───────────────────────────────────────────────────────────────────┐
+│                         Gofa Transpiler                           │
+│   Parses Gofa → Emits Pure Go code (Go 1.x compatible)            │
+└───────────────────────────────────────────────────────────────────┘
+                               │
+                               ▼
+┌───────────────────────────────────────────────────────────────────┐
+│                         Gofasta Framework                         │
+├───────────────────────────────────────────────────────────────────┤
+│  @gofasta/http     │  @gofasta/validation  │  @gofasta/auth       │
+│  Web Server &      │  Input Validation &   │  JWT, Guards &       │
+│  Routing           │  Transformation       │  Authorization       │
+├───────────────────────────────────────────────────────────────────┤
+│                          @gofasta/core                            │
+│                Dependency Injection & Module System               │
+├───────────────────────────────────────────────────────────────────┤
+│                          @gofasta/orm                             │
+│                 Unified Database Abstraction Layer                │
+│   ┌─────────────┐   ┌─────────────┐   ┌─────────────┐             │
+│   │    GORM     │   │ mongo-driver│   │   Redis     │             │
+│   │ PostgreSQL  │   │   MongoDB   │   │   Cache     │             │
+│   │   MySQL     │   │             │   │             │             │
+│   │  SQLite     │   │             │   │             │             │
+│   └─────────────┘   └─────────────┘   └─────────────┘             │
+└───────────────────────────────────────────────────────────────────┘
 ```
 
 ## 🚀 Quick Start
