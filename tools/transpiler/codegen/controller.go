@@ -66,9 +66,33 @@ func (g *CodeGenerator) generateWebSocketServerSetup(gateway *WebSocketGatewayDe
 	if wsConfig.Namespace != "" {
 		g.writeLine(fmt.Sprintf("Namespace: \"%s\",", wsConfig.Namespace))
 	}
-	if wsConfig.CORS {
-		g.writeLine("CORS: true,")
+	
+	// Handle CORS configuration
+	g.generateWebSocketCORSConfig(wsConfig)
+	
+	// Handle transports configuration
+	if len(wsConfig.Transports) > 0 {
+		g.writeLine("Transports: []string{")
+		g.indent()
+		for i, transport := range wsConfig.Transports {
+			if i == len(wsConfig.Transports)-1 {
+				g.writeLine(fmt.Sprintf("\"%s\",", transport))
+			} else {
+				g.writeLine(fmt.Sprintf("\"%s\",", transport))
+			}
+		}
+		g.unindent()
+		g.writeLine("},")
 	}
+	
+	// Handle ping configuration
+	if wsConfig.PingTimeout != 20000 { // Only output if different from default
+		g.writeLine(fmt.Sprintf("PingTimeout: %d,", wsConfig.PingTimeout))
+	}
+	if wsConfig.PingInterval != 25000 { // Only output if different from default
+		g.writeLine(fmt.Sprintf("PingInterval: %d,", wsConfig.PingInterval))
+	}
+	
 	g.unindent()
 	g.writeLine("})")
 	g.writeLine("")
@@ -776,8 +800,11 @@ func (g *CodeGenerator) generateParameterExtraction(method *MethodNode) {
 // getWebSocketGatewayConfig extracts WebSocket configuration from gateway decorators
 func (g *CodeGenerator) getWebSocketGatewayConfig(gateway *WebSocketGatewayDeclaration) WebSocketConfig {
 	config := WebSocketConfig{
-		Port: 8080, // Default port
-		CORS: false,
+		Port:         8080, // Default port
+		CORS:         false,
+		Transports:   []string{"websocket", "polling"}, // Default transports
+		PingTimeout:  20000, // Default ping timeout (20s)
+		PingInterval: 25000, // Default ping interval (25s)
 	}
 
 	// Look for @WebSocketGateway decorator
@@ -794,13 +821,62 @@ func (g *CodeGenerator) getWebSocketGatewayConfig(gateway *WebSocketGatewayDecla
 			if namespace, ok := configMap["namespace"].(string); ok {
 				config.Namespace = namespace
 			}
+			
+			// Handle CORS configuration (boolean or object)
 			if cors, ok := configMap["cors"].(bool); ok {
 				config.CORS = cors
+			} else if corsMap, ok := configMap["cors"].(map[string]interface{}); ok {
+				corsConfig := WebSocketCORSConfig{}
+				if origin, ok := corsMap["origin"].(string); ok {
+					corsConfig.Origin = origin
+				}
+				if credentials, ok := corsMap["credentials"].(bool); ok {
+					corsConfig.Credentials = credentials
+				}
+				config.CORS = corsConfig
+			}
+			
+			// Handle transports array
+			if transports, ok := configMap["transports"].([]interface{}); ok {
+				config.Transports = []string{}
+				for _, transport := range transports {
+					if transportStr, ok := transport.(string); ok {
+						config.Transports = append(config.Transports, transportStr)
+					}
+				}
+			}
+			
+			// Handle ping timeout
+			if pingTimeout, ok := configMap["pingTimeout"].(int); ok {
+				config.PingTimeout = pingTimeout
+			}
+			
+			// Handle ping interval
+			if pingInterval, ok := configMap["pingInterval"].(int); ok {
+				config.PingInterval = pingInterval
 			}
 		}
 	}
 
 	return config
+}
+
+// generateWebSocketCORSConfig generates CORS configuration code
+func (g *CodeGenerator) generateWebSocketCORSConfig(wsConfig WebSocketConfig) {
+	if corsConfig, ok := wsConfig.CORS.(WebSocketCORSConfig); ok {
+		// Handle CORS as object
+		g.writeLine("CORS: websocket.CORSConfig{")
+		g.indent()
+		if corsConfig.Origin != "" {
+			g.writeLine(fmt.Sprintf("Origin: \"%s\",", corsConfig.Origin))
+		}
+		g.writeLine(fmt.Sprintf("Credentials: %t,", corsConfig.Credentials))
+		g.unindent()
+		g.writeLine("},")
+	} else if corsBool, ok := wsConfig.CORS.(bool); ok && corsBool {
+		// Handle CORS as boolean
+		g.writeLine("CORS: true,")
+	}
 }
 
 // hasWebSocketLifecycleHandler checks if gateway has a specific lifecycle handler
@@ -1195,10 +1271,20 @@ func (g *CodeGenerator) isValidationDecorator(decoratorName string) bool {
 
 
 // WebSocketConfig represents WebSocket gateway configuration
+// WebSocketCORSConfig represents CORS configuration for WebSocket
+type WebSocketCORSConfig struct {
+	Origin      string
+	Credentials bool
+}
+
+// WebSocketConfig represents configuration for WebSocket Gateway
 type WebSocketConfig struct {
-	Port      int
-	Namespace string
-	CORS      bool
+	Port         int
+	Namespace    string
+	CORS         interface{} // Can be bool or WebSocketCORSConfig
+	Transports   []string
+	PingTimeout  int
+	PingInterval int
 }
 
 // ===================== WebSocket Middleware Generation =====================

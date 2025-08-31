@@ -1,6 +1,7 @@
 package codegen
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -92,6 +93,145 @@ type AdvancedGateway struct {}`
 
 	if !strings.Contains(output, "CORS:      true,") {
 		t.Errorf("Expected CORS configuration not found in output:\n%s", output)
+	}
+}
+
+// TestWebSocketComplexConfiguration tests all advanced configuration options
+func TestWebSocketComplexConfiguration(t *testing.T) {
+	input := `package test
+
+@WebSocketGateway({
+	port: 3000,
+	namespace: "/api/v1/websocket", 
+	cors: {
+		origin: "*",
+		credentials: true
+	},
+	transports: ["websocket"],
+	pingTimeout: 5000,
+	pingInterval: 2500
+})
+type ComplexGateway struct {}`
+
+	file, err := ParseGofaFile(input)
+	if err != nil {
+		t.Fatalf("Failed to parse file: %v", err)
+	}
+
+	generator := NewCodeGenerator("test")
+	output, err := generator.GenerateGoCode(file)
+	if err != nil {
+		t.Fatalf("Failed to generate code: %v", err)
+	}
+
+	// Test port configuration
+	if !strings.Contains(output, "Port:      3000,") {
+		t.Errorf("Expected port 3000 not found in output:\n%s", output)
+	}
+
+	// Test namespace configuration
+	if !strings.Contains(output, `Namespace: "/api/v1/websocket",`) {
+		t.Errorf("Expected namespace configuration not found in output:\n%s", output)
+	}
+
+	// Test complex CORS configuration
+	if !strings.Contains(output, "CORS: websocket.CORSConfig{") {
+		t.Errorf("Expected CORS config object not found in output:\n%s", output)
+	}
+	if !strings.Contains(output, `Origin:      "*",`) {
+		t.Errorf("Expected CORS origin not found in output:\n%s", output)
+	}
+	if !strings.Contains(output, "Credentials: true,") {
+		t.Errorf("Expected CORS credentials not found in output:\n%s", output)
+	}
+
+	// Test transports configuration
+	if !strings.Contains(output, "Transports: []string{") {
+		t.Errorf("Expected transports array not found in output:\n%s", output)
+	}
+	if !strings.Contains(output, `"websocket",`) {
+		t.Errorf("Expected websocket transport not found in output:\n%s", output)
+	}
+
+	// Test ping configuration
+	if !strings.Contains(output, "PingTimeout:  5000,") {
+		t.Errorf("Expected ping timeout not found in output:\n%s", output)
+	}
+	if !strings.Contains(output, "PingInterval: 2500,") {
+		t.Errorf("Expected ping interval not found in output:\n%s", output)
+	}
+}
+
+// TestWebSocketDefaultConfiguration tests that defaults are not unnecessarily generated
+func TestWebSocketDefaultConfiguration(t *testing.T) {
+	input := `package test
+
+@WebSocketGateway({
+	port: 8080,
+	transports: ["websocket", "polling"],
+	pingTimeout: 20000,
+	pingInterval: 25000
+})
+type DefaultGateway struct {}`
+
+	file, err := ParseGofaFile(input)
+	if err != nil {
+		t.Fatalf("Failed to parse file: %v", err)
+	}
+
+	generator := NewCodeGenerator("test")
+	output, err := generator.GenerateGoCode(file)
+	if err != nil {
+		t.Fatalf("Failed to generate code: %v", err)
+	}
+
+	// Test that default ping values are not unnecessarily generated
+	if strings.Contains(output, "PingTimeout: 20000,") {
+		t.Errorf("Default ping timeout should not be generated in output:\n%s", output)
+	}
+	if strings.Contains(output, "PingInterval: 25000,") {
+		t.Errorf("Default ping interval should not be generated in output:\n%s", output)
+	}
+
+	// Test that transports are properly generated
+	if !strings.Contains(output, "Transports: []string{") {
+		t.Errorf("Expected transports array not found in output:\n%s", output)
+	}
+	if !strings.Contains(output, `"websocket",`) {
+		t.Errorf("Expected websocket transport not found in output:\n%s", output)
+	}
+	if !strings.Contains(output, `"polling",`) {
+		t.Errorf("Expected polling transport not found in output:\n%s", output)
+	}
+}
+
+// TestWebSocketTransportsConfiguration tests multiple transport configurations
+func TestWebSocketTransportsConfiguration(t *testing.T) {
+	input := `package test
+
+@WebSocketGateway({
+	port: 8080,
+	transports: ["websocket", "polling"]
+})
+type TransportsGateway struct {}`
+
+	file, err := ParseGofaFile(input)
+	if err != nil {
+		t.Fatalf("Failed to parse file: %v", err)
+	}
+
+	generator := NewCodeGenerator("test")
+	output, err := generator.GenerateGoCode(file)
+	if err != nil {
+		t.Fatalf("Failed to generate code: %v", err)
+	}
+
+	// Test supported transport types
+	transports := []string{"websocket", "polling"}
+	for _, transport := range transports {
+		if !strings.Contains(output, fmt.Sprintf(`"%s",`, transport)) {
+			t.Errorf("Expected transport %s not found in output:\n%s", transport, output)
+		}
 	}
 }
 

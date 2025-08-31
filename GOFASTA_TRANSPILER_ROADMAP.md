@@ -510,7 +510,7 @@ func (s *{{.Name}}WSServer) Start() {
 - [X] **2.8** Implement WebSocket guard decorator code generation - **✅ COMPLETE** *(Integrated into 2.7: Complete WebSocket guard generation with authentication, authorization, rate limiting, and room access control)*
 - [X] **2.9** Add WebSocket interceptor decorator code generation - **✅ COMPLETE** *(Integrated into 2.7: Full interceptor support including logging, validation, transformation, caching, and metrics collection)*
 - [X] **2.10** Create WebSocket pipe decorator code generation - **✅ COMPLETE** *(Integrated into 2.7: Comprehensive pipe implementation for validation, transformation, parsing, and sanitization)*
-- [ ] **2.11** Implement WebSocket configuration parsing and generation - **❌ MISSING**
+- [X] **2.11** Implement WebSocket configuration parsing and generation - **✅ COMPLETE** *(Enhanced WebSocket configuration with support for advanced CORS objects, custom transports array, ping timeout/interval, and comprehensive configuration validation)*
 - [ ] **2.12** Add WebSocket import statement generation - **❌ MISSING**
 - [ ] **2.13** Create WebSocket route registration code generation - **❌ MISSING**
 
@@ -683,7 +683,7 @@ func (s *{{.Name}}WSServer) Start() {
 | ----------------- | ----------------- | -------------- | -------------------------- | ------------------------------------------------------------ |
 | **Phase 1** | AST Definitions   | **100%** | ✅**Complete**       | All WebSocket AST nodes, constants, mappings, helpers, tests |
 | **Phase 1** | Parsing Logic     | **100%**  | ✅**Complete** | All WebSocket decorators + lifecycle decorators + custom parameter types + full integration |
-| **Phase 2** | Code Generation   | **95%**  | ✅**Nearly Complete** | Enhanced WebSocket lifecycle method generation + comprehensive middleware integration with guards, interceptors, pipes, and filters |
+| **Phase 2** | Code Generation   | **98%**  | ✅**Nearly Complete** | Enhanced WebSocket lifecycle method generation + comprehensive middleware integration + advanced configuration parsing |
 | **Phase 3** | Parameter Support | **25%**  | 🔄**Partial** | Basic parameter validation, flexible type support implemented |
 | **Phase 4** | Advanced Features | **5%**   | ❌**Constants Only** | Only decorator constants, no implementation                  |
 | **Phase 5** | Testing Support   | **100%**  | ✅**Complete** | Full integration test suite + comprehensive test coverage |
@@ -715,6 +715,11 @@ func (s *{{.Name}}WSServer) Start() {
   - **WebSocket pipe generation** (`codegen/websocket_middleware.go:287-431`) - Validation, transformation, parsing, sanitization
   - **WebSocket filter generation** (`codegen/websocket_middleware.go:432-576`) - Error handling, exception filtering
   - **Middleware registration and execution chains** (`codegen/controller.go:1400-1492`)
+- **Advanced WebSocket configuration parsing** with support for:
+  - **Complex CORS configuration** with origin and credentials (`WebSocketCORSConfig` struct)
+  - **Custom transports array** with validation (`["websocket", "polling"]`)
+  - **Ping timeout and interval configuration** (custom timing for connection health)
+  - **Comprehensive configuration validation** and type checking
 - **Comprehensive middleware examples** demonstrating real-world usage patterns
 
 ### **❌ What is MISSING (Remaining Core Functionality)**

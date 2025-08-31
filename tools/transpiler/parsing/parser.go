@@ -2163,19 +2163,35 @@ func (p *Parser) skipComments() {
 
 // attachDecoratorToDeclaration attaches a decorator to a declaration
 func (p *Parser) attachDecoratorToDeclaration(decorator *core.DecoratorNode, decl core.GofaDeclaration) {
+	if decl == nil || decorator == nil {
+		return // Safety check to prevent nil pointer dereference
+	}
+	
 	switch d := decl.(type) {
 	case *core.ControllerDeclaration:
-		d.Decorators = append(d.Decorators, decorator)
+		if d != nil {
+			d.Decorators = append(d.Decorators, decorator)
+		}
 	case *core.ServiceDeclaration:
-		d.Decorators = append(d.Decorators, decorator)
+		if d != nil {
+			d.Decorators = append(d.Decorators, decorator)
+		}
 	case *core.ModuleDeclaration:
-		d.Decorators = append(d.Decorators, decorator)
+		if d != nil {
+			d.Decorators = append(d.Decorators, decorator)
+		}
 	case *core.TestSuiteDeclaration:
-		d.Decorators = append(d.Decorators, decorator)
+		if d != nil {
+			d.Decorators = append(d.Decorators, decorator)
+		}
 	case *core.WebSocketGatewayDeclaration:
-		d.Decorators = append(d.Decorators, decorator)
+		if d != nil {
+			d.Decorators = append(d.Decorators, decorator)
+		}
 	case *core.WebSocketFunctionDeclaration:
-		d.Decorators = append(d.Decorators, decorator)
+		if d != nil {
+			d.Decorators = append(d.Decorators, decorator)
+		}
 	}
 }
 
