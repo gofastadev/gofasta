@@ -1,0 +1,769 @@
+package main
+
+// WebSocket Message Handler Example
+// Demonstrates Section 2.5: WebSocket message handler code generation
+// Shows comprehensive WebSocket decorator support and message handling
+
+// Basic Chat Gateway with message handlers
+@WebSocketGateway(8080)
+type ChatGateway struct {
+	@Inject("chatService")
+	chatService *ChatService
+	
+	@Inject("logger") 
+	logger *Logger
+	
+	@Inject("userService")
+	userService *UserService
+}
+
+// Advanced Game Gateway with full configuration
+@WebSocketGateway({
+	port: 9000,
+	namespace: "/game",
+	cors: true
+})
+type GameGateway struct {
+	@Inject("gameService")
+	gameService *GameService
+	
+	@Inject("roomManager")
+	roomManager *RoomManager
+}
+
+// Real-time Notification Gateway
+@WebSocketGateway({
+	port: 9001,
+	namespace: "/notifications",
+	cors: true
+})
+type NotificationGateway struct {
+	@Inject("notificationService")
+	notificationService *NotificationService
+}
+
+// === MESSAGE HANDLERS ===
+
+// Basic message handling with acknowledgment
+@SubscribeMessage("chat_message")
+func HandleChatMessage(
+	@MessageBody() message *ChatMessage,
+	@ConnectedSocket() client *WebSocketClient,
+	@MessageAck() ack *AckCallback
+) error {
+	// Validate message
+	if message.Content == "" {
+		return fmt.Errorf("message content cannot be empty")
+	}
+	
+	// Process and broadcast message
+	// ack.Send(map[string]interface{}{"status": "received"})
+	return nil
+}
+
+// Room management with multiple parameters
+@SubscribeMessage("join_room")
+func HandleJoinRoom(
+	@MessageBody() roomData *RoomJoinData,
+	@ConnectedSocket() client *WebSocketClient,
+	@CurrentUser() user *User,
+	@EventName() event string,
+	@ClientIP() clientIP string
+) {
+	// client.Join(roomData.RoomID)
+	// Notify other users in room
+}
+
+@SubscribeMessage("leave_room")
+func HandleLeaveRoom(
+	@MessageBody() roomData *RoomLeaveData,
+	@ConnectedSocket() client *WebSocketClient,
+	@Rooms() currentRooms []string
+) {
+	// client.Leave(roomData.RoomID)
+	// Update room state
+}
+
+// Private messaging with user context
+@SubscribeMessage("private_message")
+func HandlePrivateMessage(
+	@MessageBody() pm *PrivateMessage,
+	@ConnectedSocket() sender *WebSocketClient,
+	@CurrentUser() senderUser *User,
+	@Session() session *Session
+) error {
+	// Validate sender permissions
+	// Find recipient and send message
+	return nil
+}
+
+// Game action handling
+@SubscribeMessage("game_move")
+func HandleGameMove(
+	@MessageBody() move *GameMove,
+	@ConnectedSocket() player *WebSocketClient,
+	@MessageAck() ack *AckCallback,
+	@Headers() headers map[string]string
+) error {
+	// Validate game move
+	// Update game state
+	// Broadcast to other players
+	return nil
+}
+
+// Typing indicators
+@SubscribeMessage("typing_start")
+func HandleTypingStart(
+	@MessageBody() data *TypingData,
+	@ConnectedSocket() client *WebSocketClient,
+	@Namespace() ns string
+) {
+	// Broadcast typing indicator to room
+}
+
+@SubscribeMessage("typing_stop")
+func HandleTypingStop(
+	@MessageBody() data *TypingData,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Stop typing indicator
+}
+
+// File sharing
+@SubscribeMessage("file_share")
+func HandleFileShare(
+	@MessageBody() fileData *FileShareData,
+	@ConnectedSocket() client *WebSocketClient,
+	@MessageAck() ack *AckCallback
+) error {
+	// Process file metadata
+	// Generate secure download links
+	return nil
+}
+
+// Notifications
+@SubscribeMessage("subscribe_notifications")
+func HandleNotificationSubscription(
+	@MessageBody() subData *NotificationSubscription,
+	@ConnectedSocket() client *WebSocketClient,
+	@CurrentUser() user *User
+) {
+	// Subscribe user to notification channels
+}
+
+// Complex handler with all parameter types
+@SubscribeMessage("complex_action")
+func HandleComplexAction(
+	@MessageBody() body interface{},
+	@ConnectedSocket() client *WebSocketClient,
+	@MessageAck() ack *AckCallback,
+	@MessagePattern() pattern string,
+	@Headers() headers map[string]string,
+	@Session() session *Session,
+	@Rooms() rooms []string,
+	@Namespace() ns string,
+	@CurrentUser() user *User,
+	@ClientIP() ip string,
+	@EventName() event string
+) {
+	// Handle complex multi-parameter action
+}
+
+// === WEBSOCKET MIDDLEWARE INTEGRATION (Section 2.7) ===
+
+// Secure WebSocket Gateway with comprehensive middleware support
+@WebSocketGateway(8080)
+@UseGuards("WSAuthGuard", "WSRateLimitGuard") // Gateway-level guards
+@UseInterceptors("WSLoggingInterceptor", "WSMetricsInterceptor") // Gateway-level interceptors
+@UseFilters("WSGlobalExceptionFilter") // Gateway-level error handling
+type SecureGateway struct {
+	@Inject("authService")
+	authService *AuthService
+	
+	@Inject("securityService")
+	securityService *SecurityService
+	
+	@Inject("metricsService")
+	metricsService *MetricsService
+}
+
+// Admin-only message with multiple middleware layers
+@SubscribeMessage("admin_action")
+@UseGuards("WSRoleGuard", "WSPermissionGuard") // Method-level authorization
+@UseInterceptors("WSValidationInterceptor", "WSAuditInterceptor") // Method-level processing
+@UsePipes("WSValidationPipe", "WSTransformPipe") // Data transformation
+@UseFilters("WSBusinessExceptionFilter") // Specific error handling
+func HandleAdminAction(
+	@MessageBody() data *AdminActionData,
+	@ConnectedSocket() client *WebSocketClient,
+	@CurrentUser() user *User
+) error {
+	// Admin action implementation
+	// Middleware will handle:
+	// 1. Authentication (WSAuthGuard, WSRoleGuard, WSPermissionGuard)
+	// 2. Validation and transformation (WSValidationPipe, WSTransformPipe)  
+	// 3. Logging and metrics (WSLoggingInterceptor, WSMetricsInterceptor)
+	// 4. Audit trail (WSAuditInterceptor)
+	// 5. Error handling (WSBusinessExceptionFilter, WSGlobalExceptionFilter)
+	return nil
+}
+
+// Public message with basic security and transformation
+@SubscribeMessage("public_message")
+@UseGuards("WSRateLimitGuard") // Prevent spam
+@UseInterceptors("WSLoggingInterceptor") // Log activity
+@UsePipes("WSSanitizePipe", "WSValidationPipe") // Clean and validate input
+func HandlePublicMessage(
+	@MessageBody() data *PublicMessageData,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Public message handling
+	// Middleware ensures messages are rate-limited, logged, sanitized, and validated
+}
+
+// Private messaging with authentication and encryption
+@SubscribeMessage("private_message")
+@UseGuards("WSAuthGuard", "WSPrivacyGuard") // Authentication and privacy checks
+@UseInterceptors("WSEncryptionInterceptor") // Encrypt sensitive data
+@UsePipes("WSValidationPipe") // Validate message structure
+@UseFilters("WSPrivacyExceptionFilter") // Handle privacy violations
+func HandlePrivateMessage(
+	@MessageBody() data *PrivateMessageData,
+	@ConnectedSocket() client *WebSocketClient,
+	@CurrentUser() sender *User
+) error {
+	// Private message implementation
+	return nil
+}
+
+// File upload with comprehensive processing
+@SubscribeMessage("file_upload")
+@UseGuards("WSAuthGuard", "WSQuotaGuard") // Authentication and quota checks
+@UseInterceptors("WSVirusScanInterceptor", "WSLoggingInterceptor") // Security scanning
+@UsePipes("WSFileSizePipe", "WSFileTypePipe") // File validation
+@UseFilters("WSFileExceptionFilter") // File-specific error handling
+func HandleFileUpload(
+	@MessageBody() fileData *FileUploadData,
+	@ConnectedSocket() client *WebSocketClient,
+	@CurrentUser() user *User
+) error {
+	// File upload processing
+	return nil
+}
+
+// === MIDDLEWARE IMPLEMENTATION EXAMPLES ===
+
+// These middleware implementations would be generated by the transpiler:
+
+/*
+Generated WebSocket Guard Methods:
+
+// WSAuthGuard validates authentication tokens
+func (ws *SecureGateway) WSAuthGuard(wsCtx *websocket.GuardContext) bool {
+	token := wsCtx.Headers()["Authorization"]
+	if token == "" {
+		token = wsCtx.Query()["token"]
+	}
+	if token == "" {
+		wsCtx.Disconnect("Authentication required")
+		return false
+	}
+	if user := ws.authService.ValidateToken(token); user != nil {
+		wsCtx.SetUser(user)
+		return true
+	}
+	wsCtx.Disconnect("Invalid authentication token")
+	return false
+}
+
+// WSRoleGuard checks user roles
+func (ws *SecureGateway) WSRoleGuard(wsCtx *websocket.GuardContext) bool {
+	user := wsCtx.User()
+	if user == nil || !ws.authService.HasRole(user, "admin") {
+		wsCtx.Disconnect("Insufficient permissions")
+		return false
+	}
+	return true
+}
+
+Generated WebSocket Interceptor Methods:
+
+// WSLoggingInterceptor logs WebSocket events
+func (ws *SecureGateway) WSLoggingInterceptor(wsCtx *websocket.InterceptorContext) {
+	start := time.Now()
+	defer func() {
+		ws.logger.Info("WebSocket event", map[string]interface{}{
+			"event": wsCtx.EventName(),
+			"duration": time.Since(start),
+			"user": wsCtx.User().ID,
+		})
+	}()
+	wsCtx.Next()
+}
+
+// WSValidationInterceptor validates message data
+func (ws *SecureGateway) WSValidationInterceptor(wsCtx *websocket.InterceptorContext) {
+	if err := ws.validateMessage(wsCtx.EventName(), wsCtx.MessageBody()); err != nil {
+		wsCtx.Client().Emit("validation_error", map[string]interface{}{
+			"error": err.Error(),
+		})
+		wsCtx.Abort()
+		return
+	}
+	wsCtx.Next()
+}
+
+Generated WebSocket Pipe Methods:
+
+// WSValidationPipe validates and transforms message data
+func (ws *SecureGateway) WSValidationPipe(wsCtx *websocket.PipeContext) interface{} {
+	messageBody := wsCtx.MessageBody()
+	if err := ws.validateMessageStructure(wsCtx.EventName(), messageBody); err != nil {
+		wsCtx.ThrowError(fmt.Errorf("validation failed: %w", err))
+		return nil
+	}
+	return ws.transformMessage(messageBody)
+}
+
+Generated WebSocket Filter Methods:
+
+// WSGlobalExceptionFilter handles all WebSocket errors
+func (ws *SecureGateway) WSGlobalExceptionFilter(wsCtx *websocket.FilterContext, err error) {
+	ws.logger.Error("WebSocket error", err)
+	wsCtx.Client().Emit("error", map[string]interface{}{
+		"message": "An error occurred",
+		"type": "internal_error",
+		"timestamp": time.Now(),
+	})
+}
+
+Generated Middleware Registration:
+
+func (ws *SecureGateway) SetupSecureGateway() *websocket.WebSocketServer {
+	server := websocket.NewWebSocketServer(&websocket.Config{
+		Port: 8080,
+	})
+	
+	// Register guards
+	server.UseGuard("WSAuthGuard", ws.WSAuthGuard)
+	server.UseGuard("WSRoleGuard", ws.WSRoleGuard) 
+	server.UseGuard("WSPermissionGuard", ws.WSPermissionGuard)
+	server.UseGuard("WSRateLimitGuard", ws.WSRateLimitGuard)
+	
+	// Register interceptors
+	server.UseInterceptor("WSLoggingInterceptor", ws.WSLoggingInterceptor)
+	server.UseInterceptor("WSValidationInterceptor", ws.WSValidationInterceptor)
+	server.UseInterceptor("WSMetricsInterceptor", ws.WSMetricsInterceptor)
+	
+	// Register pipes
+	server.UsePipe("WSValidationPipe", ws.WSValidationPipe)
+	server.UsePipe("WSSanitizePipe", ws.WSSanitizePipe)
+	server.UsePipe("WSTransformPipe", ws.WSTransformPipe)
+	
+	// Register filters
+	server.UseFilter("WSGlobalExceptionFilter", ws.WSGlobalExceptionFilter)
+	server.UseFilter("WSBusinessExceptionFilter", ws.WSBusinessExceptionFilter)
+	
+	// Register message handlers
+	server.OnMessage("admin_action", ws.HandleAdminAction)
+	server.OnMessage("public_message", ws.HandlePublicMessage) 
+	server.OnMessage("private_message", ws.HandlePrivateMessage)
+	
+	return server
+}
+*/
+
+// === ENHANCED LIFECYCLE HANDLERS (Section 2.6) ===
+
+// Enhanced WebSocket connection handler with comprehensive authentication and setup
+@OnGatewayConnection()
+func HandleConnection(
+	@ConnectedSocket() client *WebSocketClient,
+	@Headers() headers map[string]string,
+	@ClientIP() clientIP string,
+	@Query() query map[string]string,
+	@Session() session *Session
+) {
+	// Advanced authentication with multiple strategies
+	token := headers["Authorization"]
+	roomID := query["room"]
+	
+	// Validate and authenticate user
+	if user := authenticateUser(token); user != nil {
+		client.SetUser(user)
+		
+		// Join user-specific and public rooms
+		client.Join("global-chat")
+		if roomID != "" {
+			client.Join(roomID)
+		}
+		client.Join("user_" + user.ID)
+		
+		// Update user online status
+		updateUserStatus(user.ID, "online")
+		
+		// Send personalized welcome message
+		client.Emit("welcome", WelcomeMessage{
+			Message:   "Welcome to the chat!",
+			UserID:    user.ID,
+			Username:  user.Username,
+			Timestamp: time.Now(),
+			Rooms:     []string{"global-chat", roomID},
+		})
+		
+		// Notify other users in rooms
+		client.Broadcast().To("global-chat").Emit("user_joined", UserEvent{
+			UserID:    user.ID,
+			Username:  user.Username,
+			Action:    "joined",
+			Timestamp: time.Now(),
+		})
+		
+		// Log successful connection
+		logger.Info("User connected", map[string]interface{}{
+			"user_id":   user.ID,
+			"username":  user.Username,
+			"client_ip": clientIP,
+			"room_id":   roomID,
+		})
+	} else {
+		// Authentication failed - disconnect with reason
+		client.Emit("auth_error", AuthError{
+			Message: "Invalid authentication token",
+			Code:    "AUTH_FAILED",
+		})
+		client.Disconnect("Authentication failed")
+	}
+}
+
+// Enhanced WebSocket disconnection handler with comprehensive cleanup
+@OnGatewayDisconnect()
+func HandleDisconnect(
+	@ConnectedSocket() client *WebSocketClient,
+	@DisconnectReason() reason string,
+	@CurrentUser() user *User,
+	@Rooms() rooms []string
+) {
+	if user != nil {
+		// Update user offline status
+		updateUserStatus(user.ID, "offline", time.Now())
+		
+		// Notify all rooms the user was in
+		for _, roomID := range rooms {
+			client.Broadcast().To(roomID).Emit("user_left", UserEvent{
+				UserID:    user.ID,
+				Username:  user.Username,
+				Action:    "left",
+				Reason:    reason,
+				Timestamp: time.Now(),
+			})
+		}
+		
+		// Clean up user-specific resources
+		cleanupUserSession(user.ID)
+		removeUserFromActiveGames(user.ID)
+		
+		// Log disconnection with context
+		logger.Info("User disconnected", map[string]interface{}{
+			"user_id":  user.ID,
+			"username": user.Username,
+			"reason":   reason,
+			"rooms":    rooms,
+			"duration": calculateSessionDuration(user.ID),
+		})
+	} else {
+		// Anonymous client disconnected
+		logger.Debug("Anonymous client disconnected", map[string]interface{}{
+			"client_id": client.ID(),
+			"reason":    reason,
+		})
+	}
+	
+	// Perform final cleanup
+	client.LeaveAllRooms()
+}
+
+// Enhanced WebSocket gateway initialization with comprehensive setup
+@OnGatewayInit()
+func InitializeGateway() {
+	logger.Info("🚀 Initializing WebSocket Gateway with enhanced features...")
+	
+	// Initialize connection pool and rate limiting
+	initializeConnectionPool(1000) // Max 1000 concurrent connections
+	initializeRateLimiter(100)     // Max 100 messages per minute per client
+	
+	// Set up room management
+	createDefaultRooms()
+	initializeRoomPersistence()
+	
+	// Initialize message broadcasting system
+	setupMessageBroadcasting()
+	setupMessagePersistence()
+	
+	// Connect to external services
+	connectToUserService()
+	connectToNotificationService()
+	connectToAnalyticsService()
+	
+	// Start background services
+	startHeartbeatService(30) // Ping clients every 30 seconds
+	startInactiveUserCleanup(300) // Clean up inactive users every 5 minutes
+	startMetricsCollection()
+	
+	// Load gateway configuration
+	loadGatewayConfiguration()
+	applySecurityPolicies()
+	
+	// Set up monitoring and alerts
+	initializeHealthChecks()
+	setupPerformanceMonitoring()
+	
+	logger.Info("✅ WebSocket Gateway initialized successfully!")
+}
+
+// Note: Gateway-level lifecycle handlers would be defined as methods within
+// the gateway struct declarations above, not as standalone functions
+
+// === DATA STRUCTURES ===
+
+type ChatMessage struct {
+	ID        string `json:"id"`
+	Content   string `json:"content"`
+	UserID    string `json:"userId"`
+	RoomID    string `json:"roomId"`
+	Timestamp int64  `json:"timestamp"`
+	Type      string `json:"type"`
+}
+
+type RoomJoinData struct {
+	RoomID   string `json:"roomId"`
+	Password string `json:"password,omitempty"`
+}
+
+type RoomLeaveData struct {
+	RoomID string `json:"roomId"`
+}
+
+type PrivateMessage struct {
+	RecipientID string `json:"recipientId"`
+	Content     string `json:"content"`
+	Encrypted   bool   `json:"encrypted"`
+}
+
+type GameMove struct {
+	GameID   string      `json:"gameId"`
+	PlayerID string      `json:"playerId"`
+	Move     interface{} `json:"move"`
+	Turn     int         `json:"turn"`
+}
+
+type TypingData struct {
+	RoomID string `json:"roomId"`
+	UserID string `json:"userId"`
+}
+
+type FileShareData struct {
+	FileName string `json:"fileName"`
+	FileSize int64  `json:"fileSize"`
+	MimeType string `json:"mimeType"`
+	RoomID   string `json:"roomId"`
+}
+
+type NotificationSubscription struct {
+	Channels []string `json:"channels"`
+	UserID   string   `json:"userId"`
+}
+
+type User struct {
+	ID       string `json:"id"`
+	Username string `json:"username"`
+	Role     string `json:"role"`
+	Status   string `json:"status"`
+}
+
+// Enhanced lifecycle handler data structures (Section 2.6)
+type WelcomeMessage struct {
+	Message   string    `json:"message"`
+	UserID    string    `json:"userId"`
+	Username  string    `json:"username"`
+	Timestamp time.Time `json:"timestamp"`
+	Rooms     []string  `json:"rooms"`
+}
+
+type UserEvent struct {
+	UserID    string    `json:"userId"`
+	Username  string    `json:"username"`
+	Action    string    `json:"action"` // "joined", "left", "connected", "disconnected"
+	Reason    string    `json:"reason,omitempty"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
+type AuthError struct {
+	Message string `json:"message"`
+	Code    string `json:"code"`
+}
+
+type PlayerEvent struct {
+	GameID   string `json:"gameId"`
+	PlayerID string `json:"playerId"`
+	Action   string `json:"action"`
+}
+
+type Session struct {
+	ID        string            `json:"id"`
+	UserID    string            `json:"userId"`
+	Data      map[string]string `json:"data"`
+	CreatedAt time.Time         `json:"createdAt"`
+}
+
+// Middleware example data structures (Section 2.7)
+type AdminActionData struct {
+	Action     string      `json:"action"`
+	Target     string      `json:"target"`
+	Parameters interface{} `json:"parameters"`
+	Timestamp  time.Time   `json:"timestamp"`
+}
+
+type PublicMessageData struct {
+	Content   string `json:"content"`
+	Channel   string `json:"channel"`
+	MessageID string `json:"messageId"`
+}
+
+type PrivateMessageData struct {
+	RecipientID string `json:"recipientId"`
+	Content     string `json:"content"`
+	Encrypted   bool   `json:"encrypted"`
+	MessageID   string `json:"messageId"`
+}
+
+type FileUploadData struct {
+	FileName   string `json:"fileName"`
+	FileSize   int64  `json:"fileSize"`
+	MimeType   string `json:"mimeType"`
+	Checksum   string `json:"checksum"`
+	UploadPath string `json:"uploadPath"`
+}
+
+// === SERVICE DEPENDENCIES ===
+
+@Injectable()
+type ChatService struct {
+	@Inject("database")
+	db *Database
+	
+	@Inject("redis")
+	cache *RedisClient
+}
+
+@Injectable()
+type GameService struct {
+	@Inject("database")
+	db *Database
+	
+	@Inject("gameEngine")
+	engine *GameEngine
+}
+
+@Injectable()
+type UserService struct {
+	@Inject("database")
+	db *Database
+	
+	@Inject("authService")
+	auth *AuthService
+}
+
+@Injectable()
+type NotificationService struct {
+	@Inject("database")
+	db *Database
+	
+	@Inject("pushService")
+	push *PushService
+}
+
+@Injectable()
+type RoomManager struct {
+	@Inject("redis")
+	cache *RedisClient
+}
+
+@Injectable()
+type Logger struct {
+	level string
+}
+
+@Injectable()
+type Database struct {
+	connectionString string
+}
+
+@Injectable()
+type RedisClient struct {
+	host string
+	port int
+}
+
+@Injectable()
+type GameEngine struct {
+	version string
+}
+
+@Injectable()
+type AuthService struct {
+	jwtSecret string
+}
+
+@Injectable()
+type PushService struct {
+	apiKey string
+}
+
+// Middleware service dependencies (Section 2.7)
+@Injectable()
+type SecurityService struct {
+	@Inject("database")
+	db *Database
+	
+	@Inject("encryptionService")
+	encryption *EncryptionService
+}
+
+@Injectable()
+type MetricsService struct {
+	@Inject("database")
+	db *Database
+	
+	enabled bool
+}
+
+@Injectable()
+type EncryptionService struct {
+	privateKey string
+	publicKey  string
+}
+
+// === WEBSOCKET TYPES (for demonstration) ===
+
+type WebSocketClient struct {
+	id        string
+	userID    string
+	rooms     []string
+	connected bool
+}
+
+type WebSocketServer struct {
+	port      int
+	namespace string
+}
+
+type AckCallback struct {
+	id       string
+	callback func(data interface{}) error
+}
+
+type Session struct {
+	sessionID string
+	data      map[string]interface{}
+}

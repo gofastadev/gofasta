@@ -100,7 +100,7 @@ func (a *GORMAdapter) FindByID(ctx context.Context, entityType reflect.Type, id 
 
 	if result.Error != nil {
 		if result.Error == gorm.ErrRecordNotFound {
-			return nil, core.NewNotFoundException("Entity not found")
+			return nil, core.NewNotFoundException("Entity", "not found")
 		}
 		return nil, a.translateError(result.Error)
 	}
@@ -116,7 +116,7 @@ func (a *GORMAdapter) FindOne(ctx context.Context, entityType reflect.Type, quer
 	result := db.First(entity)
 	if result.Error != nil {
 		if result.Error == gorm.ErrRecordNotFound {
-			return nil, core.NewNotFoundException("Entity not found")
+			return nil, core.NewNotFoundException("Entity", "not found")
 		}
 		return nil, a.translateError(result.Error)
 	}
@@ -319,7 +319,7 @@ func (a *GORMAdapter) translateError(err error) error {
 
 	switch err {
 	case gorm.ErrRecordNotFound:
-		return core.NewNotFoundException("Record not found")
+		return core.NewNotFoundException("Record", "not found")
 	case gorm.ErrInvalidTransaction:
 		return core.NewInternalServerException("Invalid transaction", err)
 	case gorm.ErrNotImplemented:

@@ -85,6 +85,7 @@ type CodeGenerator struct {
 	decoratorRegistry map[string]*DecoratorNode
 	generatedCode     strings.Builder
 	indentLevel       int
+	webSocketFunctions []*WebSocketFunctionDeclaration // Track standalone WebSocket functions
 }
 
 // NewCodeGenerator creates a new code generator
@@ -93,6 +94,7 @@ func NewCodeGenerator(packageName string) *CodeGenerator {
 		packageName:       packageName,
 		imports:           []string{},
 		decoratorRegistry: make(map[string]*DecoratorNode),
+		webSocketFunctions: []*WebSocketFunctionDeclaration{},
 	}
 }
 
@@ -106,6 +108,9 @@ func (g *CodeGenerator) GenerateGoCode(file *GofaFile) (string, error) {
 
 	// Add validation imports if needed
 	g.addValidationImportsIfNeeded(file)
+	
+	// Add WebSocket imports if needed
+	g.addWebSocketImportsIfNeeded(file)
 	
 	// Collect imports
 	g.collectImports(file)
@@ -125,6 +130,9 @@ func (g *CodeGenerator) GenerateGoCode(file *GofaFile) (string, error) {
 	// Generate validation code if needed
 	g.generateValidationCodeIfNeeded(file)
 
+	// First, collect all WebSocket function declarations for later registration
+	g.collectWebSocketFunctions(file)
+	
 	// Generate declarations
 	for _, decl := range file.Declarations {
 		if err := g.generateDeclaration(decl); err != nil {
@@ -163,6 +171,7 @@ func (g *CodeGenerator) generateDeclaration(decl GofaDeclaration) error {
 	case *WebSocketGatewayDeclaration:
 		return g.generateWebSocketGatewayDeclaration(d)
 	case *WebSocketFunctionDeclaration:
+		// WebSocket functions are already collected, just generate them
 		return g.generateWebSocketFunctionDeclaration(d)
 	default:
 		return fmt.Errorf("unsupported declaration type: %T", decl)
@@ -227,4 +236,239 @@ func NewLexer(input string) *parsing.Lexer {
 // NewParser creates a new parser - bridge to parsing package  
 func NewParser(lexer *parsing.Lexer) *parsing.Parser {
 	return parsing.NewParser(lexer)
+}
+
+// addWebSocketImportsIfNeeded adds WebSocket imports if needed
+func (g *CodeGenerator) addWebSocketImportsIfNeeded(file *GofaFile) {
+	hasWebSocket := false
+	
+	// Check if file has WebSocket declarations
+	for _, decl := range file.Declarations {
+		switch decl.(type) {
+		case *WebSocketGatewayDeclaration:
+			hasWebSocket = true
+		case *WebSocketFunctionDeclaration:
+			hasWebSocket = true
+		}
+		if hasWebSocket {
+			break
+		}
+	}
+	
+	if hasWebSocket {
+		// Add WebSocket package import
+		g.imports = append(g.imports, "github.com/healtronlabs/gofasta/packages/websocket")
+		
+		// Ensure HTTP package is also imported for WebSocket integration
+		httpImportExists := false
+		for _, imp := range g.imports {
+			if strings.Contains(imp, "github.com/healtronlabs/gofasta/packages/http") {
+				httpImportExists = true
+				break
+			}
+		}
+		
+		if !httpImportExists {
+			g.imports = append(g.imports, "github.com/healtronlabs/gofasta/packages/http")
+		}
+		
+		// Add conditional imports based on WebSocket features used
+		g.addConditionalWebSocketImports(file)
+	}
+}
+
+// addConditionalWebSocketImports adds additional imports based on WebSocket features used
+func (g *CodeGenerator) addConditionalWebSocketImports(file *GofaFile) {
+	needsErrors := false
+	needsJSON := false
+	needsLog := false
+	needsContext := false
+	
+	for _, decl := range file.Declarations {
+		switch d := decl.(type) {
+		case *WebSocketGatewayDeclaration:
+			// Check for middleware usage (needs context)
+			if g.hasWebSocketMiddleware(d) {
+				needsContext = true
+			}
+			
+			// Check for error handling decorators
+			if g.hasWebSocketErrorHandling(d) {
+				needsErrors = true
+			}
+			
+			// Check for JSON parameter decorators
+			if g.hasWebSocketJSONFeatures(d) {
+				needsJSON = true
+			}
+			
+			// Check for logging features
+			if g.hasWebSocketLogging(d) {
+				needsLog = true
+			}
+		case *WebSocketFunctionDeclaration:
+			// Check standalone functions for similar features
+			if g.hasWebSocketParameterDecoratorsForParams(d.Params) {
+				needsJSON = true
+			}
+		}
+	}
+	
+	// Add imports only if needed to avoid unnecessary imports
+	if needsErrors && !g.hasImport("errors") {
+		g.imports = append(g.imports, "errors")
+	}
+	if needsJSON && !g.hasImport("encoding/json") {
+		g.imports = append(g.imports, "encoding/json")
+	}
+	if needsLog && !g.hasImport("log") {
+		g.imports = append(g.imports, "log")
+	}
+	if needsContext && !g.hasImport("context") {
+		g.imports = append(g.imports, "context")
+	}
+}
+
+// hasImport checks if an import already exists
+func (g *CodeGenerator) hasImport(importPath string) bool {
+	for _, imp := range g.imports {
+		if strings.Contains(imp, importPath) {
+			return true
+		}
+	}
+	return false
+}
+
+// hasWebSocketMiddleware checks if WebSocket gateway uses middleware
+func (g *CodeGenerator) hasWebSocketMiddleware(gateway *WebSocketGatewayDeclaration) bool {
+	middlewareDecorators := []string{"UseGuards", "UseInterceptors", "UsePipes", "UseFilters"}
+	
+	// Check gateway-level middleware
+	for _, decorator := range gateway.Decorators {
+		for _, middleware := range middlewareDecorators {
+			if decorator.Name == middleware {
+				return true
+			}
+		}
+	}
+	
+	// Check method-level middleware
+	for _, method := range gateway.Methods {
+		for _, decorator := range method.Decorators {
+			for _, middleware := range middlewareDecorators {
+				if decorator.Name == middleware {
+					return true
+				}
+			}
+		}
+	}
+	
+	return false
+}
+
+// hasWebSocketErrorHandling checks if WebSocket gateway uses error handling
+func (g *CodeGenerator) hasWebSocketErrorHandling(gateway *WebSocketGatewayDeclaration) bool {
+	// Check for error handling decorators or return types
+	for _, method := range gateway.Methods {
+		// Check for error return type (various possible formats)
+		if method.ReturnType != "" && strings.Contains(strings.ToLower(method.ReturnType), "error") {
+			return true
+		}
+		
+		// Also check method signature if ReturnType is not set
+		if method.ReturnType == "" {
+			// If we have parameters but no return type specified, assume simple method
+			// We'll need to analyze the generated code for error patterns
+			continue
+		}
+		
+		// Check for Catch decorators
+		for _, decorator := range method.Decorators {
+			if decorator.Name == "Catch" {
+				return true
+			}
+		}
+	}
+	
+	// For now, if we don't have explicit error handling, don't add errors import
+	// This can be enhanced later to analyze the generated method bodies
+	return false
+}
+
+// hasWebSocketJSONFeatures checks if WebSocket gateway uses JSON features
+func (g *CodeGenerator) hasWebSocketJSONFeatures(gateway *WebSocketGatewayDeclaration) bool {
+	// Check for complex message body types that would require JSON serialization
+	for _, method := range gateway.Methods {
+		for _, param := range method.Params {
+			// Check for MessageBody decorators with complex types
+			for _, decorator := range param.Decorators {
+				if decorator.Name == "MessageBody" {
+					// If parameter type is a struct pointer or complex type, needs JSON
+					if strings.HasPrefix(param.Type, "*") && !isSimpleType(param.Type) {
+						return true
+					}
+				}
+			}
+		}
+	}
+	
+	return false
+}
+
+// hasWebSocketLogging checks if WebSocket gateway uses logging features
+func (g *CodeGenerator) hasWebSocketLogging(gateway *WebSocketGatewayDeclaration) bool {
+	// Check for logging-related middleware or decorators
+	for _, decorator := range gateway.Decorators {
+		if strings.Contains(strings.ToLower(decorator.Name), "log") {
+			return true
+		}
+	}
+	
+	for _, method := range gateway.Methods {
+		for _, decorator := range method.Decorators {
+			if strings.Contains(strings.ToLower(decorator.Name), "log") {
+				return true
+			}
+		}
+	}
+	
+	return false
+}
+
+// hasWebSocketParameterDecoratorsForParams checks if parameters have WebSocket decorators  
+func (g *CodeGenerator) hasWebSocketParameterDecoratorsForParams(params []*ParameterNode) bool {
+	wsDecorators := []string{"MessageBody", "ConnectedSocket", "MessageAck", "MessagePattern", 
+		"Rooms", "Namespace", "CurrentUser", "ClientIP", "EventName", "Server"}
+	
+	for _, param := range params {
+		for _, decorator := range param.Decorators {
+			for _, wsDecorator := range wsDecorators {
+				if decorator.Name == wsDecorator {
+					return true
+				}
+			}
+		}
+	}
+	
+	return false
+}
+
+// isSimpleType checks if a type is a simple built-in type
+func isSimpleType(typeStr string) bool {
+	simpleTypes := []string{"string", "int", "bool", "float64", "byte"}
+	for _, simple := range simpleTypes {
+		if strings.Contains(typeStr, simple) {
+			return true
+		}
+	}
+	return false
+}
+
+// collectWebSocketFunctions collects all WebSocket function declarations for registration
+func (g *CodeGenerator) collectWebSocketFunctions(file *GofaFile) {
+	for _, decl := range file.Declarations {
+		if wsFunc, ok := decl.(*WebSocketFunctionDeclaration); ok {
+			g.webSocketFunctions = append(g.webSocketFunctions, wsFunc)
+		}
+	}
 }

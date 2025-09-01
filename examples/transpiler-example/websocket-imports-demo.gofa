@@ -1,0 +1,34 @@
+package main
+
+// WebSocket Import Generation Demo - Task 2.12
+// This demonstrates intelligent import generation
+
+@WebSocketGateway({
+    port: 3000,
+    namespace: "/demo"
+})
+@UseGuards("authGuard")  
+type ImportsDemoGateway struct {}
+
+@SubscribeMessage("demo") 
+func HandleDemo(
+    @MessageBody() data *DemoMessage,
+    @ConnectedSocket() client *WebSocketClient
+) {
+    // This triggers both encoding/json and context imports
+}
+
+type DemoMessage struct {
+    Text string `json:"text"`
+}
+
+// Expected Generated Imports:
+// - github.com/healtronlabs/gofasta/packages/websocket (core)
+// - github.com/healtronlabs/gofasta/packages/http (core)  
+// - github.com/healtronlabs/gofasta/packages/core (core)
+// - encoding/json (complex MessageBody type)
+// - context (UseGuards middleware) 
+// - fmt, net/http, time, strings, strconv (standard)
+
+@Injectable()
+type DemoService struct {}

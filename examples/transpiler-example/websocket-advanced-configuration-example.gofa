@@ -1,0 +1,284 @@
+package main
+
+// This example demonstrates all WebSocket configuration options supported by the GoFasta transpiler
+// It showcases the enhanced configuration parsing and generation implemented in task 2.11
+
+// Example 1: Basic WebSocket Gateway with simple port configuration
+@WebSocketGateway(8080)
+type BasicChatGateway struct {
+	@Inject("chatService")
+	chatService *ChatService
+}
+
+// Example 2: WebSocket Gateway with boolean CORS configuration
+@WebSocketGateway({
+	port: 3000,
+	namespace: "/chat",
+	cors: true
+})
+type SimpleCORSGateway struct {
+	@Inject("messageService")
+	messageService *MessageService
+}
+
+// Example 3: WebSocket Gateway with advanced CORS configuration (object)
+@WebSocketGateway({
+	port: 4000,
+	namespace: "/api/v1/realtime",
+	cors: {
+		origin: "*",
+		credentials: true
+	}
+})
+type AdvancedCORSGateway struct {
+	@Inject("userService")
+	userService *UserService
+	
+	@Inject("authService")
+	authService *AuthService
+}
+
+// Example 4: WebSocket Gateway with custom transports
+@WebSocketGateway({
+	port: 5000,
+	namespace: "/game",
+	cors: false,
+	transports: ["websocket"] // Only WebSocket transport, no polling fallback
+})
+type GameGateway struct {
+	@Inject("gameEngine")
+	gameEngine *GameEngine
+}
+
+// Example 5: WebSocket Gateway with custom ping configuration
+@WebSocketGateway({
+	port: 6000,
+	namespace: "/trading",
+	cors: {
+		origin: "https://trading.example.com",
+		credentials: true
+	},
+	transports: ["websocket", "polling"],
+	pingTimeout: 10000,  // 10 seconds ping timeout
+	pingInterval: 5000   // 5 seconds ping interval
+})
+type TradingGateway struct {
+	@Inject("marketDataService")
+	marketDataService *MarketDataService
+	
+	@Inject("orderService")
+	orderService *OrderService
+	
+	@Inject("riskManagement")
+	riskManagement *RiskManagement
+}
+
+// Example 6: Complete production WebSocket Gateway with all configuration options
+@WebSocketGateway({
+	port: 8443,
+	namespace: "/api/v2/websocket",
+	cors: {
+		origin: "https://app.example.com",
+		credentials: true
+	},
+	transports: ["websocket", "polling"],
+	pingTimeout: 15000,
+	pingInterval: 7500
+})
+type ProductionGateway struct {
+	@Inject("notificationService")
+	notificationService *NotificationService
+	
+	@Inject("analyticsService")
+	analyticsService *AnalyticsService
+	
+	@Inject("rateLimitService")
+	rateLimitService *RateLimitService
+	
+	@Inject("logger")
+	logger *Logger
+	
+	@Inject("metrics")
+	metrics *MetricsCollector
+}
+
+// Message handlers demonstrating different configurations work together
+@SubscribeMessage("join_room")
+func HandleJoinRoom(
+	@MessageBody() data *JoinRoomRequest,
+	@ConnectedSocket() client *WebSocketClient,
+	@Headers() headers map[string]string
+) {
+	// Room joining logic
+}
+
+@SubscribeMessage("market_data_subscribe")
+func HandleMarketDataSubscribe(
+	@MessageBody() request *MarketDataRequest,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Market data subscription logic
+}
+
+@OnGatewayConnection()
+func HandleConnection(
+	@ConnectedSocket() client *WebSocketClient,
+	@Headers() headers map[string]string,
+	@ClientIP() ip string
+) {
+	// Connection handling logic
+}
+
+@OnGatewayDisconnect()
+func HandleDisconnect(
+	@ConnectedSocket() client *WebSocketClient,
+	@DisconnectReason() reason string
+) {
+	// Disconnection handling logic
+}
+
+// Data structures for examples
+type JoinRoomRequest struct {
+	RoomID   string `json:"room_id"`
+	UserRole string `json:"user_role"`
+}
+
+type MarketDataRequest struct {
+	Symbols   []string `json:"symbols"`
+	Frequency string   `json:"frequency"`
+}
+
+type User struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Roles []string `json:"roles"`
+}
+
+// Service dependencies
+@Injectable()
+type ChatService struct {
+	@Inject("database")
+	db *Database
+}
+
+@Injectable()
+type MessageService struct {
+	@Inject("redis")
+	redis *RedisClient
+}
+
+@Injectable()
+type UserService struct {
+	@Inject("database")
+	db *Database
+	
+	@Inject("cache")
+	cache *CacheService
+}
+
+@Injectable()
+type AuthService struct {
+	@Inject("jwt")
+	jwtService *JWTService
+}
+
+@Injectable()
+type GameEngine struct {
+	@Inject("stateManager")
+	stateManager *GameStateManager
+}
+
+@Injectable()
+type MarketDataService struct {
+	@Inject("exchangeConnector")
+	exchangeConnector *ExchangeConnector
+	
+	@Inject("priceCache")
+	priceCache *PriceCacheService
+}
+
+@Injectable()
+type OrderService struct {
+	@Inject("orderBook")
+	orderBook *OrderBookService
+}
+
+@Injectable()
+type RiskManagement struct {
+	@Inject("positionTracker")
+	positionTracker *PositionTracker
+}
+
+@Injectable()
+type NotificationService struct {
+	@Inject("emailService")
+	emailService *EmailService
+	
+	@Inject("pushService")
+	pushService *PushNotificationService
+}
+
+@Injectable()
+type AnalyticsService struct {
+	@Inject("eventTracker")
+	eventTracker *EventTracker
+}
+
+@Injectable()
+type RateLimitService struct {
+	@Inject("redis")
+	redis *RedisClient
+}
+
+@Injectable()
+type Logger struct{}
+
+@Injectable()
+type MetricsCollector struct{}
+
+@Injectable()
+type Database struct{}
+
+@Injectable()
+type RedisClient struct{}
+
+@Injectable()
+type CacheService struct{}
+
+@Injectable()
+type JWTService struct{}
+
+@Injectable()
+type GameStateManager struct{}
+
+@Injectable()
+type ExchangeConnector struct{}
+
+@Injectable()
+type PriceCacheService struct{}
+
+@Injectable()
+type OrderBookService struct{}
+
+@Injectable()
+type PositionTracker struct{}
+
+@Injectable()
+type EmailService struct{}
+
+@Injectable()
+type PushNotificationService struct{}
+
+@Injectable()
+type EventTracker struct{}
+
+// WebSocket types for demonstration
+type WebSocketClient struct {
+	id      string
+	session map[string]interface{}
+}
+
+type WebSocketServer struct {
+	port      int
+	namespace string
+}

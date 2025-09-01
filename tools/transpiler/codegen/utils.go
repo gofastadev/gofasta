@@ -10,6 +10,7 @@ func (g *CodeGenerator) reset() {
 	g.generatedCode.Reset()
 	g.indentLevel = 0
 	g.imports = []string{}
+	g.webSocketFunctions = []*WebSocketFunctionDeclaration{}
 }
 
 // writeLine writes a line with proper indentation
@@ -89,6 +90,7 @@ func (g *CodeGenerator) collectImports(file *GofaFile) {
 	g.addImport("strings")
 	g.addImport("net/http")
 	g.addImport("fmt")
+	g.addImport("time")
 
 	// Check if we need additional imports based on decorators
 	for _, decl := range file.Declarations {
