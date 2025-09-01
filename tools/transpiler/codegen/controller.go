@@ -117,6 +117,11 @@ func (g *CodeGenerator) generateWebSocketServerSetup(gateway *WebSocketGatewayDe
 	g.writeLine("// Register message handlers")
 	g.generateMessageHandlerRegistrations(gateway)
 	
+	// Register WebSocket routes using comprehensive route registration
+	g.writeLine("")
+	g.writeLine("// Register WebSocket routes")
+	g.generateWebSocketRouteRegistration(gateway)
+	
 	g.writeLine("return server")
 	g.unindent()
 	g.writeLine("}")
@@ -213,6 +218,493 @@ func (g *CodeGenerator) registerStandaloneWebSocketFunctions() {
 			}
 		}
 	}
+}
+
+// generateWebSocketRouteRegistration generates comprehensive WebSocket route registration
+func (g *CodeGenerator) generateWebSocketRouteRegistration(gateway *WebSocketGatewayDeclaration) {
+	g.writeLine(fmt.Sprintf("// Register comprehensive WebSocket routes for %s", gateway.Name))
+	
+	// Create route registry with metadata
+	g.writeLine("routeRegistry := websocket.NewRouteRegistry()")
+	g.writeLine("")
+	
+	// Register gateway-level routes with middleware information
+	for _, method := range gateway.Methods {
+		g.registerWebSocketRoute(gateway, method)
+	}
+	
+	// Register standalone WebSocket function routes
+	g.registerStandaloneWebSocketRoutes()
+	
+	// Apply route registry to server
+	g.writeLine("// Apply route registry to server")
+	g.writeLine("server.ApplyRouteRegistry(routeRegistry)")
+	g.writeLine("")
+	
+	// Generate route documentation/metadata
+	g.generateWebSocketRouteMetadata(gateway)
+}
+
+// registerWebSocketRoute registers a single WebSocket route with full metadata
+func (g *CodeGenerator) registerWebSocketRoute(gateway *WebSocketGatewayDeclaration, method *MethodNode) {
+	// Look for @SubscribeMessage decorators
+	for _, decorator := range method.Decorators {
+		if decorator.Name == "SubscribeMessage" && len(decorator.Args) > 0 {
+			// Extract event name(s)
+			if eventName, ok := decorator.Args[0].Value.(string); ok {
+				g.generateSingleRouteRegistration(gateway, method, eventName)
+			} else if eventArray, ok := decorator.Args[0].Value.([]interface{}); ok {
+				// Handle multiple events
+				for _, event := range eventArray {
+					if eventStr, ok := event.(string); ok {
+						g.generateSingleRouteRegistration(gateway, method, eventStr)
+					}
+				}
+			}
+		}
+	}
+}
+
+// generateSingleRouteRegistration generates registration for a single WebSocket route
+func (g *CodeGenerator) generateSingleRouteRegistration(gateway *WebSocketGatewayDeclaration, method *MethodNode, eventName string) {
+	g.writeLine(fmt.Sprintf("// Register route: %s -> %s.%s", eventName, gateway.Name, method.Name))
+	
+	// Create route configuration
+	g.writeLine(fmt.Sprintf("routeConfig := &websocket.RouteConfig{"))
+	g.indent()
+	g.writeLine(fmt.Sprintf("EventName: \"%s\",", eventName))
+	g.writeLine(fmt.Sprintf("Handler: ws.%s,", method.Name))
+	g.writeLine(fmt.Sprintf("Gateway: \"%s\",", gateway.Name))
+	g.writeLine(fmt.Sprintf("Method: \"%s\",", method.Name))
+	
+	// Add middleware information
+	g.generateRouteMiddlewareConfig(method)
+	
+	// Add parameter metadata
+	g.generateRouteParameterMetadata(method)
+	
+	// Add validation metadata
+	g.generateRouteValidationMetadata(method)
+	
+	g.unindent()
+	g.writeLine("}")
+	
+	// Register the route
+	g.writeLine(fmt.Sprintf("routeRegistry.Register(\"%s\", routeConfig)", eventName))
+	g.writeLine("")
+}
+
+// generateRouteMiddlewareConfig generates middleware configuration for a route
+func (g *CodeGenerator) generateRouteMiddlewareConfig(method *MethodNode) {
+	guards := g.getWebSocketGuardDecorators(method.Decorators)
+	interceptors := g.getWebSocketInterceptorDecorators(method.Decorators)
+	pipes := g.getWebSocketPipeDecorators(method.Decorators)
+	filters := g.getWebSocketFilterDecorators(method.Decorators)
+	
+	if len(guards) > 0 {
+		g.writeLine("Guards: []string{")
+		g.indent()
+		for i, guard := range guards {
+			if i == len(guards)-1 {
+				g.writeLine(fmt.Sprintf("\"%s\",", guard))
+			} else {
+				g.writeLine(fmt.Sprintf("\"%s\",", guard))
+			}
+		}
+		g.unindent()
+		g.writeLine("},")
+	}
+	
+	if len(interceptors) > 0 {
+		g.writeLine("Interceptors: []string{")
+		g.indent()
+		for i, interceptor := range interceptors {
+			if i == len(interceptors)-1 {
+				g.writeLine(fmt.Sprintf("\"%s\",", interceptor))
+			} else {
+				g.writeLine(fmt.Sprintf("\"%s\",", interceptor))
+			}
+		}
+		g.unindent()
+		g.writeLine("},")
+	}
+	
+	if len(pipes) > 0 {
+		g.writeLine("Pipes: []string{")
+		g.indent()
+		for i, pipe := range pipes {
+			if i == len(pipes)-1 {
+				g.writeLine(fmt.Sprintf("\"%s\",", pipe))
+			} else {
+				g.writeLine(fmt.Sprintf("\"%s\",", pipe))
+			}
+		}
+		g.unindent()
+		g.writeLine("},")
+	}
+	
+	if len(filters) > 0 {
+		g.writeLine("Filters: []string{")
+		g.indent()
+		for i, filter := range filters {
+			if i == len(filters)-1 {
+				g.writeLine(fmt.Sprintf("\"%s\",", filter))
+			} else {
+				g.writeLine(fmt.Sprintf("\"%s\",", filter))
+			}
+		}
+		g.unindent()
+		g.writeLine("},")
+	}
+}
+
+// generateRouteParameterMetadata generates parameter metadata for a route
+func (g *CodeGenerator) generateRouteParameterMetadata(method *MethodNode) {
+	if len(method.Params) > 0 {
+		g.writeLine("Parameters: []websocket.ParameterMetadata{")
+		g.indent()
+		
+		for i, param := range method.Params {
+			paramDecorators := g.getParameterDecorators(param)
+			if len(paramDecorators) > 0 {
+				g.writeLine("{")
+				g.indent()
+				g.writeLine(fmt.Sprintf("Name: \"%s\",", param.Name))
+				g.writeLine(fmt.Sprintf("Type: \"%s\",", param.Type))
+				
+				// Add parameter decorator information
+				g.writeLine("Decorators: []string{")
+				g.indent()
+				for j, decorator := range paramDecorators {
+					if j == len(paramDecorators)-1 {
+						g.writeLine(fmt.Sprintf("\"%s\",", decorator.Name))
+					} else {
+						g.writeLine(fmt.Sprintf("\"%s\",", decorator.Name))
+					}
+				}
+				g.unindent()
+				g.writeLine("},")
+				
+				g.unindent()
+				if i == len(method.Params)-1 {
+					g.writeLine("},")
+				} else {
+					g.writeLine("},")
+				}
+			}
+		}
+		
+		g.unindent()
+		g.writeLine("},")
+	}
+}
+
+// generateRouteValidationMetadata generates validation metadata for a route
+func (g *CodeGenerator) generateRouteValidationMetadata(method *MethodNode) {
+	// Check if method has any validation decorators
+	hasValidation := false
+	for _, param := range method.Params {
+		paramDecorators := g.getParameterDecorators(param)
+		for _, decorator := range paramDecorators {
+			if g.isValidationDecorator(decorator.Name) {
+				hasValidation = true
+				break
+			}
+		}
+		if hasValidation {
+			break
+		}
+	}
+	
+	if hasValidation {
+		g.writeLine("HasValidation: true,")
+		g.writeLine("ValidationRules: []string{")
+		g.indent()
+		
+		for _, param := range method.Params {
+			paramDecorators := g.getParameterDecorators(param)
+			for _, decorator := range paramDecorators {
+				if g.isValidationDecorator(decorator.Name) {
+					g.writeLine(fmt.Sprintf("\"%s:%s\",", param.Name, decorator.Name))
+				}
+			}
+		}
+		
+		g.unindent()
+		g.writeLine("},")
+	}
+}
+
+// registerStandaloneWebSocketRoutes registers routes for standalone WebSocket functions
+func (g *CodeGenerator) registerStandaloneWebSocketRoutes() {
+	g.writeLine("// Register standalone WebSocket function routes")
+	
+	for _, wsFunc := range g.webSocketFunctions {
+		// Look for @SubscribeMessage decorators in standalone functions
+		for _, decorator := range wsFunc.Decorators {
+			if decorator.Name == "SubscribeMessage" && len(decorator.Args) > 0 {
+				if eventName, ok := decorator.Args[0].Value.(string); ok {
+					g.generateStandaloneRouteRegistration(wsFunc, eventName)
+				} else if eventArray, ok := decorator.Args[0].Value.([]interface{}); ok {
+					// Handle multiple events
+					for _, event := range eventArray {
+						if eventStr, ok := event.(string); ok {
+							g.generateStandaloneRouteRegistration(wsFunc, eventStr)
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+// generateStandaloneRouteRegistration generates route registration for standalone functions
+func (g *CodeGenerator) generateStandaloneRouteRegistration(wsFunc *WebSocketFunctionDeclaration, eventName string) {
+	g.writeLine(fmt.Sprintf("// Register standalone route: %s -> %s", eventName, wsFunc.Name))
+	
+	g.writeLine(fmt.Sprintf("standaloneConfig := &websocket.RouteConfig{"))
+	g.indent()
+	g.writeLine(fmt.Sprintf("EventName: \"%s\",", eventName))
+	g.writeLine(fmt.Sprintf("Handler: %s,", wsFunc.Name))
+	g.writeLine("Gateway: \"Standalone\",")
+	g.writeLine(fmt.Sprintf("Method: \"%s\",", wsFunc.Name))
+	g.writeLine("IsStandalone: true,")
+	
+	// Add middleware configuration for standalone functions
+	g.generateStandaloneRouteMiddlewareConfig(wsFunc)
+	
+	// Add parameter metadata for standalone functions
+	g.generateStandaloneRouteParameterMetadata(wsFunc)
+	
+	// Add validation metadata for standalone functions
+	g.generateStandaloneRouteValidationMetadata(wsFunc)
+	
+	g.unindent()
+	g.writeLine("}")
+	
+	g.writeLine(fmt.Sprintf("routeRegistry.Register(\"%s\", standaloneConfig)", eventName))
+	g.writeLine("")
+}
+
+// generateStandaloneRouteMiddlewareConfig generates middleware configuration for standalone functions
+func (g *CodeGenerator) generateStandaloneRouteMiddlewareConfig(wsFunc *WebSocketFunctionDeclaration) {
+	guards := g.getWebSocketGuardDecorators(wsFunc.Decorators)
+	interceptors := g.getWebSocketInterceptorDecorators(wsFunc.Decorators)
+	pipes := g.getWebSocketPipeDecorators(wsFunc.Decorators)
+	filters := g.getWebSocketFilterDecorators(wsFunc.Decorators)
+	
+	if len(guards) > 0 {
+		g.writeLine("Guards: []string{")
+		g.indent()
+		for i, guard := range guards {
+			if i == len(guards)-1 {
+				g.writeLine(fmt.Sprintf("\"%s\",", guard))
+			} else {
+				g.writeLine(fmt.Sprintf("\"%s\",", guard))
+			}
+		}
+		g.unindent()
+		g.writeLine("},")
+	}
+	
+	if len(interceptors) > 0 {
+		g.writeLine("Interceptors: []string{")
+		g.indent()
+		for i, interceptor := range interceptors {
+			if i == len(interceptors)-1 {
+				g.writeLine(fmt.Sprintf("\"%s\",", interceptor))
+			} else {
+				g.writeLine(fmt.Sprintf("\"%s\",", interceptor))
+			}
+		}
+		g.unindent()
+		g.writeLine("},")
+	}
+	
+	if len(pipes) > 0 {
+		g.writeLine("Pipes: []string{")
+		g.indent()
+		for i, pipe := range pipes {
+			if i == len(pipes)-1 {
+				g.writeLine(fmt.Sprintf("\"%s\",", pipe))
+			} else {
+				g.writeLine(fmt.Sprintf("\"%s\",", pipe))
+			}
+		}
+		g.unindent()
+		g.writeLine("},")
+	}
+	
+	if len(filters) > 0 {
+		g.writeLine("Filters: []string{")
+		g.indent()
+		for i, filter := range filters {
+			if i == len(filters)-1 {
+				g.writeLine(fmt.Sprintf("\"%s\",", filter))
+			} else {
+				g.writeLine(fmt.Sprintf("\"%s\",", filter))
+			}
+		}
+		g.unindent()
+		g.writeLine("},")
+	}
+}
+
+// generateStandaloneRouteParameterMetadata generates parameter metadata for standalone functions
+func (g *CodeGenerator) generateStandaloneRouteParameterMetadata(wsFunc *WebSocketFunctionDeclaration) {
+	if len(wsFunc.Params) > 0 {
+		g.writeLine("Parameters: []websocket.ParameterMetadata{")
+		g.indent()
+		
+		for i, param := range wsFunc.Params {
+			paramDecorators := g.getParameterDecorators(param)
+			if len(paramDecorators) > 0 {
+				g.writeLine("{")
+				g.indent()
+				g.writeLine(fmt.Sprintf("Name: \"%s\",", param.Name))
+				g.writeLine(fmt.Sprintf("Type: \"%s\",", param.Type))
+				
+				// Add parameter decorator information
+				g.writeLine("Decorators: []string{")
+				g.indent()
+				for j, decorator := range paramDecorators {
+					if j == len(paramDecorators)-1 {
+						g.writeLine(fmt.Sprintf("\"%s\",", decorator.Name))
+					} else {
+						g.writeLine(fmt.Sprintf("\"%s\",", decorator.Name))
+					}
+				}
+				g.unindent()
+				g.writeLine("},")
+				
+				g.unindent()
+				if i == len(wsFunc.Params)-1 {
+					g.writeLine("},")
+				} else {
+					g.writeLine("},")
+				}
+			}
+		}
+		
+		g.unindent()
+		g.writeLine("},")
+	}
+}
+
+// generateStandaloneRouteValidationMetadata generates validation metadata for standalone functions
+func (g *CodeGenerator) generateStandaloneRouteValidationMetadata(wsFunc *WebSocketFunctionDeclaration) {
+	// Check if function has any validation decorators
+	hasValidation := false
+	for _, param := range wsFunc.Params {
+		paramDecorators := g.getParameterDecorators(param)
+		for _, decorator := range paramDecorators {
+			if g.isValidationDecorator(decorator.Name) {
+				hasValidation = true
+				break
+			}
+		}
+		if hasValidation {
+			break
+		}
+	}
+	
+	if hasValidation {
+		g.writeLine("HasValidation: true,")
+		g.writeLine("ValidationRules: []string{")
+		g.indent()
+		
+		for _, param := range wsFunc.Params {
+			paramDecorators := g.getParameterDecorators(param)
+			for _, decorator := range paramDecorators {
+				if g.isValidationDecorator(decorator.Name) {
+					g.writeLine(fmt.Sprintf("\"%s:%s\",", param.Name, decorator.Name))
+				}
+			}
+		}
+		
+		g.unindent()
+		g.writeLine("},")
+	}
+}
+
+// generateWebSocketRouteMetadata generates comprehensive route metadata
+func (g *CodeGenerator) generateWebSocketRouteMetadata(gateway *WebSocketGatewayDeclaration) {
+	g.writeLine("// Generate WebSocket route metadata")
+	g.writeLine("metadata := websocket.RouteMetadata{")
+	g.indent()
+	g.writeLine(fmt.Sprintf("GatewayName: \"%s\",", gateway.Name))
+	g.writeLine("Routes: routeRegistry.GetAllRoutes(),")
+	g.writeLine("GeneratedAt: time.Now(),")
+	
+	// Add gateway configuration metadata
+	wsConfig := g.getWebSocketGatewayConfig(gateway)
+	g.writeLine("GatewayConfig: websocket.GatewayConfigMetadata{")
+	g.indent()
+	g.writeLine(fmt.Sprintf("Port: %d,", wsConfig.Port))
+	if wsConfig.Namespace != "" {
+		g.writeLine(fmt.Sprintf("Namespace: \"%s\",", wsConfig.Namespace))
+	}
+	g.writeLine(fmt.Sprintf("CORS: %t,", wsConfig.CORS != false))
+	if len(wsConfig.Transports) > 0 {
+		g.writeLine("Transports: []string{")
+		g.indent()
+		for i, transport := range wsConfig.Transports {
+			if i == len(wsConfig.Transports)-1 {
+				g.writeLine(fmt.Sprintf("\"%s\",", transport))
+			} else {
+				g.writeLine(fmt.Sprintf("\"%s\",", transport))
+			}
+		}
+		g.unindent()
+		g.writeLine("},")
+	}
+	g.unindent()
+	g.writeLine("},")
+	
+	// Add route statistics
+	g.generateRouteStatistics(gateway)
+	
+	g.unindent()
+	g.writeLine("}")
+	
+	g.writeLine("server.SetRouteMetadata(metadata)")
+}
+
+// generateRouteStatistics generates route statistics for metadata
+func (g *CodeGenerator) generateRouteStatistics(gateway *WebSocketGatewayDeclaration) {
+	// Count different types of routes
+	messageHandlers := 0
+	lifecycleHandlers := 0
+	middlewareCount := 0
+	
+	for _, method := range gateway.Methods {
+		if g.hasDecoratorByName(method, "SubscribeMessage") {
+			messageHandlers++
+		}
+		if g.hasWebSocketLifecycleDecorator(method) {
+			lifecycleHandlers++
+		}
+		
+		// Count middleware
+		guards := g.getWebSocketGuardDecorators(method.Decorators)
+		interceptors := g.getWebSocketInterceptorDecorators(method.Decorators)
+		pipes := g.getWebSocketPipeDecorators(method.Decorators)
+		filters := g.getWebSocketFilterDecorators(method.Decorators)
+		middlewareCount += len(guards) + len(interceptors) + len(pipes) + len(filters)
+	}
+	
+	// Count standalone functions
+	standaloneHandlers := len(g.webSocketFunctions)
+	
+	g.writeLine("Statistics: websocket.RouteStatistics{")
+	g.indent()
+	g.writeLine(fmt.Sprintf("MessageHandlers: %d,", messageHandlers))
+	g.writeLine(fmt.Sprintf("LifecycleHandlers: %d,", lifecycleHandlers))
+	g.writeLine(fmt.Sprintf("StandaloneHandlers: %d,", standaloneHandlers))
+	g.writeLine(fmt.Sprintf("TotalMiddleware: %d,", middlewareCount))
+	g.writeLine(fmt.Sprintf("TotalRoutes: %d,", messageHandlers+standaloneHandlers))
+	g.unindent()
+	g.writeLine("},")
 }
 
 // generateWebSocketMethod generates a WebSocket message handler or lifecycle method

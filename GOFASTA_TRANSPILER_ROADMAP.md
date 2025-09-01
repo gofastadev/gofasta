@@ -512,7 +512,7 @@ func (s *{{.Name}}WSServer) Start() {
 - [X] **2.10** Create WebSocket pipe decorator code generation - **✅ COMPLETE** *(Integrated into 2.7: Comprehensive pipe implementation for validation, transformation, parsing, and sanitization)*
 - [X] **2.11** Implement WebSocket configuration parsing and generation - **✅ COMPLETE** *(Enhanced WebSocket configuration with support for advanced CORS objects, custom transports array, ping timeout/interval, and comprehensive configuration validation)*
 - [X] **2.12** Add WebSocket import statement generation - **✅ COMPLETE** *(Intelligent conditional import generation based on WebSocket features used - middleware, JSON handling, error management, with comprehensive test coverage)*
-- [ ] **2.13** Create WebSocket route registration code generation - **❌ MISSING**
+- [x] **2.13** Create WebSocket route registration code generation - **✅ COMPLETED**
 
 ### **Phase 3: Parameter Decorator Implementation (Week 3)**
 
