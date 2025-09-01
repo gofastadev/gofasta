@@ -41,6 +41,9 @@ func (g *CodeGenerator) generateWebSocketGatewayDeclaration(gateway *WebSocketGa
 		g.writeLine("")
 	}
 
+	// Generate WebSocket catch handlers (error handlers)
+	g.generateWebSocketCatchHandlers(gateway)
+
 	// Generate WebSocket middleware functions
 	g.generateWebSocketGuardMiddlewareFunctions(gateway)
 	g.generateWebSocketInterceptorMiddlewareFunctions(gateway)
@@ -1670,6 +1673,11 @@ func (g *CodeGenerator) generateWebSocketParameterExtraction(method *MethodNode)
 			case "Session":
 				// Use the full HTTP-style @Session() logic with WebSocket context
 				g.generateSessionParameterExtraction(param, decorator)
+			case "Exception":
+				// WebSocket error parameter extraction
+				g.writeLine(fmt.Sprintf("%s := wsCtx.Error", param.Name))
+			case "EventName":
+				g.writeLine(fmt.Sprintf("%s := wsCtx.EventName", param.Name))
 			case "Rooms":
 				g.writeLine(fmt.Sprintf("%s := wsCtx.Client.GetRooms()", param.Name))
 			case "Namespace":
@@ -1678,8 +1686,6 @@ func (g *CodeGenerator) generateWebSocketParameterExtraction(method *MethodNode)
 				g.writeLine(fmt.Sprintf("%s := wsCtx.User", param.Name))
 			case "ClientIP":
 				g.writeLine(fmt.Sprintf("%s := wsCtx.Client.RemoteAddr()", param.Name))
-			case "EventName":
-				g.writeLine(fmt.Sprintf("%s := wsCtx.EventName", param.Name))
 			case "MessagePattern":
 				g.writeLine(fmt.Sprintf("%s := wsCtx.Pattern", param.Name))
 			}

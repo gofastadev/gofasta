@@ -1690,7 +1690,8 @@ func (p *Parser) isMiddlewareDecorator(decoratorType core.DecoratorType) bool {
 		decoratorType == core.UseInterceptorsDecorator ||
 		decoratorType == core.UsePipesDecorator ||
 		decoratorType == core.UseFiltersDecorator ||
-		decoratorType == core.UseMiddlewareDecorator
+		decoratorType == core.UseMiddlewareDecorator ||
+		core.IsErrorHandlingDecorator(decoratorType)
 }
 
 // validateOnGatewayConnectionDecorator validates @OnGatewayConnection() decorator
@@ -1817,7 +1818,7 @@ func (p *Parser) validateSubscribeMessageDecorator(decorator *core.DecoratorNode
 
 	hasMessageData := false
 	for _, param := range wsFunc.Params {
-		if !p.isValidWebSocketParamType(param.Type, validParamTypes) {
+		if !p.isValidWebSocketParamTypeWithDecorators(param, validParamTypes) {
 			p.addError(fmt.Sprintf("invalid parameter type '%s' for @SubscribeMessage function '%s'. Expected: *WebSocketClient, *AckCallback, string, interface{}, map[string]string, *Session, *User, slices, or custom data types", param.Type, wsFunc.Name))
 		}
 		
@@ -2093,6 +2094,28 @@ func (p *Parser) isValidWebSocketParamType(paramType string, validParamTypes map
 	}
 	
 	return false
+}
+
+// isValidWebSocketParamTypeWithDecorators checks if a parameter type is valid considering its decorators
+func (p *Parser) isValidWebSocketParamTypeWithDecorators(param *core.ParameterNode, validParamTypes map[string]bool) bool {
+	// Check for special decorator cases
+	for _, decorator := range param.Decorators {
+		switch decorator.Name {
+		case "Exception":
+			// @Exception() allows error type
+			if param.Type == "error" {
+				return true
+			}
+		case "EventName":
+			// @EventName() allows string type
+			if param.Type == "string" {
+				return true
+			}
+		}
+	}
+	
+	// Fall back to regular type validation
+	return p.isValidWebSocketParamType(param.Type, validParamTypes)
 }
 
 // validateSubscribeMessageParameters validates parameters for @SubscribeMessage methods/functions

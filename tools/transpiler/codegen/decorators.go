@@ -25,6 +25,90 @@ func (g *CodeGenerator) generateCatchHandlers(controller *ControllerDeclaration)
 	}
 }
 
+// generateWebSocketCatchHandlers generates WebSocket error handler methods for catch decorators
+func (g *CodeGenerator) generateWebSocketCatchHandlers(gateway *WebSocketGatewayDeclaration) {
+	// Generate handlers for gateway-level @Catch() decorators
+	for _, decorator := range gateway.Decorators {
+		if decorator.Name == "Catch" {
+			g.generateWebSocketCatchHandler(gateway, decorator, "gateway")
+		}
+	}
+
+	// Generate handlers for method-level @Catch() decorators
+	for _, method := range gateway.Methods {
+		for _, decorator := range method.Decorators {
+			if decorator.Name == "Catch" {
+				g.generateWebSocketCatchHandler(gateway, decorator, "method", method.Name)
+			}
+		}
+	}
+
+	// Generate handlers for standalone WebSocket function @Catch() decorators
+	for _, wsFunc := range g.webSocketFunctions {
+		for _, decorator := range wsFunc.Decorators {
+			if decorator.Name == "Catch" {
+				g.generateWebSocketFunctionCatchHandler(gateway, wsFunc, decorator)
+			}
+		}
+	}
+}
+
+// generateWebSocketFunctionCatchHandler generates WebSocket error handler for standalone functions
+func (g *CodeGenerator) generateWebSocketFunctionCatchHandler(gateway *WebSocketGatewayDeclaration, wsFunc *WebSocketFunctionDeclaration, decorator *DecoratorNode) {
+	config := g.getCatchFilterConfig(decorator, "method")
+	
+	// Generate handler method name based on the function name
+	handlerName := fmt.Sprintf("handle%sError", wsFunc.Name)
+
+	// Generate handler method signature with WebSocket-specific parameters
+	g.writeLine(fmt.Sprintf("func (g *%s) %s(", gateway.Name, handlerName))
+	g.indent()
+	g.writeLine("err error,")
+	g.writeLine("client *WebSocketClient,")
+	g.writeLine("eventName string")
+	g.unindent()
+	g.writeLine(") {")
+	g.indent()
+
+	// Generate error type checking and WebSocket error handling
+	if len(config.ErrorTypes) > 0 {
+		g.writeLine("switch e := err.(type) {")
+		for _, errorType := range config.ErrorTypes {
+			g.writeLine(fmt.Sprintf("case *%s:", errorType))
+			g.indent()
+			g.generateWebSocketErrorHandlingCode(errorType)
+			g.unindent()
+		}
+		g.writeLine("default:")
+		g.indent()
+		g.writeLine("// Handle unmatched error types")
+		g.writeLine("client.Emit(\"error\", map[string]interface{}{")
+		g.indent()
+		g.writeLine("\"type\": \"InternalServerError\",")
+		g.writeLine("\"message\": \"Internal server error\",")
+		g.writeLine("\"details\": err.Error(),")
+		g.writeLine("\"event\": eventName,")
+		g.unindent()
+		g.writeLine("})")
+		g.unindent()
+		g.writeLine("}")
+	} else {
+		// Global error handler (catches all errors)
+		g.writeLine("// Global WebSocket error handler - catches all errors")
+		g.writeLine("client.Emit(\"error\", map[string]interface{}{")
+		g.indent()
+		g.writeLine("\"type\": \"InternalServerError\",")
+		g.writeLine("\"message\": err.Error(),")
+		g.writeLine("\"event\": eventName,")
+		g.unindent()
+		g.writeLine("})")
+	}
+
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+}
+
 // generateCatchHandler generates a specific catch handler method
 func (g *CodeGenerator) generateCatchHandler(controller *ControllerDeclaration, decorator *DecoratorNode, scope string, methodName ...string) {
 	config := g.getCatchFilterConfig(decorator, scope)
@@ -71,6 +155,78 @@ func (g *CodeGenerator) generateCatchHandler(controller *ControllerDeclaration, 
 	g.writeLine("")
 }
 
+// generateWebSocketCatchHandler generates a specific WebSocket catch handler method
+func (g *CodeGenerator) generateWebSocketCatchHandler(gateway *WebSocketGatewayDeclaration, decorator *DecoratorNode, scope string, methodName ...string) {
+	config := g.getCatchFilterConfig(decorator, scope)
+	
+	// Generate handler method name
+	var handlerName string
+	if scope == "method" && len(methodName) > 0 {
+		handlerName = fmt.Sprintf("handle%sError", strings.Title(methodName[0]))
+	} else {
+		if len(config.ErrorTypes) > 0 {
+			handlerName = fmt.Sprintf("handle%sError", strings.Title(config.ErrorTypes[0]))
+		} else {
+			handlerName = "handleError"
+		}
+	}
+
+	// Generate WebSocket handler method signature with @Exception() and @ConnectedSocket() parameters
+	g.writeLine(fmt.Sprintf("func (g *%s) %s(", gateway.Name, handlerName))
+	g.indent()
+	
+	// Add @Exception() parameter
+	g.writeLine("err error,")
+	
+	// Add @ConnectedSocket() parameter  
+	g.writeLine("client *WebSocketClient,")
+	
+	// Add @EventName() parameter if available
+	g.writeLine("eventName string")
+	
+	g.unindent()
+	g.writeLine(") {")
+	g.indent()
+
+	// Generate error type checking and handling for WebSocket
+	if len(config.ErrorTypes) > 0 {
+		g.writeLine("switch e := err.(type) {")
+		for _, errorType := range config.ErrorTypes {
+			g.writeLine(fmt.Sprintf("case *%s:", errorType))
+			g.indent()
+			g.generateWebSocketErrorHandlingCode(errorType)
+			g.unindent()
+		}
+		g.writeLine("default:")
+		g.indent()
+		g.writeLine("// Handle unmatched error types")
+		g.writeLine("client.Emit(\"error\", map[string]interface{}{")
+		g.indent()
+		g.writeLine("\"type\": \"InternalServerError\",")
+		g.writeLine("\"message\": \"Internal server error\",")
+		g.writeLine("\"details\": err.Error(),")
+		g.writeLine("\"event\": eventName,")
+		g.unindent()
+		g.writeLine("})")
+		g.unindent()
+		g.writeLine("}")
+	} else {
+		// Global error handler (catches all errors)
+		g.writeLine("// Global WebSocket error handler - catches all errors")
+		g.writeLine("client.Emit(\"error\", map[string]interface{}{")
+		g.indent()
+		g.writeLine("\"type\": \"InternalServerError\",")
+		g.writeLine("\"message\": err.Error(),")
+		g.writeLine("\"event\": eventName,")
+		g.unindent()
+		g.writeLine("})")
+	}
+
+	g.unindent()
+	g.writeLine("}")
+	g.writeLine("")
+}
+
 // generateErrorHandlingCode generates error handling code based on error type
 func (g *CodeGenerator) generateErrorHandlingCode(errorType string) {
 	switch strings.ToLower(errorType) {
@@ -91,6 +247,87 @@ func (g *CodeGenerator) generateErrorHandlingCode(errorType string) {
 	default:
 		// Default error handling
 		g.writeLine("ctx.JSON(500, map[string]string{\"error\": err.Error()})")
+	}
+}
+
+// generateWebSocketErrorHandlingCode generates WebSocket error handling code based on error type
+func (g *CodeGenerator) generateWebSocketErrorHandlingCode(errorType string) {
+	switch strings.ToLower(errorType) {
+	case "badrequesterror", "*badrequesterror":
+		g.writeLine("client.Emit(\"error\", map[string]interface{}{")
+		g.indent()
+		g.writeLine("\"type\": \"BadRequestError\",")
+		g.writeLine("\"message\": e.Error(),")
+		g.writeLine("\"event\": eventName,")
+		g.unindent()
+		g.writeLine("})")
+	case "unauthorizederror", "*unauthorizederror":
+		g.writeLine("client.Emit(\"error\", map[string]interface{}{")
+		g.indent()
+		g.writeLine("\"type\": \"UnauthorizedError\",")
+		g.writeLine("\"message\": \"Unauthorized\",")
+		g.writeLine("\"event\": eventName,")
+		g.unindent()
+		g.writeLine("})")
+	case "forbiddenerror", "*forbiddenerror":
+		g.writeLine("client.Emit(\"error\", map[string]interface{}{")
+		g.indent()
+		g.writeLine("\"type\": \"ForbiddenError\",")
+		g.writeLine("\"message\": \"Forbidden\",")
+		g.writeLine("\"event\": eventName,")
+		g.unindent()
+		g.writeLine("})")
+	case "notfounderror", "*notfounderror":
+		g.writeLine("client.Emit(\"error\", map[string]interface{}{")
+		g.indent()
+		g.writeLine("\"type\": \"NotFoundError\",")
+		g.writeLine("\"message\": \"Not found\",")
+		g.writeLine("\"event\": eventName,")
+		g.unindent()
+		g.writeLine("})")
+	case "validationerror", "*validationerror":
+		g.writeLine("client.Emit(\"error\", map[string]interface{}{")
+		g.indent()
+		g.writeLine("\"type\": \"ValidationError\",")
+		g.writeLine("\"message\": \"Validation failed\",")
+		g.writeLine("\"details\": e.Error(),")
+		g.writeLine("\"event\": eventName,")
+		g.unindent()
+		g.writeLine("})")
+	case "conflicterror", "*conflicterror":
+		g.writeLine("client.Emit(\"error\", map[string]interface{}{")
+		g.indent()
+		g.writeLine("\"type\": \"ConflictError\",")
+		g.writeLine("\"message\": \"Conflict\",")
+		g.writeLine("\"event\": eventName,")
+		g.unindent()
+		g.writeLine("})")
+	case "internalservererror", "*internalservererror":
+		g.writeLine("client.Emit(\"error\", map[string]interface{}{")
+		g.indent()
+		g.writeLine("\"type\": \"InternalServerError\",")
+		g.writeLine("\"message\": \"Internal server error\",")
+		g.writeLine("\"event\": eventName,")
+		g.unindent()
+		g.writeLine("})")
+	case "authenticationerror", "*authenticationerror":
+		g.writeLine("client.Emit(\"error\", map[string]interface{}{")
+		g.indent()
+		g.writeLine("\"type\": \"AuthenticationError\",")
+		g.writeLine("\"message\": \"Authentication failed\",")
+		g.writeLine("\"event\": eventName,")
+		g.unindent()
+		g.writeLine("})")
+	default:
+		// Default WebSocket error handling - use the actual error type name
+		errorTypeName := strings.TrimPrefix(errorType, "*")
+		g.writeLine("client.Emit(\"error\", map[string]interface{}{")
+		g.indent()
+		g.writeLine(fmt.Sprintf("\"type\": \"%s\",", errorTypeName))
+		g.writeLine("\"message\": e.Error(),")
+		g.writeLine("\"event\": eventName,")
+		g.unindent()
+		g.writeLine("})")
 	}
 }
 

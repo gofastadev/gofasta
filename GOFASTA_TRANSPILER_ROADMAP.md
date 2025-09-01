@@ -519,7 +519,7 @@ func (s *{{.Name}}WSServer) Start() {
 #### **3.1 Extend Existing HTTP Decorators for WebSocket Context**
 
 > **Efficiency**: Reuse existing parsing logic, only modify code generation
-> **Status**: ❌ **ALL MISSING** - No WebSocket context detection exists
+> **Status**: ✅ **ALL COMPLETED** - WebSocket context detection implemented for all HTTP decorators
 
 - [x] **3.1** Extend `@Headers()` for WebSocket handshake context - **✅ COMPLETED**
   ```go
@@ -536,9 +536,11 @@ func (s *{{.Name}}WSServer) Start() {
   // HTTP: ctx.Session.Get("user")
   // WebSocket: client.Session().Get("user")  
   ```
-- [ ] **3.4** Extend `@Catch()` for WebSocket error handling context - **❌ MISSING**
+- [x] **3.4** Extend `@Catch()` for WebSocket error handling context - **✅ COMPLETED**
   ```go
   // Add WebSocket error context to existing @Catch implementation
+  // Supports @Exception() and @EventName() parameter decorators
+  // Generates WebSocket-specific error handlers that emit to clients
   ```
 
 #### **3.2 Implement WebSocket-Specific Parameter Decorators**
