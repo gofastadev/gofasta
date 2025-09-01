@@ -521,7 +521,7 @@ func (s *{{.Name}}WSServer) Start() {
 > **Efficiency**: Reuse existing parsing logic, only modify code generation
 > **Status**: ❌ **ALL MISSING** - No WebSocket context detection exists
 
-- [ ] **3.1** Extend `@Headers()` for WebSocket handshake context - **❌ MISSING**
+- [x] **3.1** Extend `@Headers()` for WebSocket handshake context - **✅ COMPLETED**
   ```go
   // HTTP: ctx.Request.Header.Get("auth")  
   // WebSocket: client.Handshake().Header.Get("auth")

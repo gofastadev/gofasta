@@ -60,8 +60,19 @@ func (g *CodeGenerator) generateHeaderParameterExtraction(param *ParameterNode, 
 	// Generate variable declaration
 	g.writeLine(fmt.Sprintf("var %s %s", param.Name, param.Type))
 	
-	// Get raw header value
-	g.writeLine(fmt.Sprintf("headerValue := ctx.GetHeader(\"%s\")", headerName))
+	// Get raw header value based on context
+	if g.currentContext == WebSocketContext {
+		// WebSocket context: use client.Handshake().Header.Get()
+		// Find the @ConnectedSocket() parameter name dynamically
+		clientParamName := g.getConnectedSocketParameterName()
+		if clientParamName == "" {
+			clientParamName = "client" // fallback to default
+		}
+		g.writeLine(fmt.Sprintf("headerValue := %s.Handshake().Header.Get(\"%s\")", clientParamName, headerName))
+	} else {
+		// HTTP context: use ctx.GetHeader() (existing behavior)
+		g.writeLine(fmt.Sprintf("headerValue := ctx.GetHeader(\"%s\")", headerName))
+	}
 	
 	// Handle default value
 	if options.DefaultValue != "" {
@@ -669,4 +680,21 @@ func (g *CodeGenerator) generateParameterConstraintValidation(param *ParameterNo
 			}
 		}
 	}
+}
+
+// getConnectedSocketParameterName finds the parameter name for @ConnectedSocket() decorator
+func (g *CodeGenerator) getConnectedSocketParameterName() string {
+	if g.currentMethod == nil {
+		return ""
+	}
+	
+	for _, param := range g.currentMethod.Params {
+		paramDecorators := g.getParameterDecorators(param)
+		for _, decorator := range paramDecorators {
+			if decorator.Name == "ConnectedSocket" {
+				return param.Name
+			}
+		}
+	}
+	return ""
 }

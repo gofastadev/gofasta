@@ -831,6 +831,16 @@ func (g *CodeGenerator) generateWebSocketFunctionDeclaration(wsFunc *WebSocketFu
 	g.writeLine(funcSignature + " {")
 	g.indent()
 	
+	// Generate parameter extraction for WebSocket context
+	// Convert WebSocketFunctionDeclaration to MethodNode for parameter extraction
+	method := &MethodNode{
+		Name:       wsFunc.Name,
+		Params:     wsFunc.Params,
+		ReturnType: wsFunc.ReturnType,
+		Decorators: wsFunc.Decorators,
+	}
+	g.generateWebSocketParameterExtraction(method)
+	
 	// Add function body based on decorator type
 	addedComment := false
 	for _, decorator := range wsFunc.Decorators {
@@ -1623,6 +1633,16 @@ func (g *CodeGenerator) hasWebSocketParameterDecorators(method *MethodNode) bool
 
 // generateWebSocketParameterExtraction generates parameter extraction for WebSocket context
 func (g *CodeGenerator) generateWebSocketParameterExtraction(method *MethodNode) {
+	// Set WebSocket context and current method for parameter extraction
+	originalContext := g.currentContext
+	originalMethod := g.currentMethod
+	g.currentContext = WebSocketContext
+	g.currentMethod = method
+	defer func() {
+		g.currentContext = originalContext
+		g.currentMethod = originalMethod
+	}()
+	
 	for _, param := range method.Params {
 		paramDecorators := g.getParameterDecorators(param)
 		
@@ -1642,7 +1662,8 @@ func (g *CodeGenerator) generateWebSocketParameterExtraction(method *MethodNode)
 			case "MessageAck":
 				g.writeLine(fmt.Sprintf("%s := wsCtx.AckCallback", param.Name))
 			case "Headers":
-				g.writeLine(fmt.Sprintf("%s := wsCtx.Headers", param.Name))
+				// Use the full HTTP-style @Headers() logic with WebSocket context
+				g.generateHeaderParameterExtraction(param, decorator)
 			case "Session":
 				g.writeLine(fmt.Sprintf("%s := wsCtx.Session", param.Name))
 			case "Rooms":

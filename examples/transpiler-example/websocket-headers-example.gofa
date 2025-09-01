@@ -1,0 +1,121 @@
+package main
+
+// WebSocket Headers Example
+// Demonstrates how @Headers() decorator works in WebSocket contexts
+// In WebSocket handlers, @Headers() accesses headers from the initial handshake
+
+@WebSocketGateway(8080)
+type AuthenticatedChatGateway struct {
+    @Inject("authService")
+    authService *AuthService
+}
+
+// Basic header extraction in WebSocket message handler
+@SubscribeMessage("authenticate")
+func HandleAuthentication(
+    @Headers("Authorization") authToken string,
+    @Headers("X-Client-Version") clientVersion string,
+    @MessageBody() credentials *LoginCredentials,
+    @ConnectedSocket() client *WebSocketClient
+) {
+}
+
+// Headers with validation and defaults
+@SubscribeMessage("join_room") 
+@UseGuards("AuthGuard")
+func HandleJoinRoom(
+    @Headers("Authorization", { required: true, transform: "trim" }) authToken string,
+    @Headers("X-Room-ID", { required: true }) roomId string,
+    @Headers("X-User-Role", { defaultValue: "member" }) userRole string,
+    @MessageBody() roomData *RoomJoinData,
+    @ConnectedSocket() client *WebSocketClient
+) {
+}
+
+// Headers with different data types
+@SubscribeMessage("configure_client")
+func HandleClientConfiguration(
+    @Headers("X-Enable-Notifications") enableNotifications bool,
+    @Headers("X-Max-Messages", { defaultValue: "100" }) maxMessages int,
+    @Headers("X-Supported-Features") supportedFeatures []string,
+    @Headers("X-API-Version", { transform: "uppercase" }) apiVersion string,
+    @ConnectedSocket() client *WebSocketClient
+) {
+}
+
+// WebSocket lifecycle handler with headers
+@OnGatewayConnection()
+func HandleNewConnection(
+    @Headers("Origin") origin string,
+    @Headers("User-Agent") userAgent string, 
+    @Headers("X-Forwarded-For") forwardedFor string,
+    @Headers("Sec-WebSocket-Protocol") protocol string,
+    @ConnectedSocket() client *WebSocketClient
+) {
+}
+
+// Comprehensive example with all header features
+@SubscribeMessage("admin_action")
+@UseGuards("AdminGuard")
+@UseInterceptors("AuditInterceptor")
+func HandleAdminAction(
+    @MessageBody() action *AdminAction,
+    @Headers("Authorization", { required: true, transform: "trim" }) authToken string,
+    @Headers("X-Admin-Level", { required: true }) adminLevel int,
+    @Headers("X-Audit-Reason") auditReason string,
+    @Headers("X-Supported-Actions", { type: "array", separator: "|" }) supportedActions []string,
+    @Headers("X-Session-Timeout", { defaultValue: "3600" }) sessionTimeout int,
+    @Headers("X-Enable-Debug", { defaultValue: "false" }) enableDebug bool,
+    @ConnectedSocket() client *WebSocketClient,
+    @MessageAck() ack *AckCallback
+) {
+}
+
+// Standalone WebSocket function with headers
+@SubscribeMessage("global_broadcast")
+@UseGuards("BroadcastGuard")
+func HandleGlobalBroadcast(
+    @Headers("Authorization") authToken string,
+    @Headers("X-Broadcast-Level", { required: true }) broadcastLevel string,
+    @MessageBody() message *BroadcastMessage,
+    @ConnectedSocket() client *WebSocketClient
+) {
+}
+
+// Custom header names and parameter names
+@SubscribeMessage("custom_headers")
+func HandleCustomHeaders(
+    @Headers("X-Custom-Auth-Token") customAuth string,
+    @Headers("X-Special-Header") specialValue string,
+    @Headers() implicitHeaderName string,
+    @ConnectedSocket() wsClient *WebSocketClient
+) {
+}
+
+// Supporting data structures
+type LoginCredentials struct {
+    Username string
+    Password string
+}
+
+type RoomJoinData struct {
+    RoomName string
+    Password string
+}
+
+type AdminAction struct {
+    Action string
+    Target string
+    Parameters map[string]interface{}
+}
+
+type BroadcastMessage struct {
+    Content string
+    Priority int
+    Recipients []string
+}
+
+@Injectable()
+type AuthService struct {
+    secretKey string
+}
