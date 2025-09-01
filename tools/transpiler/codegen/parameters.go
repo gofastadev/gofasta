@@ -173,7 +173,20 @@ func (g *CodeGenerator) generateSessionParameterExtraction(param *ParameterNode,
 	if sessionKey != "" {
 		// Extract specific session value by key
 		g.writeLine(fmt.Sprintf("var %s %s", param.Name, param.Type))
-		g.writeLine(fmt.Sprintf("if sessionValue := ctx.GetSession(\"%s\"); sessionValue != nil {", sessionKey))
+		
+		// Get session value based on context
+		if g.currentContext == WebSocketContext {
+			// WebSocket context: use client.Session().Get()
+			// Find the @ConnectedSocket() parameter name dynamically
+			clientParamName := g.getConnectedSocketParameterName()
+			if clientParamName == "" {
+				clientParamName = "client" // fallback to default
+			}
+			g.writeLine(fmt.Sprintf("if sessionValue := %s.Session().Get(\"%s\"); sessionValue != nil {", clientParamName, sessionKey))
+		} else {
+			// HTTP context: use ctx.GetSession() (existing behavior)
+			g.writeLine(fmt.Sprintf("if sessionValue := ctx.GetSession(\"%s\"); sessionValue != nil {", sessionKey))
+		}
 		g.indent()
 		
 		// Generate type-specific extraction logic
@@ -233,12 +246,28 @@ func (g *CodeGenerator) generateSessionParameterExtraction(param *ParameterNode,
 		g.writeLine("}")
 	} else {
 		// Extract entire session object - check for special types
-		if param.Type == "map[string]interface{}" || param.Type == "interface{}" {
-			// For map and interface{} types, use GetAllSessionData()
-			g.writeLine(fmt.Sprintf("%s := ctx.GetAllSessionData()", param.Name))
+		if g.currentContext == WebSocketContext {
+			// WebSocket context: use client.Session()
+			clientParamName := g.getConnectedSocketParameterName()
+			if clientParamName == "" {
+				clientParamName = "client" // fallback to default
+			}
+			if param.Type == "map[string]interface{}" || param.Type == "interface{}" {
+				// For map and interface{} types, get all session data
+				g.writeLine(fmt.Sprintf("%s := %s.Session().GetAll()", param.Name, clientParamName))
+			} else {
+				// For other types like *Session, use the session store directly
+				g.writeLine(fmt.Sprintf("%s := %s.Session()", param.Name, clientParamName))
+			}
 		} else {
-			// For other types like *Session, use GetSessionStore()
-			g.writeLine(fmt.Sprintf("%s := ctx.GetSessionStore()", param.Name))
+			// HTTP context: existing behavior
+			if param.Type == "map[string]interface{}" || param.Type == "interface{}" {
+				// For map and interface{} types, use GetAllSessionData()
+				g.writeLine(fmt.Sprintf("%s := ctx.GetAllSessionData()", param.Name))
+			} else {
+				// For other types like *Session, use GetSessionStore()
+				g.writeLine(fmt.Sprintf("%s := ctx.GetSessionStore()", param.Name))
+			}
 		}
 	}
 	

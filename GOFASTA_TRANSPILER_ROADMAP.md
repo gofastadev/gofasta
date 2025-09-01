@@ -531,7 +531,7 @@ func (s *{{.Name}}WSServer) Start() {
   // HTTP: ctx.Request.URL.Query().Get("room")
   // WebSocket: client.Handshake().URL.Query().Get("room")
   ```
-- [ ] **3.3** Extend `@Session()` for WebSocket session context - **❌ MISSING**
+- [x] **3.3** Extend `@Session()` for WebSocket session context - **✅ COMPLETED**
   ```go
   // HTTP: ctx.Session.Get("user")
   // WebSocket: client.Session().Get("user")  

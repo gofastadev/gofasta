@@ -1668,7 +1668,8 @@ func (g *CodeGenerator) generateWebSocketParameterExtraction(method *MethodNode)
 				// Use the full HTTP-style @Query() logic with WebSocket context
 				g.generateQueryParameterExtraction(param, decorator)
 			case "Session":
-				g.writeLine(fmt.Sprintf("%s := wsCtx.Session", param.Name))
+				// Use the full HTTP-style @Session() logic with WebSocket context
+				g.generateSessionParameterExtraction(param, decorator)
 			case "Rooms":
 				g.writeLine(fmt.Sprintf("%s := wsCtx.Client.GetRooms()", param.Name))
 			case "Namespace":
