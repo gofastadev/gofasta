@@ -1,0 +1,33 @@
+package main
+
+// Simple WebSocket configuration demonstration for task 2.11
+
+// Basic configuration with port only
+@WebSocketGateway(8080)
+type BasicGateway struct {
+	@Inject("service")
+	service *MyService
+}
+
+// Advanced configuration with all options
+@WebSocketGateway({
+	port: 3000,
+	namespace: "/api/ws",
+	cors: {
+		origin: "*",
+		credentials: true
+	},
+	transports: ["websocket"],
+	pingTimeout: 5000,
+	pingInterval: 2500
+})
+type AdvancedGateway struct {
+	@Inject("chatService")
+	chatService *ChatService
+}
+
+@Injectable()
+type MyService struct {}
+
+@Injectable()
+type ChatService struct {}

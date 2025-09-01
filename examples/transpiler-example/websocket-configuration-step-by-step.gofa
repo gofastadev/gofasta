@@ -1,0 +1,259 @@
+package main
+
+// Step-by-step WebSocket Configuration Examples
+// This file demonstrates how to configure WebSocket gateways with increasing complexity
+
+// ================================
+// STEP 1: Basic Configuration
+// ================================
+
+// The simplest WebSocket gateway - just specify the port
+@WebSocketGateway(8080)
+type Step1BasicGateway struct {}
+
+// Generated Go code will include:
+// server := websocket.NewWebSocketServer(&websocket.Config{
+//     Port: 8080,
+//     Transports: []string{"websocket", "polling"}, // default transports
+// })
+
+// ================================
+// STEP 2: Add Namespace
+// ================================
+
+@WebSocketGateway({
+	port: 8080,
+	namespace: "/chat"
+})
+type Step2NamespaceGateway struct {}
+
+// Generated Go code will include:
+// server := websocket.NewWebSocketServer(&websocket.Config{
+//     Port: 8080,
+//     Namespace: "/chat",
+//     Transports: []string{"websocket", "polling"},
+// })
+
+// ================================
+// STEP 3: Add Simple CORS
+// ================================
+
+@WebSocketGateway({
+	port: 8080,
+	namespace: "/api/ws",
+	cors: true
+})
+type Step3SimpleCORSGateway struct {}
+
+// Generated Go code will include:
+// server := websocket.NewWebSocketServer(&websocket.Config{
+//     Port: 8080,
+//     Namespace: "/api/ws",
+//     CORS: true,
+//     Transports: []string{"websocket", "polling"},
+// })
+
+// ================================
+// STEP 4: Add Advanced CORS Configuration
+// ================================
+
+@WebSocketGateway({
+	port: 8080,
+	namespace: "/secure/ws",
+	cors: {
+		origin: "https://myapp.com",
+		credentials: true
+	}
+})
+type Step4AdvancedCORSGateway struct {}
+
+// Generated Go code will include:
+// server := websocket.NewWebSocketServer(&websocket.Config{
+//     Port: 8080,
+//     Namespace: "/secure/ws",
+//     CORS: websocket.CORSConfig{
+//         Origin: "https://myapp.com",
+//         Credentials: true,
+//     },
+//     Transports: []string{"websocket", "polling"},
+// })
+
+// ================================
+// STEP 5: Customize Transports
+// ================================
+
+@WebSocketGateway({
+	port: 8080,
+	namespace: "/realtime",
+	cors: true,
+	transports: ["websocket"] // Only WebSocket, no polling fallback
+})
+type Step5CustomTransportsGateway struct {}
+
+// Generated Go code will include:
+// server := websocket.NewWebSocketServer(&websocket.Config{
+//     Port: 8080,
+//     Namespace: "/realtime",
+//     CORS: true,
+//     Transports: []string{"websocket"},
+// })
+
+// ================================
+// STEP 6: Add Ping Configuration
+// ================================
+
+@WebSocketGateway({
+	port: 8080,
+	namespace: "/live",
+	cors: true,
+	transports: ["websocket", "polling"],
+	pingTimeout: 30000,  // 30 seconds before timeout
+	pingInterval: 15000  // Ping every 15 seconds
+})
+type Step6PingConfigGateway struct {}
+
+// Generated Go code will include:
+// server := websocket.NewWebSocketServer(&websocket.Config{
+//     Port: 8080,
+//     Namespace: "/live",
+//     CORS: true,
+//     Transports: []string{"websocket", "polling"},
+//     PingTimeout: 30000,
+//     PingInterval: 15000,
+// })
+
+// ================================
+// STEP 7: Complete Configuration
+// ================================
+
+@WebSocketGateway({
+	port: 443,
+	namespace: "/api/v1/websocket",
+	cors: {
+		origin: "*",
+		credentials: false
+	},
+	transports: ["websocket", "polling"],
+	pingTimeout: 60000,
+	pingInterval: 25000
+})
+type Step7CompleteGateway struct {
+	@Inject("service")
+	service *MyService
+}
+
+// Generated Go code will include:
+// server := websocket.NewWebSocketServer(&websocket.Config{
+//     Port: 443,
+//     Namespace: "/api/v1/websocket",
+//     CORS: websocket.CORSConfig{
+//         Origin: "*",
+//         Credentials: false,
+//     },
+//     Transports: []string{"websocket", "polling"},
+//     PingTimeout: 60000,
+//     PingInterval: 25000,
+// })
+
+// ================================
+// Configuration Options Explained
+// ================================
+
+/*
+Available WebSocket Configuration Options:
+
+1. port: number
+   - The port number for the WebSocket server
+   - Default: 8080
+   - Example: port: 3000
+
+2. namespace: string
+   - The WebSocket namespace/path
+   - Default: "" (root namespace)
+   - Example: namespace: "/api/v1/ws"
+
+3. cors: boolean | object
+   - CORS configuration for cross-origin requests
+   - As boolean: cors: true enables basic CORS
+   - As object: { origin: string, credentials: boolean }
+   - Default: false
+   - Examples:
+     - cors: true
+     - cors: { origin: "*", credentials: true }
+     - cors: { origin: "https://example.com", credentials: false }
+
+4. transports: string[]
+   - Array of supported transport mechanisms
+   - Available options: ["websocket", "polling"]
+   - Default: ["websocket", "polling"]
+   - Examples:
+     - transports: ["websocket"] // WebSocket only
+     - transports: ["websocket", "polling"] // Both transports
+
+5. pingTimeout: number
+   - Timeout in milliseconds before considering connection dead
+   - Default: 20000 (20 seconds)
+   - Example: pingTimeout: 30000
+
+6. pingInterval: number
+   - Interval in milliseconds between ping messages
+   - Default: 25000 (25 seconds)
+   - Example: pingInterval: 10000
+
+Configuration Rules:
+- Only non-default values are generated in the output code
+- CORS can be either boolean or object, not both
+- Transport array must contain valid transport types
+- Ping values should be reasonable (timeout > interval recommended)
+*/
+
+// ================================
+// Common Configuration Patterns
+// ================================
+
+// Pattern 1: Development Setup (permissive CORS, all transports)
+@WebSocketGateway({
+	port: 3000,
+	cors: true,
+	transports: ["websocket", "polling"]
+})
+type DevelopmentGateway struct {}
+
+// Pattern 2: Production Setup (strict CORS, WebSocket preferred)
+@WebSocketGateway({
+	port: 443,
+	namespace: "/api/ws",
+	cors: {
+		origin: "https://yourdomain.com",
+		credentials: true
+	},
+	transports: ["websocket", "polling"],
+	pingTimeout: 30000,
+	pingInterval: 15000
+})
+type ProductionGateway struct {}
+
+// Pattern 3: High-Performance Setup (WebSocket only, fast pings)
+@WebSocketGateway({
+	port: 8080,
+	namespace: "/realtime",
+	cors: false,
+	transports: ["websocket"],
+	pingTimeout: 5000,
+	pingInterval: 2000
+})
+type HighPerformanceGateway struct {}
+
+// Pattern 4: Legacy Support Setup (all transports, long timeouts)
+@WebSocketGateway({
+	port: 8080,
+	namespace: "/legacy",
+	cors: true,
+	transports: ["websocket", "polling"],
+	pingTimeout: 60000,
+	pingInterval: 30000
+})
+type LegacySupportGateway struct {}
+
+@Injectable()
+type MyService struct {}

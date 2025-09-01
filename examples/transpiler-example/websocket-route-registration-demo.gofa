@@ -1,0 +1,111 @@
+package main
+
+// WebSocket Route Registration Demo
+// Demonstrates Section 2.13: WebSocket route registration code generation
+
+@WebSocketGateway(8080)
+type ChatGateway struct {
+	@Inject("chatService")
+	chatService *ChatService
+}
+
+@SubscribeMessage("chat_message")
+func HandleChatMessage(
+	@MessageBody() message *ChatMessage,
+	@ConnectedSocket() client *WebSocketClient,
+	@MessageAck() ack *AckCallback
+) error {
+	return nil
+}
+
+@SubscribeMessage("join_room")
+func HandleJoinRoom(
+	@MessageBody() roomData *RoomJoinData,
+	@ConnectedSocket() client *WebSocketClient,
+	@CurrentUser() user *User,
+	@EventName() event string
+) {
+	// Route registration captures all parameter decorators
+}
+
+@WebSocketGateway(9000)
+@UseGuards("WSAuthGuard", "WSRateLimitGuard")
+@UseInterceptors("WSLoggingInterceptor", "WSMetricsInterceptor")
+@UseFilters("WSGlobalExceptionFilter")
+type SecureGateway struct {
+	@Inject("authService")
+	authService *AuthService
+}
+
+@SubscribeMessage("admin_action")
+@UseGuards("WSRoleGuard", "WSPermissionGuard")
+@UseInterceptors("WSAuditInterceptor", "WSValidationInterceptor")
+@UsePipes("WSValidationPipe", "WSTransformPipe")
+@UseFilters("WSBusinessExceptionFilter")
+func HandleAdminAction(
+	@MessageBody() action *AdminAction,
+	@ConnectedSocket() client *WebSocketClient,
+	@CurrentUser() admin *User
+) error {
+	return nil
+}
+
+@OnGatewayConnection()
+func HandleConnection(
+	@ConnectedSocket() client *WebSocketClient,
+	@Headers() headers map[string]string,
+	@Query() query map[string]string,
+	@ClientIP() clientIP string
+) {
+	// Lifecycle handler
+}
+
+@OnGatewayDisconnect()
+func HandleDisconnect(
+	@ConnectedSocket() client *WebSocketClient,
+	@DisconnectReason() reason string,
+	@CurrentUser() user *User
+) {
+	// Disconnection handler
+}
+
+type ChatMessage struct {
+	ID        string
+	Content   string
+	UserID    string
+	RoomID    string
+}
+
+type RoomJoinData struct {
+	RoomID   string
+	Password string
+}
+
+type User struct {
+	ID       string
+	Username string
+	Role     string
+	Status   string
+}
+
+type AdminAction struct {
+	Type       string
+	Target     string
+	Parameters interface{}
+}
+
+@Injectable()
+type ChatService struct {
+	@Inject("database")
+	db *Database
+}
+
+@Injectable()
+type AuthService struct {
+	jwtSecret string
+}
+
+@Injectable()
+type Database struct {
+	connectionString string
+}

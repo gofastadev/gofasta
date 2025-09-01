@@ -1661,7 +1661,7 @@ func (p *Parser) validateWebSocketFunction(wsFunc *core.WebSocketFunctionDeclara
 	for _, decorator := range wsFunc.Decorators {
 		decoratorType := core.GetDecoratorType(decorator.Name)
 		
-		// Validate WebSocket-specific decorators
+		// Allow WebSocket-specific decorators and middleware decorators
 		if core.IsWebSocketDecorator(decoratorType) {
 			switch decoratorType {
 			case core.OnGatewayConnectionDecorator:
@@ -1675,10 +1675,22 @@ func (p *Parser) validateWebSocketFunction(wsFunc *core.WebSocketFunctionDeclara
 			default:
 				// Allow other WebSocket decorators without validation for now
 			}
+		} else if p.isMiddlewareDecorator(decoratorType) {
+			// Allow middleware decorators (UseGuards, UseInterceptors, UsePipes, UseFilters)
+			// These are validated at the method level
 		} else {
 			p.addError(fmt.Sprintf("invalid decorator @%s for WebSocket function %s", decorator.Name, wsFunc.Name))
 		}
 	}
+}
+
+// isMiddlewareDecorator checks if a decorator type is a middleware decorator
+func (p *Parser) isMiddlewareDecorator(decoratorType core.DecoratorType) bool {
+	return decoratorType == core.UseGuardsDecorator ||
+		decoratorType == core.UseInterceptorsDecorator ||
+		decoratorType == core.UsePipesDecorator ||
+		decoratorType == core.UseFiltersDecorator ||
+		decoratorType == core.UseMiddlewareDecorator
 }
 
 // validateOnGatewayConnectionDecorator validates @OnGatewayConnection() decorator
@@ -2151,19 +2163,35 @@ func (p *Parser) skipComments() {
 
 // attachDecoratorToDeclaration attaches a decorator to a declaration
 func (p *Parser) attachDecoratorToDeclaration(decorator *core.DecoratorNode, decl core.GofaDeclaration) {
+	if decl == nil || decorator == nil {
+		return // Safety check to prevent nil pointer dereference
+	}
+	
 	switch d := decl.(type) {
 	case *core.ControllerDeclaration:
-		d.Decorators = append(d.Decorators, decorator)
+		if d != nil {
+			d.Decorators = append(d.Decorators, decorator)
+		}
 	case *core.ServiceDeclaration:
-		d.Decorators = append(d.Decorators, decorator)
+		if d != nil {
+			d.Decorators = append(d.Decorators, decorator)
+		}
 	case *core.ModuleDeclaration:
-		d.Decorators = append(d.Decorators, decorator)
+		if d != nil {
+			d.Decorators = append(d.Decorators, decorator)
+		}
 	case *core.TestSuiteDeclaration:
-		d.Decorators = append(d.Decorators, decorator)
+		if d != nil {
+			d.Decorators = append(d.Decorators, decorator)
+		}
 	case *core.WebSocketGatewayDeclaration:
-		d.Decorators = append(d.Decorators, decorator)
+		if d != nil {
+			d.Decorators = append(d.Decorators, decorator)
+		}
 	case *core.WebSocketFunctionDeclaration:
-		d.Decorators = append(d.Decorators, decorator)
+		if d != nil {
+			d.Decorators = append(d.Decorators, decorator)
+		}
 	}
 }
 

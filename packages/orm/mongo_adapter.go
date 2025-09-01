@@ -108,7 +108,7 @@ func (a *MongoAdapter) FindByID(ctx context.Context, entityType reflect.Type, id
 	
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
-			return nil, core.NewNotFoundException("Document not found")
+			return nil, core.NewNotFoundException("Document", "not found")
 		}
 		return nil, a.translateError(err)
 	}
@@ -127,7 +127,7 @@ func (a *MongoAdapter) FindOne(ctx context.Context, entityType reflect.Type, que
 	err := collection.FindOne(ctx, filter, opts).Decode(entity)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
-			return nil, core.NewNotFoundException("Document not found")
+			return nil, core.NewNotFoundException("Document", "not found")
 		}
 		return nil, a.translateError(err)
 	}
@@ -178,7 +178,6 @@ func (a *MongoAdapter) Update(ctx context.Context, entity interface{}) (interfac
 	}
 
 	filter := bson.M{"_id": id}
-	update := bson.M{"$set": entity}
 
 	result, err := collection.ReplaceOne(ctx, filter, entity)
 	if err != nil {
@@ -186,7 +185,7 @@ func (a *MongoAdapter) Update(ctx context.Context, entity interface{}) (interfac
 	}
 
 	if result.MatchedCount == 0 {
-		return nil, core.NewNotFoundException("Document not found")
+		return nil, core.NewNotFoundException("Document", "not found")
 	}
 
 	return entity, nil
@@ -204,7 +203,7 @@ func (a *MongoAdapter) Delete(ctx context.Context, entityType reflect.Type, quer
 	}
 
 	if result.DeletedCount == 0 {
-		return core.NewNotFoundException("No documents found to delete")
+		return core.NewNotFoundException("Documents", "no documents found to delete")
 	}
 
 	return nil
@@ -414,12 +413,8 @@ func (a *MongoAdapter) getCollectionByType(entityType reflect.Type) *mongo.Colle
 }
 
 func (a *MongoAdapter) getCollectionName(entityType reflect.Type) string {
-	// Check for custom collection name in struct tag
-	if tag, ok := entityType.Tag().Lookup("collection"); ok {
-		return tag
-	}
-	
-	// Default to lowercase struct name
+	// For now, just use lowercase struct name as collection name
+	// TODO: Implement proper struct tag parsing for collection names if needed
 	return strings.ToLower(entityType.Name())
 }
 
@@ -496,7 +491,7 @@ func (a *MongoAdapter) translateError(err error) error {
 	errStr := err.Error()
 	
 	if err == mongo.ErrNoDocuments {
-		return core.NewNotFoundException("Document not found")
+		return core.NewNotFoundException("Document", "not found")
 	}
 	
 	if strings.Contains(errStr, "duplicate") || strings.Contains(errStr, "E11000") {

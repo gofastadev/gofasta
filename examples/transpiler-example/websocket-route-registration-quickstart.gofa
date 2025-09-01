@@ -1,0 +1,45 @@
+package main
+
+// WebSocket Route Registration Quickstart
+// Simple example demonstrating WebSocket route registration code generation
+
+@WebSocketGateway(8080)
+type SimpleGateway struct {
+	@Inject("messageService")
+	messageService *MessageService
+}
+
+@SubscribeMessage("hello")
+func HandleHello(
+	@MessageBody() message string,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// This handler will be automatically registered in the route system
+}
+
+@SubscribeMessage("secure_message")
+@UseGuards("AuthGuard")
+@UseInterceptors("LoggingInterceptor")
+func HandleSecureMessage(
+	@MessageBody() data *SecureData,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Route registration will capture middleware information
+}
+
+@OnGatewayConnection()
+func HandleConnection(
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Lifecycle handlers are tracked separately in route statistics
+}
+
+type SecureData struct {
+	Content string
+	Token   string
+}
+
+@Injectable()
+type MessageService struct {
+	name string
+}
