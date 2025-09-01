@@ -1664,6 +1664,9 @@ func (g *CodeGenerator) generateWebSocketParameterExtraction(method *MethodNode)
 			case "Headers":
 				// Use the full HTTP-style @Headers() logic with WebSocket context
 				g.generateHeaderParameterExtraction(param, decorator)
+			case "Query":
+				// Use the full HTTP-style @Query() logic with WebSocket context
+				g.generateQueryParameterExtraction(param, decorator)
 			case "Session":
 				g.writeLine(fmt.Sprintf("%s := wsCtx.Session", param.Name))
 			case "Rooms":

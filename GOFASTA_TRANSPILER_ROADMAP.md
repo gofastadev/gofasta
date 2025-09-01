@@ -526,7 +526,7 @@ func (s *{{.Name}}WSServer) Start() {
   // HTTP: ctx.Request.Header.Get("auth")  
   // WebSocket: client.Handshake().Header.Get("auth")
   ```
-- [ ] **3.2** Extend `@Query()` for WebSocket connection URL context - **❌ MISSING**
+- [x] **3.2** Extend `@Query()` for WebSocket connection URL context - **✅ COMPLETED**
   ```go
   // HTTP: ctx.Request.URL.Query().Get("room")
   // WebSocket: client.Handshake().URL.Query().Get("room")

@@ -19,8 +19,19 @@ func (g *CodeGenerator) generateQueryParameterExtraction(param *ParameterNode, d
 	// Generate variable declaration
 	g.writeLine(fmt.Sprintf("var %s %s", param.Name, param.Type))
 
-	// Get raw query value
-	g.writeLine(fmt.Sprintf("queryValue := ctx.GetQuery(\"%s\")", queryName))
+	// Get raw query value based on context
+	if g.currentContext == WebSocketContext {
+		// WebSocket context: use client.Handshake().URL.Query().Get()
+		// Find the @ConnectedSocket() parameter name dynamically
+		clientParamName := g.getConnectedSocketParameterName()
+		if clientParamName == "" {
+			clientParamName = "client" // fallback to default
+		}
+		g.writeLine(fmt.Sprintf("queryValue := %s.Handshake().URL.Query().Get(\"%s\")", clientParamName, queryName))
+	} else {
+		// HTTP context: use ctx.GetQuery() (existing behavior)
+		g.writeLine(fmt.Sprintf("queryValue := ctx.GetQuery(\"%s\")", queryName))
+	}
 
 	// Handle default value
 	if options.DefaultValue != "" {
