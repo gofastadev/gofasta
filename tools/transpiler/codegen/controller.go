@@ -1674,7 +1674,7 @@ func (g *CodeGenerator) generateWebSocketParameterExtraction(method *MethodNode)
 			case "Rooms":
 				g.writeLine(fmt.Sprintf("%s := wsCtx.Rooms()", param.Name))
 			case "Namespace":
-				g.writeLine(fmt.Sprintf("%s := wsCtx.Namespace", param.Name))
+				g.writeLine(fmt.Sprintf("%s := wsCtx.Namespace()", param.Name))
 			case "CurrentUser":
 				g.writeLine(fmt.Sprintf("%s := wsCtx.User", param.Name))
 			case "ClientIP":

@@ -2135,6 +2135,13 @@ func (p *Parser) isValidWebSocketParamTypeWithDecorators(param *core.ParameterNo
 			}
 			// If it has @Rooms() decorator but wrong type, it's invalid
 			return false
+		case "Namespace":
+			// @Namespace() ONLY allows string type for namespace identifier
+			if param.Type == "string" {
+				return true
+			}
+			// If it has @Namespace() decorator but wrong type, it's invalid
+			return false
 		}
 	}
 	

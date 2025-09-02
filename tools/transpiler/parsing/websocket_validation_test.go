@@ -527,3 +527,222 @@ func HandleTest(@Rooms() rooms interface{}) {}
 		})
 	}
 }
+
+// === @Namespace() Parameter Decorator Tests ===
+
+func TestNamespaceParameterValidation(t *testing.T) {
+	tests := []struct {
+		name        string
+		code        string
+		expectError bool
+		description string
+	}{
+		{
+			name: "Valid @Namespace() with string type",
+			code: `
+package test
+
+@WebSocketGateway(3000)
+type TestGateway struct {}
+
+@SubscribeMessage("test")
+func HandleTest(@Namespace() namespace string) {}
+			`,
+			expectError: false,
+			description: "Should accept @Namespace() with string type",
+		},
+		{
+			name: "Invalid @Namespace() with wrong type - []string",
+			code: `
+package test
+
+@WebSocketGateway(3000)
+type TestGateway struct {}
+
+@SubscribeMessage("test")  
+func HandleTest(@Namespace() namespace []string) {}
+			`,
+			expectError: true,
+			description: "Should reject @Namespace() with []string type (must be string)",
+		},
+		{
+			name: "Invalid @Namespace() with wrong type - int",
+			code: `
+package test
+
+@WebSocketGateway(3000)
+type TestGateway struct {}
+
+@SubscribeMessage("test")
+func HandleTest(@Namespace() namespace int) {}
+			`,
+			expectError: true,
+			description: "Should reject @Namespace() with int type (must be string)",
+		},
+		{
+			name: "Invalid @Namespace() with wrong type - *string",
+			code: `
+package test
+
+@WebSocketGateway(3000)
+type TestGateway struct {}
+
+@SubscribeMessage("test")
+func HandleTest(@Namespace() namespace *string) {}
+			`,
+			expectError: true,
+			description: "Should reject @Namespace() with *string type (must be string)",
+		},
+		{
+			name: "Valid @Namespace() combined with @MessageBody()",
+			code: `
+package test
+
+@WebSocketGateway(3000)
+type TestGateway struct {}
+
+@SubscribeMessage("test")
+func HandleTest(@MessageBody() data string, @Namespace() namespace string) {}
+			`,
+			expectError: false,
+			description: "Should accept @Namespace() combined with @MessageBody()",
+		},
+		{
+			name: "Valid @Namespace() combined with @ConnectedSocket()",
+			code: `
+package test
+
+@WebSocketGateway(3000)
+type TestGateway struct {}
+
+@SubscribeMessage("test")
+func HandleTest(@Namespace() namespace string, @ConnectedSocket() client *WebSocketClient) {}
+			`,
+			expectError: false,
+			description: "Should accept @Namespace() combined with @ConnectedSocket()",
+		},
+		{
+			name: "Valid @Namespace() with multiple decorators",
+			code: `
+package test
+
+@WebSocketGateway(3000)
+type TestGateway struct {}
+
+@SubscribeMessage("test")
+func HandleTest(
+	@MessageBody() data *TestData,
+	@Namespace() namespace string,
+	@Rooms() rooms []string,
+	@ConnectedSocket() client *WebSocketClient
+) {}
+
+type TestData struct {
+	Message string
+}
+			`,
+			expectError: false,
+			description: "Should accept @Namespace() with multiple other decorators",
+		},
+		{
+			name: "Multiple @Namespace() parameters",
+			code: `
+package test
+
+@WebSocketGateway(3000)
+type TestGateway struct {}
+
+@SubscribeMessage("test")
+func HandleTest(@Namespace() namespace1 string, @Namespace() namespace2 string) {}
+			`,
+			expectError: false,
+			description: "Should accept multiple @Namespace() parameters",
+		},
+		{
+			name: "Invalid @Namespace() with custom struct type",
+			code: `
+package test
+
+@WebSocketGateway(3000)
+type TestGateway struct {}
+
+@SubscribeMessage("test")
+func HandleTest(@Namespace() namespace *NamespaceInfo) {}
+
+type NamespaceInfo struct {
+	Name string
+}
+			`,
+			expectError: true,
+			description: "Should reject @Namespace() with custom struct type (must be string)",
+		},
+		{
+			name: "Invalid @Namespace() with interface type",
+			code: `
+package test
+
+@WebSocketGateway(3000)
+type TestGateway struct {}
+
+@SubscribeMessage("test")
+func HandleTest(@Namespace() namespace interface{}) {}
+			`,
+			expectError: true,
+			description: "Should reject @Namespace() with interface{} type (must be string)",
+		},
+		{
+			name: "Valid @Namespace() with all parameter decorators",
+			code: `
+package test
+
+@WebSocketGateway(3000)
+type TestGateway struct {}
+
+@SubscribeMessage("test")
+func HandleTest(
+	@MessageBody() data *TestData,
+	@ConnectedSocket() client *WebSocketClient,
+	@MessageAck() ack *AckCallback,
+	@Rooms() rooms []string,
+	@Namespace() namespace string
+) {}
+
+type TestData struct {
+	Message string
+}
+			`,
+			expectError: false,
+			description: "Should accept @Namespace() with all other parameter decorators",
+		},
+		{
+			name: "Invalid @Namespace() with byte slice type",
+			code: `
+package test
+
+@WebSocketGateway(3000)
+type TestGateway struct {}
+
+@SubscribeMessage("test")
+func HandleTest(@Namespace() namespace []byte) {}
+			`,
+			expectError: true,
+			description: "Should reject @Namespace() with []byte type (must be string)",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := ParseGofaFile(tt.code)
+			
+			if tt.expectError {
+				if err == nil {
+					t.Errorf("Expected error for %s, but got none. %s", tt.name, tt.description)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Expected no error for %s, but got: %v. %s", tt.name, err, tt.description)
+				}
+			}
+		})
+	}
+}

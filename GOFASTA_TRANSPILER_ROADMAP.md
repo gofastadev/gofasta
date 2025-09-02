@@ -574,8 +574,8 @@ func (s *{{.Name}}WSServer) Start() {
   // Inject array of rooms client has joined
   ```
 - [X] **3.9a** Define `@Namespace()` parameter decorator constant - **✅ COMPLETE**
-- [ ] **3.9b** Implement `@Namespace()` parameter decorator parsing - **❌ MISSING**
-- [ ] **3.9c** Implement `@Namespace()` parameter decorator code generation - **❌ MISSING**
+- [X] **3.9b** Implement `@Namespace()` parameter decorator parsing - **✅ COMPLETE**
+- [X] **3.9c** Implement `@Namespace()` parameter decorator code generation - **✅ COMPLETE**
   ```go
   // Inject current WebSocket namespace
   ```
@@ -680,7 +680,7 @@ func (s *{{.Name}}WSServer) Start() {
 
 ## 📊 **WebSocket Implementation Status Summary**
 
-### **Current Status: 91% Complete (AST + Full WebSocket Parsing + Lifecycle Decorators + Code Generation + Validation + Integration + Testing + @ConnectedSocket() + @MessageAck() + @Rooms() Parameter Decorators)**
+### **Current Status: 93% Complete (AST + Full WebSocket Parsing + Lifecycle Decorators + Code Generation + Validation + Integration + Testing + @ConnectedSocket() + @MessageAck() + @Rooms() + @Namespace() Parameter Decorators)**
 
 | Phase             | Component         | Progress       | Status                     | Details                                                                                                                                                |
 | ----------------- | ----------------- | -------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |

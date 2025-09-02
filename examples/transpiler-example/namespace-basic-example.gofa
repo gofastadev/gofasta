@@ -1,0 +1,319 @@
+package main
+
+// Basic example demonstrating @Namespace() parameter decorator
+// Shows how to access and work with WebSocket namespace identifiers for multi-tenant applications
+
+@WebSocketGateway(3000)
+type NamespaceGateway struct {
+	@Inject("namespaceService")
+	namespaceService *NamespaceService
+}
+
+// === BASIC NAMESPACE ACCESS PATTERNS ===
+
+// Access current connection's namespace
+@SubscribeMessage("get_my_namespace")
+func HandleGetMyNamespace(
+	@Namespace() namespace string,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Send back the namespace the client is connected to
+	// client.Emit("my_namespace", map[string]interface{}{
+	//     "namespace": namespace,
+	//     "connected_at": time.Now(),
+	// })
+}
+
+// Namespace-specific broadcasting
+@SubscribeMessage("broadcast_to_namespace") 
+func HandleBroadcastToNamespace(
+	@MessageBody() message *NamespaceBroadcast,
+	@Namespace() namespace string,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Only broadcast within the current namespace
+	if namespace == message.TargetNamespace {
+		// client.Broadcast().Emit("namespace_message", map[string]interface{}{
+		//     "content": message.Content,
+		//     "sender": client.ID(),
+		//     "namespace": namespace,
+		//     "timestamp": time.Now(),
+		// })
+	} else {
+		// client.Emit("error", "Cannot broadcast to different namespace: " + message.TargetNamespace)
+	}
+}
+
+// === NAMESPACE VALIDATION PATTERNS ===
+
+// Validate namespace access permissions
+@SubscribeMessage("validate_namespace_access")
+func HandleValidateNamespaceAccess(
+	@MessageBody() request *NamespaceAccessRequest,
+	@Namespace() currentNamespace string
+) {
+	// Check if client has access to requested namespace
+	hasAccess := currentNamespace == request.TargetNamespace
+	
+	// response := map[string]interface{}{
+	//     "requestedNamespace": request.TargetNamespace,
+	//     "currentNamespace": currentNamespace,
+	//     "hasAccess": hasAccess,
+	// }
+	// client.Emit("namespace_access_result", response)
+}
+
+// Namespace-based message filtering
+@SubscribeMessage("send_namespace_message")
+func HandleSendNamespaceMessage(
+	@MessageBody() message *NamespaceMessage,
+	@Namespace() namespace string,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Ensure message is being sent within correct namespace
+	if namespace != message.Namespace {
+		// client.Emit("error", fmt.Sprintf("Namespace mismatch: connected to '%s', trying to send to '%s'", namespace, message.Namespace))
+		return
+	}
+
+	// Send message within the namespace
+	// client.Broadcast().Emit("namespace_message", map[string]interface{}{
+	//     "content": message.Content,
+	//     "sender": client.ID(),
+	//     "namespace": namespace,
+	// })
+}
+
+// === NAMESPACE ROUTING PATTERNS ===
+
+// Route messages based on namespace
+@SubscribeMessage("route_by_namespace")
+func HandleRouteByNamespace(
+	@MessageBody() message *RoutableMessage,
+	@Namespace() namespace string,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Route to different handlers based on namespace
+	switch namespace {
+	case "/admin":
+		handleAdminMessage(message, client)
+	case "/user":
+		handleUserMessage(message, client)
+	case "/api":
+		handleAPIMessage(message, client)
+	default:
+		handleDefaultMessage(message, client, namespace)
+	}
+}
+
+// Namespace-specific event handling
+@SubscribeMessage("namespace_event")
+func HandleNamespaceEvent(
+	@MessageBody() event *NamespaceEvent,
+	@Namespace() namespace string,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Process events differently based on namespace
+	eventType := getNamespaceEventType(namespace, event.Type)
+	
+	switch eventType {
+	case "admin_action":
+		// processAdminEvent(event, client)
+	case "user_interaction":
+		// processUserEvent(event, client)
+	case "api_call":
+		// processAPIEvent(event, client)
+	}
+}
+
+// === NAMESPACE STATISTICS PATTERNS ===
+
+// Get namespace statistics
+@SubscribeMessage("get_namespace_stats")
+func HandleGetNamespaceStats(
+	@Namespace() namespace string,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Gather stats for current namespace
+	stats := make(map[string]interface{})
+	stats["namespace"] = namespace
+	stats["connections"] = getNamespaceConnectionCount(namespace)
+	stats["uptime"] = getNamespaceUptime(namespace)
+	
+	// client.Emit("namespace_stats", stats)
+}
+
+// Namespace health check
+@SubscribeMessage("namespace_health")
+func HandleNamespaceHealth(
+	@Namespace() namespace string,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Check health of current namespace
+	health := checkNamespaceHealth(namespace)
+	
+	healthResponse := map[string]interface{}{
+		"namespace": namespace,
+		"status":    health.Status,
+		"healthy":   health.Healthy,
+		"checkedAt": getCurrentTimestamp(),
+	}
+	
+	// client.Emit("namespace_health_result", healthResponse)
+}
+
+// === NAMESPACE MANAGEMENT PATTERNS ===
+
+// Get namespace configuration
+@SubscribeMessage("get_namespace_config")
+func HandleGetNamespaceConfig(
+	@Namespace() namespace string,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Get configuration for current namespace
+	config := getNamespaceConfig(namespace)
+	
+	// client.Emit("namespace_config", map[string]interface{}{
+	//     "namespace": namespace,
+	//     "config": config,
+	// })
+}
+
+// Namespace-aware room operations
+@SubscribeMessage("join_namespaced_room")
+func HandleJoinNamespacedRoom(
+	@MessageBody() request *NamespacedRoomRequest,
+	@Namespace() namespace string,
+	@Rooms() rooms []string,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Create namespaced room name
+	namespacedRoomName := namespace + ":" + request.RoomName
+	
+	// Check if already in this namespaced room
+	for _, room := range rooms {
+		if room == namespacedRoomName {
+			// client.Emit("error", "Already in namespaced room: " + namespacedRoomName)
+			return
+		}
+	}
+
+	// Join the namespaced room
+	// client.Join(namespacedRoomName)
+	
+	// client.Emit("joined_namespaced_room", map[string]interface{}{
+	//     "namespace": namespace,
+	//     "roomName": request.RoomName,
+	//     "fullRoomName": namespacedRoomName,
+	// })
+}
+
+// === HELPER FUNCTIONS ===
+
+func handleAdminMessage(message *RoutableMessage, client *WebSocketClient) {
+	// Handle admin-specific message processing
+}
+
+func handleUserMessage(message *RoutableMessage, client *WebSocketClient) {
+	// Handle user-specific message processing
+}
+
+func handleAPIMessage(message *RoutableMessage, client *WebSocketClient) {
+	// Handle API-specific message processing
+}
+
+func handleDefaultMessage(message *RoutableMessage, client *WebSocketClient, namespace string) {
+	// Handle default message processing with namespace context
+}
+
+func getNamespaceEventType(namespace string, eventType string) string {
+	// Map event types based on namespace
+	switch namespace {
+	case "/admin":
+		return "admin_action"
+	case "/user":
+		return "user_interaction"
+	case "/api":
+		return "api_call"
+	default:
+		return "default_event"
+	}
+}
+
+func getNamespaceConnectionCount(namespace string) int {
+	// Simple implementation - count connections in namespace
+	return 1 // Placeholder
+}
+
+func getNamespaceUptime(namespace string) string {
+	return "1h 30m" // Placeholder
+}
+
+func checkNamespaceHealth(namespace string) *NamespaceHealth {
+	return &NamespaceHealth{
+		Status:  "healthy",
+		Healthy: true,
+	}
+}
+
+func getNamespaceConfig(namespace string) *NamespaceConfig {
+	return &NamespaceConfig{
+		MaxConnections: 1000,
+		Features:       []string{"broadcasting", "rooms", "authentication"},
+	}
+}
+
+func getCurrentTimestamp() string {
+	return "2024-01-01T00:00:00Z"
+}
+
+// === DATA STRUCTURES ===
+
+type NamespaceBroadcast struct {
+	Content         string `json:"content"`
+	TargetNamespace string `json:"target_namespace"`
+}
+
+type NamespaceAccessRequest struct {
+	TargetNamespace string `json:"target_namespace"`
+}
+
+type NamespaceMessage struct {
+	Content   string `json:"content"`
+	Namespace string `json:"namespace"`
+}
+
+type RoutableMessage struct {
+	Content string `json:"content"`
+	Type    string `json:"type"`
+}
+
+type NamespaceEvent struct {
+	Type string      `json:"type"`
+	Data interface{} `json:"data"`
+}
+
+type NamespacedRoomRequest struct {
+	RoomName string `json:"room_name"`
+}
+
+type NamespaceHealth struct {
+	Status  string `json:"status"`
+	Healthy bool   `json:"healthy"`
+}
+
+type NamespaceConfig struct {
+	MaxConnections int      `json:"max_connections"`
+	Features       []string `json:"features"`
+}
+
+// === SERVICES ===
+
+@Injectable()
+type NamespaceService struct{}
+
+// === TYPES ===
+
+type WebSocketClient struct {
+	id string
+}

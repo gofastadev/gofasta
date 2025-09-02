@@ -1,0 +1,486 @@
+package main
+
+// Comprehensive demonstration of @Namespace() parameter decorator
+// Advanced namespace management patterns for enterprise multi-tenant WebSocket applications
+
+@WebSocketGateway(3000)
+type AdvancedNamespaceGateway struct {
+	@Inject("namespaceManager")
+	namespaceManager *NamespaceManager
+	
+	@Inject("tenantService") 
+	tenantService *TenantService
+}
+
+// === MULTI-TENANT NAMESPACE PATTERNS ===
+
+// Tenant-aware message processing with namespace isolation
+@SubscribeMessage("tenant_operation")
+func HandleTenantOperation(
+	@MessageBody() operation *TenantOperation,
+	@Namespace() namespace string,
+	@ConnectedSocket() client *WebSocketClient,
+	@CurrentUser() user *User
+) {
+	// Extract tenant ID from namespace
+	tenantID := extractTenantFromNamespace(namespace)
+	
+	// Validate user belongs to tenant
+	if !userBelongsToTenant(user.ID, tenantID) {
+		// client.Emit("error", "Access denied: user not authorized for tenant")
+		return
+	}
+	
+	// Process operation within tenant context
+	processTenantOperation(operation, tenantID, user.ID)
+	
+	// Broadcast to all clients in this tenant's namespace
+	// client.Broadcast().Emit("tenant_operation_result", operation.Type)
+}
+
+// Cross-namespace coordination for enterprise features
+@SubscribeMessage("cross_namespace_sync")
+func HandleCrossNamespaceSync(
+	@MessageBody() syncRequest *CrossNamespaceSync,
+	@Namespace() sourceNamespace string,
+	@CurrentUser() user *User
+) {
+	// Validate user has cross-namespace permissions
+	if !hasMultiTenantAccess(user.ID) {
+		// client.Emit("error", "Insufficient permissions for cross-namespace operations")
+		return
+	}
+	
+	// Get target namespaces for sync
+	targetNamespaces := getAuthorizedNamespaces(user.ID, syncRequest.TargetTenants)
+	
+	// Perform sync operation across namespaces
+	for _, targetNamespace := range targetNamespaces {
+		performNamespaceSync(sourceNamespace, targetNamespace, syncRequest.Data)
+		
+		// Notify target namespace of sync
+		// broadcastToNamespace(targetNamespace, "sync_notification", syncRequest.Type)
+	}
+	
+	// Return sync results to originator
+	// client.Emit("cross_namespace_sync_complete", "sync_completed")
+}
+
+// === NAMESPACE HIERARCHY MANAGEMENT ===
+
+// Hierarchical namespace operations with inheritance
+@SubscribeMessage("hierarchy_operation")
+func HandleHierarchyOperation(
+	@MessageBody() operation *HierarchyOperation,
+	@Namespace() namespace string,
+	@CurrentUser() user *User
+) {
+	// Parse namespace hierarchy (e.g., "/org/dept/team")
+	hierarchy := parseNamespaceHierarchy(namespace)
+	
+	// Check operation permissions at each level
+	authorizedLevels := checkHierarchyPermissions(user.ID, hierarchy, operation.Type)
+	
+	if len(authorizedLevels) == 0 {
+		// client.Emit("error", "No permissions for hierarchy operation")
+		return
+	}
+	
+	// Execute operation at appropriate hierarchy levels
+	for _, level := range authorizedLevels {
+		executeHierarchyOperation(level, operation)
+		
+		// Propagate operation to parent/child namespaces if needed
+		if operation.PropagateUp {
+			// propagateToParentNamespace(level, operation)
+		}
+		if operation.PropagateDown {
+			// propagateToChildNamespaces(level, operation)
+		}
+	}
+	
+	// client.Emit("hierarchy_operation_complete", "operations_executed")
+}
+
+// Namespace inheritance and policy enforcement
+@SubscribeMessage("enforce_namespace_policy")
+func HandleEnforceNamespacePolicy(
+	@MessageBody() policyRequest *PolicyEnforcement,
+	@Namespace() namespace string,
+	@CurrentUser() user *User
+) {
+	// Get namespace policy configuration
+	policy := getNamespacePolicy(namespace)
+	
+	// Check if user can enforce policies
+	if !canEnforcePolicy(user.ID, namespace, policyRequest.PolicyType) {
+		// client.Emit("error", "Insufficient permissions to enforce policy")
+		return
+	}
+	
+	// Apply policy enforcement
+	enforcePolicyInNamespace(namespace, policyRequest, policy)
+	
+	// Notify all clients in namespace of policy change
+	// client.Broadcast().Emit("policy_enforced", policyRequest.PolicyType)
+}
+
+// === NAMESPACE MONITORING AND ANALYTICS ===
+
+// Real-time namespace metrics collection
+@SubscribeMessage("start_namespace_monitoring")
+func HandleStartNamespaceMonitoring(
+	@MessageBody() monitoring *NamespaceMonitoring,
+	@Namespace() namespace string,
+	@CurrentUser() user *User
+) {
+	// Validate monitoring permissions
+	if !hasMonitoringAccess(user.ID, namespace) {
+		// client.Emit("error", "No monitoring permissions for namespace")
+		return
+	}
+	
+	// Start monitoring session
+	sessionID := startNamespaceMonitoringSession(namespace, monitoring.Metrics, user.ID)
+	
+	// Initialize real-time metrics streaming
+	go func() {
+		// streamNamespaceMetrics(sessionID, namespace, monitoring.Interval)
+	}()
+	
+	// client.Emit("monitoring_started", sessionID)
+}
+
+// Namespace performance analytics
+@SubscribeMessage("analyze_namespace_performance")
+func HandleAnalyzeNamespacePerformance(
+	@MessageBody() analysis *PerformanceAnalysis,
+	@Namespace() namespace string,
+	@CurrentUser() user *User
+) {
+	// Collect performance data for namespace
+	collectNamespacePerformanceData(namespace, analysis.TimeRange)
+	
+	// Perform advanced analytics
+	analyzeNamespacePerformance(namespace, analysis.AnalysisType)
+	
+	// Generate recommendations
+	generateNamespaceOptimizationRecommendations(namespace)
+	
+	// client.Emit("namespace_performance_analysis", "analysis_complete")
+}
+
+// === NAMESPACE SCALING AND LOAD BALANCING ===
+
+// Dynamic namespace scaling based on load
+@SubscribeMessage("scale_namespace")
+func HandleScaleNamespace(
+	@MessageBody() scaling *NamespaceScaling,
+	@Namespace() namespace string,
+	@CurrentUser() user *User
+) {
+	// Check scaling permissions
+	if !hasScalingPermissions(user.ID, namespace) {
+		// client.Emit("error", "No scaling permissions for namespace")
+		return
+	}
+	
+	// Analyze current namespace load
+	currentLoad := getNamespaceLoad(namespace)
+	
+	// Determine scaling action needed
+	scalingAction := determineScalingAction(currentLoad, scaling)
+	
+	if scalingAction.Action == "none" {
+		// client.Emit("scaling_not_needed", scalingAction.Reason)
+		return
+	}
+	
+	// Execute scaling operation
+	executeNamespaceScaling(namespace, scalingAction)
+	
+	// Notify namespace of scaling changes
+	// client.Broadcast().Emit("namespace_scaled", scalingAction.Action)
+}
+
+// Load balancing across namespace instances
+@SubscribeMessage("balance_namespace_load")
+func HandleBalanceNamespaceLoad(
+	@Namespace() namespace string,
+	@Rooms() rooms []string,
+	@CurrentUser() user *User
+) {
+	// Get current load distribution
+	loadDistribution := getNamespaceLoadDistribution(namespace)
+	
+	// Calculate optimal load balancing
+	balancingPlan := calculateLoadBalancing(loadDistribution, rooms)
+	
+	if !balancingPlan.RebalanceNeeded {
+		// client.Emit("load_balancing_not_needed", "no_rebalancing_required")
+		return
+	}
+	
+	// Execute load balancing
+	executeLoadBalancing(namespace, balancingPlan)
+	
+	// client.Emit("load_balancing_complete", "balancing_executed")
+}
+
+// === NAMESPACE SECURITY AND COMPLIANCE ===
+
+// Security audit for namespace
+@SubscribeMessage("audit_namespace_security")
+func HandleAuditNamespaceSecurity(
+	@Namespace() namespace string,
+	@CurrentUser() user *User,
+	@MessageAck() ack *AckCallback
+) {
+	// Validate audit permissions
+	if !hasSecurityAuditPermissions(user.ID, namespace) {
+		// ack.Error("Insufficient permissions for security audit")
+		return
+	}
+	
+	// Perform comprehensive security audit
+	auditResults := performNamespaceSecurityAudit(namespace)
+	
+	// Generate compliance report
+	generateComplianceReport(auditResults, namespace)
+	
+	// Log security audit activity
+	logSecurityAudit(user.ID, namespace, "audit_completed")
+	
+	// ack.Success("Security audit completed successfully")
+}
+
+// Compliance monitoring with real-time alerts
+@SubscribeMessage("monitor_namespace_compliance")
+func HandleMonitorNamespaceCompliance(
+	@MessageBody() compliance *ComplianceMonitoring,
+	@Namespace() namespace string,
+	@CurrentUser() user *User
+) {
+	// Start compliance monitoring
+	monitoringID := startComplianceMonitoring(namespace, compliance.Standards, user.ID)
+	
+	// Set up real-time compliance alerts
+	go func() {
+		// monitorComplianceInRealTime(monitoringID, namespace, compliance)
+	}()
+	
+	// client.Emit("compliance_monitoring_started", monitoringID)
+}
+
+// === HELPER FUNCTIONS ===
+
+func extractTenantFromNamespace(namespace string) string {
+	// Extract tenant ID from namespace path
+	return ""
+}
+
+func userBelongsToTenant(userID string, tenantID string) bool {
+	return true
+}
+
+func processTenantOperation(operation *TenantOperation, tenantID string, userID string) {
+	// Process tenant-specific operation
+}
+
+func hasMultiTenantAccess(userID string) bool {
+	return true
+}
+
+func getAuthorizedNamespaces(userID string, targetTenants []string) []string {
+	return make([]string, 0)
+}
+
+func performNamespaceSync(source string, target string, data interface{}) {
+	// Perform synchronization between namespaces
+}
+
+func parseNamespaceHierarchy(namespace string) []string {
+	return make([]string, 0)
+}
+
+func checkHierarchyPermissions(userID string, hierarchy []string, operationType string) []string {
+	return hierarchy
+}
+
+func executeHierarchyOperation(level string, operation *HierarchyOperation) {
+	// Execute operation at hierarchy level
+}
+
+func getNamespacePolicy(namespace string) *NamespacePolicy {
+	return &NamespacePolicy{Type: "security"}
+}
+
+func canEnforcePolicy(userID string, namespace string, policyType string) bool {
+	return true
+}
+
+func enforcePolicyInNamespace(namespace string, request *PolicyEnforcement, policy *NamespacePolicy) {
+	// Enforce policy in namespace
+}
+
+func hasMonitoringAccess(userID string, namespace string) bool {
+	return true
+}
+
+func startNamespaceMonitoringSession(namespace string, metrics []string, userID string) string {
+	return "session_123"
+}
+
+func collectNamespacePerformanceData(namespace string, timeRange string) {
+	// Collect performance data
+}
+
+func analyzeNamespacePerformance(namespace string, analysisType string) {
+	// Analyze performance data
+}
+
+func generateNamespaceOptimizationRecommendations(namespace string) {
+	// Generate optimization recommendations
+}
+
+func hasScalingPermissions(userID string, namespace string) bool {
+	return true
+}
+
+func getNamespaceLoad(namespace string) *NamespaceLoad {
+	return &NamespaceLoad{CPU: 75.0, Memory: 60.0}
+}
+
+func determineScalingAction(load *NamespaceLoad, scaling *NamespaceScaling) *ScalingAction {
+	return &ScalingAction{Action: "scale_up", Reason: "high_load"}
+}
+
+func executeNamespaceScaling(namespace string, action *ScalingAction) {
+	// Execute scaling operation
+}
+
+func getNamespaceLoadDistribution(namespace string) *LoadDistribution {
+	return &LoadDistribution{Balanced: false}
+}
+
+func calculateLoadBalancing(distribution *LoadDistribution, rooms []string) *BalancingPlan {
+	return &BalancingPlan{RebalanceNeeded: true}
+}
+
+func executeLoadBalancing(namespace string, plan *BalancingPlan) {
+	// Execute load balancing
+}
+
+func hasSecurityAuditPermissions(userID string, namespace string) bool {
+	return true
+}
+
+func performNamespaceSecurityAudit(namespace string) *SecurityAuditResults {
+	return &SecurityAuditResults{RiskLevel: "low"}
+}
+
+func generateComplianceReport(results *SecurityAuditResults, namespace string) {
+	// Generate compliance report
+}
+
+func logSecurityAudit(userID string, namespace string, status string) {
+	// Log audit activity
+}
+
+func startComplianceMonitoring(namespace string, standards []string, userID string) string {
+	return "compliance_monitor_123"
+}
+
+// === DATA STRUCTURES ===
+
+type TenantOperation struct {
+	Type string      `json:"type"`
+	Data interface{} `json:"data"`
+}
+
+type CrossNamespaceSync struct {
+	Type          string   `json:"type"`
+	TargetTenants []string `json:"target_tenants"`
+	Data          interface{} `json:"data"`
+}
+
+type HierarchyOperation struct {
+	Type          string `json:"type"`
+	PropagateUp   bool   `json:"propagate_up"`
+	PropagateDown bool   `json:"propagate_down"`
+}
+
+type PolicyEnforcement struct {
+	PolicyType string      `json:"policy_type"`
+	Rules      interface{} `json:"rules"`
+}
+
+type NamespacePolicy struct {
+	Type  string `json:"type"`
+	Rules []string `json:"rules"`
+}
+
+type NamespaceMonitoring struct {
+	Metrics  []string `json:"metrics"`
+	Interval int      `json:"interval"`
+}
+
+type PerformanceAnalysis struct {
+	TimeRange    string `json:"time_range"`
+	AnalysisType string `json:"analysis_type"`
+}
+
+type NamespaceScaling struct {
+	MinInstances int `json:"min_instances"`
+	MaxInstances int `json:"max_instances"`
+	TargetCPU    int `json:"target_cpu"`
+}
+
+type NamespaceLoad struct {
+	CPU    float64 `json:"cpu"`
+	Memory float64 `json:"memory"`
+}
+
+type ScalingAction struct {
+	Action string `json:"action"`
+	Reason string `json:"reason"`
+}
+
+type LoadDistribution struct {
+	Balanced bool `json:"balanced"`
+}
+
+type BalancingPlan struct {
+	RebalanceNeeded bool `json:"rebalance_needed"`
+}
+
+type SecurityAuditResults struct {
+	RiskLevel string   `json:"risk_level"`
+	Issues    []string `json:"issues"`
+}
+
+type ComplianceMonitoring struct {
+	Standards []string `json:"standards"`
+}
+
+// === SERVICES ===
+
+@Injectable()
+type NamespaceManager struct{}
+
+@Injectable()
+type TenantService struct{}
+
+// === TYPES ===
+
+type User struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Role string `json:"role"`
+}
+
+type WebSocketClient struct {
+	id string
+}
+
+type AckCallback struct{}
