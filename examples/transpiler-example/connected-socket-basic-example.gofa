@@ -1,0 +1,216 @@
+package main
+
+import "fmt"
+
+// Simple example demonstrating @ConnectedSocket() parameter decorator basics
+// Perfect for beginners learning WebSocket parameter decorators
+
+@WebSocketGateway(3000)
+type SimpleWebSocketGateway struct {
+	@Inject("messageService")
+	messageService *MessageService
+}
+
+// === BASIC CONNECTION LIFECYCLE ===
+
+// Handle new client connections
+@OnGatewayConnection()
+func OnClientConnect(@ConnectedSocket() client *WebSocketClient) {
+	// The @ConnectedSocket() decorator injects the current WebSocket client
+	// You can use it to:
+	// - Get client ID: client.ID()
+	// - Send messages: client.Emit()
+	// - Join rooms: client.Join()
+	// - Access client properties
+	
+	// Get client ID for logging or processing
+	// clientID := client.ID()
+	// Welcome the connected client
+	// client.Emit("welcome", "Hello! Your client ID is: " + clientID)
+}
+
+// Handle client disconnections
+@OnGatewayDisconnect()
+func OnClientDisconnect(@ConnectedSocket() client *WebSocketClient) {
+	// Access client information before they disconnect
+	// clientID := client.ID()
+	
+	// Log or cleanup based on client ID
+	// logDisconnection(clientID)
+}
+
+// === BASIC MESSAGE HANDLING ===
+
+// Simple echo server - send message back to sender
+@SubscribeMessage("echo")
+func HandleEcho(
+	@MessageBody() message string,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Send the message back to the same client that sent it
+	// client.Emit("echo_response", "You said: " + message)
+}
+
+// Broadcast message to all clients
+@SubscribeMessage("broadcast")
+func HandleBroadcast(
+	@MessageBody() message string,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Get sender's client ID
+	// senderID := client.ID()
+	
+	// Broadcast to all clients (including sender)
+	// client.Broadcast().Emit("broadcast_message", map[string]interface{}{
+	//     "sender": senderID,
+	//     "message": message,
+	// })
+}
+
+// Send message to all clients except sender
+@SubscribeMessage("announce")
+func HandleAnnounce(
+	@MessageBody() announcement string,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Broadcast to all clients EXCEPT the sender
+	// client.Broadcast().Emit("announcement", announcement)
+}
+
+// === ROOM-BASED MESSAGING ===
+
+// Join a chat room
+@SubscribeMessage("join")
+func HandleJoinRoom(
+	@MessageBody() roomName string,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Join the client to a room
+	// client.Join(roomName)
+	
+	// Notify others in the room about new member
+	// client.To(roomName).Emit("user_joined", client.ID())
+	
+	// Confirm to the client they joined
+	// client.Emit("joined_room", roomName)
+}
+
+// Send message to room
+@SubscribeMessage("room_message")
+func HandleRoomMessage(
+	@MessageBody() data *RoomMessageData,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Send message to all clients in the specified room
+	// client.To(data.RoomName).Emit("room_message", map[string]interface{}{
+	//     "sender": client.ID(),
+	//     "message": data.Message,
+	//     "room": data.RoomName,
+	// })
+}
+
+// === MULTIPLE PARAMETER DECORATORS ===
+
+// Example combining @ConnectedSocket() with other decorators
+// @ConnectedSocket() provides the WebSocket client
+// @MessageBody() provides the message payload  
+// @CurrentUser() provides authenticated user (from authentication middleware)
+// @MessageAck() provides callback for response acknowledgment
+@SubscribeMessage("user_action")
+func HandleUserAction(
+	@MessageBody() action *UserAction,
+	@ConnectedSocket() client *WebSocketClient,
+	@CurrentUser() user *User,
+	@MessageAck() ack *AckCallback
+) {
+	// You can use multiple parameter decorators together
+	// Access client and user information
+	// clientID := client.ID()
+	// userID := user.ID
+	
+	// Process the action
+	if action.Type == "ping" {
+		// ack.Success("pong")
+	} else {
+		// ack.Error("Unknown action type")
+	}
+	
+	// Optionally broadcast the action
+	// client.Broadcast().Emit("user_action", map[string]interface{}{
+	//     "userID": userID,
+	//     "clientID": clientID,
+	//     "action": action.Type,
+	// })
+}
+
+// === ERROR HANDLING ===
+
+// Example with error handling using client
+@SubscribeMessage("risky_operation")
+func HandleRiskyOperation(
+	@MessageBody() data *OperationData,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Perform operation that might fail
+	err := performRiskyOperation(data)
+	
+	if err != nil {
+		// Send error back to the specific client
+		// client.Emit("operation_error", map[string]interface{}{
+		//     "error": err.Error(),
+		//     "operation": data.Type,
+		// })
+		return
+	}
+	
+	// Send success response
+	// client.Emit("operation_success", map[string]interface{}{
+	//     "result": "Operation completed successfully",
+	//     "operation": data.Type,
+	// })
+}
+
+// === HELPER FUNCTIONS ===
+
+func performRiskyOperation(data *OperationData) error {
+	// Simulate an operation that might fail
+	if data.Type == "fail" {
+		return fmt.Errorf("operation failed")
+	}
+	return nil
+}
+
+// === DATA STRUCTURES ===
+
+type RoomMessageData struct {
+	RoomName string `json:"room_name"`
+	Message  string `json:"message"`
+}
+
+type UserAction struct {
+	Type string      `json:"type"`
+	Data interface{} `json:"data"`
+}
+
+type OperationData struct {
+	Type   string      `json:"type"`
+	Params interface{} `json:"params"`
+}
+
+type User struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// === SERVICES ===
+
+@Injectable()
+type MessageService struct{}
+
+// === WEBSOCKET TYPES ===
+
+type WebSocketClient struct {
+	id string
+}
+
+type AckCallback struct{}

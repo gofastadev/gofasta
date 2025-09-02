@@ -997,3 +997,140 @@ func HandleMessage(@MessageBody() @IsNotEmpty() content string, @ConnectedSocket
 		})
 	}
 }
+
+
+func TestConnectedSocketParameterValidation(t *testing.T) {
+	tests := []struct {
+		name        string
+		input       string
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name: "Valid ConnectedSocket with correct type",
+			input: `@SubscribeMessage("message")
+func HandleMessage(@MessageBody() data string, @ConnectedSocket() client *WebSocketClient) {
+}`,
+			expectError: false,
+		},
+		{
+			name: "Valid ConnectedSocket in connection handler",
+			input: `@OnGatewayConnection()
+func HandleConnection(@ConnectedSocket() client *WebSocketClient, @Headers() headers map[string]string) {
+}`,
+			expectError: false,
+		},
+		{
+			name: "Valid ConnectedSocket in disconnection handler",
+			input: `@OnGatewayDisconnect()
+func HandleDisconnection(@ConnectedSocket() client *WebSocketClient) {
+}`,
+			expectError: false,
+		},
+		{
+			name: "Valid ConnectedSocket with custom parameter name",
+			input: `@SubscribeMessage("message")
+func HandleMessage(@MessageBody() data string, @ConnectedSocket() wsClient *WebSocketClient) {
+}`,
+			expectError: false,
+		},
+		{
+			name: "Invalid ConnectedSocket with wrong type - string",
+			input: `@SubscribeMessage("message")
+func HandleMessage(@MessageBody() data string, @ConnectedSocket() client string) {
+}`,
+			expectError: true,
+			errorMsg: "invalid parameter type 'string'",
+		},
+		{
+			name: "Invalid ConnectedSocket with wrong type - pointer to wrong type",
+			input: `@SubscribeMessage("message")
+func HandleMessage(@MessageBody() data string, @ConnectedSocket() client *User) {
+}`,
+			expectError: true,
+			errorMsg: "invalid parameter type '*User'",
+		},
+		{
+			name: "Invalid ConnectedSocket with interface type",
+			input: `@SubscribeMessage("message")
+func HandleMessage(@MessageBody() data string, @ConnectedSocket() client interface{}) {
+}`,
+			expectError: true,
+			errorMsg: "invalid parameter type 'interface{}'",
+		},
+		{
+			name: "Invalid ConnectedSocket with non-pointer WebSocketClient",
+			input: `@SubscribeMessage("message")
+func HandleMessage(@MessageBody() data string, @ConnectedSocket() client WebSocketClient) {
+}`,
+			expectError: true,
+			errorMsg: "invalid parameter type 'WebSocketClient'",
+		},
+		{
+			name: "Multiple ConnectedSocket parameters in same function",
+			input: `@SubscribeMessage("message")
+func HandleMessage(@ConnectedSocket() client1 *WebSocketClient, @ConnectedSocket() client2 *WebSocketClient) {
+}`,
+			expectError: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			lexer := NewLexer(test.input)
+			parser := NewParser(lexer)
+			ast, err := parser.ParseFile()
+
+			hasError := err != nil || len(parser.errors) > 0
+			if hasError != test.expectError {
+				if test.expectError {
+					t.Errorf("Expected parsing error for %s, but parsing succeeded", test.name)
+				} else {
+					t.Errorf("Expected no parsing error for %s, but got: %v, errors: %v", test.name, err, parser.errors)
+				}
+				return
+			}
+			
+			if test.expectError && test.errorMsg != "" {
+				found := false
+				if err != nil && strings.Contains(err.Error(), test.errorMsg) {
+					found = true
+				}
+				for _, parserErr := range parser.errors {
+					if strings.Contains(parserErr, test.errorMsg) {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Errorf("Expected error containing \"%s\" but got: %v", test.errorMsg, parser.errors)
+				}
+			} else if !test.expectError {
+				// Verify that the function was parsed correctly with ConnectedSocket decorator
+				if ast != nil && len(ast.Declarations) > 0 {
+					// Look for function declarations
+					for _, decl := range ast.Declarations {
+						if funcDecl, ok := decl.(*core.WebSocketFunctionDeclaration); ok {
+							found := false
+							for _, param := range funcDecl.Params {
+								for _, decorator := range param.Decorators {
+									if decorator.Name == "ConnectedSocket" {
+										found = true
+										// Verify parameter type is correct
+										if param.Type != "*WebSocketClient" {
+											t.Errorf("Expected ConnectedSocket parameter to have type '*WebSocketClient', got '%s'", param.Type)
+										}
+										break
+									}
+								}
+							}
+							if found {
+								break
+							}
+						}
+					}
+				}
+			}
+		})
+	}
+}

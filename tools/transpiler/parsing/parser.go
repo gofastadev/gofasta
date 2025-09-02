@@ -2114,6 +2114,13 @@ func (p *Parser) isValidWebSocketParamTypeWithDecorators(param *core.ParameterNo
 		case "MessageBody":
 			// @MessageBody() allows any type for message payload
 			return true
+		case "ConnectedSocket":
+			// @ConnectedSocket() ONLY allows *WebSocketClient type for current connection
+			if param.Type == "*WebSocketClient" {
+				return true
+			}
+			// If it has @ConnectedSocket() decorator but wrong type, it's invalid
+			return false
 		}
 	}
 	
