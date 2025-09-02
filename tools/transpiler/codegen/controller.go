@@ -1656,7 +1656,7 @@ func (g *CodeGenerator) generateWebSocketParameterExtraction(method *MethodNode)
 			case "ConnectedSocket":
 				g.writeLine(fmt.Sprintf("%s := wsCtx.Client()", param.Name))
 			case "MessageAck":
-				g.writeLine(fmt.Sprintf("%s := wsCtx.AckCallback", param.Name))
+				g.writeLine(fmt.Sprintf("%s := wsCtx.AckCallback()", param.Name))
 			case "Headers":
 				// Use the full HTTP-style @Headers() logic with WebSocket context
 				g.generateHeaderParameterExtraction(param, decorator)

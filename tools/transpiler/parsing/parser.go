@@ -2121,6 +2121,13 @@ func (p *Parser) isValidWebSocketParamTypeWithDecorators(param *core.ParameterNo
 			}
 			// If it has @ConnectedSocket() decorator but wrong type, it's invalid
 			return false
+		case "MessageAck":
+			// @MessageAck() ONLY allows *AckCallback type for acknowledgment callback
+			if param.Type == "*AckCallback" {
+				return true
+			}
+			// If it has @MessageAck() decorator but wrong type, it's invalid
+			return false
 		}
 	}
 	

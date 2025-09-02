@@ -1134,3 +1134,147 @@ func HandleMessage(@ConnectedSocket() client1 *WebSocketClient, @ConnectedSocket
 		})
 	}
 }
+
+
+func TestMessageAckParameterValidation(t *testing.T) {
+	tests := []struct {
+		name        string
+		input       string
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name: "Valid MessageAck with correct type",
+			input: `@SubscribeMessage("message")
+func HandleMessage(@MessageBody() data string, @MessageAck() ack *AckCallback) {
+}`,
+			expectError: false,
+		},
+		{
+			name: "Valid MessageAck in SubscribeMessage handler with multiple decorators",
+			input: `@SubscribeMessage("join_room")
+func HandleJoinRoom(@MessageBody() roomData *JoinRoomData, @ConnectedSocket() client *WebSocketClient, @MessageAck() ack *AckCallback) {
+}`,
+			expectError: false,
+		},
+		{
+			name: "Valid MessageAck with custom parameter name",
+			input: `@SubscribeMessage("message")
+func HandleMessage(@MessageBody() data string, @MessageAck() callback *AckCallback) {
+}`,
+			expectError: false,
+		},
+		{
+			name: "Invalid MessageAck with wrong type - string",
+			input: `@SubscribeMessage("message")
+func HandleMessage(@MessageBody() data string, @MessageAck() ack string) {
+}`,
+			expectError: true,
+			errorMsg: "invalid parameter type 'string'",
+		},
+		{
+			name: "Invalid MessageAck with wrong type - pointer to wrong type",
+			input: `@SubscribeMessage("message")
+func HandleMessage(@MessageBody() data string, @MessageAck() ack *User) {
+}`,
+			expectError: true,
+			errorMsg: "invalid parameter type '*User'",
+		},
+		{
+			name: "Invalid MessageAck with interface type",
+			input: `@SubscribeMessage("message")
+func HandleMessage(@MessageBody() data string, @MessageAck() ack interface{}) {
+}`,
+			expectError: true,
+			errorMsg: "invalid parameter type 'interface{}'",
+		},
+		{
+			name: "Invalid MessageAck with non-pointer AckCallback",
+			input: `@SubscribeMessage("message")
+func HandleMessage(@MessageBody() data string, @MessageAck() ack AckCallback) {
+}`,
+			expectError: true,
+			errorMsg: "invalid parameter type 'AckCallback'",
+		},
+		{
+			name: "Multiple MessageAck parameters in same function",
+			input: `@SubscribeMessage("message")
+func HandleMessage(@MessageAck() ack1 *AckCallback, @MessageAck() ack2 *AckCallback) {
+}`,
+			expectError: false,
+		},
+		{
+			name: "MessageAck in connection handler (unusual but should validate type)",
+			input: `@OnGatewayConnection()
+func HandleConnection(@ConnectedSocket() client *WebSocketClient, @MessageAck() ack *AckCallback) {
+}`,
+			expectError: false,
+		},
+		{
+			name: "MessageAck with validation decorators combination",
+			input: `@SubscribeMessage("validate_message")
+func HandleValidatedMessage(@MessageBody() @IsNotEmpty() content string, @MessageAck() ack *AckCallback) {
+}`,
+			expectError: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			lexer := NewLexer(test.input)
+			parser := NewParser(lexer)
+			ast, err := parser.ParseFile()
+
+			hasError := err != nil || len(parser.errors) > 0
+			if hasError != test.expectError {
+				if test.expectError {
+					t.Errorf("Expected parsing error for %s, but parsing succeeded", test.name)
+				} else {
+					t.Errorf("Expected no parsing error for %s, but got: %v, errors: %v", test.name, err, parser.errors)
+				}
+				return
+			}
+			
+			if test.expectError && test.errorMsg != "" {
+				found := false
+				if err != nil && strings.Contains(err.Error(), test.errorMsg) {
+					found = true
+				}
+				for _, parserErr := range parser.errors {
+					if strings.Contains(parserErr, test.errorMsg) {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Errorf("Expected error containing \"%s\" but got: %v", test.errorMsg, parser.errors)
+				}
+			} else if !test.expectError {
+				// Verify that the function was parsed correctly with MessageAck decorator
+				if ast != nil && len(ast.Declarations) > 0 {
+					// Look for function declarations
+					for _, decl := range ast.Declarations {
+						if funcDecl, ok := decl.(*core.WebSocketFunctionDeclaration); ok {
+							found := false
+							for _, param := range funcDecl.Params {
+								for _, decorator := range param.Decorators {
+									if decorator.Name == "MessageAck" {
+										found = true
+										// Verify parameter type is correct
+										if param.Type != "*AckCallback" {
+											t.Errorf("Expected MessageAck parameter to have type '*AckCallback', got '%s'", param.Type)
+										}
+										break
+									}
+								}
+							}
+							if found {
+								break
+							}
+						}
+					}
+				}
+			}
+		})
+	}
+}

@@ -562,8 +562,8 @@ func (s *{{.Name}}WSServer) Start() {
   // Inject current WebSocket client connection
   ```
 - [X] **3.7a** Define `@MessageAck()` parameter decorator constant - **✅ COMPLETE**
-- [ ] **3.7b** Implement `@MessageAck()` parameter decorator parsing - **❌ MISSING**
-- [ ] **3.7c** Implement `@MessageAck()` parameter decorator code generation - **❌ MISSING**
+- [X] **3.7b** Implement `@MessageAck()` parameter decorator parsing - **✅ COMPLETE**
+- [X] **3.7c** Implement `@MessageAck()` parameter decorator code generation - **✅ COMPLETE**
   ```go
   // Inject acknowledgment callback for WebSocket messages
   ```
@@ -680,14 +680,14 @@ func (s *{{.Name}}WSServer) Start() {
 
 ## 📊 **WebSocket Implementation Status Summary**
 
-### **Current Status: 87% Complete (AST + Full WebSocket Parsing + Lifecycle Decorators + Code Generation + Validation + Integration + Testing + @ConnectedSocket() Parameter Decorator)**
+### **Current Status: 89% Complete (AST + Full WebSocket Parsing + Lifecycle Decorators + Code Generation + Validation + Integration + Testing + @ConnectedSocket() + @MessageAck() Parameter Decorators)**
 
 | Phase             | Component         | Progress       | Status                     | Details                                                                                                                                                |
 | ----------------- | ----------------- | -------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Phase 1** | AST Definitions   | **100%** | ✅**Complete**       | All WebSocket AST nodes, constants, mappings, helpers, tests                                                                                           |
 | **Phase 1** | Parsing Logic     | **100%** | ✅**Complete**       | All WebSocket decorators + lifecycle decorators + custom parameter types + full integration                                                            |
 | **Phase 2** | Code Generation   | **100%** | ✅**COMPLETE**       | Enhanced WebSocket lifecycle method generation + comprehensive middleware integration + advanced configuration parsing + intelligent import generation |
-| **Phase 3** | Parameter Support | **43%**  | 🔄**Partial**        | @MessageBody() and @ConnectedSocket() complete, 4 HTTP decorators extended for WebSocket context                                                      |
+| **Phase 3** | Parameter Support | **50%**  | 🔄**Partial**        | @MessageBody(), @ConnectedSocket(), and @MessageAck() complete, 4 HTTP decorators extended for WebSocket context                                    |
 | **Phase 4** | Advanced Features | **5%**   | ❌**Constants Only** | Only decorator constants, no implementation                                                                                                            |
 | **Phase 5** | Testing Support   | **100%** | ✅**Complete**       | Full integration test suite + comprehensive test coverage                                                                                              |
 
