@@ -89,6 +89,10 @@ func NewParallelParser(config *ParserConfig) *ParallelParser {
 		config.FileExtensions = []string{".gofa", ".go"}
 	}
 	
+	if config.ExcludeDirs == nil {
+		config.ExcludeDirs = []string{}
+	}
+	
 	return &ParallelParser{
 		config:  config,
 		fileSet: token.NewFileSet(),
