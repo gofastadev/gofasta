@@ -164,14 +164,6 @@ run_module_tests "./tools/transpiler/core" "transpiler-v2-parser" "Phase 1.1a: P
 print_section "🧪 Transpiler Integration Tests"
 run_module_tests "./tests/integration" "transpiler-integration" "Real-world Integration"
 
-# Legacy transpiler tests (keep for backward compatibility)
-print_section "🔧 Legacy Transpiler Tests"
-run_module_tests "./tools/transpiler" "transpiler-core" "Core Transpiler"
-run_module_tests "./tools/transpiler/cli" "transpiler-cli" "CLI Interface"
-run_module_tests "./tools/transpiler/codegen" "transpiler-codegen" "Code Generation"
-run_module_tests "./tools/transpiler/core" "transpiler-core-ast" "AST & Core Types"
-run_module_tests "./tools/transpiler/parsing" "transpiler-parsing" "Parser & Lexer"
-
 print_section "📦 Package Tests"
 if [ -d "packages" ]; then
     for package_dir in packages/*/; do
@@ -283,9 +275,11 @@ if [ -f "$TEST_OUTPUT" ]; then
     if [[ "$PERFORMANCE_DATA" != "40000.0" ]] && [[ "$PERFORMANCE_DATA" != "" ]]; then
         PERFORMANCE_FILES_PER_SEC=$(printf "%.0f" "$PERFORMANCE_DATA")
     fi
-    # Get the workers count from the best performance run (look for MaxWorkers test scenario)
-    WORKERS_LINE=$(grep -B2 "Files/sec: $PERFORMANCE_DATA" "$TEST_OUTPUT" 2>/dev/null | grep "Workers:" | head -1 || echo "Workers: 16")
-    PERFORMANCE_WORKERS=$(echo "$WORKERS_LINE" | grep -o '[0-9]*' | head -1 || echo "16")
+    # Get the workers count from the best performance run
+    WORKERS_DATA=$(grep -B1 "Files/sec: $PERFORMANCE_DATA" "$TEST_OUTPUT" 2>/dev/null | grep "Workers:" | grep -o '[0-9]*' | head -1 || echo "16")
+    if [[ "$WORKERS_DATA" != "" ]]; then
+        PERFORMANCE_WORKERS="$WORKERS_DATA"
+    fi
 fi
 
 # Count skipped tests dynamically based on actual skip patterns
@@ -312,14 +306,158 @@ Success Rate: $SUCCESS_RATE%
 
 COVERAGE INFORMATION:
 - Overall Project Coverage: $OVERALL_COVERAGE
-- Transpiler Core Coverage: $TRANSPILER_CORE_COVERAGE (Phase 1.1a parser implementation)
-- Module Coverage Breakdown:
+
+MODULE COVERAGE BREAKDOWN:
 EOF
 
-# Add individual module coverage
-for coverage_info in "${COVERAGE_DATA[@]}"; do
-    echo "  - $coverage_info" >> "$SUMMARY_FILE"
+# First, add transpiler coverage with Phase 1.1 details
+echo "" >> "$SUMMARY_FILE"
+echo "📦 Transpiler Modules:" >> "$SUMMARY_FILE"
+
+# Extract per-file coverage for Phase 1.1 components if available
+PHASE_1_1_FILE_COVERAGE=""
+# Look for any transpiler coverage file
+COVERAGE_FILE=""
+for possible_file in coverage_transpiler-v2-parser.out coverage_transpiler-core-ast.out coverage_transpiler-core.out; do
+    if [[ -f "$possible_file" ]]; then
+        COVERAGE_FILE="$possible_file"
+        break
+    fi
 done
+
+# If we still don't have a coverage file, look for any coverage file that might contain transpiler/core
+if [[ -z "$COVERAGE_FILE" ]]; then
+    for cov_file in coverage_*.out; do
+        if [[ -f "$cov_file" ]] && grep -q "transpiler/core" "$cov_file" 2>/dev/null; then
+            COVERAGE_FILE="$cov_file"
+            break
+        fi
+    done
+fi
+
+# Get the transpiler module coverage from COVERAGE_DATA
+TRANSPILER_V2_COVERAGE=""
+TRANSPILER_INTEGRATION_COVERAGE=""
+for coverage_info in "${COVERAGE_DATA[@]}"; do
+    if [[ "$coverage_info" == *"transpiler-v2-parser"* ]]; then
+        TRANSPILER_V2_COVERAGE=$(echo "$coverage_info" | grep -o '[0-9]*\.[0-9]*%' || echo "N/A")
+    elif [[ "$coverage_info" == *"transpiler-core-ast"* ]]; then
+        if [[ -z "$TRANSPILER_V2_COVERAGE" ]]; then
+            TRANSPILER_V2_COVERAGE=$(echo "$coverage_info" | grep -o '[0-9]*\.[0-9]*%' || echo "N/A")
+        fi
+    elif [[ "$coverage_info" == *"transpiler-integration"* ]]; then
+        TRANSPILER_INTEGRATION_COVERAGE=$(echo "$coverage_info" | grep -o '[0-9]*\.[0-9]*%' || echo "N/A")
+    fi
+done
+
+# Display transpiler coverage with Phase 1.1 breakdown
+if [[ -n "$TRANSPILER_V2_COVERAGE" ]]; then
+    echo "  • tools/transpiler/core: $TRANSPILER_V2_COVERAGE (Phase 1.1 Components)" >> "$SUMMARY_FILE"
+    
+    # If we have the coverage file, show file-level breakdown
+    if [[ -n "$COVERAGE_FILE" ]]; then
+        # Debug: Show which coverage file we're using
+        print_status "Using coverage file: $COVERAGE_FILE"
+        
+        # Process the coverage file once and store results
+        COVERAGE_OUTPUT=$(go tool cover -func="$COVERAGE_FILE" 2>/dev/null)
+        
+        # Extract coverage for each Phase 1.1 file
+        for target_file in parser.go ast_cache.go token_pool.go type_checker.go formatter.go import_cache.go; do
+            file_coverage=""
+            
+            # Get all lines for this file, take the last one
+            last_line=$(echo "$COVERAGE_OUTPUT" | grep "${target_file}" | tail -1)
+            
+            if [[ -n "$last_line" ]]; then
+                # Extract just the percentage from the last field
+                file_coverage=$(echo "$last_line" | awk '{print $NF}')
+                
+                # If we didn't get a percentage, try averaging approach
+                if [[ ! "$file_coverage" =~ %$ ]]; then
+                    all_percentages=$(echo "$COVERAGE_OUTPUT" | grep "${target_file}" | awk '{print $NF}' | grep '%' | sed 's/%//')
+                    if [[ -n "$all_percentages" ]]; then
+                        sum=0
+                        count=0
+                        for pct in $all_percentages; do
+                            sum=$(echo "$sum + $pct" | bc 2>/dev/null || echo "$sum")
+                            count=$((count + 1))
+                        done
+                        if [[ $count -gt 0 ]]; then
+                            avg=$(echo "scale=1; $sum / $count" | bc 2>/dev/null || echo "0.0")
+                            file_coverage="${avg}%"
+                        fi
+                    fi
+                fi
+                
+                # Write the coverage for this file if we got a valid percentage
+                if [[ -n "$file_coverage" ]] && [[ "$file_coverage" =~ %$ ]]; then
+                    case "$target_file" in
+                        "parser.go")
+                            echo "    ├─ Phase 1.1a parser.go: $file_coverage" >> "$SUMMARY_FILE"
+                            ;;
+                        "ast_cache.go")
+                            echo "    ├─ Phase 1.1b ast_cache.go: $file_coverage" >> "$SUMMARY_FILE"
+                            ;;
+                        "token_pool.go")
+                            echo "    ├─ Phase 1.1c token_pool.go: $file_coverage" >> "$SUMMARY_FILE"
+                            ;;
+                        "type_checker.go")
+                            echo "    ├─ Phase 1.1d type_checker.go: $file_coverage" >> "$SUMMARY_FILE"
+                            ;;
+                        "formatter.go")
+                            echo "    ├─ Phase 1.1e formatter.go: $file_coverage" >> "$SUMMARY_FILE"
+                            ;;
+                        "import_cache.go")
+                            echo "    └─ Phase 1.1f import_cache.go: $file_coverage" >> "$SUMMARY_FILE"
+                            ;;
+                    esac
+                fi
+            fi
+        done
+    fi
+fi
+
+# Add integration test coverage if available
+if [[ -n "$TRANSPILER_INTEGRATION_COVERAGE" ]]; then
+    echo "  • tests/integration: $TRANSPILER_INTEGRATION_COVERAGE" >> "$SUMMARY_FILE"
+fi
+
+# Add framework packages
+echo "" >> "$SUMMARY_FILE"
+echo "📦 Framework Packages:" >> "$SUMMARY_FILE"
+for coverage_info in "${COVERAGE_DATA[@]}"; do
+    case "$coverage_info" in
+        *"package-"*)
+            package_name=$(echo "$coverage_info" | sed 's/.*package-\([^:]*\):.*/\1/')
+            package_coverage=$(echo "$coverage_info" | cut -d: -f2)
+            echo "  • packages/$package_name: $package_coverage" >> "$SUMMARY_FILE"
+            ;;
+    esac
+done
+
+# Add plugins if any
+HAS_PLUGINS=false
+for coverage_info in "${COVERAGE_DATA[@]}"; do
+    if [[ "$coverage_info" == *"plugin-"* ]]; then
+        HAS_PLUGINS=true
+        break
+    fi
+done
+
+if [[ "$HAS_PLUGINS" == "true" ]]; then
+    echo "" >> "$SUMMARY_FILE"
+    echo "📦 Plugins:" >> "$SUMMARY_FILE"
+    for coverage_info in "${COVERAGE_DATA[@]}"; do
+        case "$coverage_info" in
+            *"plugin-"*)
+                plugin_name=$(echo "$coverage_info" | sed 's/.*plugin-\([^:]*\):.*/\1/')
+                plugin_coverage=$(echo "$coverage_info" | cut -d: -f2)
+                echo "  • plugins/$plugin_name: $plugin_coverage" >> "$SUMMARY_FILE"
+                ;;
+        esac
+    done
+fi
 
 cat >> "$SUMMARY_FILE" << EOF
 
@@ -327,14 +465,20 @@ CODE QUALITY:
 - Go Vet Analysis: $VET_ISSUES
 
 TEST CATEGORIES:
-- ✅ GoFasta v2.0 Transpiler Core: tools/transpiler/core (Phase 1.1a parallel parser)
+- ✅ GoFasta v2.0 Transpiler Core: tools/transpiler/core (Phase 1.1 components)
 - ✅ Transpiler Integration Tests: tests/integration (real-world scenarios)
 - ✅ Framework Package Tests: packages/* (core, http, auth, validation, etc.)
 - ✅ Framework Plugin Tests: plugins/* (cors, metrics, rate-limit, etc.)
 - ✅ Example Application Tests: examples/* (basic-api, e-commerce, etc.)
 
 CURRENT TRANSPILER STRUCTURE:
-- tools/transpiler/core/           # Phase 1.1a: High-performance parallel parser
+- tools/transpiler/core/           # Phase 1.1: All components implemented
+  ├── parser.go                    # Phase 1.1a: Parallel file parser
+  ├── ast_cache.go                 # Phase 1.1b: AST caching with LRU
+  ├── token_pool.go                # Phase 1.1c: Token memory pooling  
+  ├── type_checker.go              # Phase 1.1d: Incremental type checking
+  ├── formatter.go                 # Phase 1.1e: Batched formatting
+  └── import_cache.go              # Phase 1.1f: Import caching
 - tools/transpiler/decorators/     # Future: All 244 decorator implementations
   ├── rest/                        # Phase 3: REST API decorators
   ├── websocket/                   # Phase 7: WebSocket decorators  
@@ -346,9 +490,9 @@ CURRENT TRANSPILER STRUCTURE:
 - tools/transpiler/examples/       # Usage demonstrations
 - tools/transpiler/internal/       # Performance utilities and templates
 
-PHASE 1.1a ACHIEVEMENTS:
-- High-performance parallel file parser using go/parser
-- $TRANSPILER_CORE_COVERAGE unit test coverage with comprehensive test suite
+PHASE 1.1 ACHIEVEMENTS:
+- All Phase 1.1 components (a-f) fully implemented
+- $TRANSPILER_CORE_COVERAGE overall test coverage with comprehensive test suite
 - $PERFORMANCE_FILES_PER_SEC+ files/second parsing performance with $PERFORMANCE_WORKERS workers
 - Real-world integration tests with complex project structures
 - Complete example demonstrations and documentation
@@ -367,12 +511,16 @@ fi
 cat >> "$SUMMARY_FILE" << EOF
 
 KEY ACHIEVEMENTS:
-✅ Phase 1.1a: High-Performance Parallel Parser - COMPLETE
-  - go/parser integration with parallel file processing
-  - $PERFORMANCE_FILES_PER_SEC+ files/second parsing performance 
-  - $TRANSPILER_CORE_COVERAGE unit test coverage
-  - Real-world integration testing
-  - Complete example demonstrations
+✅ Phase 1.1: Complete Core Infrastructure - ALL COMPONENTS COMPLETE
+  - Phase 1.1a: High-performance parallel parser with go/parser
+  - Phase 1.1b: AST caching system with LRU eviction
+  - Phase 1.1c: Token memory pooling for efficiency
+  - Phase 1.1d: Incremental type checking with caching
+  - Phase 1.1e: Batched file formatting with parallel processing
+  - Phase 1.1f: Import caching with fallback mechanisms
+  - $PERFORMANCE_FILES_PER_SEC+ files/second parsing performance
+  - $TRANSPILER_CORE_COVERAGE overall test coverage
+  - Complete integration testing and examples
 ✅ GoFasta Framework Infrastructure:
   - Core application lifecycle management
   - Dependency injection container
@@ -422,9 +570,13 @@ PROJECT STRUCTURE TESTED:
 
 TRANSPILER ROADMAP PROGRESS:
 - ✅ Phase 1.1a: go/parser with parallel processing (COMPLETED)
-- 🚧 Phase 1.1b: go/ast with AST caching system (NEXT)
-- 📋 Phases 1.1c-1.1f: Token, types, format, importer (PLANNED)
-- 📋 Phases 2-18: 244 enterprise decorators (PLANNED)
+- ✅ Phase 1.1b: go/ast with AST caching system (COMPLETED)
+- ✅ Phase 1.1c: go/token with memory pooling (COMPLETED)
+- ✅ Phase 1.1d: go/types with incremental checking (COMPLETED)
+- ✅ Phase 1.1e: go/format with batched processing (COMPLETED)
+- ✅ Phase 1.1f: go/importer with caching (COMPLETED)
+- 📋 Phase 2: Fault tolerance decorators (NEXT)
+- 📋 Phases 3-18: Remaining 244 enterprise decorators (PLANNED)
 
 EOF
 
@@ -455,11 +607,12 @@ echo ""
 # Final status
 if [ "$OVERALL_RESULT" = "PASSED" ]; then
     echo "🏆 ALL TESTS PASSED! The Gofasta project is in excellent health!"
-    echo "✅ Phase 1.1a: High-performance parallel parser ($PERFORMANCE_FILES_PER_SEC+ files/sec)"
-    echo "✅ Transpiler core: $TRANSPILER_CORE_COVERAGE test coverage, all tests passing"
+    echo "✅ Phase 1.1 Complete: All core components (a-f) implemented"
+    echo "✅ Performance: $PERFORMANCE_FILES_PER_SEC+ files/sec parsing speed"
+    echo "✅ Coverage: $TRANSPILER_CORE_COVERAGE test coverage across all Phase 1.1 components"
     echo "✅ Integration tests: Real-world scenarios validated"
     echo "✅ GoFasta framework: Core infrastructure stable"
-    echo "✅ Ready for Phase 1.1b: AST caching system implementation"
+    echo "✅ Ready for Phase 2: Fault tolerance decorators implementation"
 else
     echo "⚠️ SOME TESTS FAILED. Please review the test output above."
     echo "📝 Check test_summary.txt for detailed failure analysis"

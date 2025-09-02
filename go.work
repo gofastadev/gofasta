@@ -26,6 +26,5 @@ use (
 	./plugins/swagger
 	./plugins/tracing
 	./tools/transpiler
-	./tools/transpiler/examples/basic
 	./tests/integration
 )
