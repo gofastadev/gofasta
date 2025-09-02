@@ -685,12 +685,22 @@ gofasta/
 │       │   ├── testing/         # Testing with test optimization
 │       │   ├── advanced/        # Advanced features with caching optimization
 │       │   └── cloud/           # Cloud integrations with SDK optimization
+│       ├── examples/        # Transpiler-specific examples and demos
+│       │   ├── basic/           # Basic decorator usage examples
+│       │   ├── fault-tolerance/ # Fault tolerance pattern examples
+│       │   ├── enterprise/      # Full enterprise stack examples
+│       │   ├── microservices/   # Microservices architecture examples
+│       │   ├── websocket/       # WebSocket and real-time examples
+│       │   ├── graphql/         # GraphQL API examples
+│       │   ├── grpc/           # gRPC service examples
+│       │   ├── cloud/          # Cloud integration examples
+│       │   └── performance/    # Performance benchmark examples
 │       └── internal/        # High-performance utilities
 │           ├── cache.go     # Multi-level smart caching
 │           ├── parallel.go  # Parallel processing optimization
 │           ├── memory.go    # Memory pooling and optimization
 │           └── templates/   # Pre-compiled code generation templates
-├── examples/        # Performance benchmarks and feature examples
+├── examples/        # Framework-level examples and usage patterns
 ├── docs/           # Complete documentation
 └── tests/          # Performance & integration tests
     ├── benchmarks/  # Performance benchmarks for all features
