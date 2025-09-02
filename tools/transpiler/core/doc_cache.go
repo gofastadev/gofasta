@@ -356,20 +356,23 @@ func (dc *DocCache) GenerateAPIDoc(packages []*doc.Package) (string, error) {
 
 // GenerateIndex generates an index of all documentation
 func (dc *DocCache) GenerateIndex() (string, error) {
-	dc.mu.RLock()
-	defer dc.mu.RUnlock()
-	
 	// Collect all packages
 	var packages []string
+	dc.mu.RLock()
 	for key := range dc.packageDocs {
 		packages = append(packages, key)
 	}
+	dc.mu.RUnlock()
+	
 	sort.Strings(packages)
+	
+	// Get statistics without holding lock
+	stats := dc.GetStatistics()
 	
 	data := map[string]interface{}{
 		"Packages":  packages,
 		"Generated": time.Now(),
-		"Stats":     dc.GetStatistics(),
+		"Stats":     stats,
 	}
 	
 	return dc.generateDoc("index", data, "doc_index")

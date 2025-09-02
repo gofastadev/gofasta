@@ -294,7 +294,19 @@ func (cc *ConstantCache) BinaryOp(x constant.Value, op token.Token, y constant.V
 	atomic.AddInt64(&cc.misses, 1)
 	
 	// Perform operation
-	result := constant.BinaryOp(x, op, y)
+	var result constant.Value
+	
+	// Handle shift operations specially
+	if op == token.SHL || op == token.SHR {
+		// For shift operations, y must be an unsigned integer
+		if y.Kind() == constant.Int {
+			if shift, ok := constant.Uint64Val(y); ok {
+				result = constant.Shift(x, op, uint(shift))
+			}
+		}
+	} else {
+		result = constant.BinaryOp(x, op, y)
+	}
 	atomic.AddInt64(&cc.binaryOps, 1)
 	
 	// Cache result

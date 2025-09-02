@@ -271,11 +271,19 @@ func TestMatchFile(t *testing.T) {
 	
 	// Create test files
 	files := map[string]string{
-		"main.go":         `package main`,
-		"main_test.go":    `package main`,
-		"main_linux.go":   `package main`,
-		"main_windows.go": `package main`,
+		"main.go":      `package main`,
+		"main_test.go": `package main`,
 	}
+	
+	// Add OS-specific file
+	files["main_"+runtime.GOOS+".go"] = `package main`
+	
+	// Add a file for a different OS
+	otherOS := "linux"
+	if runtime.GOOS == "linux" {
+		otherOS = "windows"
+	}
+	files["main_"+otherOS+".go"] = `package main`
 	
 	for name, content := range files {
 		path := filepath.Join(tmpDir, name)

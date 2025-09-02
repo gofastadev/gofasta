@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -99,6 +100,7 @@ type BuildCacheConfig struct {
 	CustomTags      []string
 	IgnoreVendor    bool
 	AllowBinary     bool
+	IncludeTests    bool
 	
 	// Performance settings
 	ConcurrentLoads bool
@@ -345,6 +347,11 @@ func (bc *BuildCache) CreateContext(goos, goarch string, tags []string) *build.C
 
 // MatchFile checks if a file should be built
 func (bc *BuildCache) MatchFile(dir, name string) (bool, error) {
+	// Exclude test files by default unless explicitly included
+	if !bc.config.IncludeTests && strings.HasSuffix(name, "_test.go") {
+		return false, nil
+	}
+	
 	ctx := bc.getContext()
 	match, err := ctx.MatchFile(dir, name)
 	
@@ -358,18 +365,52 @@ func (bc *BuildCache) MatchFile(dir, name string) (bool, error) {
 
 // GoodOSArchFile checks if a file matches OS/Arch constraints
 func (bc *BuildCache) GoodOSArchFile(name string, allTags map[string]bool) bool {
-	// The GoodOSArchFile method is not exported in go/build.
-	// We'll use MatchFile instead for constraint checking.
-	dir, file := filepath.Split(name)
-	if dir == "" {
-		dir = "."
-	}
-	ctx := bc.getContext()
-	match, err := ctx.MatchFile(dir, file)
-	if err != nil {
+	// Extract base name without directory
+	base := filepath.Base(name)
+	
+	// Remove .go extension
+	if !strings.HasSuffix(base, ".go") {
 		return false
 	}
-	return match
+	base = base[:len(base)-3]
+	
+	// Check for test files
+	if strings.HasSuffix(base, "_test") {
+		return false
+	}
+	
+	// If no underscore, it's a regular file that should match
+	if !strings.Contains(base, "_") {
+		return true
+	}
+	
+	// Parse OS/Arch constraints from filename
+	idx := strings.LastIndex(base, "_")
+	if idx < 0 {
+		return true
+	}
+	
+	tag := base[idx+1:]
+	
+	// Check against known OS and arch values
+	ctx := bc.getContext()
+	knownOS := []string{"aix", "android", "darwin", "dragonfly", "freebsd", "illumos", "ios", "js", "linux", "netbsd", "openbsd", "plan9", "solaris", "windows"}
+	knownArch := []string{"386", "amd64", "arm", "arm64", "mips", "mips64", "mips64le", "mipsle", "ppc64", "ppc64le", "riscv64", "s390x", "wasm"}
+	
+	for _, os := range knownOS {
+		if tag == os {
+			return tag == ctx.GOOS || allTags[tag]
+		}
+	}
+	
+	for _, arch := range knownArch {
+		if tag == arch {
+			return tag == ctx.GOARCH || allTags[tag]
+		}
+	}
+	
+	// If it's not a known OS or arch, it might be a build tag
+	return allTags[tag]
 }
 
 // ShouldBuild determines if a file should be built based on constraints
@@ -473,8 +514,26 @@ func (bc *BuildCache) IsStandardPackage(path string) bool {
 		}
 	}
 	
-	// Also check without trailing slash
-	return path == "C" || !strings.Contains(path, ".")
+	// Special case for C pseudo-package
+	if path == "C" {
+		return true
+	}
+	
+	// Standard packages don't contain dots (except for internal use)
+	// But not all packages without dots are standard packages
+	// We need to check if it's actually in the standard library
+	if strings.Contains(path, ".") {
+		return false
+	}
+	
+	// Check if the package exists in GOROOT
+	ctx := bc.getContext()
+	if ctx.GOROOT != "" {
+		_, err := ctx.Import(path, "", build.FindOnly)
+		return err == nil
+	}
+	
+	return false
 }
 
 // GetPackageDependencies returns all dependencies of a package
@@ -587,7 +646,22 @@ func (bc *BuildCache) evaluateConstraintList(constraints []string) bool {
 	tags[ctx.GOARCH] = true
 	
 	// Add Go version tags
-	tags["go1."+strings.Split(runtime.Version()[2:], ".")[1]] = true
+	// Parse current Go version
+	goVersion := runtime.Version()
+	if strings.HasPrefix(goVersion, "go") {
+		goVersion = goVersion[2:]
+	}
+	parts := strings.Split(goVersion, ".")
+	if len(parts) >= 2 {
+		major, _ := strconv.Atoi(parts[0])
+		minor, _ := strconv.Atoi(parts[1])
+		// Add tags for all versions up to current
+		if major == 1 {
+			for i := 1; i <= minor; i++ {
+				tags[fmt.Sprintf("go1.%d", i)] = true
+			}
+		}
+	}
 	
 	// Evaluate each constraint
 	for _, constraint := range constraints {

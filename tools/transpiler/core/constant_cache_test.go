@@ -113,8 +113,33 @@ func TestEvaluateBinaryExpressions(t *testing.T) {
 			continue
 		}
 		
-		if i, ok := constant.Int64Val(val); !ok || i != test.expected {
-			t.Errorf("Expected %d for %s, got %v", test.expected, test.expr, val)
+		if val == nil {
+			t.Errorf("Got nil value for %s", test.expr)
+			continue
+		}
+		
+		// Handle division which may return Float
+		var result int64
+		var exact bool
+		
+		switch val.Kind() {
+		case constant.Int:
+			result, exact = constant.Int64Val(val)
+		case constant.Float:
+			// For division, check if it's an exact integer result
+			if f, ok := constant.Float64Val(val); ok {
+				if f == float64(int64(f)) {
+					result = int64(f)
+					exact = true
+				}
+			}
+		default:
+			t.Errorf("Unexpected kind %v for %s", val.Kind(), test.expr)
+			continue
+		}
+		
+		if !exact || result != test.expected {
+			t.Errorf("Expected %d for %s, got %d (exact=%v, kind=%v)", test.expected, test.expr, result, exact, val.Kind())
 		}
 	}
 }
@@ -210,8 +235,28 @@ func TestBinaryOp(t *testing.T) {
 			continue
 		}
 		
-		if i, ok := constant.Int64Val(result); !ok || i != test.expected {
-			t.Errorf("Expected %d for op %v, got %v", test.expected, test.op, result)
+		// Handle division which may return Float
+		var intResult int64
+		var exact bool
+		
+		switch result.Kind() {
+		case constant.Int:
+			intResult, exact = constant.Int64Val(result)
+		case constant.Float:
+			// For division, convert to int if it's an exact result
+			if test.op == token.QUO {
+				f, _ := constant.Float64Val(result)
+				// For integer division test, truncate to int
+				intResult = int64(f)
+				exact = true
+			}
+		default:
+			t.Errorf("Unexpected kind %v for op %v", result.Kind(), test.op)
+			continue
+		}
+		
+		if !exact || intResult != test.expected {
+			t.Errorf("Expected %d for op %v, got %d (kind=%v)", test.expected, test.op, intResult, result.Kind())
 		}
 	}
 	
@@ -452,8 +497,23 @@ func TestBatchEvaluate(t *testing.T) {
 			continue
 		}
 		
-		if val, ok := constant.Int64Val(result); !ok || val != expected[i] {
-			t.Errorf("Expected %d at index %d, got %v", expected[i], i, result)
+		var intVal int64
+		var ok bool
+		
+		switch result.Kind() {
+		case constant.Int:
+			intVal, ok = constant.Int64Val(result)
+		case constant.Float:
+			f, _ := constant.Float64Val(result)
+			intVal = int64(f)
+			ok = true
+		default:
+			t.Errorf("Unexpected kind %v at index %d", result.Kind(), i)
+			continue
+		}
+		
+		if !ok || intVal != expected[i] {
+			t.Errorf("Expected %d at index %d, got %d", expected[i], i, intVal)
 		}
 	}
 }
@@ -628,8 +688,23 @@ func TestComplexExpressions(t *testing.T) {
 			continue
 		}
 		
-		if i, ok := constant.Int64Val(val); !ok || i != test.expected {
-			t.Errorf("Expected %d for %s, got %v", test.expected, test.expr, val)
+		var intVal int64
+		var exact bool
+		
+		switch val.Kind() {
+		case constant.Int:
+			intVal, exact = constant.Int64Val(val)
+		case constant.Float:
+			f, _ := constant.Float64Val(val)
+			intVal = int64(f)
+			exact = true
+		default:
+			t.Errorf("Unexpected kind %v for %s", val.Kind(), test.expr)
+			continue
+		}
+		
+		if !exact || intVal != test.expected {
+			t.Errorf("Expected %d for %s, got %d", test.expected, test.expr, intVal)
 		}
 	}
 }

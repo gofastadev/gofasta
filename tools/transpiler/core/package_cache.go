@@ -604,7 +604,7 @@ func (pc *PackageCache) calculatePackageSize(pkg *packages.Package) int64 {
 	}
 	
 	// Add overhead for type information
-	if pkg.Types != nil {
+	if pkg.Types != nil && pkg.TypesInfo != nil {
 		size += int64(len(pkg.TypesInfo.Types) * 100) // Rough estimate
 	}
 	
