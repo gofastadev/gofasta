@@ -384,3 +384,179 @@ func TestTokenPoolPerformance(t *testing.T) {
 		t.Errorf("Expected reuse rate > 80%%, got %.1f%%", reuseRate)
 	}
 }
+
+func TestTokenPoolResizeEdgeCases(t *testing.T) {
+	t.Run("ResizeEmptyPoolToLarger", func(t *testing.T) {
+		// Test resizing an empty pool
+		pool := NewTokenPool(&TokenPoolConfig{InitialSize: 0, MaxSize: 5})
+		
+		// Drain to ensure empty
+		pool.Drain()
+		
+		pool.Resize(10)
+		
+		stats := pool.GetStatistics()
+		if stats["max_size"].(int) != 10 {
+			t.Errorf("Expected max size 10, got %v", stats["max_size"])
+		}
+	})
+	
+	t.Run("ResizeToSmallerSize", func(t *testing.T) {
+		// Test resizing to a smaller size which will trigger the new pool full case
+		pool := NewTokenPool(&TokenPoolConfig{InitialSize: 5, MaxSize: 10})
+		
+		// Resize to a smaller size
+		pool.Resize(2)
+		
+		stats := pool.GetStatistics()
+		if stats["max_size"].(int) != 2 {
+			t.Errorf("Expected max size 2, got %v", stats["max_size"])
+		}
+		
+		// Pool size should be at most 2
+		if stats["pool_size"].(int) > 2 {
+			t.Errorf("Pool size should not exceed new max size")
+		}
+	})
+	
+	t.Run("ResizeWithInvalidSize", func(t *testing.T) {
+		pool := NewTokenPool(&TokenPoolConfig{InitialSize: 3, MaxSize: 5})
+		originalMaxSize := pool.config.MaxSize
+		
+		// Try to resize with 0 (should return early)
+		pool.Resize(0)
+		
+		if pool.config.MaxSize != originalMaxSize {
+			t.Errorf("Resize(0) should not change max size")
+		}
+		
+		// Try to resize with negative (should return early)
+		pool.Resize(-10)
+		
+		if pool.config.MaxSize != originalMaxSize {
+			t.Errorf("Resize(-10) should not change max size")
+		}
+	})
+}
+
+func TestTokenPoolWarmUpBreak(t *testing.T) {
+	// Test the break statement in WarmUp when pool becomes full
+	pool := NewTokenPool(&TokenPoolConfig{InitialSize: 2, MaxSize: 2, EnableMetrics: true})
+	
+	// Pool is already at max capacity (2)
+	stats := pool.GetStatistics()
+	initialSize := stats["pool_size"].(int)
+	
+	// Try to warm up more - should hit the break since pool is already full
+	pool.WarmUp(5)
+	
+	stats = pool.GetStatistics()
+	poolSize := stats["pool_size"].(int)
+	
+	// Pool size should remain at max size
+	if poolSize != 2 {
+		t.Errorf("Pool size should remain at max size 2, got %d", poolSize)
+	}
+	
+	// Pool should not have grown
+	if poolSize > initialSize {
+		t.Errorf("Pool should not grow beyond initial size when already at max")
+	}
+}
+
+func TestTokenPoolInitialPopulationOverflow(t *testing.T) {
+	// Test that initial population stops when pool is full
+	// This can happen if we manually set InitialSize > MaxSize
+	
+	// Directly create config that bypasses validation
+	config := &TokenPoolConfig{
+		InitialSize:   10,
+		MaxSize:       3,
+		EnableMetrics: true,
+	}
+	
+	// The NewTokenPool should adjust MaxSize to be at least InitialSize
+	pool := NewTokenPool(config)
+	
+	stats := pool.GetStatistics()
+	
+	// Due to the adjustment in NewTokenPool, MaxSize should be 10
+	if stats["max_size"].(int) != 10 {
+		t.Errorf("Expected max size to be adjusted to 10, got %v", stats["max_size"])
+	}
+	
+	// All initial FileSets should be created
+	if stats["created"].(int64) < 10 {
+		t.Errorf("Expected at least 10 FileSets created, got %v", stats["created"])
+	}
+}
+
+func TestTokenPoolStatisticsWithZeroMaxSize(t *testing.T) {
+	// Test utilization calculation when maxSize is 0 (edge case)
+	pool := &TokenPool{
+		config: &TokenPoolConfig{EnableMetrics: true},
+		pool:   make(chan *token.FileSet, 0),
+	}
+	
+	stats := pool.GetStatistics()
+	utilization := stats["utilization"].(float64)
+	if utilization != 0.0 {
+		t.Errorf("Expected utilization to be 0 when max size is 0, got %f", utilization)
+	}
+}
+
+func TestTokenPoolStatisticsWithNoRequests(t *testing.T) {
+	// Test reuse rate calculation when no requests have been made
+	pool := NewTokenPool(&TokenPoolConfig{InitialSize: 0, MaxSize: 5, EnableMetrics: false})
+	
+	stats := pool.GetStatistics()
+	reuseRate := stats["reuse_rate"].(float64)
+	if reuseRate != 0.0 {
+		t.Errorf("Expected reuse rate to be 0 when no requests made, got %f", reuseRate)
+	}
+}
+
+func TestTokenPoolWarmUpEdgeCases(t *testing.T) {
+	t.Run("WarmUpWithNegativeSize", func(t *testing.T) {
+		pool := NewTokenPool(&TokenPoolConfig{InitialSize: 1, MaxSize: 5, EnableMetrics: true})
+		initialStats := pool.GetStatistics()
+		initialSize := initialStats["pool_size"].(int)
+		
+		// Should return immediately for negative size
+		pool.WarmUp(-1)
+		
+		stats := pool.GetStatistics()
+		if stats["pool_size"].(int) != initialSize {
+			t.Error("WarmUp with negative size should not change pool")
+		}
+	})
+	
+	t.Run("WarmUpBeyondMaxSize", func(t *testing.T) {
+		pool := NewTokenPool(&TokenPoolConfig{InitialSize: 1, MaxSize: 3, EnableMetrics: true})
+		
+		// Try to warm up beyond max size
+		pool.WarmUp(10)
+		
+		stats := pool.GetStatistics()
+		if stats["pool_size"].(int) > 3 {
+			t.Error("WarmUp should not exceed max size")
+		}
+	})
+	
+	t.Run("WarmUpWhenAlreadyFull", func(t *testing.T) {
+		// Create a pool that starts full
+		pool := NewTokenPool(&TokenPoolConfig{InitialSize: 3, MaxSize: 3, EnableMetrics: true})
+		
+		initialStats := pool.GetStatistics()
+		initialCreated := initialStats["created"].(int64)
+		
+		// Try to warm up when already at max
+		pool.WarmUp(3)
+		
+		stats := pool.GetStatistics()
+		// Should not create any new FileSets
+		if stats["created"].(int64) != initialCreated {
+			t.Error("WarmUp should not create new FileSets when pool is already at target size")
+		}
+	})
+}

@@ -73,9 +73,11 @@ func NewTokenPool(config *TokenPoolConfig) *TokenPool {
 				pool.created++
 			}
 		default:
-			break
+			// Pool is full, stop trying to add more
+			goto donePopulating
 		}
 	}
+donePopulating:
 	
 	return pool
 }
@@ -198,13 +200,14 @@ func (p *TokenPool) Resize(newMaxSize int) {
 				transferred++
 			default:
 				// New pool is full
-				return
+				goto doneTransferring
 			}
 		default:
 			// Old pool is empty
-			break
+			goto doneTransferring
 		}
 	}
+doneTransferring:
 	
 	// Update pool and config
 	p.pool = newPool
@@ -230,7 +233,7 @@ func (p *TokenPool) WarmUp(targetSize int) {
 			}
 		default:
 			// Pool is full
-			break
+			return
 		}
 	}
 }

@@ -362,57 +362,87 @@ if [[ -n "$TRANSPILER_V2_COVERAGE" ]]; then
         # Process the coverage file once and store results
         COVERAGE_OUTPUT=$(go tool cover -func="$COVERAGE_FILE" 2>/dev/null)
         
-        # Extract coverage for each Phase 1.1 file
+        # Extract coverage for each Phase 1.1 file using accurate statement-based calculation
         for target_file in parser.go ast_cache.go token_pool.go type_checker.go formatter.go import_cache.go; do
             file_coverage=""
             
-            # Get all lines for this file, take the last one
-            last_line=$(echo "$COVERAGE_OUTPUT" | grep "${target_file}" | tail -1)
+            # Calculate actual statement coverage from the coverage profile
+            file_path="github.com/healtronlabs/gofasta/tools/transpiler/core/${target_file}"
             
-            if [[ -n "$last_line" ]]; then
-                # Extract just the percentage from the last field
-                file_coverage=$(echo "$last_line" | awk '{print $NF}')
+            # Parse the coverage file directly for accurate statement coverage
+            total_statements=0
+            covered_statements=0
+            
+            # Read the coverage file and calculate statement coverage
+            while IFS= read -r line; do
+                # Skip mode line
+                [[ "$line" == "mode:"* ]] && continue
                 
-                # If we didn't get a percentage, try averaging approach
-                if [[ ! "$file_coverage" =~ %$ ]]; then
-                    all_percentages=$(echo "$COVERAGE_OUTPUT" | grep "${target_file}" | awk '{print $NF}' | grep '%' | sed 's/%//')
-                    if [[ -n "$all_percentages" ]]; then
-                        sum=0
-                        count=0
-                        for pct in $all_percentages; do
-                            sum=$(echo "$sum + $pct" | bc 2>/dev/null || echo "$sum")
-                            count=$((count + 1))
-                        done
-                        if [[ $count -gt 0 ]]; then
-                            avg=$(echo "scale=1; $sum / $count" | bc 2>/dev/null || echo "0.0")
-                            file_coverage="${avg}%"
+                # Check if this line is for our target file
+                if [[ "$line" == *"$file_path"* ]]; then
+                    # Format: file:start.col,end.col num_statements count
+                    stmt_count=$(echo "$line" | awk '{print $2}')
+                    cover_count=$(echo "$line" | awk '{print $3}')
+                    
+                    if [[ "$stmt_count" =~ ^[0-9]+$ ]]; then
+                        total_statements=$((total_statements + stmt_count))
+                        if [[ "$cover_count" != "0" ]]; then
+                            covered_statements=$((covered_statements + stmt_count))
                         fi
                     fi
                 fi
+            done < "$COVERAGE_FILE"
+            
+            # Calculate coverage percentage
+            if [[ $total_statements -gt 0 ]]; then
+                # Use bc for decimal calculation
+                file_coverage=$(echo "scale=1; $covered_statements * 100 / $total_statements" | bc 2>/dev/null)
                 
-                # Write the coverage for this file if we got a valid percentage
-                if [[ -n "$file_coverage" ]] && [[ "$file_coverage" =~ %$ ]]; then
-                    case "$target_file" in
-                        "parser.go")
-                            echo "    ├─ Phase 1.1a parser.go: $file_coverage" >> "$SUMMARY_FILE"
-                            ;;
-                        "ast_cache.go")
-                            echo "    ├─ Phase 1.1b ast_cache.go: $file_coverage" >> "$SUMMARY_FILE"
-                            ;;
-                        "token_pool.go")
-                            echo "    ├─ Phase 1.1c token_pool.go: $file_coverage" >> "$SUMMARY_FILE"
-                            ;;
-                        "type_checker.go")
-                            echo "    ├─ Phase 1.1d type_checker.go: $file_coverage" >> "$SUMMARY_FILE"
-                            ;;
-                        "formatter.go")
-                            echo "    ├─ Phase 1.1e formatter.go: $file_coverage" >> "$SUMMARY_FILE"
-                            ;;
-                        "import_cache.go")
-                            echo "    └─ Phase 1.1f import_cache.go: $file_coverage" >> "$SUMMARY_FILE"
-                            ;;
-                    esac
+                # Format the coverage
+                if [[ -n "$file_coverage" ]]; then
+                    file_coverage="${file_coverage}%"
+                else
+                    # Fallback to go tool cover output if bc fails
+                    func_output=$(go tool cover -func="$COVERAGE_FILE" 2>/dev/null | grep "${target_file}")
+                    if [[ -n "$func_output" ]]; then
+                        # Get unique percentages and calculate weighted average
+                        percentages=$(echo "$func_output" | awk '{print $NF}' | grep '%' | sort -u)
+                        if [[ -n "$percentages" ]]; then
+                            # Just use the median or most common percentage as approximation
+                            file_coverage=$(echo "$percentages" | head -1)
+                        fi
+                    fi
                 fi
+            else
+                # No statements found, try to get from go tool cover
+                func_line=$(go tool cover -func="$COVERAGE_FILE" 2>/dev/null | grep "${target_file}" | tail -1)
+                if [[ -n "$func_line" ]]; then
+                    file_coverage=$(echo "$func_line" | awk '{print $NF}')
+                fi
+            fi
+            
+            # Write the coverage for this file if we got a valid percentage
+            if [[ -n "$file_coverage" ]] && [[ "$file_coverage" =~ %$ ]]; then
+                case "$target_file" in
+                    "parser.go")
+                        echo "    ├─ Phase 1.1a parser.go: $file_coverage" >> "$SUMMARY_FILE"
+                        ;;
+                    "ast_cache.go")
+                        echo "    ├─ Phase 1.1b ast_cache.go: $file_coverage" >> "$SUMMARY_FILE"
+                        ;;
+                    "token_pool.go")
+                        echo "    ├─ Phase 1.1c token_pool.go: $file_coverage" >> "$SUMMARY_FILE"
+                        ;;
+                    "type_checker.go")
+                        echo "    ├─ Phase 1.1d type_checker.go: $file_coverage" >> "$SUMMARY_FILE"
+                        ;;
+                    "formatter.go")
+                        echo "    ├─ Phase 1.1e formatter.go: $file_coverage" >> "$SUMMARY_FILE"
+                        ;;
+                    "import_cache.go")
+                        echo "    └─ Phase 1.1f import_cache.go: $file_coverage" >> "$SUMMARY_FILE"
+                        ;;
+                esac
             fi
         done
     fi
