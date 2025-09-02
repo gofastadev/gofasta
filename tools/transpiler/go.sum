@@ -1,2 +1,8 @@
+golang.org/x/mod v0.22.0 h1:D4nJWe9zXqHOmWqj4VMOJJMBaZ6w3q3HY/HRruJSkwM=
+golang.org/x/mod v0.22.0/go.mod h1:6SkKJ3Xj0I0BrPOZoBy3bdMptDDU9oJrpohJ3eWZ1fY=
 golang.org/x/sync v0.16.0 h1:ycBJEhp9p4vXvUZNszeOq0kGTPghopOL8q0fq3vstxw=
 golang.org/x/sync v0.16.0/go.mod h1:1dzgHSNfp02xaA81J2MS99Qcpr2w7fw1gpm99rleRqA=
+golang.org/x/sys v0.29.0 h1:TPYlXGxvx1MGTn2GiZDhnjPA9wZzZeGKHHmKhHYvgaU=
+golang.org/x/sys v0.29.0/go.mod h1:/VUhepiaJMQUp4+oa/7Zr1D23ma6VTLIYjOOTFZPUcA=
+golang.org/x/tools v0.28.0 h1:iorAIn5BQNT8hunfM5w9hhYekD/0e0tgGLLxCYKEu9U=
+golang.org/x/tools v0.28.0/go.mod h1:dcIoBCt/wKlBgvx8QcTH5VJuaQ4wy5jnJzU7FABKvP4=
