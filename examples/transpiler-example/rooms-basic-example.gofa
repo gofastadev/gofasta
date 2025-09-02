@@ -1,0 +1,254 @@
+package main
+
+// Basic example demonstrating @Rooms() parameter decorator
+// Shows how to access and work with WebSocket room collections for group messaging
+
+@WebSocketGateway(3000)
+type RoomsGateway struct {
+	@Inject("roomService")
+	roomService *RoomService
+}
+
+// === BASIC ROOM ACCESS PATTERNS ===
+
+// Access current client's rooms
+@SubscribeMessage("get_my_rooms")
+func HandleGetMyRooms(
+	@Rooms() rooms []string,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Send back the list of rooms the client is in
+	// client.Emit("my_rooms", map[string]interface{}{
+	//     "rooms": rooms,
+	//     "count": len(rooms),
+	// })
+}
+
+// Room-based broadcasting with current room list
+@SubscribeMessage("broadcast_to_my_rooms") 
+func HandleBroadcastToMyRooms(
+	@MessageBody() message *BroadcastMessage,
+	@Rooms() rooms []string,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Broadcast message to all rooms the client is currently in
+	for _, roomName := range rooms {
+		// client.To(roomName).Emit("room_message", map[string]interface{}{
+		//     "message": message.Content,
+		//     "sender": client.ID(),
+		//     "room": roomName,
+		//     "timestamp": time.Now(),
+		// })
+	}
+}
+
+// === ROOM VALIDATION PATTERNS ===
+
+// Check if client is in specific rooms
+@SubscribeMessage("check_room_access")
+func HandleCheckRoomAccess(
+	@MessageBody() request *RoomAccessRequest,
+	@Rooms() rooms []string
+) {
+	// Check if client has access to requested room
+	hasAccess := false
+	for _, room := range rooms {
+		if room == request.RoomName {
+			hasAccess = true
+			break
+		}
+	}
+
+	// response := map[string]interface{}{
+	//     "roomName": request.RoomName,
+	//     "hasAccess": hasAccess,
+	//     "currentRooms": rooms,
+	// }
+	// client.Emit("room_access_result", response)
+}
+
+// Room-based message filtering
+@SubscribeMessage("send_room_message")
+func HandleSendRoomMessage(
+	@MessageBody() message *RoomMessage,
+	@Rooms() rooms []string,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Only allow sending to rooms the client is actually in
+	canSend := false
+	for _, room := range rooms {
+		if room == message.TargetRoom {
+			canSend = true
+			break
+		}
+	}
+
+	if !canSend {
+		// client.Emit("error", "You are not in room: " + message.TargetRoom)
+		return
+	}
+
+	// Send message to the target room
+	// client.To(message.TargetRoom).Emit("room_message", map[string]interface{}{
+	//     "content": message.Content,
+	//     "sender": client.ID(),
+	//     "room": message.TargetRoom,
+	// })
+}
+
+// === ROOM MANAGEMENT PATTERNS ===
+
+// Join room with validation
+@SubscribeMessage("join_room")
+func HandleJoinRoom(
+	@MessageBody() request *JoinRoomRequest,
+	@Rooms() currentRooms []string,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Check if already in room
+	for _, room := range currentRooms {
+		if room == request.RoomName {
+			// client.Emit("error", "Already in room: " + request.RoomName)
+			return
+		}
+	}
+
+	// Validate room access
+	if !isValidRoom(request.RoomName) {
+		// client.Emit("error", "Invalid room: " + request.RoomName)
+		return
+	}
+
+	// Join the room
+	// client.Join(request.RoomName)
+	
+	// Notify client of successful join
+	// client.Emit("joined_room", map[string]interface{}{
+	//     "roomName": request.RoomName,
+	//     "previousRooms": currentRooms,
+	// })
+}
+
+// Leave room with validation
+@SubscribeMessage("leave_room")
+func HandleLeaveRoom(
+	@MessageBody() request *LeaveRoomRequest,
+	@Rooms() currentRooms []string,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Check if actually in the room
+	inRoom := false
+	for _, room := range currentRooms {
+		if room == request.RoomName {
+			inRoom = true
+			break
+		}
+	}
+
+	if !inRoom {
+		// client.Emit("error", "Not in room: " + request.RoomName)
+		return
+	}
+
+	// Leave the room
+	// client.Leave(request.RoomName)
+	
+	// Notify client of successful leave
+	// client.Emit("left_room", map[string]interface{}{
+	//     "roomName": request.RoomName,
+	//     "remainingRooms": getRemainingRooms(currentRooms, request.RoomName),
+	// })
+}
+
+// === ROOM STATISTICS PATTERNS ===
+
+// Get room statistics
+@SubscribeMessage("get_room_stats")
+func HandleGetRoomStats(
+	@Rooms() rooms []string,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	stats := make(map[string]interface{})
+	stats["totalRooms"] = len(rooms)
+	stats["rooms"] = rooms
+
+	// Add room-specific statistics
+	// roomStats := make(map[string]int)
+	// for _, roomName := range rooms {
+	//     roomStats[roomName] = getRoomMemberCount(roomName)
+	// }
+	// stats["memberCounts"] = roomStats
+
+	// client.Emit("room_stats", stats)
+}
+
+// Room presence notification
+@SubscribeMessage("notify_room_presence")
+func HandleNotifyRoomPresence(
+	@Rooms() rooms []string,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Notify all rooms about client's presence
+	presenceMessage := map[string]interface{}{
+		"clientID": client.ID(),
+		"action":   "presence_check",
+		"rooms":    rooms,
+	}
+
+	for _, roomName := range rooms {
+		// client.To(roomName).Emit("member_presence", presenceMessage)
+	}
+}
+
+// === HELPER FUNCTIONS ===
+
+func isValidRoom(roomName string) bool {
+	// Simple validation - room names must be non-empty and not contain special characters
+	return roomName != "" && len(roomName) <= 50
+}
+
+func getRemainingRooms(currentRooms []string, leaveRoom string) []string {
+	remaining := make([]string, 0)
+	for _, room := range currentRooms {
+		if room != leaveRoom {
+			remaining = append(remaining, room)
+		}
+	}
+	return remaining
+}
+
+// === DATA STRUCTURES ===
+
+type BroadcastMessage struct {
+	Content string `json:"content"`
+	Type    string `json:"type"`
+}
+
+type RoomAccessRequest struct {
+	RoomName string `json:"room_name"`
+}
+
+type RoomMessage struct {
+	Content    string `json:"content"`
+	TargetRoom string `json:"target_room"`
+}
+
+type JoinRoomRequest struct {
+	RoomName string `json:"room_name"`
+	Password string `json:"password,omitempty"`
+}
+
+type LeaveRoomRequest struct {
+	RoomName string `json:"room_name"`
+}
+
+// === SERVICES ===
+
+@Injectable()
+type RoomService struct{}
+
+// === TYPES ===
+
+type WebSocketClient struct {
+	id string
+}

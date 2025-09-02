@@ -2128,6 +2128,13 @@ func (p *Parser) isValidWebSocketParamTypeWithDecorators(param *core.ParameterNo
 			}
 			// If it has @MessageAck() decorator but wrong type, it's invalid
 			return false
+		case "Rooms":
+			// @Rooms() ONLY allows []string type for room collection
+			if param.Type == "[]string" {
+				return true
+			}
+			// If it has @Rooms() decorator but wrong type, it's invalid
+			return false
 		}
 	}
 	

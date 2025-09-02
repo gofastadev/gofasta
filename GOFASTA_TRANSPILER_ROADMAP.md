@@ -568,8 +568,8 @@ func (s *{{.Name}}WSServer) Start() {
   // Inject acknowledgment callback for WebSocket messages
   ```
 - [X] **3.8a** Define `@Rooms()` parameter decorator constant - **✅ COMPLETE**
-- [ ] **3.8b** Implement `@Rooms()` parameter decorator parsing - **❌ MISSING**
-- [ ] **3.8c** Implement `@Rooms()` parameter decorator code generation - **❌ MISSING**
+- [X] **3.8b** Implement `@Rooms()` parameter decorator parsing - **✅ COMPLETE**
+- [X] **3.8c** Implement `@Rooms()` parameter decorator code generation - **✅ COMPLETE**
   ```go
   // Inject array of rooms client has joined
   ```
@@ -680,7 +680,7 @@ func (s *{{.Name}}WSServer) Start() {
 
 ## 📊 **WebSocket Implementation Status Summary**
 
-### **Current Status: 89% Complete (AST + Full WebSocket Parsing + Lifecycle Decorators + Code Generation + Validation + Integration + Testing + @ConnectedSocket() + @MessageAck() Parameter Decorators)**
+### **Current Status: 91% Complete (AST + Full WebSocket Parsing + Lifecycle Decorators + Code Generation + Validation + Integration + Testing + @ConnectedSocket() + @MessageAck() + @Rooms() Parameter Decorators)**
 
 | Phase             | Component         | Progress       | Status                     | Details                                                                                                                                                |
 | ----------------- | ----------------- | -------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
