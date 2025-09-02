@@ -72,11 +72,9 @@ func basicExample(exampleDir string) {
 func customConfigExample(exampleDir string) {
 	// Create custom configuration
 	config := &core.ParserConfig{
-		MaxWorkers:     2,                    // Use 2 workers
-		ParseComments:  true,                 // Include comments
-		AllowErrors:    true,                 // Continue on errors
-		FileExtensions: []string{".gofa"},    // Only .gofa files
-		ExcludeDirs:    []string{"vendor"},   // Exclude vendor directory
+		MaxWorkers:    2,    // Use 2 workers
+		ParseComments: true, // Include comments
+		AllowErrors:   true, // Continue on errors
 	}
 	
 	parser := core.NewParallelParser(config)
