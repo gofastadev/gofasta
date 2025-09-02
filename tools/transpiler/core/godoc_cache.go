@@ -231,6 +231,20 @@ func (gdc *GoDocCache) ExtractPackageDoc(path string, src map[string][]byte) (*d
 	// Cache individual types and functions
 	gdc.cacheTypes(pkg)
 	gdc.cacheFuncs(pkg)
+	
+	// Cache examples
+	for _, ex := range examples {
+		key := pkg.ImportPath
+		if ex.Name != "" {
+			key = fmt.Sprintf("%s.%s", pkg.ImportPath, ex.Name)
+		}
+		gdc.examples[key] = append(gdc.examples[key], ex)
+	}
+	// Also cache package-level examples
+	if len(examples) > 0 {
+		gdc.examples[pkg.ImportPath] = examples
+	}
+	
 	gdc.mu.Unlock()
 	
 	return pkg, nil
@@ -343,8 +357,8 @@ func (gdc *GoDocCache) ExportJSON(pkg *doc.Package, w io.Writer) error {
 		ImportPath string                 `json:"import_path"`
 		Doc        string                 `json:"doc"`
 		Synopsis   string                 `json:"synopsis"`
-		Consts     []*doc.Value           `json:"constants,omitempty"`
-		Vars       []*doc.Value           `json:"variables,omitempty"`
+		Consts     []SimplifiedValue      `json:"constants,omitempty"`
+		Vars       []SimplifiedValue      `json:"variables,omitempty"`
 		Funcs      []SimplifiedFunc       `json:"functions,omitempty"`
 		Types      []SimplifiedType       `json:"types,omitempty"`
 		Examples   []*doc.Example         `json:"examples,omitempty"`
@@ -354,9 +368,23 @@ func (gdc *GoDocCache) ExportJSON(pkg *doc.Package, w io.Writer) error {
 		ImportPath: pkg.ImportPath,
 		Doc:        pkg.Doc,
 		Synopsis:   doc.Synopsis(pkg.Doc),
-		Consts:     pkg.Consts,
-		Vars:       pkg.Vars,
 		Timestamp:  time.Now(),
+	}
+	
+	// Simplify constants
+	for _, c := range pkg.Consts {
+		export.Consts = append(export.Consts, SimplifiedValue{
+			Names: c.Names,
+			Doc:   c.Doc,
+		})
+	}
+	
+	// Simplify variables
+	for _, v := range pkg.Vars {
+		export.Vars = append(export.Vars, SimplifiedValue{
+			Names: v.Names,
+			Doc:   v.Doc,
+		})
 	}
 	
 	// Simplify functions
@@ -400,6 +428,12 @@ type SimplifiedType struct {
 	Name    string   `json:"name"`
 	Doc     string   `json:"doc"`
 	Methods []string `json:"methods,omitempty"`
+}
+
+// SimplifiedValue is a simplified const/var representation for JSON export
+type SimplifiedValue struct {
+	Names []string `json:"names"`
+	Doc   string   `json:"doc"`
 }
 
 // ExportMarkdown exports documentation as Markdown

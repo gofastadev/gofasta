@@ -257,8 +257,8 @@ func (tc *TemplateCache) GetTemplate(name string) (*CompiledTemplate, error) {
 		return nil, fmt.Errorf("template %s not found", name)
 	}
 	
-	// Lazy compilation if needed
-	if tmpl.Template == nil && tc.config.LazyCompilation {
+	// Compile if needed (lazy compilation or not compiled yet)
+	if tmpl.Template == nil {
 		tc.mu.Lock()
 		if tmpl.Template == nil {
 			if err := tc.compileTemplate(tmpl); err != nil {
