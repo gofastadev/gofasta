@@ -1,0 +1,262 @@
+package main
+
+// Basic example demonstrating @MessageAck() parameter decorator
+// Shows how to handle WebSocket message acknowledgments for reliable messaging
+
+@WebSocketGateway(3000)
+type MessageAckGateway struct {
+	@Inject("messageService")
+	messageService *MessageService
+}
+
+// === BASIC ACKNOWLEDGMENT PATTERNS ===
+
+// Simple acknowledgment - confirm message received
+@SubscribeMessage("ping")
+func HandlePing(
+	@MessageBody() message string,
+	@MessageAck() ack *AckCallback
+) {
+	// Process the ping message
+	// Immediately acknowledge receipt
+	// ack.Success("pong")
+}
+
+// Acknowledgment with data - return processed result
+@SubscribeMessage("calculate")
+func HandleCalculation(
+	@MessageBody() data *CalculationRequest,
+	@MessageAck() ack *AckCallback
+) {
+	// Perform calculation
+	result := data.A + data.B
+	
+	// Acknowledge with result
+	// ack.Success(map[string]interface{}{
+	//     "result": result,
+	//     "operation": "addition",
+	// })
+}
+
+// Error handling with acknowledgment
+@SubscribeMessage("validate_data")
+func HandleDataValidation(
+	@MessageBody() data *UserData,
+	@MessageAck() ack *AckCallback
+) {
+	// Validate the data
+	if data.Email == "" {
+		// Send error acknowledgment
+		// ack.Error("Email is required")
+		return
+	}
+	
+	if len(data.Password) < 8 {
+		// Send error with details
+		// ack.Error("Password must be at least 8 characters")
+		return
+	}
+	
+	// Validation successful
+	// ack.Success("Data validation passed")
+}
+
+// === ACKNOWLEDGMENT WITH MULTIPLE DECORATORS ===
+
+// Combine with other WebSocket decorators
+@SubscribeMessage("join_room")
+func HandleJoinRoom(
+	@MessageBody() roomData *JoinRoomRequest,
+	@ConnectedSocket() client *WebSocketClient,
+	@MessageAck() ack *AckCallback
+) {
+	// Validate room access
+	if !isValidRoom(roomData.RoomID) {
+		// ack.Error("Invalid room ID")
+		return
+	}
+	
+	// Join the room
+	// client.Join(roomData.RoomID)
+	
+	// Acknowledge successful join
+	// ack.Success(map[string]interface{}{
+	//     "roomID": roomData.RoomID,
+	//     "message": "Successfully joined room",
+	// })
+}
+
+// Acknowledgment with user context
+@SubscribeMessage("update_profile")
+func HandleProfileUpdate(
+	@MessageBody() profileData *ProfileUpdateRequest,
+	@ConnectedSocket() client *WebSocketClient,
+	@CurrentUser() user *User,
+	@MessageAck() ack *AckCallback
+) {
+	// Update user profile
+	// err := updateUserProfile(user.ID, profileData)
+	
+	// Handle result with acknowledgment
+	// if err != nil {
+	//     ack.Error("Failed to update profile: " + err.Error())
+	// } else {
+	//     ack.Success("Profile updated successfully")
+	// }
+}
+
+// === CONDITIONAL ACKNOWLEDGMENTS ===
+
+// Optional acknowledgment - only ack when requested
+@SubscribeMessage("broadcast_message")
+func HandleBroadcastMessage(
+	@MessageBody() message *BroadcastMessage,
+	@ConnectedSocket() client *WebSocketClient,
+	@MessageAck() ack *AckCallback
+) {
+	// Broadcast to all clients
+	// client.Broadcast().Emit("broadcast", message.Content)
+	
+	// Only acknowledge if client requested it
+	if message.RequireAck {
+		// ack.Success("Message broadcasted to all clients")
+	}
+}
+
+// Delayed acknowledgment - ack after async operation
+@SubscribeMessage("save_file")
+func HandleFileSave(
+	@MessageBody() fileData *FileData,
+	@MessageAck() ack *AckCallback
+) {
+	// Start async file save
+	go func() {
+		// Simulate file save operation
+		// err := saveFileToStorage(fileData)
+		
+		// Acknowledge after completion
+		// if err != nil {
+		//     ack.Error("Failed to save file: " + err.Error())
+		// } else {
+		//     ack.Success("File saved successfully")
+		// }
+	}()
+}
+
+// === ACKNOWLEDGMENT PATTERNS ===
+
+// Progress acknowledgments - multiple acks for long operations
+@SubscribeMessage("process_data")
+func HandleDataProcessing(
+	@MessageBody() data *ProcessingRequest,
+	@MessageAck() ack *AckCallback
+) {
+	// Start processing
+	// ack.Success("Processing started")
+	
+	// Simulate processing steps with progress updates
+	// Note: In real implementation, you'd use the client to send progress
+	// and only use ack for final confirmation
+	
+	// Final acknowledgment
+	// ack.Success("Processing completed")
+}
+
+// Batch operation acknowledgment
+@SubscribeMessage("batch_operation")
+func HandleBatchOperation(
+	@MessageBody() batchData *BatchRequest,
+	@MessageAck() ack *AckCallback
+) {
+	successCount := 0
+	errorCount := 0
+	
+	// Process each item in batch
+	for _, item := range batchData.Items {
+		// if processItem(item) {
+		successCount++
+		// } else {
+		// 	errorCount++
+		// }
+	}
+	
+	// Acknowledge with batch results
+	// ack.Success(map[string]interface{}{
+	//     "processed": len(batchData.Items),
+	//     "successful": successCount,
+	//     "failed": errorCount,
+	// })
+}
+
+// === HELPER FUNCTIONS ===
+
+func isValidRoom(roomID string) bool {
+	return roomID != "" && len(roomID) > 0
+}
+
+// === DATA STRUCTURES ===
+
+type CalculationRequest struct {
+	A int `json:"a"`
+	B int `json:"b"`
+}
+
+type UserData struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+	Name     string `json:"name"`
+}
+
+type JoinRoomRequest struct {
+	RoomID   string `json:"room_id"`
+	Password string `json:"password,omitempty"`
+}
+
+type ProfileUpdateRequest struct {
+	Name  string `json:"name"`
+	Email string `json:"email"`
+	Bio   string `json:"bio"`
+}
+
+type BroadcastMessage struct {
+	Content    string `json:"content"`
+	RequireAck bool   `json:"require_ack"`
+}
+
+type FileData struct {
+	Filename string `json:"filename"`
+	Content  []byte `json:"content"`
+	Path     string `json:"path"`
+}
+
+type ProcessingRequest struct {
+	Data []interface{} `json:"data"`
+	Type string        `json:"type"`
+}
+
+type BatchRequest struct {
+	Items []BatchItem `json:"items"`
+}
+
+type BatchItem struct {
+	ID   string      `json:"id"`
+	Data interface{} `json:"data"`
+}
+
+// === SERVICES ===
+
+@Injectable()
+type MessageService struct{}
+
+// === TYPES ===
+
+type User struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+type WebSocketClient struct {
+	id string
+}
+
+type AckCallback struct{}

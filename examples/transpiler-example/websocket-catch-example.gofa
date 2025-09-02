@@ -1,0 +1,429 @@
+package main
+
+import "fmt"
+
+// WebSocket Error Handling Example
+// Demonstrates how @Catch() decorator works in WebSocket contexts
+// In WebSocket handlers, @Catch() generates error handlers that emit errors to clients
+
+@WebSocketGateway(8080)
+type ErrorHandlingGateway struct {
+    @Inject("logger")
+    logger *Logger
+    
+    @Inject("errorService")
+    errorService *ErrorService
+}
+
+// Basic error handling in WebSocket message handler
+@Catch(ValidationError)
+@SubscribeMessage("validate_message")
+func HandleValidateMessage(
+    @MessageBody() message *ChatMessage,
+    @ConnectedSocket() client *WebSocketClient
+) {
+    // This method can throw ValidationError
+    // The generated error handler will catch and emit the error to the client
+}
+
+// Multiple error types in WebSocket handler
+@Catch(BadRequestError, ValidationError, AuthenticationError)
+@SubscribeMessage("secure_operation")
+func HandleSecureOperation(
+    @MessageBody() operation *SecureOperation,
+    @Headers("Authorization") authToken string,
+    @Session("userId") userId string,
+    @ConnectedSocket() client *WebSocketClient
+) {
+    // This method can throw multiple types of errors
+    // Each error type will be handled and emitted appropriately
+}
+
+// Global WebSocket gateway error handler
+@WebSocketGateway(9080) 
+@Catch()
+type GlobalErrorGateway struct {
+    @Inject("globalErrorHandler")
+    errorHandler *GlobalErrorHandler
+}
+
+@SubscribeMessage("any_message")
+func HandleAnyMessage(
+    @MessageBody() message interface{},
+    @ConnectedSocket() client *WebSocketClient
+) {
+    // Any error thrown here will be caught by the global error handler
+}
+
+// WebSocket lifecycle handler with error handling
+@Catch(AuthenticationError, UnauthorizedError)
+@OnGatewayConnection()
+func HandleNewConnection(
+    @ConnectedSocket() client *WebSocketClient,
+    @Headers("Authorization") authToken string
+) {
+    // Connection-time error handling
+    // Authentication or authorization errors will be caught and emitted
+}
+
+// WebSocket disconnection with error handling  
+@Catch(InternalServerError)
+@OnGatewayDisconnection()
+func HandleDisconnection(
+    @ConnectedSocket() client *WebSocketClient,
+    @Session("userId") userId string
+) {
+    // Disconnection cleanup with error handling
+}
+
+// Using @Exception() parameter decorator to access error details
+@Catch(ValidationError, BadRequestError)
+@SubscribeMessage("detailed_error_handling")
+func HandleDetailedErrors(
+    @Exception() err error,
+    @EventName() eventName string,
+    @ConnectedSocket() client *WebSocketClient,
+    @MessageBody() message *DetailedMessage
+) {
+    // Access the actual error and event name in the error handler
+    // The @Exception() decorator provides access to the thrown error
+    // The @EventName() decorator provides the triggering event name
+}
+
+// Complex error handling with multiple decorators
+@UseGuards("AuthGuard", "RoleGuard")
+@Catch(ForbiddenError, NotFoundError)
+@SubscribeMessage("admin_operation")
+func HandleAdminOperation(
+    @MessageBody() adminCmd *AdminCommand,
+    @Session("userRole") userRole string,
+    @Session("permissions") permissions []string,
+    @ConnectedSocket() client *WebSocketClient
+) {
+    // Combined middleware and error handling
+    // Guards run first, then error handling catches any issues
+}
+
+// Error handler with custom response formatting
+@Catch(CustomBusinessError)
+@SubscribeMessage("business_logic")
+func HandleBusinessLogic(
+    @MessageBody() businessData *BusinessData,
+    @Query("version") apiVersion string,
+    @ConnectedSocket() client *WebSocketClient
+) {
+    // Custom business logic with specialized error handling
+}
+
+// WebSocket room management with error handling
+@Catch(RoomNotFoundError, UserNotInRoomError)
+@SubscribeMessage("join_room")
+func HandleJoinRoom(
+    @MessageBody() joinRequest *JoinRoomRequest,
+    @Session("userId") userId string,
+    @ConnectedSocket() client *WebSocketClient
+) {
+    // Room management operations with specific error handling
+}
+
+// Real-time notification with error recovery
+@Catch(NotificationFailureError)
+@SubscribeMessage("send_notification")
+func HandleSendNotification(
+    @MessageBody() notification *Notification,
+    @Session("userId") userId string,
+    @Session("notificationPrefs") prefs *NotificationPrefs,
+    @ConnectedSocket() client *WebSocketClient
+) {
+    // Notification system with error recovery
+}
+
+// File upload handling with error management
+@Catch(FileTooLargeError, UnsupportedFileTypeError, StorageError)
+@SubscribeMessage("upload_file")
+func HandleFileUpload(
+    @MessageBody() fileData *FileUploadData,
+    @Session("userId") userId string,
+    @Headers("Content-Type") contentType string,
+    @ConnectedSocket() client *WebSocketClient
+) {
+    // File upload with comprehensive error handling
+}
+
+// Streaming data with error handling
+@Catch(StreamingError, BufferOverflowError)
+@SubscribeMessage("start_stream")
+func HandleStartStream(
+    @MessageBody() streamConfig *StreamConfig,
+    @Query("format") format string,
+    @Session("userId") userId string,
+    @ConnectedSocket() client *WebSocketClient
+) {
+    // Streaming operations with error management
+}
+
+// Supporting data structures for the examples
+type ChatMessage struct {
+    Content   string    `json:"content"`
+    Timestamp int64     `json:"timestamp"`
+    RoomId    string    `json:"roomId"`
+    UserId    string    `json:"userId"`
+}
+
+type SecureOperation struct {
+    Operation    string                 `json:"operation"`
+    Parameters   map[string]interface{} `json:"parameters"`
+    RequiredRole string                 `json:"requiredRole"`
+    Timestamp    int64                  `json:"timestamp"`
+}
+
+type DetailedMessage struct {
+    Type    string      `json:"type"`
+    Content interface{} `json:"content"`
+    Meta    MessageMeta `json:"meta"`
+}
+
+type MessageMeta struct {
+    Version   string            `json:"version"`
+    Headers   map[string]string `json:"headers"`
+    Timestamp int64             `json:"timestamp"`
+}
+
+type AdminCommand struct {
+    Command   string                 `json:"command"`
+    Arguments map[string]interface{} `json:"arguments"`
+    UserId    string                 `json:"userId"`
+    Reason    string                 `json:"reason"`
+}
+
+type BusinessData struct {
+    Entity     string                 `json:"entity"`
+    Action     string                 `json:"action"`
+    Payload    map[string]interface{} `json:"payload"`
+    Validation BusinessValidation     `json:"validation"`
+}
+
+type BusinessValidation struct {
+    Required []string          `json:"required"`
+    Rules    map[string]string `json:"rules"`
+    Schema   string           `json:"schema"`
+}
+
+type JoinRoomRequest struct {
+    RoomId   string `json:"roomId"`
+    Password string `json:"password,omitempty"`
+    UserId   string `json:"userId"`
+}
+
+type Notification struct {
+    Type      string                 `json:"type"`
+    Title     string                 `json:"title"`
+    Message   string                 `json:"message"`
+    Priority  int                    `json:"priority"`
+    Data      map[string]interface{} `json:"data"`
+    Recipients []string              `json:"recipients"`
+}
+
+type NotificationPrefs struct {
+    Email    bool     `json:"email"`
+    Push     bool     `json:"push"`
+    InApp    bool     `json:"inApp"`
+    Channels []string `json:"channels"`
+}
+
+type FileUploadData struct {
+    FileName string `json:"fileName"`
+    FileSize int64  `json:"fileSize"`
+    MimeType string `json:"mimeType"`
+    Content  []byte `json:"content"`
+    ChunkId  string `json:"chunkId,omitempty"`
+}
+
+type StreamConfig struct {
+    StreamId   string `json:"streamId"`
+    Format     string `json:"format"`
+    Quality    string `json:"quality"`
+    BufferSize int    `json:"bufferSize"`
+}
+
+// Custom error types for demonstration
+type ValidationError struct {
+    Field   string `json:"field"`
+    Message string `json:"message"`
+    Code    string `json:"code"`
+}
+
+func (e *ValidationError) Error() string {
+    return fmt.Sprintf("validation error in field %s: %s", e.Field, e.Message)
+}
+
+type BadRequestError struct {
+    Reason string `json:"reason"`
+    Code   int    `json:"code"`
+}
+
+func (e *BadRequestError) Error() string {
+    return fmt.Sprintf("bad request: %s (code: %d)", e.Reason, e.Code)
+}
+
+type AuthenticationError struct {
+    Token   string `json:"token,omitempty"`
+    Reason  string `json:"reason"`
+    Expires int64  `json:"expires,omitempty"`
+}
+
+func (e *AuthenticationError) Error() string {
+    return fmt.Sprintf("authentication failed: %s", e.Reason)
+}
+
+type UnauthorizedError struct {
+    Resource     string   `json:"resource"`
+    RequiredRole string   `json:"requiredRole"`
+    UserRoles    []string `json:"userRoles"`
+}
+
+func (e *UnauthorizedError) Error() string {
+    return fmt.Sprintf("unauthorized access to %s, required role: %s", e.Resource, e.RequiredRole)
+}
+
+type InternalServerError struct {
+    Message   string `json:"message"`
+    ErrorCode string `json:"errorCode"`
+    Timestamp int64  `json:"timestamp"`
+}
+
+func (e *InternalServerError) Error() string {
+    return fmt.Sprintf("internal server error: %s (%s)", e.Message, e.ErrorCode)
+}
+
+type ForbiddenError struct {
+    Action string `json:"action"`
+    Reason string `json:"reason"`
+}
+
+func (e *ForbiddenError) Error() string {
+    return fmt.Sprintf("forbidden action %s: %s", e.Action, e.Reason)
+}
+
+type NotFoundError struct {
+    Resource string `json:"resource"`
+    Id       string `json:"id"`
+}
+
+func (e *NotFoundError) Error() string {
+    return fmt.Sprintf("resource %s with id %s not found", e.Resource, e.Id)
+}
+
+type CustomBusinessError struct {
+    BusinessRule string `json:"businessRule"`
+    Context      string `json:"context"`
+    Severity     int    `json:"severity"`
+}
+
+func (e *CustomBusinessError) Error() string {
+    return fmt.Sprintf("business rule violation: %s in %s", e.BusinessRule, e.Context)
+}
+
+type RoomNotFoundError struct {
+    RoomId string `json:"roomId"`
+}
+
+func (e *RoomNotFoundError) Error() string {
+    return fmt.Sprintf("room %s not found", e.RoomId)
+}
+
+type UserNotInRoomError struct {
+    UserId string `json:"userId"`
+    RoomId string `json:"roomId"`
+}
+
+func (e *UserNotInRoomError) Error() string {
+    return fmt.Sprintf("user %s is not in room %s", e.UserId, e.RoomId)
+}
+
+type NotificationFailureError struct {
+    NotificationId string `json:"notificationId"`
+    FailureReason  string `json:"failureReason"`
+    RetryCount     int    `json:"retryCount"`
+}
+
+func (e *NotificationFailureError) Error() string {
+    return fmt.Sprintf("notification %s failed: %s (retries: %d)", e.NotificationId, e.FailureReason, e.RetryCount)
+}
+
+type FileTooLargeError struct {
+    MaxSize     int64 `json:"maxSize"`
+    ActualSize  int64 `json:"actualSize"`
+    FileName    string `json:"fileName"`
+}
+
+func (e *FileTooLargeError) Error() string {
+    return fmt.Sprintf("file %s too large: %d bytes (max: %d bytes)", e.FileName, e.ActualSize, e.MaxSize)
+}
+
+type UnsupportedFileTypeError struct {
+    FileType        string   `json:"fileType"`
+    SupportedTypes  []string `json:"supportedTypes"`
+    FileName        string   `json:"fileName"`
+}
+
+func (e *UnsupportedFileTypeError) Error() string {
+    return fmt.Sprintf("unsupported file type %s for file %s", e.FileType, e.FileName)
+}
+
+type StorageError struct {
+    Operation string `json:"operation"`
+    Path      string `json:"path"`
+    Reason    string `json:"reason"`
+}
+
+func (e *StorageError) Error() string {
+    return fmt.Sprintf("storage operation %s failed for %s: %s", e.Operation, e.Path, e.Reason)
+}
+
+type StreamingError struct {
+    StreamId string `json:"streamId"`
+    Stage    string `json:"stage"`
+    Message  string `json:"message"`
+}
+
+func (e *StreamingError) Error() string {
+    return fmt.Sprintf("streaming error in %s for stream %s: %s", e.Stage, e.StreamId, e.Message)
+}
+
+type BufferOverflowError struct {
+    BufferId   string `json:"bufferId"`
+    MaxSize    int    `json:"maxSize"`
+    CurrentSize int   `json:"currentSize"`
+}
+
+func (e *BufferOverflowError) Error() string {
+    return fmt.Sprintf("buffer %s overflow: %d/%d", e.BufferId, e.CurrentSize, e.MaxSize)
+}
+
+// Injectable services for dependency injection examples
+@Injectable()
+type Logger struct {
+    level string
+}
+
+@Injectable()
+type ErrorService struct {
+    reporter *ErrorReporter
+}
+
+@Injectable()
+type GlobalErrorHandler struct {
+    logger *Logger
+    metrics *MetricsService
+}
+
+@Injectable()
+type ErrorReporter struct {
+    endpoint string
+}
+
+@Injectable()
+type MetricsService struct {
+    collector string
+}

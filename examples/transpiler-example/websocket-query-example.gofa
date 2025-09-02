@@ -1,0 +1,133 @@
+package main
+
+// WebSocket Query Example
+// Demonstrates how @Query() decorator works in WebSocket contexts
+// In WebSocket handlers, @Query() accesses query parameters from the connection URL
+
+@WebSocketGateway(8080)
+type RoomChatGateway struct {
+    @Inject("roomService")
+    roomService *RoomService
+}
+
+// Basic query parameter extraction in WebSocket message handler
+@SubscribeMessage("join_room")
+func HandleJoinRoom(
+    @Query("room") roomId string,
+    @Query("userId") userId string,
+    @MessageBody() joinData *JoinRoomData,
+    @ConnectedSocket() client *WebSocketClient
+) {
+}
+
+// Query parameters with validation and defaults
+@SubscribeMessage("send_message") 
+@UseGuards("AuthGuard")
+func HandleSendMessage(
+    @Query("room", { required: true }) roomId string,
+    @Query("priority", { defaultValue: "1" }) priority int,
+    @MessageBody() message *ChatMessage,
+    @ConnectedSocket() client *WebSocketClient
+) {
+}
+
+// Query parameters with different data types
+@SubscribeMessage("filter_messages")
+func HandleFilterMessages(
+    @Query("since") sinceTimestamp int,
+    @Query("includeDeleted") includeDeleted bool,
+    @Query("tags") tags []string,
+    @ConnectedSocket() client *WebSocketClient
+) {
+}
+
+// WebSocket lifecycle handler with query parameters
+@OnGatewayConnection()
+func HandleNewConnection(
+    @Query("room") room string,
+    @Query("token") token string, 
+    @ConnectedSocket() client *WebSocketClient
+) {
+}
+
+// Comprehensive example with all query features
+@SubscribeMessage("admin_broadcast")
+@UseGuards("AdminGuard")
+@UseInterceptors("AuditInterceptor")
+func HandleAdminBroadcast(
+    @MessageBody() message *AdminMessage,
+    @Query("targetRooms", { required: true }) targetRooms []string,
+    @Query("priority", { required: true }) priority int,
+    @Query("delay", { defaultValue: "0" }) delay int,
+    @ConnectedSocket() client *WebSocketClient
+) {
+}
+
+// Standalone WebSocket function with query parameters
+@SubscribeMessage("global_search")
+@UseGuards("SearchGuard")
+func HandleGlobalSearch(
+    @Query("q", { required: true }) searchQuery string,
+    @Query("limit", { defaultValue: "50" }) limit int,
+    @Query("offset", { defaultValue: "0" }) offset int,
+    @MessageBody() searchOptions *SearchOptions,
+    @ConnectedSocket() client *WebSocketClient
+) {
+}
+
+// Custom query parameter names and validation
+@SubscribeMessage("room_settings")
+func HandleRoomSettings(
+    @Query("roomId") roomIdentifier string,
+    @Query("setting-name") settingName string,
+    @ConnectedSocket() wsClient *WebSocketClient
+) {
+}
+
+// Array query parameters  
+@SubscribeMessage("batch_operation")
+func HandleBatchOperation(
+    @Query("items") items []string,
+    @Query("operations") operations []string,
+    @ConnectedSocket() client *WebSocketClient
+) {
+}
+
+// Mixed headers and query parameters
+@SubscribeMessage("secure_operation")
+func HandleSecureOperation(
+    @Headers("Authorization", { required: true }) authToken string,
+    @Query("room", { required: true }) roomId string,
+    @Query("operation") operation string,
+    @ConnectedSocket() client *WebSocketClient
+) {
+}
+
+// Supporting data structures
+type JoinRoomData struct {
+    Username string
+    UserRole string
+}
+
+type ChatMessage struct {
+    Content string
+    Timestamp int64
+    Metadata map[string]interface{}
+}
+
+type AdminMessage struct {
+    Content string
+    Type string
+    Urgency string
+}
+
+type SearchOptions struct {
+    IncludeArchived bool
+    SortOrder string
+    Filters map[string]interface{}
+}
+
+@Injectable()
+type RoomService struct {
+    database *Database
+}

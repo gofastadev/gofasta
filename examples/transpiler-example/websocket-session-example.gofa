@@ -1,0 +1,189 @@
+package main
+
+// WebSocket Session Example
+// Demonstrates how @Session() decorator works in WebSocket contexts
+// In WebSocket handlers, @Session() accesses session data from the client session
+
+@WebSocketGateway(8080)
+type UserChatGateway struct {
+    @Inject("sessionService")
+    sessionService *SessionService
+}
+
+// Basic session parameter extraction in WebSocket message handler
+@SubscribeMessage("send_message")
+func HandleSendMessage(
+    @Session("userId") userId string,
+    @Session("username") username string,
+    @MessageBody() message *ChatMessage,
+    @ConnectedSocket() client *WebSocketClient
+) {
+    // Session parameters are extracted from client.Session().Get()
+    // - userId: User ID from session
+    // - username: Username from session
+}
+
+// Session parameters with different data types
+@SubscribeMessage("update_preferences")
+func HandleUpdatePreferences(
+    @Session("userId") userId string,
+    @Session("userLevel") userLevel int,
+    @Session("isAdmin") isAdmin bool,
+    @Session("preferences") preferences *UserPreferences,
+    @MessageBody() newPrefs *PreferencesUpdate,
+    @ConnectedSocket() client *WebSocketClient
+) {
+    // Type-specific session extraction:
+    // - userId: String session value
+    // - userLevel: Integer with fallback string parsing
+    // - isAdmin: Boolean with fallback string parsing  
+    // - preferences: Custom type casting
+}
+
+// WebSocket lifecycle handler with session parameters
+@OnGatewayConnection()
+func HandleNewConnection(
+    @Session("userId") userId string,
+    @Session("lastSeen") lastSeen string,
+    @ConnectedSocket() client *WebSocketClient
+) {
+    // Connection-time session access:
+    // - userId: Current user from session
+    // - lastSeen: Last activity timestamp
+}
+
+// Entire session object extraction
+@SubscribeMessage("get_profile") 
+func HandleGetProfile(
+    @Session() sessionData map[string]interface{},
+    @ConnectedSocket() client *WebSocketClient
+) {
+    // Extract all session data at once
+    // sessionData contains the complete session map
+}
+
+// Session store access
+@SubscribeMessage("manage_session")
+@UseGuards("AdminGuard")
+func HandleManageSession(
+    @Session() session *Session,
+    @MessageBody() sessionCommand *SessionCommand,
+    @ConnectedSocket() client *WebSocketClient
+) {
+    // Direct access to the session store
+    // Allows reading, writing, and managing session data
+}
+
+// Mixed parameter types with session
+@SubscribeMessage("secure_operation")
+func HandleSecureOperation(
+    @Headers("Authorization") authToken string,
+    @Query("room") roomId string,
+    @Session("userId") userId string,
+    @Session("userRole") userRole string,
+    @MessageBody() operation *SecureOperation,
+    @ConnectedSocket() client *WebSocketClient
+) {
+    // Combined parameter extraction:
+    // - authToken: From WebSocket handshake headers
+    // - roomId: From WebSocket connection URL query
+    // - userId: From WebSocket client session
+    // - userRole: From WebSocket client session
+}
+
+// Session validation and fallbacks
+@SubscribeMessage("validate_user")
+func HandleValidateUser(
+    @Session("userId") userId string,
+    @Session("sessionId") sessionId string,
+    @ConnectedSocket() client *WebSocketClient
+) {
+    // Session parameters with validation logic
+    // Generated code handles type conversion and fallbacks
+}
+
+// Custom session parameter names
+@SubscribeMessage("user_activity")
+func HandleUserActivity(
+    @Session("user_id") userIdentifier string,
+    @Session("last_activity") lastActivity string,
+    @Session("activity_count") activityCount int,
+    @ConnectedSocket() wsClient *WebSocketClient
+) {
+    // Flexible session key mapping:
+    // - userIdentifier: Maps to "user_id" session key
+    // - lastActivity: Maps to "last_activity" session key
+    // - activityCount: Maps to "activity_count" session key
+    // - wsClient: Custom name for WebSocket client parameter
+}
+
+// Standalone WebSocket function with session
+@SubscribeMessage("global_notification")
+func HandleGlobalNotification(
+    @Session("userId") userId string,
+    @Session("notificationPrefs") notificationPrefs *NotificationPrefs,
+    @MessageBody() notification *GlobalNotification,
+    @ConnectedSocket() client *WebSocketClient
+) {
+    // Standalone function with session access
+    // Same session extraction logic applies
+}
+
+// Complex session usage
+@SubscribeMessage("user_dashboard")
+func HandleUserDashboard(
+    @Session("userId") userId string,
+    @Session("userLevel") userLevel int,
+    @Session("permissions") permissions []string,
+    @Session("settings") userSettings map[string]interface{},
+    @ConnectedSocket() client *WebSocketClient
+) {
+}
+
+// Supporting data structures
+type ChatMessage struct {
+    Content string
+    Timestamp int64
+    RoomId string
+}
+
+type UserPreferences struct {
+    Theme string
+    Language string
+    Notifications bool
+}
+
+type PreferencesUpdate struct {
+    Theme string
+    Language string
+    Notifications bool
+}
+
+type SessionCommand struct {
+    Action string
+    Key string
+    Value interface{}
+}
+
+type SecureOperation struct {
+    Operation string
+    Parameters map[string]interface{}
+    RequiredLevel int
+}
+
+type NotificationPrefs struct {
+    Email bool
+    Push bool
+    InApp bool
+}
+
+type GlobalNotification struct {
+    Type string
+    Content string
+    Priority int
+}
+
+@Injectable()
+type SessionService struct {
+    store *SessionStore
+}

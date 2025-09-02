@@ -41,6 +41,9 @@ func (g *CodeGenerator) generateWebSocketGatewayDeclaration(gateway *WebSocketGa
 		g.writeLine("")
 	}
 
+	// Generate WebSocket catch handlers (error handlers)
+	g.generateWebSocketCatchHandlers(gateway)
+
 	// Generate WebSocket middleware functions
 	g.generateWebSocketGuardMiddlewareFunctions(gateway)
 	g.generateWebSocketInterceptorMiddlewareFunctions(gateway)
@@ -830,6 +833,16 @@ func (g *CodeGenerator) generateWebSocketFunctionDeclaration(wsFunc *WebSocketFu
 	// Generate function
 	g.writeLine(funcSignature + " {")
 	g.indent()
+	
+	// Generate parameter extraction for WebSocket context
+	// Convert WebSocketFunctionDeclaration to MethodNode for parameter extraction
+	method := &MethodNode{
+		Name:       wsFunc.Name,
+		Params:     wsFunc.Params,
+		ReturnType: wsFunc.ReturnType,
+		Decorators: wsFunc.Decorators,
+	}
+	g.generateWebSocketParameterExtraction(method)
 	
 	// Add function body based on decorator type
 	addedComment := false
@@ -1623,38 +1636,49 @@ func (g *CodeGenerator) hasWebSocketParameterDecorators(method *MethodNode) bool
 
 // generateWebSocketParameterExtraction generates parameter extraction for WebSocket context
 func (g *CodeGenerator) generateWebSocketParameterExtraction(method *MethodNode) {
+	// Set WebSocket context and current method for parameter extraction
+	originalContext := g.currentContext
+	originalMethod := g.currentMethod
+	g.currentContext = WebSocketContext
+	g.currentMethod = method
+	defer func() {
+		g.currentContext = originalContext
+		g.currentMethod = originalMethod
+	}()
+	
 	for _, param := range method.Params {
 		paramDecorators := g.getParameterDecorators(param)
 		
 		for _, decorator := range paramDecorators {
 			switch decorator.Name {
 			case "MessageBody":
-				g.writeLine(fmt.Sprintf("// Extract message body"))
-				g.writeLine(fmt.Sprintf("var %s %s", param.Name, param.Type))
-				g.writeLine(fmt.Sprintf("if err := wsCtx.ParseMessageBody(&%s); err != nil {", param.Name))
-				g.indent()
-				g.writeLine("wsCtx.SendError(\"Invalid message body\")")
-				g.writeLine("return")
-				g.unindent()
-				g.writeLine("}")
+				g.generateMessageBodyParameterExtraction(param, decorator)
 			case "ConnectedSocket":
-				g.writeLine(fmt.Sprintf("%s := wsCtx.Client", param.Name))
+				g.writeLine(fmt.Sprintf("%s := wsCtx.Client()", param.Name))
 			case "MessageAck":
-				g.writeLine(fmt.Sprintf("%s := wsCtx.AckCallback", param.Name))
+				g.writeLine(fmt.Sprintf("%s := wsCtx.AckCallback()", param.Name))
 			case "Headers":
-				g.writeLine(fmt.Sprintf("%s := wsCtx.Headers", param.Name))
+				// Use the full HTTP-style @Headers() logic with WebSocket context
+				g.generateHeaderParameterExtraction(param, decorator)
+			case "Query":
+				// Use the full HTTP-style @Query() logic with WebSocket context
+				g.generateQueryParameterExtraction(param, decorator)
 			case "Session":
-				g.writeLine(fmt.Sprintf("%s := wsCtx.Session", param.Name))
+				// Use the full HTTP-style @Session() logic with WebSocket context
+				g.generateSessionParameterExtraction(param, decorator)
+			case "Exception":
+				// WebSocket error parameter extraction
+				g.writeLine(fmt.Sprintf("%s := wsCtx.Error", param.Name))
+			case "EventName":
+				g.writeLine(fmt.Sprintf("%s := wsCtx.EventName", param.Name))
 			case "Rooms":
-				g.writeLine(fmt.Sprintf("%s := wsCtx.Client.GetRooms()", param.Name))
+				g.writeLine(fmt.Sprintf("%s := wsCtx.Rooms()", param.Name))
 			case "Namespace":
-				g.writeLine(fmt.Sprintf("%s := wsCtx.Namespace", param.Name))
+				g.writeLine(fmt.Sprintf("%s := wsCtx.Namespace()", param.Name))
 			case "CurrentUser":
 				g.writeLine(fmt.Sprintf("%s := wsCtx.User", param.Name))
 			case "ClientIP":
 				g.writeLine(fmt.Sprintf("%s := wsCtx.Client.RemoteAddr()", param.Name))
-			case "EventName":
-				g.writeLine(fmt.Sprintf("%s := wsCtx.EventName", param.Name))
 			case "MessagePattern":
 				g.writeLine(fmt.Sprintf("%s := wsCtx.Pattern", param.Name))
 			}

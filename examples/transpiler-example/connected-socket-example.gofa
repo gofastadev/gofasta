@@ -1,0 +1,330 @@
+package main
+
+// Comprehensive demonstration of @ConnectedSocket() parameter decorator
+// Shows how to access the current WebSocket client connection in various contexts
+
+// Basic WebSocket Gateway
+@WebSocketGateway({
+	port: 3000,
+	namespace: "/chat",
+	cors: true
+})
+type ChatGateway struct {
+	@Inject("chatService")
+	chatService *ChatService
+	
+	@Inject("userService") 
+	userService *UserService
+}
+
+// === CONNECTION LIFECYCLE EXAMPLES ===
+
+// Access client during connection establishment
+@OnGatewayConnection()
+func HandleNewConnection(
+	@ConnectedSocket() client *WebSocketClient,
+	@Headers() headers map[string]string
+) {
+	// Use client to get connection info
+	// clientID := client.ID()
+	userAgent := headers["User-Agent"]
+	
+	// Authenticate user based on connection headers
+	// client.Join("authenticated_users")
+	
+	// Send welcome message to this specific client
+	// client.Emit("welcome", map[string]interface{}{
+	//     "message": "Welcome to the chat!",
+	//     "clientID": clientID,
+	//     "timestamp": time.Now(),
+	// })
+}
+
+// Access client during disconnection
+@OnGatewayDisconnect()
+func HandleDisconnection(
+	@ConnectedSocket() client *WebSocketClient,
+	@DisconnectReason() reason string
+) {
+	// Get client info before they disconnect
+	// clientID := client.ID()
+	// rooms := client.Rooms()
+	
+	// Notify other users in the same rooms
+	// for _, room := range rooms {
+	//     client.To(room).Emit("user_left", map[string]interface{}{
+	//         "clientID": clientID,
+	//         "reason": reason,
+	//     })
+	// }
+	
+	// Clean up client-specific resources
+	// cleanupUserResources(clientID)
+}
+
+// === MESSAGE HANDLING EXAMPLES ===
+
+// Basic message with client access
+@SubscribeMessage("send_message")
+func HandleSendMessage(
+	@MessageBody() message *ChatMessage,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Get client-specific information
+	// clientID := client.ID()
+	// clientRooms := client.Rooms()
+	
+	// Add metadata to message
+	// message.SenderID = clientID
+	message.Timestamp = getCurrentTimestamp()
+	
+	// Broadcast to all clients in same rooms
+	// for _, room := range clientRooms {
+	//     client.To(room).Emit("new_message", message)
+	// }
+}
+
+// Multiple parameter decorators with ConnectedSocket
+@SubscribeMessage("join_room")
+func HandleJoinRoom(
+	@MessageBody() roomData *JoinRoomData,
+	@ConnectedSocket() client *WebSocketClient,
+	@CurrentUser() user *User,
+	@MessageAck() ack *AckCallback
+) {
+	// Validate user can join room
+	if !canJoinRoom(user, roomData.RoomID) {
+		// ack.Error("Permission denied")
+		return
+	}
+	
+	// Use client to join room
+	// client.Join(roomData.RoomID)
+	
+	// Notify other users in room
+	// client.To(roomData.RoomID).Emit("user_joined", map[string]interface{}{
+	//     "userID": user.ID,
+	//     "username": user.Name,
+	//     "clientID": client.ID(),
+	// })
+	
+	// Acknowledge successful join
+	// ack.Success(map[string]interface{}{
+	//     "roomID": roomData.RoomID,
+	//     "memberCount": getRoomMemberCount(roomData.RoomID),
+	// })
+}
+
+// Private messaging using client connections
+@SubscribeMessage("private_message")
+func HandlePrivateMessage(
+	@MessageBody() privateMsg *PrivateMessage,
+	@ConnectedSocket() senderClient *WebSocketClient
+) {
+	// Get sender info and process private message
+	// senderID := senderClient.ID()
+	// targetClients := findClientsByUserID(privateMsg.RecipientID)
+	
+	// Send message to target client(s) and confirmation
+	// Implementation details commented out for transpilation compatibility
+}
+
+// Broadcasting with client exclusion
+@SubscribeMessage("broadcast_update")
+func HandleBroadcastUpdate(
+	@MessageBody() updateData *UpdateData,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Broadcast to all clients EXCEPT the sender
+	// client.Broadcast().Emit("system_update", updateData)
+	
+	// Or broadcast to specific room excluding sender
+	if updateData.RoomID != "" {
+		// client.Broadcast().To(updateData.RoomID).Emit("room_update", updateData)
+	}
+}
+
+// Using client for user presence tracking
+@SubscribeMessage("update_presence")
+func HandlePresenceUpdate(
+	@MessageBody() presenceData *PresenceData,
+	@ConnectedSocket() client *WebSocketClient,
+	@CurrentUser() user *User
+) {
+	// Update user presence and broadcast to contacts
+	// updateUserPresence(user.ID, presenceData.Status)
+	// contactClients := getContactClients(user.ID)
+	
+	// Implementation details commented out for transpilation compatibility
+}
+
+// File sharing with progress updates
+@SubscribeMessage("share_file")
+func HandleFileShare(
+	@MessageBody() fileData *FileShareData,
+	@ConnectedSocket() senderClient *WebSocketClient
+) {
+	// File sharing implementation with progress tracking
+	// Validate permissions, process file, send progress updates
+	// Implementation details commented out for transpilation compatibility
+}
+
+// Gaming example - real-time game state updates
+@SubscribeMessage("game_move")
+func HandleGameMove(
+	@MessageBody() moveData *GameMoveData,
+	@ConnectedSocket() playerClient *WebSocketClient
+) {
+	// Gaming implementation with turn validation and state updates
+	// Validate player turn, process move, update all players
+	// Implementation details commented out for transpilation compatibility
+}
+
+// Advanced: Multiple ConnectedSocket parameters (edge case)
+@SubscribeMessage("proxy_message")
+func HandleProxyMessage(
+	@MessageBody() proxyData *ProxyData,
+	@ConnectedSocket() sourceClient *WebSocketClient,
+	@ConnectedSocket() targetClient *WebSocketClient
+) {
+	// This example shows multiple @ConnectedSocket() decorators
+	// In practice, you'd typically have one per function
+	// But the parser should handle multiple instances
+	
+	// Implementation details commented out for transpilation compatibility
+}
+
+// === UTILITY FUNCTIONS ===
+
+func canJoinRoom(user *User, roomID string) bool {
+	// Room access validation logic
+	return true
+}
+
+func canUploadFile(clientID string, fileSize int64) bool {
+	// File upload validation logic
+	return fileSize < 10*1024*1024 // 10MB limit
+}
+
+func findClientsByUserID(userID string) []*WebSocketClient {
+	// Find all client connections for a specific user
+	return []*WebSocketClient{}
+}
+
+func findClientsByUserIDs(userIDs []string) []*WebSocketClient {
+	// Find client connections for multiple users
+	return []*WebSocketClient{}
+}
+
+func getContactClients(userID string) []*WebSocketClient {
+	// Get client connections for user's contacts
+	return []*WebSocketClient{}
+}
+
+func getClientsInRoom(roomID string) []*WebSocketClient {
+	// Get all clients in a specific room
+	return []*WebSocketClient{}
+}
+
+func updateUserPresence(userID string, status string) {
+	// Update user presence in database
+}
+
+func isPlayerTurn(gameID string, playerID string) bool {
+	// Check if it's the player's turn in the game
+	return true
+}
+
+func processGameMove(moveData *GameMoveData) *GameState {
+	// Process game move and return new state
+	return &GameState{}
+}
+
+func generateFileID() string {
+	return "file_123456"
+}
+
+func getRoomMemberCount(roomID string) int {
+	return 5
+}
+
+func getCurrentTimestamp() string {
+	return "2023-12-07T10:30:00Z"
+}
+
+// === DATA STRUCTURES ===
+
+type ChatMessage struct {
+	SenderID  string `json:"sender_id"`
+	Content   string `json:"content"`
+	Timestamp string `json:"timestamp"`
+	RoomID    string `json:"room_id,omitempty"`
+}
+
+type JoinRoomData struct {
+	RoomID   string `json:"room_id"`
+	Password string `json:"password,omitempty"`
+}
+
+type PrivateMessage struct {
+	MessageID   string `json:"message_id"`
+	RecipientID string `json:"recipient_id"`
+	Content     string `json:"content"`
+}
+
+type UpdateData struct {
+	Type    string      `json:"type"`
+	RoomID  string      `json:"room_id,omitempty"`
+	Payload interface{} `json:"payload"`
+}
+
+type PresenceData struct {
+	// Status values: "online", "away", "busy", "offline"
+	Status string `json:"status"`
+}
+
+type FileShareData struct {
+	Filename     string   `json:"filename"`
+	FileSize     int64    `json:"file_size"`
+	RecipientIDs []string `json:"recipient_ids"`
+}
+
+type GameMoveData struct {
+	GameID string      `json:"game_id"`
+	MoveID string      `json:"move_id"`
+	Move   interface{} `json:"move"`
+}
+
+type GameState struct {
+	GameID      string      `json:"game_id"`
+	CurrentTurn string      `json:"current_turn"`
+	Board       interface{} `json:"board"`
+	Status      string      `json:"status"`
+}
+
+type ProxyData struct {
+	Message string `json:"message"`
+	TargetClientID string `json:"target_client_id"`
+}
+
+// === SERVICES ===
+
+@Injectable()
+type ChatService struct {}
+
+@Injectable()
+type UserService struct {}
+
+// === TYPES ===
+
+type User struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Email string `json:"email"`
+}
+
+type WebSocketClient struct {
+	id string
+}
+
+type AckCallback struct{}

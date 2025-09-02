@@ -1,0 +1,336 @@
+package main
+
+// Comprehensive demonstration of @Rooms() parameter decorator
+// Advanced room management patterns for scalable WebSocket applications
+
+@WebSocketGateway(3000)
+type AdvancedRoomsGateway struct {
+	@Inject("roomManager")
+	roomManager *RoomManager
+}
+
+// === HIERARCHICAL ROOM MANAGEMENT ===
+
+// Multi-level room broadcasting with permission checks
+@SubscribeMessage("broadcast_hierarchical")
+func HandleHierarchicalBroadcast(
+	@MessageBody() message *HierarchicalMessage,
+	@Rooms() userRooms []string,
+	@ConnectedSocket() client *WebSocketClient,
+	@CurrentUser() user *User
+) {
+	// Filter rooms based on hierarchy and permissions
+	allowedRooms := make([]string, 0)
+	
+	for _, room := range userRooms {
+		// Check if user has broadcast permissions in this room
+		// if hasPermission := checkBroadcastPermission(user, room, message.Level); hasPermission {
+		allowedRooms = append(allowedRooms, room)
+		// }
+	}
+	
+	if len(allowedRooms) == 0 {
+		// client.Emit("error", "No permission to broadcast to any rooms")
+		return
+	}
+	
+	// Broadcast to allowed rooms with hierarchy context
+	for _, roomName := range allowedRooms {
+		// client.To(roomName).Emit("hierarchical_message", message)
+	}
+}
+
+// Cross-room coordination with room state tracking
+@SubscribeMessage("coordinate_across_rooms")
+func HandleCrossRoomCoordination(
+	@MessageBody() coordination *CoordinationRequest,
+	@Rooms() participantRooms []string,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Find intersection of requested rooms and participant rooms
+	eligibleRooms := make([]string, 0)
+	
+	for _, requested := range coordination.TargetRooms {
+		for _, participant := range participantRooms {
+			if requested == participant {
+				eligibleRooms = append(eligibleRooms, requested)
+				break
+			}
+		}
+	}
+	
+	if len(eligibleRooms) == 0 {
+		// client.Emit("coordination_error", "No eligible rooms for coordination")
+		return
+	}
+	
+	// Initiate coordination across eligible rooms
+	coordinationID := generateCoordinationID()
+	
+	for _, roomName := range eligibleRooms {
+		// client.To(roomName).Emit("coordination_request", coordinationID)
+	}
+	
+	// Track coordination state
+	// trackCoordination(coordinationID, eligibleRooms, coordination.Action)
+}
+
+// === ROOM-BASED WORKFLOWS ===
+
+// Multi-room approval workflow
+@SubscribeMessage("start_approval_workflow")
+func HandleApprovalWorkflow(
+	@MessageBody() workflow *ApprovalWorkflow,
+	@Rooms() availableRooms []string,
+	@CurrentUser() user *User
+) {
+	// Validate workflow rooms against available rooms
+	workflowRooms := make([]string, 0)
+	missingRooms := make([]string, 0)
+	
+	for _, required := range workflow.RequiredRooms {
+		found := false
+		for _, available := range availableRooms {
+			if required == available {
+				workflowRooms = append(workflowRooms, required)
+				found = true
+				break
+			}
+		}
+		if !found {
+			missingRooms = append(missingRooms, required)
+		}
+	}
+	
+	if len(missingRooms) > 0 {
+		// client.Emit("workflow_error", "Missing access to required rooms")
+		return
+	}
+	
+	// Start approval workflow across all required rooms
+	workflowID := generateWorkflowID()
+	
+	for _, roomName := range workflowRooms {
+		// client.To(roomName).Emit("approval_request", workflowID)
+	}
+	
+	// Initialize workflow state
+	// initializeWorkflow(workflowID, workflowRooms, user.ID)
+}
+
+// Room-based voting system
+@SubscribeMessage("initiate_vote")
+func HandleInitiateVote(
+	@MessageBody() vote *VoteRequest,
+	@Rooms() voterRooms []string,
+	@ConnectedSocket() client *WebSocketClient,
+	@CurrentUser() user *User
+) {
+	// Determine eligible voting rooms
+	eligibleRooms := make([]string, 0)
+	
+	if len(vote.TargetRooms) > 0 {
+		// Specific rooms requested
+		for _, target := range vote.TargetRooms {
+			for _, room := range voterRooms {
+				if target == room {
+					eligibleRooms = append(eligibleRooms, target)
+					break
+				}
+			}
+		}
+	} else {
+		// All user's rooms
+		eligibleRooms = voterRooms
+	}
+	
+	if len(eligibleRooms) == 0 {
+		// client.Emit("vote_error", "No eligible rooms for voting")
+		return
+	}
+	
+	voteID := generateVoteID()
+	
+	for _, roomName := range eligibleRooms {
+		// client.To(roomName).Emit("vote_initiated", voteID)
+	}
+	
+	// Initialize vote tracking
+	// initializeVote(voteID, eligibleRooms, vote)
+}
+
+// === ADVANCED ROOM ANALYTICS ===
+
+// Room activity correlation analysis
+@SubscribeMessage("analyze_room_activity")
+func HandleRoomActivityAnalysis(
+	@Rooms() analysisRooms []string,
+	@ConnectedSocket() client *WebSocketClient,
+	@CurrentUser() user *User
+) {
+	// Analyze activity patterns across user's rooms
+	for _, roomName := range analysisRooms {
+		// roomActivity := getRoomActivityMetrics(roomName)
+		// Process activity data
+	}
+	
+	// Perform cross-room correlation analysis
+	// correlations := analyzeRoomCorrelations(activityData)
+	
+	// client.Emit("activity_analysis", analysisRooms)
+}
+
+// Room membership optimization suggestions
+@SubscribeMessage("optimize_room_membership")
+func HandleRoomOptimization(
+	@Rooms() currentRooms []string,
+	@MessageBody() preferences *OptimizationPreferences,
+	@CurrentUser() user *User
+) {
+	// Analyze current room membership patterns
+	analyzeMembershipPatterns(currentRooms, user.ID)
+	
+	// Generate optimization suggestions
+	generateOptimizationSuggestions(preferences)
+	
+	// client.Emit("optimization_suggestions", currentRooms)
+}
+
+// === ROOM SECURITY AND AUDIT ===
+
+// Security audit across rooms
+@SubscribeMessage("audit_room_security")
+func HandleRoomSecurityAudit(
+	@Rooms() auditRooms []string,
+	@CurrentUser() user *User,
+	@MessageAck() ack *AckCallback
+) {
+	// Check if user has audit permissions
+	// if !hasAuditPermissions(user) {
+	//     ack.Error("Insufficient permissions for security audit")
+	//     return
+	// }
+	
+	for _, roomName := range auditRooms {
+		// roomSecurityStatus := performRoomSecurityAudit(roomName)
+		// Process audit results
+	}
+	
+	// Log security audit
+	// logSecurityAudit(user.ID, auditRooms)
+	
+	// ack.Success("Security audit completed")
+}
+
+// Room access pattern monitoring
+@SubscribeMessage("monitor_access_patterns")
+func HandleAccessPatternMonitoring(
+	@Rooms() monitoredRooms []string,
+	@MessageBody() monitoring *MonitoringConfig,
+	@ConnectedSocket() client *WebSocketClient,
+	@CurrentUser() user *User
+) {
+	// Start monitoring access patterns for specified rooms
+	monitoringID := generateMonitoringID()
+	
+	// Initialize monitoring for each room
+	for _, roomName := range monitoredRooms {
+		// startRoomMonitoring(monitoringID, roomName, monitoring)
+	}
+	
+	// Confirm monitoring started
+	// client.Emit("monitoring_started", monitoringID)
+}
+
+// === HELPER FUNCTIONS ===
+
+func generateCoordinationID() string {
+	return "coord_123456789"
+}
+
+func generateWorkflowID() string {
+	return "workflow_123456789"
+}
+
+func generateVoteID() string {
+	return "vote_123456789"
+}
+
+func generateMonitoringID() string {
+	return "monitor_123456789"
+}
+
+func getCurrentTimestamp() string {
+	return "2024-01-01T00:00:00Z"
+}
+
+func analyzeMembershipPatterns(rooms []string, userID string) {
+	// Simple implementation - analyze membership patterns
+	totalRooms := len(rooms)
+	// Process analysis based on totalRooms and userID
+}
+
+func generateOptimizationSuggestions(preferences *OptimizationPreferences) {
+	// Simple implementation - generate suggestions
+	maxRooms := preferences.MaxRooms
+	// Generate suggestions based on maxRooms
+}
+
+// === DATA STRUCTURES ===
+
+type HierarchicalMessage struct {
+	Content string `json:"content"`
+	Level   int    `json:"level"`
+	Type    string `json:"type"`
+}
+
+type CoordinationRequest struct {
+	Action      string   `json:"action"`
+	TargetRooms []string `json:"target_rooms"`
+	Timeout     int      `json:"timeout"`
+}
+
+type ApprovalWorkflow struct {
+	Title         string   `json:"title"`
+	Description   string   `json:"description"`
+	RequiredRooms []string `json:"required_rooms"`
+	Deadline      string   `json:"deadline"`
+}
+
+type VoteRequest struct {
+	Question    string   `json:"question"`
+	Options     []string `json:"options"`
+	TargetRooms []string `json:"target_rooms,omitempty"`
+	Deadline    string   `json:"deadline"`
+	Anonymous   bool     `json:"anonymous"`
+}
+
+type OptimizationPreferences struct {
+	MaxRooms      int      `json:"max_rooms"`
+	Categories    []string `json:"categories"`
+	ActivityLevel string   `json:"activity_level"`
+}
+
+type MonitoringConfig struct {
+	Duration   int      `json:"duration"`
+	Alerts     []string `json:"alerts"`
+}
+
+// === SERVICES ===
+
+@Injectable()
+type RoomManager struct{}
+
+// === TYPES ===
+
+type User struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Role string `json:"role"`
+}
+
+type WebSocketClient struct {
+	id string
+}
+
+type AckCallback struct{}

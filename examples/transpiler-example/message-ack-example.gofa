@@ -1,0 +1,421 @@
+package main
+
+import "fmt"
+
+// Comprehensive demonstration of @MessageAck() parameter decorator
+// Advanced acknowledgment patterns for reliable WebSocket messaging
+
+@WebSocketGateway({
+	port: 3000,
+	namespace: "/reliable",
+	cors: true
+})
+type ReliableMessagingGateway struct {
+	@Inject("messageService")
+	messageService *MessageService
+	
+	@Inject("auditService")
+	auditService *AuditService
+}
+
+// === TRANSACTIONAL MESSAGING ===
+
+// Database transaction with acknowledgment
+@SubscribeMessage("create_order")
+func HandleCreateOrder(
+	@MessageBody() orderData *CreateOrderRequest,
+	@ConnectedSocket() client *WebSocketClient,
+	@CurrentUser() user *User,
+	@MessageAck() ack *AckCallback
+) {
+	// Validate order data
+	if err := validateOrderData(orderData); err != nil {
+		// ack.Error("Invalid order data: " + err.Error())
+		return
+	}
+	
+	// Start transaction
+	// tx, err := beginTransaction()
+	// if err != nil {
+	//     ack.Error("Failed to start transaction")
+	//     return
+	// }
+	
+	// Create order
+	// orderID, err := createOrder(tx, user.ID, orderData)
+	// if err != nil {
+	//     tx.Rollback()
+	//     ack.Error("Failed to create order: " + err.Error())
+	//     return
+	// }
+	
+	// Commit transaction
+	// if err := tx.Commit(); err != nil {
+	//     ack.Error("Failed to commit transaction")
+	//     return
+	// }
+	
+	// Success acknowledgment with order details
+	// ack.Success(map[string]interface{}{
+	//     "orderID": orderID,
+	//     "status": "created",
+	//     "message": "Order created successfully",
+	// })
+}
+
+// Multi-step process with intermediate acknowledgments
+@SubscribeMessage("deploy_application")
+func HandleApplicationDeployment(
+	@MessageBody() deployData *DeploymentRequest,
+	@MessageAck() ack *AckCallback
+) {
+	// Step 1: Validate deployment
+	// ack.Success("Validation started")
+	
+	if !validateDeployment(deployData) {
+		// ack.Error("Deployment validation failed")
+		return
+	}
+	
+	// Step 2: Build application
+	// Note: In practice, you'd use the client to send progress updates
+	// and reserve ack for final confirmation
+	
+	// Step 3: Deploy to servers
+	// deploymentID, err := deployToServers(deployData)
+	// if err != nil {
+	//     ack.Error("Deployment failed: " + err.Error())
+	//     return
+	// }
+	
+	// Final success acknowledgment
+	// ack.Success(map[string]interface{}{
+	//     "deploymentID": deploymentID,
+	//     "status": "deployed",
+	//     "endpoints": getDeploymentEndpoints(deploymentID),
+	// })
+}
+
+// === ERROR RECOVERY PATTERNS ===
+
+// Retry logic with acknowledgment
+@SubscribeMessage("process_payment")
+func HandlePaymentProcessing(
+	@MessageBody() paymentData *PaymentRequest,
+	@MessageAck() ack *AckCallback
+) {
+	maxRetries := 3
+	var lastError error
+	
+	for attempt := 1; attempt <= maxRetries; attempt++ {
+		// success, err := processPayment(paymentData)
+		// if success {
+		//     ack.Success(map[string]interface{}{
+		//         "transactionID": generateTransactionID(),
+		//         "status": "completed",
+		//         "attempts": attempt,
+		//     })
+		//     return
+		// }
+		// lastError = err
+		
+		// If not last attempt, continue retrying
+		if attempt < maxRetries {
+			// Short delay before retry (in real implementation)
+			continue
+		}
+	}
+	
+	// All retries failed
+	// ack.Error(fmt.Sprintf("Payment failed after %d attempts: %v", maxRetries, lastError))
+}
+
+// Partial success acknowledgment
+@SubscribeMessage("bulk_update")
+func HandleBulkUpdate(
+	@MessageBody() updateData *BulkUpdateRequest,
+	@MessageAck() ack *AckCallback
+) {
+	results := make([]UpdateResult, len(updateData.Items))
+	successCount := 0
+	
+	for i, item := range updateData.Items {
+		// success, err := updateItem(item)
+		// if success {
+		successCount++
+		results[i] = UpdateResult{ID: item.ID, Success: true}
+		// } else {
+		// 	results[i] = UpdateResult{ID: item.ID, Success: false, Error: err.Error()}
+		// }
+	}
+	
+	// Acknowledge with detailed results
+	// ack.Success(map[string]interface{}{
+	//     "total": len(updateData.Items),
+	//     "successful": successCount,
+	//     "failed": len(updateData.Items) - successCount,
+	//     "results": results,
+	// })
+}
+
+// === ASYNCHRONOUS OPERATIONS ===
+
+// Long-running task with callback acknowledgment
+@SubscribeMessage("analyze_data")
+func HandleDataAnalysis(
+	@MessageBody() analysisData *AnalysisRequest,
+	@ConnectedSocket() client *WebSocketClient,
+	@MessageAck() ack *AckCallback
+) {
+	// Immediate acknowledgment that task started
+	// ack.Success("Analysis started")
+	
+	// Start background analysis
+	go func() {
+		// Simulate long-running analysis
+		// result, err := performAnalysis(analysisData)
+		
+		// Send result via client (not ack, as connection may have changed)
+		// if err != nil {
+		//     client.Emit("analysis_error", map[string]interface{}{
+		//         "analysisID": analysisData.ID,
+		//         "error": err.Error(),
+		//     })
+		// } else {
+		//     client.Emit("analysis_complete", map[string]interface{}{
+		//         "analysisID": analysisData.ID,
+		//         "result": result,
+		//     })
+		// }
+	}()
+}
+
+// Queue operation with acknowledgment
+@SubscribeMessage("queue_task")
+func HandleTaskQueuing(
+	@MessageBody() taskData *TaskRequest,
+	@MessageAck() ack *AckCallback
+) {
+	// Add task to queue
+	// queueID, position, err := addToQueue(taskData)
+	// if err != nil {
+	//     ack.Error("Failed to queue task: " + err.Error())
+	//     return
+	// }
+	
+	// Acknowledge queuing with position info
+	// ack.Success(map[string]interface{}{
+	//     "queueID": queueID,
+	//     "position": position,
+	//     "estimatedWaitTime": calculateWaitTime(position),
+	// })
+}
+
+// === VALIDATION AND AUTHENTICATION ===
+
+// Authentication with acknowledgment
+@SubscribeMessage("authenticate")
+func HandleAuthentication(
+	@MessageBody() authData *AuthRequest,
+	@ConnectedSocket() client *WebSocketClient,
+	@MessageAck() ack *AckCallback
+) {
+	// Validate credentials
+	// user, token, err := authenticateUser(authData.Username, authData.Password)
+	// if err != nil {
+	//     ack.Error("Authentication failed: " + err.Error())
+	//     return
+	// }
+	
+	// Set user context for client
+	// setClientUser(client, user)
+	
+	// Success acknowledgment with token
+	// ack.Success(map[string]interface{}{
+	//     "token": token,
+	//     "user": user,
+	//     "expiresAt": getTokenExpiration(token),
+	// })
+}
+
+// Permission check with acknowledgment
+@SubscribeMessage("access_resource")
+func HandleResourceAccess(
+	@MessageBody() accessData *ResourceAccessRequest,
+	@CurrentUser() user *User,
+	@MessageAck() ack *AckCallback
+) {
+	// Check permissions
+	// hasAccess, permissions := checkResourceAccess(user.ID, accessData.ResourceID)
+	// if !hasAccess {
+	//     ack.Error("Access denied: insufficient permissions")
+	//     return
+	// }
+	
+	// Grant access
+	// accessToken, err := grantResourceAccess(user.ID, accessData.ResourceID)
+	// if err != nil {
+	//     ack.Error("Failed to grant access: " + err.Error())
+	//     return
+	// }
+	
+	// Success with access details
+	// ack.Success(map[string]interface{}{
+	//     "accessToken": accessToken,
+	//     "permissions": permissions,
+	//     "resourceID": accessData.ResourceID,
+	// })
+}
+
+// === ADVANCED PATTERNS ===
+
+// Conditional acknowledgment based on client preferences
+@SubscribeMessage("send_notification")
+func HandleNotificationSend(
+	@MessageBody() notificationData *NotificationRequest,
+	@ConnectedSocket() client *WebSocketClient,
+	@MessageAck() ack *AckCallback
+) {
+	// Send notification
+	// err := sendNotification(notificationData)
+	// if err != nil {
+	//     ack.Error("Failed to send notification: " + err.Error())
+	//     return
+	// }
+	
+	// Only ack if client settings require it
+	// clientSettings := getClientSettings(client)
+	// if clientSettings.AckNotifications {
+	//     ack.Success("Notification sent successfully")
+	// }
+}
+
+// Multiple acknowledgment callbacks (edge case)
+@SubscribeMessage("dual_confirmation")
+func HandleDualConfirmation(
+	@MessageBody() data *DualConfirmationRequest,
+	@MessageAck() primaryAck *AckCallback,
+	@MessageAck() secondaryAck *AckCallback
+) {
+	// Process the request
+	// success, primaryResult, secondaryResult := processDualRequest(data)
+	
+	// Send acknowledgments to different callbacks
+	// if success {
+	//     primaryAck.Success(primaryResult)
+	//     secondaryAck.Success(secondaryResult)
+	// } else {
+	//     primaryAck.Error("Primary processing failed")
+	//     secondaryAck.Error("Secondary processing failed")
+	// }
+}
+
+// === HELPER FUNCTIONS ===
+
+func validateOrderData(orderData *CreateOrderRequest) error {
+	if len(orderData.Items) == 0 {
+		return fmt.Errorf("order must contain at least one item")
+	}
+	return nil
+}
+
+func validateDeployment(deployData *DeploymentRequest) bool {
+	return deployData.Environment != "" && deployData.Version != ""
+}
+
+func generateTransactionID() string {
+	return "txn_123456789"
+}
+
+// === DATA STRUCTURES ===
+
+type CreateOrderRequest struct {
+	Items []OrderItem `json:"items"`
+}
+
+type OrderItem struct {
+	ProductID string `json:"product_id"`
+	Quantity  int    `json:"quantity"`
+	Price     float64 `json:"price"`
+}
+
+type DeploymentRequest struct {
+	Environment string `json:"environment"`
+	Version     string `json:"version"`
+	Config      map[string]interface{} `json:"config"`
+}
+
+type PaymentRequest struct {
+	Amount   float64 `json:"amount"`
+	Currency string  `json:"currency"`
+	Method   string  `json:"method"`
+}
+
+type BulkUpdateRequest struct {
+	Items []UpdateItem `json:"items"`
+}
+
+type UpdateItem struct {
+	ID   string      `json:"id"`
+	Data interface{} `json:"data"`
+}
+
+type UpdateResult struct {
+	ID      string `json:"id"`
+	Success bool   `json:"success"`
+	Error   string `json:"error,omitempty"`
+}
+
+type AnalysisRequest struct {
+	ID   string      `json:"id"`
+	Data interface{} `json:"data"`
+	Type string      `json:"type"`
+}
+
+type TaskRequest struct {
+	Type     string      `json:"type"`
+	Priority int         `json:"priority"`
+	Data     interface{} `json:"data"`
+}
+
+type AuthRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+type ResourceAccessRequest struct {
+	ResourceID string `json:"resource_id"`
+	Action     string `json:"action"`
+}
+
+type NotificationRequest struct {
+	Type      string      `json:"type"`
+	Recipient string      `json:"recipient"`
+	Data      interface{} `json:"data"`
+}
+
+type DualConfirmationRequest struct {
+	PrimaryData   interface{} `json:"primary_data"`
+	SecondaryData interface{} `json:"secondary_data"`
+}
+
+// === SERVICES ===
+
+@Injectable()
+type MessageService struct{}
+
+@Injectable()
+type AuditService struct{}
+
+// === TYPES ===
+
+type User struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+type WebSocketClient struct {
+	id string
+}
+
+type AckCallback struct{}

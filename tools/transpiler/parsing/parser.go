@@ -1690,7 +1690,8 @@ func (p *Parser) isMiddlewareDecorator(decoratorType core.DecoratorType) bool {
 		decoratorType == core.UseInterceptorsDecorator ||
 		decoratorType == core.UsePipesDecorator ||
 		decoratorType == core.UseFiltersDecorator ||
-		decoratorType == core.UseMiddlewareDecorator
+		decoratorType == core.UseMiddlewareDecorator ||
+		core.IsErrorHandlingDecorator(decoratorType)
 }
 
 // validateOnGatewayConnectionDecorator validates @OnGatewayConnection() decorator
@@ -1817,7 +1818,7 @@ func (p *Parser) validateSubscribeMessageDecorator(decorator *core.DecoratorNode
 
 	hasMessageData := false
 	for _, param := range wsFunc.Params {
-		if !p.isValidWebSocketParamType(param.Type, validParamTypes) {
+		if !p.isValidWebSocketParamTypeWithDecorators(param, validParamTypes) {
 			p.addError(fmt.Sprintf("invalid parameter type '%s' for @SubscribeMessage function '%s'. Expected: *WebSocketClient, *AckCallback, string, interface{}, map[string]string, *Session, *User, slices, or custom data types", param.Type, wsFunc.Name))
 		}
 		
@@ -2093,6 +2094,59 @@ func (p *Parser) isValidWebSocketParamType(paramType string, validParamTypes map
 	}
 	
 	return false
+}
+
+// isValidWebSocketParamTypeWithDecorators checks if a parameter type is valid considering its decorators
+func (p *Parser) isValidWebSocketParamTypeWithDecorators(param *core.ParameterNode, validParamTypes map[string]bool) bool {
+	// Check for special decorator cases
+	for _, decorator := range param.Decorators {
+		switch decorator.Name {
+		case "Exception":
+			// @Exception() allows error type
+			if param.Type == "error" {
+				return true
+			}
+		case "EventName":
+			// @EventName() allows string type
+			if param.Type == "string" {
+				return true
+			}
+		case "MessageBody":
+			// @MessageBody() allows any type for message payload
+			return true
+		case "ConnectedSocket":
+			// @ConnectedSocket() ONLY allows *WebSocketClient type for current connection
+			if param.Type == "*WebSocketClient" {
+				return true
+			}
+			// If it has @ConnectedSocket() decorator but wrong type, it's invalid
+			return false
+		case "MessageAck":
+			// @MessageAck() ONLY allows *AckCallback type for acknowledgment callback
+			if param.Type == "*AckCallback" {
+				return true
+			}
+			// If it has @MessageAck() decorator but wrong type, it's invalid
+			return false
+		case "Rooms":
+			// @Rooms() ONLY allows []string type for room collection
+			if param.Type == "[]string" {
+				return true
+			}
+			// If it has @Rooms() decorator but wrong type, it's invalid
+			return false
+		case "Namespace":
+			// @Namespace() ONLY allows string type for namespace identifier
+			if param.Type == "string" {
+				return true
+			}
+			// If it has @Namespace() decorator but wrong type, it's invalid
+			return false
+		}
+	}
+	
+	// Fall back to regular type validation
+	return p.isValidWebSocketParamType(param.Type, validParamTypes)
 }
 
 // validateSubscribeMessageParameters validates parameters for @SubscribeMessage methods/functions

@@ -19,8 +19,19 @@ func (g *CodeGenerator) generateQueryParameterExtraction(param *ParameterNode, d
 	// Generate variable declaration
 	g.writeLine(fmt.Sprintf("var %s %s", param.Name, param.Type))
 
-	// Get raw query value
-	g.writeLine(fmt.Sprintf("queryValue := ctx.GetQuery(\"%s\")", queryName))
+	// Get raw query value based on context
+	if g.currentContext == WebSocketContext {
+		// WebSocket context: use client.Handshake().URL.Query().Get()
+		// Find the @ConnectedSocket() parameter name dynamically
+		clientParamName := g.getConnectedSocketParameterName()
+		if clientParamName == "" {
+			clientParamName = "client" // fallback to default
+		}
+		g.writeLine(fmt.Sprintf("queryValue := %s.Handshake().URL.Query().Get(\"%s\")", clientParamName, queryName))
+	} else {
+		// HTTP context: use ctx.GetQuery() (existing behavior)
+		g.writeLine(fmt.Sprintf("queryValue := ctx.GetQuery(\"%s\")", queryName))
+	}
 
 	// Handle default value
 	if options.DefaultValue != "" {
@@ -60,8 +71,19 @@ func (g *CodeGenerator) generateHeaderParameterExtraction(param *ParameterNode, 
 	// Generate variable declaration
 	g.writeLine(fmt.Sprintf("var %s %s", param.Name, param.Type))
 	
-	// Get raw header value
-	g.writeLine(fmt.Sprintf("headerValue := ctx.GetHeader(\"%s\")", headerName))
+	// Get raw header value based on context
+	if g.currentContext == WebSocketContext {
+		// WebSocket context: use client.Handshake().Header.Get()
+		// Find the @ConnectedSocket() parameter name dynamically
+		clientParamName := g.getConnectedSocketParameterName()
+		if clientParamName == "" {
+			clientParamName = "client" // fallback to default
+		}
+		g.writeLine(fmt.Sprintf("headerValue := %s.Handshake().Header.Get(\"%s\")", clientParamName, headerName))
+	} else {
+		// HTTP context: use ctx.GetHeader() (existing behavior)
+		g.writeLine(fmt.Sprintf("headerValue := ctx.GetHeader(\"%s\")", headerName))
+	}
 	
 	// Handle default value
 	if options.DefaultValue != "" {
@@ -151,7 +173,20 @@ func (g *CodeGenerator) generateSessionParameterExtraction(param *ParameterNode,
 	if sessionKey != "" {
 		// Extract specific session value by key
 		g.writeLine(fmt.Sprintf("var %s %s", param.Name, param.Type))
-		g.writeLine(fmt.Sprintf("if sessionValue := ctx.GetSession(\"%s\"); sessionValue != nil {", sessionKey))
+		
+		// Get session value based on context
+		if g.currentContext == WebSocketContext {
+			// WebSocket context: use client.Session().Get()
+			// Find the @ConnectedSocket() parameter name dynamically
+			clientParamName := g.getConnectedSocketParameterName()
+			if clientParamName == "" {
+				clientParamName = "client" // fallback to default
+			}
+			g.writeLine(fmt.Sprintf("if sessionValue := %s.Session().Get(\"%s\"); sessionValue != nil {", clientParamName, sessionKey))
+		} else {
+			// HTTP context: use ctx.GetSession() (existing behavior)
+			g.writeLine(fmt.Sprintf("if sessionValue := ctx.GetSession(\"%s\"); sessionValue != nil {", sessionKey))
+		}
 		g.indent()
 		
 		// Generate type-specific extraction logic
@@ -211,12 +246,28 @@ func (g *CodeGenerator) generateSessionParameterExtraction(param *ParameterNode,
 		g.writeLine("}")
 	} else {
 		// Extract entire session object - check for special types
-		if param.Type == "map[string]interface{}" || param.Type == "interface{}" {
-			// For map and interface{} types, use GetAllSessionData()
-			g.writeLine(fmt.Sprintf("%s := ctx.GetAllSessionData()", param.Name))
+		if g.currentContext == WebSocketContext {
+			// WebSocket context: use client.Session()
+			clientParamName := g.getConnectedSocketParameterName()
+			if clientParamName == "" {
+				clientParamName = "client" // fallback to default
+			}
+			if param.Type == "map[string]interface{}" || param.Type == "interface{}" {
+				// For map and interface{} types, get all session data
+				g.writeLine(fmt.Sprintf("%s := %s.Session().GetAll()", param.Name, clientParamName))
+			} else {
+				// For other types like *Session, use the session store directly
+				g.writeLine(fmt.Sprintf("%s := %s.Session()", param.Name, clientParamName))
+			}
 		} else {
-			// For other types like *Session, use GetSessionStore()
-			g.writeLine(fmt.Sprintf("%s := ctx.GetSessionStore()", param.Name))
+			// HTTP context: existing behavior
+			if param.Type == "map[string]interface{}" || param.Type == "interface{}" {
+				// For map and interface{} types, use GetAllSessionData()
+				g.writeLine(fmt.Sprintf("%s := ctx.GetAllSessionData()", param.Name))
+			} else {
+				// For other types like *Session, use GetSessionStore()
+				g.writeLine(fmt.Sprintf("%s := ctx.GetSessionStore()", param.Name))
+			}
 		}
 	}
 	
@@ -669,4 +720,66 @@ func (g *CodeGenerator) generateParameterConstraintValidation(param *ParameterNo
 			}
 		}
 	}
+}
+
+// getConnectedSocketParameterName finds the parameter name for @ConnectedSocket() decorator
+func (g *CodeGenerator) getConnectedSocketParameterName() string {
+	if g.currentMethod == nil {
+		return ""
+	}
+	
+	for _, param := range g.currentMethod.Params {
+		paramDecorators := g.getParameterDecorators(param)
+		for _, decorator := range paramDecorators {
+			if decorator.Name == "ConnectedSocket" {
+				return param.Name
+			}
+		}
+	}
+	return ""
+}
+
+// generateMessageBodyParameterExtraction generates message body parameter extraction code for WebSocket
+func (g *CodeGenerator) generateMessageBodyParameterExtraction(param *ParameterNode, decorator *DecoratorNode) {
+	// For @MessageBody(), we extract and deserialize the WebSocket message payload
+	g.writeLine(fmt.Sprintf("// Extract message body of type %s", param.Type))
+	g.writeLine(fmt.Sprintf("var %s %s", param.Name, param.Type))
+	
+	// Handle different parameter types
+	paramType := strings.ToLower(param.Type)
+	switch {
+	case paramType == "string":
+		// For string type, get raw message as string
+		g.writeLine(fmt.Sprintf("if rawMessage := wsCtx.GetRawMessage(); rawMessage != nil {"))
+		g.indent()
+		g.writeLine(fmt.Sprintf("%s = string(rawMessage)", param.Name))
+		g.unindent()
+		g.writeLine("}")
+		
+	case paramType == "[]byte":
+		// For []byte type, get raw message bytes
+		g.writeLine(fmt.Sprintf("%s = wsCtx.GetRawMessage()", param.Name))
+		
+	case paramType == "interface{}":
+		// For interface{} type, unmarshal to generic interface
+		g.writeLine(fmt.Sprintf("if err := wsCtx.ParseMessageBody(&%s); err != nil {", param.Name))
+		g.indent()
+		g.writeLine("wsCtx.SendError(\"Invalid message body: \" + err.Error())")
+		g.writeLine("return")
+		g.unindent()
+		g.writeLine("}")
+		g.addImport("encoding/json")
+		
+	default:
+		// For custom types (structs, pointers), unmarshal to specific type
+		g.writeLine(fmt.Sprintf("if err := wsCtx.ParseMessageBody(&%s); err != nil {", param.Name))
+		g.indent()
+		g.writeLine("wsCtx.SendError(\"Invalid message body: \" + err.Error())")
+		g.writeLine("return")
+		g.unindent()
+		g.writeLine("}")
+		g.addImport("encoding/json")
+	}
+	
+	g.writeLine("")
 }

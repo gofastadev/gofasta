@@ -78,6 +78,14 @@ var (
 	RedirectDecoratorType   = core.RedirectDecorator
 )
 
+// GenerationContext represents the current code generation context
+type GenerationContext string
+
+const (
+	HTTPContext      GenerationContext = "http"
+	WebSocketContext GenerationContext = "websocket"
+)
+
 // CodeGenerator generates Go code from Gofasta AST
 type CodeGenerator struct {
 	packageName       string
@@ -86,6 +94,8 @@ type CodeGenerator struct {
 	generatedCode     strings.Builder
 	indentLevel       int
 	webSocketFunctions []*WebSocketFunctionDeclaration // Track standalone WebSocket functions
+	currentContext    GenerationContext              // Track current generation context
+	currentMethod     *MethodNode                    // Track current method being processed
 }
 
 // NewCodeGenerator creates a new code generator
@@ -95,6 +105,7 @@ func NewCodeGenerator(packageName string) *CodeGenerator {
 		imports:           []string{},
 		decoratorRegistry: make(map[string]*DecoratorNode),
 		webSocketFunctions: []*WebSocketFunctionDeclaration{},
+		currentContext:    HTTPContext, // Default to HTTP context
 	}
 }
 

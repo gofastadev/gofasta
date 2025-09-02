@@ -1,0 +1,60 @@
+package main
+
+@WebSocketGateway(8080)
+type RoomChatGateway struct {
+}
+
+// Basic query parameter extraction in WebSocket message handler
+@SubscribeMessage("join_room")
+func HandleJoinRoom(
+    @Query("room") roomId string,
+    @Query("userId") userId string,
+    @ConnectedSocket() client *WebSocketClient
+) {
+}
+
+// Query parameters with validation and defaults
+@SubscribeMessage("send_message") 
+func HandleSendMessage(
+    @Query("room", { required: true }) roomId string,
+    @Query("priority", { defaultValue: "1" }) priority int,
+    @ConnectedSocket() client *WebSocketClient
+) {
+}
+
+// Query parameters with different data types
+@SubscribeMessage("filter_messages")
+func HandleFilterMessages(
+    @Query("since") sinceTimestamp int,
+    @Query("includeDeleted") includeDeleted bool,
+    @Query("tags") tags []string,
+    @ConnectedSocket() client *WebSocketClient
+) {
+}
+
+// WebSocket lifecycle handler with query parameters
+@OnGatewayConnection()
+func HandleNewConnection(
+    @Query("room") room string,
+    @Query("token") token string, 
+    @ConnectedSocket() client *WebSocketClient
+) {
+}
+
+// Standalone WebSocket function with query parameters
+@SubscribeMessage("global_search")
+func HandleGlobalSearch(
+    @Query("q", { required: true }) searchQuery string,
+    @Query("limit", { defaultValue: "50" }) limit int,
+    @ConnectedSocket() client *WebSocketClient
+) {
+}
+
+// Custom query parameter names
+@SubscribeMessage("room_settings")
+func HandleRoomSettings(
+    @Query("roomId") roomIdentifier string,
+    @Query("setting-name") settingName string,
+    @ConnectedSocket() wsClient *WebSocketClient
+) {
+}
