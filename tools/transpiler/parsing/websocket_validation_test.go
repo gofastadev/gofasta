@@ -898,3 +898,102 @@ type User struct {
 		})
 	}
 }
+
+func TestMessageBodyParameterValidation(t *testing.T) {
+	tests := []struct {
+		name        string
+		input       string
+		expectError bool
+		errorMsg    string
+	}{
+		{
+			name: "Valid MessageBody with custom struct",
+			input: `@SubscribeMessage("message")
+func HandleMessage(@MessageBody() data *ChatMessage, @ConnectedSocket() client *WebSocketClient) {
+}`,
+			expectError: false,
+		},
+		{
+			name: "Valid MessageBody with string type",
+			input: `@SubscribeMessage("message")
+func HandleMessage(@MessageBody() content string, @ConnectedSocket() client *WebSocketClient) {
+}`,
+			expectError: false,
+		},
+		{
+			name: "Valid MessageBody with interface{} type",
+			input: `@SubscribeMessage("message")
+func HandleMessage(@MessageBody() data interface{}, @ConnectedSocket() client *WebSocketClient) {
+}`,
+			expectError: false,
+		},
+		{
+			name: "Valid MessageBody with []byte type",
+			input: `@SubscribeMessage("message")
+func HandleMessage(@MessageBody() rawData []byte, @ConnectedSocket() client *WebSocketClient) {
+}`,
+			expectError: false,
+		},
+		{
+			name: "Valid MessageBody with custom type (non-pointer)",
+			input: `@SubscribeMessage("message")
+func HandleMessage(@MessageBody() msg UserMessage, @ConnectedSocket() client *WebSocketClient) {
+}`,
+			expectError: false,
+		},
+		{
+			name: "Valid MessageBody with map type",
+			input: `@SubscribeMessage("message")
+func HandleMessage(@MessageBody() data map[string]interface{}, @ConnectedSocket() client *WebSocketClient) {
+}`,
+			expectError: false,
+		},
+		{
+			name: "Valid MessageBody with array/slice type",
+			input: `@SubscribeMessage("message")
+func HandleMessage(@MessageBody() messages []string, @ConnectedSocket() client *WebSocketClient) {
+}`,
+			expectError: false,
+		},
+		{
+			name: "MessageBody with validation decorators",
+			input: `@SubscribeMessage("message")
+func HandleMessage(@MessageBody() @IsNotEmpty() content string, @ConnectedSocket() client *WebSocketClient) {
+}`,
+			expectError: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			lexer := NewLexer(test.input)
+			parser := NewParser(lexer)
+			
+			// Parse the file
+			_, _ = parser.ParseFile()
+			
+			hasError := len(parser.errors) > 0
+			if hasError != test.expectError {
+				if test.expectError {
+					t.Errorf("Expected parsing error but got none")
+				} else {
+					t.Errorf("Expected no parsing error but got: %v", parser.errors)
+				}
+				return
+			}
+			
+			if test.expectError && test.errorMsg != "" {
+				found := false
+				for _, err := range parser.errors {
+					if strings.Contains(err, test.errorMsg) {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Errorf("Expected error containing \"%s\" but got: %v", test.errorMsg, parser.errors)
+				}
+			}
+		})
+	}
+}

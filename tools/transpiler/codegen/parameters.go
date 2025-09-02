@@ -738,3 +738,48 @@ func (g *CodeGenerator) getConnectedSocketParameterName() string {
 	}
 	return ""
 }
+
+// generateMessageBodyParameterExtraction generates message body parameter extraction code for WebSocket
+func (g *CodeGenerator) generateMessageBodyParameterExtraction(param *ParameterNode, decorator *DecoratorNode) {
+	// For @MessageBody(), we extract and deserialize the WebSocket message payload
+	g.writeLine(fmt.Sprintf("// Extract message body of type %s", param.Type))
+	g.writeLine(fmt.Sprintf("var %s %s", param.Name, param.Type))
+	
+	// Handle different parameter types
+	paramType := strings.ToLower(param.Type)
+	switch {
+	case paramType == "string":
+		// For string type, get raw message as string
+		g.writeLine(fmt.Sprintf("if rawMessage := wsCtx.GetRawMessage(); rawMessage != nil {"))
+		g.indent()
+		g.writeLine(fmt.Sprintf("%s = string(rawMessage)", param.Name))
+		g.unindent()
+		g.writeLine("}")
+		
+	case paramType == "[]byte":
+		// For []byte type, get raw message bytes
+		g.writeLine(fmt.Sprintf("%s = wsCtx.GetRawMessage()", param.Name))
+		
+	case paramType == "interface{}":
+		// For interface{} type, unmarshal to generic interface
+		g.writeLine(fmt.Sprintf("if err := wsCtx.ParseMessageBody(&%s); err != nil {", param.Name))
+		g.indent()
+		g.writeLine("wsCtx.SendError(\"Invalid message body: \" + err.Error())")
+		g.writeLine("return")
+		g.unindent()
+		g.writeLine("}")
+		g.addImport("encoding/json")
+		
+	default:
+		// For custom types (structs, pointers), unmarshal to specific type
+		g.writeLine(fmt.Sprintf("if err := wsCtx.ParseMessageBody(&%s); err != nil {", param.Name))
+		g.indent()
+		g.writeLine("wsCtx.SendError(\"Invalid message body: \" + err.Error())")
+		g.writeLine("return")
+		g.unindent()
+		g.writeLine("}")
+		g.addImport("encoding/json")
+	}
+	
+	g.writeLine("")
+}

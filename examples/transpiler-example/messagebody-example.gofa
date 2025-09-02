@@ -1,0 +1,61 @@
+package main
+
+// Message types for WebSocket communication
+type ChatMessage struct {
+	UserID    string `json:"userId"`
+	Content   string `json:"content"`
+	RoomID    string `json:"roomId"`
+}
+
+type UserAction struct {
+	Action   string      `json:"action"`
+	UserID   string      `json:"userId"`
+	Data     interface{} `json:"data"`
+}
+
+// WebSocket Gateway demonstrating @MessageBody() parameter decorator
+@WebSocketGateway(8080)
+type ChatGateway struct {}
+
+// Basic @MessageBody() usage with custom struct
+@SubscribeMessage("chat_message")
+func HandleChatMessage(
+	@MessageBody() message *ChatMessage,
+	@ConnectedSocket() client *WebSocketClient,
+	@MessageAck() ack *AckCallback
+) {
+	// Process the chat message and broadcast to room
+	client.To(message.RoomID).Emit("new_message", message)
+	
+	// Send acknowledgment
+	ack.Call(map[string]interface{}{
+		"status": "success",
+		"messageId": message.UserID,
+	})
+}
+
+// @MessageBody() with string type for simple text messages
+@SubscribeMessage("simple_text")
+func HandleSimpleText(
+	@MessageBody() content string,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Echo the message back
+	client.Emit("text_echo", map[string]interface{}{
+		"original": content,
+		"echo": "Echo: " + content,
+	})
+}
+
+// @MessageBody() with []byte for raw binary data
+@SubscribeMessage("binary_data")
+func HandleBinaryData(
+	@MessageBody() rawData []byte,
+	@ConnectedSocket() client *WebSocketClient
+) {
+	// Process binary data and send confirmation
+	client.Emit("binary_received", map[string]interface{}{
+		"size": len(rawData),
+		"type": "binary",
+	})
+}

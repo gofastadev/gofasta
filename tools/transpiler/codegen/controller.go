@@ -1652,14 +1652,7 @@ func (g *CodeGenerator) generateWebSocketParameterExtraction(method *MethodNode)
 		for _, decorator := range paramDecorators {
 			switch decorator.Name {
 			case "MessageBody":
-				g.writeLine(fmt.Sprintf("// Extract message body"))
-				g.writeLine(fmt.Sprintf("var %s %s", param.Name, param.Type))
-				g.writeLine(fmt.Sprintf("if err := wsCtx.ParseMessageBody(&%s); err != nil {", param.Name))
-				g.indent()
-				g.writeLine("wsCtx.SendError(\"Invalid message body\")")
-				g.writeLine("return")
-				g.unindent()
-				g.writeLine("}")
+				g.generateMessageBodyParameterExtraction(param, decorator)
 			case "ConnectedSocket":
 				g.writeLine(fmt.Sprintf("%s := wsCtx.Client", param.Name))
 			case "MessageAck":

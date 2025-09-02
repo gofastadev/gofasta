@@ -2111,6 +2111,9 @@ func (p *Parser) isValidWebSocketParamTypeWithDecorators(param *core.ParameterNo
 			if param.Type == "string" {
 				return true
 			}
+		case "MessageBody":
+			// @MessageBody() allows any type for message payload
+			return true
 		}
 	}
 	
