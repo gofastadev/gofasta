@@ -1,0 +1,29 @@
+package services
+
+import (
+	"fmt"
+	"time"
+)
+
+@Injectable()
+@Singleton()
+type UserService struct {
+	cache map[string]interface{}
+}
+
+@Async()
+func (s *UserService) ProcessUser(id string) error {
+	fmt.Printf("Processing user %s asynchronously...\n", id)
+	time.Sleep(100 * time.Millisecond)
+	return nil
+}
+
+@Cache(strategy: "redis", ttl: "1h")
+func (s *UserService) GetUserProfile(id string) interface{} {
+	fmt.Printf("Fetching user profile for %s\n", id)
+	return map[string]interface{}{
+		"id": id,
+		"profile": "cached_profile_data",
+		"lastAccessed": time.Now(),
+	}
+}

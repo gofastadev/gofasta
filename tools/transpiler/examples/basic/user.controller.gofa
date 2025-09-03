@@ -1,0 +1,37 @@
+package controllers
+
+import (
+	"fmt"
+	"encoding/json"
+)
+
+type User struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+	Email string `json:"email"`
+}
+
+@Controller("/api/users")
+@UseGuards("auth")
+type UserController struct {
+	users []User
+}
+
+@Get("/")
+func (c *UserController) GetUsers() []User {
+	return c.users
+}
+
+@Get("/:id")
+func (c *UserController) GetUser(@Param("id") id string) *User {
+	fmt.Printf("Getting user with ID: %s\n", id)
+	return &User{ID: 1, Name: "John Doe", Email: "john@example.com"}
+}
+
+@Post("/")
+func (c *UserController) CreateUser(@Body() user User) User {
+	fmt.Printf("Creating user: %+v\n", user)
+	user.ID = len(c.users) + 1
+	c.users = append(c.users, user)
+	return user
+}
