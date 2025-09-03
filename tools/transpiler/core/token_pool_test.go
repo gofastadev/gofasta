@@ -560,3 +560,195 @@ func TestTokenPoolWarmUpEdgeCases(t *testing.T) {
 		}
 	})
 }
+
+// TestTokenPoolResizeComplete provides comprehensive coverage for the Resize function
+func TestTokenPoolResizeComplete(t *testing.T) {
+	t.Run("resize pool to larger size", func(t *testing.T) {
+		pool := NewTokenPool(&TokenPoolConfig{
+			InitialSize:   0, // Will become 10 due to default logic
+			MaxSize:       3,
+			EnableMetrics: true,
+		})
+		
+		initialSize := len(pool.pool)
+		// Pool starts with 10 items due to InitialSize default behavior
+		expectedInitialSize := 3 // Limited by MaxSize
+		if initialSize != expectedInitialSize {
+			t.Logf("Pool starts with %d items (capped by MaxSize=%d)", initialSize, 3)
+		}
+		
+		// Resize to larger size
+		pool.Resize(10)
+		
+		// Check that max size changed
+		stats := pool.GetStatistics()
+		if stats["max_size"].(int) != 10 {
+			t.Errorf("Expected max size 10, got %d", stats["max_size"].(int))
+		}
+		
+		// Items should be transferred up to the previous size
+		finalSize := len(pool.pool)
+		if finalSize > 10 {
+			t.Errorf("Pool size should not exceed new max size 10, got %d", finalSize)
+		}
+	})
+	
+	t.Run("resize with max size change", func(t *testing.T) {
+		pool := NewTokenPool(&TokenPoolConfig{
+			InitialSize:   0,
+			MaxSize:       15,
+			EnableMetrics: true,
+		})
+		
+		// Resize to smaller max size
+		pool.Resize(8)
+		
+		// Check max size updated
+		stats := pool.GetStatistics()
+		if stats["max_size"].(int) != 8 {
+			t.Errorf("Expected max size 8, got %d", stats["max_size"].(int))
+		}
+		
+		// Pool size should be constrained by new max size
+		finalSize := len(pool.pool)
+		if finalSize > 8 {
+			t.Errorf("Pool size should not exceed new max size 8, got %d", finalSize)
+		}
+	})
+	
+	t.Run("resize to smaller size", func(t *testing.T) {
+		pool := NewTokenPool(&TokenPoolConfig{
+			InitialSize:   0,
+			MaxSize:       20,
+			EnableMetrics: true,
+		})
+		
+		// Resize to smaller max size
+		pool.Resize(5)
+		
+		// Check max size updated
+		stats := pool.GetStatistics()
+		if stats["max_size"].(int) != 5 {
+			t.Errorf("Expected max size 5, got %d", stats["max_size"].(int))
+		}
+		
+		// Pool should be constrained by new smaller max size
+		finalSize := len(pool.pool)
+		if finalSize > 5 {
+			t.Errorf("Expected pool size to be constrained to max 5, got %d", finalSize)
+		}
+	})
+	
+	t.Run("resize with invalid sizes", func(t *testing.T) {
+		pool := NewTokenPool(&TokenPoolConfig{
+			InitialSize:   0,
+			MaxSize:       20,
+			EnableMetrics: true,
+		})
+		
+		originalStats := pool.GetStatistics()
+		originalMaxSize := originalStats["max_size"].(int)
+		
+		// Test zero size - should not change max size
+		pool.Resize(0)
+		stats := pool.GetStatistics()
+		if stats["max_size"].(int) != originalMaxSize {
+			t.Errorf("Resize(0) should not change max size, expected %d, got %d", originalMaxSize, stats["max_size"].(int))
+		}
+		
+		// Test negative size - should not change max size
+		pool.Resize(-5)
+		stats = pool.GetStatistics()
+		if stats["max_size"].(int) != originalMaxSize {
+			t.Errorf("Resize(-5) should not change max size, expected %d, got %d", originalMaxSize, stats["max_size"].(int))
+		}
+	})
+}
+
+// TestTokenPoolWarmUpComplete provides comprehensive coverage for the WarmUp function
+func TestTokenPoolWarmUpComplete(t *testing.T) {
+	t.Run("warmup pool functionality", func(t *testing.T) {
+		pool := NewTokenPool(&TokenPoolConfig{
+			InitialSize:   0, // Will become 10, limited by MaxSize
+			MaxSize:       15,
+			EnableMetrics: true,
+		})
+		
+		initialSize := len(pool.pool)
+		
+		// Pool starts with some items due to InitialSize defaults
+		t.Logf("Pool starts with %d items", initialSize)
+		
+		// Try to warm up beyond current size
+		pool.WarmUp(12)
+		
+		finalSize := len(pool.pool)
+		if finalSize > 15 {
+			t.Errorf("Pool size should not exceed max size 15, got %d", finalSize)
+		}
+		
+		// Check that pool size increased (or stayed same if already at target)
+		if finalSize < initialSize {
+			t.Errorf("Pool size should not decrease after warmup: initial=%d, final=%d", initialSize, finalSize)
+		}
+	})
+	
+	t.Run("warmup beyond max size", func(t *testing.T) {
+		pool := NewTokenPool(&TokenPoolConfig{
+			InitialSize:   0,
+			MaxSize:       25, // Large enough to not conflict with default InitialSize
+			EnableMetrics: true,
+		})
+		
+		// Try to warm up beyond max size - should be ignored
+		pool.WarmUp(30)
+		
+		finalSize := len(pool.pool)
+		if finalSize > 25 {
+			t.Errorf("Pool size should not exceed max size 25, got %d", finalSize)
+		}
+	})
+	
+	t.Run("warmup with invalid sizes", func(t *testing.T) {
+		pool := NewTokenPool(&TokenPoolConfig{
+			InitialSize:   0,
+			MaxSize:       10,
+			EnableMetrics: true,
+		})
+		
+		initialSize := len(pool.pool)
+		
+		// Test zero size - should not change pool size
+		pool.WarmUp(0)
+		
+		finalSize := len(pool.pool)
+		if finalSize != initialSize {
+			t.Errorf("WarmUp(0) should not change pool size: initial=%d, final=%d", initialSize, finalSize)
+		}
+		
+		// Test negative size - should not change pool size
+		pool.WarmUp(-3)
+		
+		finalSize2 := len(pool.pool)
+		if finalSize2 != finalSize {
+			t.Errorf("WarmUp(-3) should not change pool size: before=%d, after=%d", finalSize, finalSize2)
+		}
+	})
+	
+	t.Run("warmup with metrics disabled", func(t *testing.T) {
+		pool := NewTokenPool(&TokenPoolConfig{
+			InitialSize:   0,
+			MaxSize:       10,
+			EnableMetrics: false, // Metrics disabled
+		})
+		
+		// Warm up should still work functionally
+		pool.WarmUp(5)
+		
+		// Metrics should show 0 since disabled
+		stats := pool.GetStatistics()
+		if stats["created"].(int64) != 0 {
+			t.Errorf("Expected created count to be 0 with metrics disabled, got %d", stats["created"].(int64))
+		}
+	})
+}

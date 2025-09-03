@@ -289,6 +289,337 @@ func TestTypeCheckerCacheTTL(t *testing.T) {
 	}
 }
 
+// TestInvalidateCacheComplete provides comprehensive coverage for InvalidateCache function
+func TestInvalidateCacheComplete(t *testing.T) {
+	checker := NewIncrementalTypeChecker(&TypeCheckerConfig{
+		EnableCaching:   true,
+		CacheTTL:        time.Hour, // Long TTL so it won't expire during test
+		MaxCacheEntries: 100,
+		EnableMetrics:   true,
+	})
+	
+	fset := token.NewFileSet()
+	ctx := context.Background()
+	
+	t.Run("invalidate non-existent package", func(t *testing.T) {
+		// Test invalidating a package that doesn't exist in cache
+		initialStats := checker.GetStatistics()
+		initialSize := initialStats["cached_packages"].(int)
+		
+		checker.InvalidateCache("non-existent-pkg")
+		
+		finalStats := checker.GetStatistics()
+		finalSize := finalStats["cached_packages"].(int)
+		
+		if finalSize != initialSize {
+			t.Errorf("Cache size should not change when invalidating non-existent package: initial=%d, final=%d", initialSize, finalSize)
+		}
+	})
+	
+	t.Run("invalidate with dependencies", func(t *testing.T) {
+		// Create multiple packages with dependencies
+		pkg1File, _ := parser.ParseFile(fset, "pkg1.go", "package pkg1", parser.ParseComments)
+		pkg2File, _ := parser.ParseFile(fset, "pkg2.go", "package pkg2\nimport \"pkg1\"", parser.ParseComments)
+		pkg3File, _ := parser.ParseFile(fset, "pkg3.go", "package pkg3\nimport \"pkg1\"", parser.ParseComments)
+		
+		// Check packages to populate cache and dependencies
+		checker.CheckPackage(ctx, "pkg1", []*ast.File{pkg1File}, fset)
+		checker.CheckPackage(ctx, "pkg2", []*ast.File{pkg2File}, fset)
+		checker.CheckPackage(ctx, "pkg3", []*ast.File{pkg3File}, fset)
+		
+		stats := checker.GetStatistics()
+		initialSize := stats["cached_packages"].(int)
+		
+		if initialSize < 3 {
+			t.Logf("Warning: Expected at least 3 cached packages, got %d", initialSize)
+		}
+		
+		// Invalidate pkg1 - this should also invalidate pkg2 and pkg3 due to dependencies
+		checker.InvalidateCache("pkg1")
+		
+		finalStats := checker.GetStatistics()
+		finalSize := finalStats["cached_packages"].(int)
+		
+		if finalSize >= initialSize {
+			t.Errorf("Expected cache size to decrease after invalidating package with dependencies: initial=%d, final=%d", initialSize, finalSize)
+		}
+	})
+	
+	t.Run("invalidate without dependencies", func(t *testing.T) {
+		// Clear cache first
+		checker.Clear()
+		
+		// Create independent packages
+		pkg1File, _ := parser.ParseFile(fset, "independent1.go", "package independent1", parser.ParseComments)
+		pkg2File, _ := parser.ParseFile(fset, "independent2.go", "package independent2", parser.ParseComments)
+		
+		// Check packages
+		checker.CheckPackage(ctx, "independent1", []*ast.File{pkg1File}, fset)
+		checker.CheckPackage(ctx, "independent2", []*ast.File{pkg2File}, fset)
+		
+		stats := checker.GetStatistics()
+		initialSize := stats["cached_packages"].(int)
+		
+		// Invalidate one package - should only affect that package
+		checker.InvalidateCache("independent1")
+		
+		finalStats := checker.GetStatistics()
+		finalSize := finalStats["cached_packages"].(int)
+		
+		expectedSize := initialSize - 1
+		if finalSize != expectedSize {
+			t.Errorf("Expected cache size to decrease by 1: initial=%d, expected=%d, final=%d", initialSize, expectedSize, finalSize)
+		}
+	})
+	
+	t.Run("invalidate empty cache", func(t *testing.T) {
+		// Clear cache completely
+		checker.Clear()
+		
+		stats := checker.GetStatistics()
+		if stats["cached_packages"].(int) != 0 {
+			t.Error("Expected empty cache after Clear()")
+		}
+		
+		// Try to invalidate in empty cache - should not cause errors
+		checker.InvalidateCache("any-package")
+		
+		finalStats := checker.GetStatistics()
+		if finalStats["cached_packages"].(int) != 0 {
+			t.Error("Cache should remain empty after invalidating in empty cache")
+		}
+	})
+	
+	t.Run("concurrent invalidation", func(t *testing.T) {
+		// Clear and populate cache
+		checker.Clear()
+		
+		pkg1File, _ := parser.ParseFile(fset, "concurrent1.go", "package concurrent1", parser.ParseComments)
+		checker.CheckPackage(ctx, "concurrent1", []*ast.File{pkg1File}, fset)
+		
+		// Test concurrent invalidation calls
+		done := make(chan bool, 2)
+		
+		go func() {
+			checker.InvalidateCache("concurrent1")
+			done <- true
+		}()
+		
+		go func() {
+			checker.InvalidateCache("concurrent1")
+			done <- true
+		}()
+		
+		// Wait for both goroutines to complete
+		<-done
+		<-done
+		
+		// Should not panic or cause race conditions
+		stats := checker.GetStatistics()
+		if stats["cached_packages"].(int) < 0 {
+			t.Error("Concurrent invalidation caused negative cache size")
+		}
+	})
+}
+
+// TestCheckPackagesSequentialEdgeCases provides comprehensive coverage for checkPackagesSequential function
+func TestCheckPackagesSequentialEdgeCases(t *testing.T) {
+	checker := NewIncrementalTypeChecker(&TypeCheckerConfig{
+		EnableCaching:   true,
+		CacheTTL:        time.Hour,
+		MaxCacheEntries: 100,
+		EnableMetrics:   true,
+	})
+	
+	fset := token.NewFileSet()
+	
+	t.Run("empty packages map", func(t *testing.T) {
+		ctx := context.Background()
+		packages := make(map[string][]*ast.File)
+		
+		results, err := checker.checkPackagesSequential(ctx, packages, fset)
+		
+		if err != nil {
+			t.Errorf("Unexpected error with empty packages: %v", err)
+		}
+		
+		if len(results) != 0 {
+			t.Errorf("Expected empty results for empty packages, got %d", len(results))
+		}
+	})
+	
+	t.Run("single package", func(t *testing.T) {
+		ctx := context.Background()
+		
+		file, _ := parser.ParseFile(fset, "single.go", "package single\n\nfunc Test() {}", parser.ParseComments)
+		packages := map[string][]*ast.File{
+			"single": {file},
+		}
+		
+		results, err := checker.checkPackagesSequential(ctx, packages, fset)
+		
+		if err != nil {
+			t.Errorf("Unexpected error with single package: %v", err)
+		}
+		
+		if len(results) != 1 {
+			t.Errorf("Expected 1 result, got %d", len(results))
+		}
+		
+		if _, ok := results["single"]; !ok {
+			t.Error("Expected 'single' package in results")
+		}
+	})
+	
+	t.Run("multiple packages", func(t *testing.T) {
+		ctx := context.Background()
+		
+		file1, _ := parser.ParseFile(fset, "pkg1.go", "package pkg1\n\nfunc Test1() {}", parser.ParseComments)
+		file2, _ := parser.ParseFile(fset, "pkg2.go", "package pkg2\n\nfunc Test2() {}", parser.ParseComments)
+		file3, _ := parser.ParseFile(fset, "pkg3.go", "package pkg3\n\nfunc Test3() {}", parser.ParseComments)
+		
+		packages := map[string][]*ast.File{
+			"pkg1": {file1},
+			"pkg2": {file2},
+			"pkg3": {file3},
+		}
+		
+		results, err := checker.checkPackagesSequential(ctx, packages, fset)
+		
+		if err != nil {
+			t.Errorf("Unexpected error with multiple packages: %v", err)
+		}
+		
+		if len(results) != 3 {
+			t.Errorf("Expected 3 results, got %d", len(results))
+		}
+		
+		for pkgName := range packages {
+			if _, ok := results[pkgName]; !ok {
+				t.Errorf("Expected '%s' package in results", pkgName)
+			}
+		}
+	})
+	
+	t.Run("context cancellation during processing", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		
+		// Create multiple packages to increase chance of cancellation during processing
+		packages := make(map[string][]*ast.File)
+		for i := 0; i < 5; i++ {
+			pkgName := fmt.Sprintf("pkg%d", i)
+			file, _ := parser.ParseFile(fset, fmt.Sprintf("%s.go", pkgName), fmt.Sprintf("package %s\n\nfunc Test%d() {}", pkgName, i), parser.ParseComments)
+			packages[pkgName] = []*ast.File{file}
+		}
+		
+		// Cancel context immediately to test cancellation handling
+		cancel()
+		
+		results, err := checker.checkPackagesSequential(ctx, packages, fset)
+		
+		if err == nil {
+			t.Log("Note: Context cancellation may not have occurred during processing")
+		} else if err == context.Canceled {
+			// This is the expected behavior for cancelled context
+			t.Logf("Context cancellation occurred as expected")
+		} else {
+			t.Errorf("Expected context.Canceled error, got: %v", err)
+		}
+		
+		// When context is cancelled, function returns nil results  
+		if err == context.Canceled && results != nil {
+			t.Error("Expected nil results when context is cancelled")
+		}
+	})
+	
+	t.Run("context cancellation after first package", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		
+		file1, _ := parser.ParseFile(fset, "first.go", "package first\n\nfunc Test() {}", parser.ParseComments)
+		file2, _ := parser.ParseFile(fset, "second.go", "package second\n\nfunc Test() {}", parser.ParseComments)
+		
+		packages := map[string][]*ast.File{
+			"first":  {file1},
+			"second": {file2},
+		}
+		
+		// Start processing and cancel after a short delay
+		go func() {
+			time.Sleep(5 * time.Millisecond)
+			cancel()
+		}()
+		
+		results, err := checker.checkPackagesSequential(ctx, packages, fset)
+		
+		// Results might be partial or complete depending on timing
+		if err != nil && err != context.Canceled {
+			t.Errorf("Unexpected error type: %v", err)
+		}
+		
+		if results == nil {
+			t.Error("Expected non-nil results map")
+		}
+	})
+	
+	t.Run("package with syntax errors", func(t *testing.T) {
+		ctx := context.Background()
+		
+		// Create a file with syntax errors
+		invalidFile, _ := parser.ParseFile(fset, "invalid.go", "package invalid\n\nfunc Test( {", parser.ParseComments)
+		validFile, _ := parser.ParseFile(fset, "valid.go", "package valid\n\nfunc Test() {}", parser.ParseComments)
+		
+		packages := map[string][]*ast.File{
+			"invalid": {invalidFile},
+			"valid":   {validFile},
+		}
+		
+		results, err := checker.checkPackagesSequential(ctx, packages, fset)
+		
+		// Should still process other packages even if one has errors
+		if results == nil {
+			t.Error("Expected non-nil results even with syntax errors")
+		}
+		
+		// The function should continue processing despite errors in individual packages
+		if len(results) == 0 {
+			t.Error("Expected some results even with syntax errors in one package")
+		}
+		
+		// Log error for debugging but don't fail test
+		if err != nil {
+			t.Logf("Note: Error occurred as expected with invalid syntax: %v", err)
+		}
+	})
+	
+	t.Run("multiple files per package", func(t *testing.T) {
+		ctx := context.Background()
+		
+		file1, _ := parser.ParseFile(fset, "multi1.go", "package multi\n\nfunc Test1() {}", parser.ParseComments)
+		file2, _ := parser.ParseFile(fset, "multi2.go", "package multi\n\nfunc Test2() {}", parser.ParseComments)
+		file3, _ := parser.ParseFile(fset, "multi3.go", "package multi\n\nfunc Test3() {}", parser.ParseComments)
+		
+		packages := map[string][]*ast.File{
+			"multi": {file1, file2, file3},
+		}
+		
+		results, err := checker.checkPackagesSequential(ctx, packages, fset)
+		
+		if err != nil {
+			t.Errorf("Unexpected error with multi-file package: %v", err)
+		}
+		
+		if len(results) != 1 {
+			t.Errorf("Expected 1 result, got %d", len(results))
+		}
+		
+		if result, ok := results["multi"]; !ok {
+			t.Error("Expected 'multi' package in results")
+		} else if result == nil {
+			t.Error("Expected non-nil result for 'multi' package")
+		}
+	})
+}
+
 func TestTypeCheckerContextCancellation(t *testing.T) {
 	checker := NewIncrementalTypeChecker(DefaultTypeCheckerConfig())
 	
