@@ -2,9 +2,12 @@ module ast-cache-example
 
 go 1.24
 
+require github.com/healtronlabs/gofasta/tools/transpiler v0.0.0
+
 require (
-	github.com/healtronlabs/gofasta/tools/transpiler v0.0.0
-	golang.org/x/sync v0.16.0
+	golang.org/x/mod v0.22.0 // indirect
+	golang.org/x/sync v0.16.0 // indirect
+	golang.org/x/tools v0.28.0 // indirect
 )
 
 replace github.com/healtronlabs/gofasta/tools/transpiler => ../../../
