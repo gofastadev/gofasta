@@ -468,7 +468,7 @@ func TestDocCacheHelperFunctions(t *testing.T) {
 	
 	t.Run("indentCode", func(t *testing.T) {
 		code := "line1\nline2\nline3"
-		result := indentCode(4, code)
+		result := indentDocCode(4, code)
 		expected := "    line1\n    line2\n    line3"
 		if result != expected {
 			t.Errorf("Expected %q, got %q", expected, result)

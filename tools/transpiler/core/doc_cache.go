@@ -641,7 +641,7 @@ func renderJSON(data interface{}) template.HTML {
 	return template.HTML(fmt.Sprintf("<pre>%+v</pre>", data))
 }
 
-func indentCode(spaces int, code string) string {
+func indentDocCode(spaces int, code string) string {
 	indent := strings.Repeat(" ", spaces)
 	lines := strings.Split(code, "\n")
 	for i := range lines {
