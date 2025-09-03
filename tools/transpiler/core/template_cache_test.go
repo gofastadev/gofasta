@@ -1,4 +1,5 @@
-// Package core provides tests for text/template compiled cache.
+// Package core provides text/template with compiled template cache - test file.
+// This implements tests for Phase 1.2b: text/template with compiled template cache.
 package core
 
 import (
@@ -6,100 +7,266 @@ import (
 	"sync"
 	"testing"
 	"text/template"
+	"time"
 )
 
-func TestNewTemplateCache(t *testing.T) {
-	t.Run("with default config", func(t *testing.T) {
-		tc := NewTemplateCache(nil)
-		if tc == nil {
-			t.Fatal("Expected non-nil template cache")
-		}
-		if tc.config == nil {
-			t.Error("Expected non-nil config")
-		}
-		if !tc.config.EnableMetrics {
-			t.Error("Expected metrics to be enabled by default")
-		}
-		if !tc.config.PrecompileOnAdd {
-			t.Error("Expected precompile on add to be enabled by default")
-		}
-	})
-
-	t.Run("with custom config", func(t *testing.T) {
-		config := &TemplateCacheConfig{
-			MaxTemplates:      100,
-			MaxCacheSizeMB:    50,
-			EnableDedup:       false,
-			EnableMetrics:     false,
-			Delims:            [2]string{"[[", "]]"},
-			PrecompileOnAdd:   false,
-			LazyCompilation:   true,
-			ConcurrentCompile: false,
-			CompileWorkers:    2,
-		}
-		tc := NewTemplateCache(config)
-		if tc == nil {
-			t.Fatal("Expected non-nil template cache")
-		}
-		if tc.config.MaxTemplates != 100 {
-			t.Errorf("Expected max templates 100, got %d", tc.config.MaxTemplates)
-		}
-		if tc.config.Delims[0] != "[[" || tc.config.Delims[1] != "]]" {
-			t.Errorf("Expected custom delimiters [[]], got %v", tc.config.Delims)
-		}
-	})
+// TestDefaultTemplateCacheConfig tests the default configuration
+func TestDefaultTemplateCacheConfig(t *testing.T) {
+	config := DefaultTemplateCacheConfig()
+	
+	if config == nil {
+		t.Fatal("expected non-nil config")
+	}
+	if config.MaxTemplates != 500 {
+		t.Errorf("expected MaxTemplates to be 500, got %d", config.MaxTemplates)
+	}
+	if config.MaxCacheSizeMB != 100 {
+		t.Errorf("expected MaxCacheSizeMB to be 100, got %d", config.MaxCacheSizeMB)
+	}
+	if !config.EnableDedup {
+		t.Error("expected EnableDedup to be true")
+	}
+	if !config.EnableMetrics {
+		t.Error("expected EnableMetrics to be true")
+	}
+	if config.Delims[0] != "{{" || config.Delims[1] != "}}" {
+		t.Errorf("expected default delimiters {{/}}, got %v", config.Delims)
+	}
+	if config.FuncMap == nil {
+		t.Error("expected FuncMap to be non-nil")
+	}
+	if config.StrictMode {
+		t.Error("expected StrictMode to be false")
+	}
+	if !config.PrecompileOnAdd {
+		t.Error("expected PrecompileOnAdd to be true")
+	}
+	if config.LazyCompilation {
+		t.Error("expected LazyCompilation to be false")
+	}
+	if !config.ConcurrentCompile {
+		t.Error("expected ConcurrentCompile to be true")
+	}
+	if config.CompileWorkers != 4 {
+		t.Errorf("expected CompileWorkers to be 4, got %d", config.CompileWorkers)
+	}
 }
 
+// TestDefaultTemplateFuncMap tests the default template function map
+func TestDefaultTemplateFuncMap(t *testing.T) {
+	funcs := DefaultTemplateFuncMap()
+	
+	expectedFuncs := []string{
+		"upper", "lower", "title", "trim", "replace", "contains",
+		"hasPrefix", "hasSuffix", "split", "join", "sprintf",
+		"quote", "unquote", "indent", "dedent", "wrap",
+		"basename", "dirname", "ext", "clean", "abs",
+		"default", "empty", "coalesce", "ternary",
+		"first", "last", "reverse", "uniq", "dict", "list",
+		"now", "date", "timestamp",
+	}
+	
+	for _, name := range expectedFuncs {
+		if _, exists := funcs[name]; !exists {
+			t.Errorf("expected function %s to exist", name)
+		}
+	}
+}
+
+func TestNewTemplateCache(t *testing.T) {
+	tests := []struct {
+		name   string
+		config *TemplateCacheConfig
+	}{
+		{
+			name:   "with nil config",
+			config: nil,
+		},
+		{
+			name:   "with default config",
+			config: DefaultTemplateCacheConfig(),
+		},
+		{
+			name: "with custom config",
+			config: &TemplateCacheConfig{
+				MaxTemplates:      100,
+				MaxCacheSizeMB:    50,
+				EnableDedup:       false,
+				EnableMetrics:     false,
+				Delims:            [2]string{"[[", "]]"},
+				FuncMap:           make(template.FuncMap),
+				StrictMode:        true,
+				EnableAutoReload:  false,
+				PrecompileOnAdd:   false,
+				LazyCompilation:   true,
+				ConcurrentCompile: false,
+				CompileWorkers:    2,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tc := NewTemplateCache(tt.config)
+			if tc == nil {
+				t.Fatal("expected non-nil template cache")
+			}
+			if tc.config == nil {
+				t.Fatal("expected config to be initialized")
+			}
+			if tc.templates == nil {
+				t.Fatal("expected templates to be initialized")
+			}
+			if tc.hashIndex == nil {
+				t.Fatal("expected hashIndex to be initialized")
+			}
+			if tc.sets == nil {
+				t.Fatal("expected sets to be initialized")
+			}
+		})
+	}
+}
+
+// TestAddTemplate tests adding templates to the cache
 func TestAddTemplate(t *testing.T) {
 	tc := NewTemplateCache(nil)
+	
+	tests := []struct {
+		name       string
+		tmplName   string
+		tmplSource string
+		wantErr    bool
+	}{
+		{
+			name:       "simple template",
+			tmplName:   "simple",
+			tmplSource: "Hello {{.Name}}",
+			wantErr:    false,
+		},
+		{
+			name:       "template with functions",
+			tmplName:   "with_funcs",
+			tmplSource: "{{.Name | upper}}",
+			wantErr:    false,
+		},
+		{
+			name:       "complex template",
+			tmplSource: "{{range .Items}}{{.Name | title}}: {{.Value}}\n{{end}}",
+			tmplName:   "complex",
+			wantErr:    false,
+		},
+		{
+			name:       "invalid template",
+			tmplName:   "invalid",
+			tmplSource: "{{.Name | invalidFunc}}",
+			wantErr:    true,
+		},
+	}
 
-	t.Run("add simple template", func(t *testing.T) {
-		err := tc.AddTemplate("simple", "Hello {{.Name}}!")
-		if err != nil {
-			t.Fatalf("Failed to add template: %v", err)
-		}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tc.AddTemplate(tt.tmplName, tt.tmplSource)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("AddTemplate() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			
+			if !tt.wantErr {
+				// Verify template was stored
+				tmpl, getErr := tc.GetTemplate(tt.tmplName)
+				if getErr != nil {
+					t.Errorf("GetTemplate() error = %v", getErr)
+				}
+				if tmpl.Name != tt.tmplName {
+					t.Errorf("Template name = %q, want %q", tmpl.Name, tt.tmplName)
+				}
+				if tmpl.Source != tt.tmplSource {
+					t.Errorf("Template source = %q, want %q", tmpl.Source, tt.tmplSource)
+				}
+			}
+		})
+	}
+}
 
-		// Check template was stored
-		tc.mu.RLock()
-		tmpl, exists := tc.templates["simple"]
-		tc.mu.RUnlock()
+// TestAddTemplateWithMetadata tests adding templates with metadata
+func TestAddTemplateWithMetadata(t *testing.T) {
+	tc := NewTemplateCache(nil)
+	
+	metadata := map[string]interface{}{
+		"author":  "test",
+		"version": "1.0",
+		"tags":    []string{"test", "example"},
+	}
+	
+	err := tc.AddTemplateWithMetadata("meta_test", "Hello {{.Name}}", metadata)
+	if err != nil {
+		t.Fatalf("AddTemplateWithMetadata() error = %v", err)
+	}
+	
+	tmpl, err := tc.GetTemplate("meta_test")
+	if err != nil {
+		t.Fatalf("GetTemplate() error = %v", err)
+	}
+	
+	if tmpl.Metadata["author"] != "test" {
+		t.Errorf("Metadata author = %v, want 'test'", tmpl.Metadata["author"])
+	}
+	if tmpl.Metadata["version"] != "1.0" {
+		t.Errorf("Metadata version = %v, want '1.0'", tmpl.Metadata["version"])
+	}
+}
 
-		if !exists {
-			t.Error("Template was not stored")
-		}
-		if tmpl.Name != "simple" {
-			t.Errorf("Expected template name 'simple', got %s", tmpl.Name)
-		}
-		if tmpl.Source != "Hello {{.Name}}!" {
-			t.Errorf("Expected source 'Hello {{.Name}}!', got %s", tmpl.Source)
-		}
-	})
+// TestTemplateEviction tests template eviction when limits are reached
+func TestTemplateEviction(t *testing.T) {
+	config := DefaultTemplateCacheConfig()
+	config.MaxTemplates = 3
+	tc := NewTemplateCache(config)
+	
+	// Add templates up to limit
+	tc.AddTemplate("tmpl1", "Template 1: {{.Value}}")
+	tc.AddTemplate("tmpl2", "Template 2: {{.Value}}")
+	tc.AddTemplate("tmpl3", "Template 3: {{.Value}}")
+	
+	// Use tmpl1 to make it more recent
+	tc.Execute("tmpl1", map[string]string{"Value": "test"})
+	time.Sleep(10 * time.Millisecond) // Ensure different timestamps
+	
+	// Use tmpl3 to make it most recent
+	tc.Execute("tmpl3", map[string]string{"Value": "test"})
+	
+	// Add fourth template - should evict tmpl2 (least recently used)
+	err := tc.AddTemplate("tmpl4", "Template 4: {{.Value}}")
+	if err != nil {
+		t.Fatalf("AddTemplate() error = %v", err)
+	}
+	
+	// tmpl1 should still exist
+	_, err = tc.GetTemplate("tmpl1")
+	if err != nil {
+		t.Error("tmpl1 should still exist after eviction")
+	}
+	
+	// tmpl2 should be evicted
+	_, err = tc.GetTemplate("tmpl2")
+	if err == nil {
+		t.Error("tmpl2 should have been evicted")
+	}
+	
+	// tmpl3 should still exist
+	_, err = tc.GetTemplate("tmpl3")
+	if err != nil {
+		t.Error("tmpl3 should still exist after eviction")
+	}
+	
+	// tmpl4 should exist
+	_, err = tc.GetTemplate("tmpl4")
+	if err != nil {
+		t.Error("tmpl4 should exist after addition")
+	}
+}
 
-	t.Run("add template with metadata", func(t *testing.T) {
-		metadata := map[string]interface{}{
-			"version": "1.0",
-			"author":  "test",
-		}
-		err := tc.AddTemplateWithMetadata("meta", "{{.Value}}", metadata)
-		if err != nil {
-			t.Fatalf("Failed to add template with metadata: %v", err)
-		}
-
-		tc.mu.RLock()
-		tmpl, exists := tc.templates["meta"]
-		tc.mu.RUnlock()
-
-		if !exists {
-			t.Error("Template was not stored")
-		}
-		if tmpl.Metadata == nil {
-			t.Error("Expected metadata to be stored")
-		}
-		if tmpl.Metadata["version"] != "1.0" {
-			t.Errorf("Expected version 1.0, got %v", tmpl.Metadata["version"])
-		}
-	})
-
+// TestTemplateDeduplication tests template deduplication
+func TestTemplateDeduplication(t *testing.T) {
 	t.Run("deduplication", func(t *testing.T) {
 		tc := NewTemplateCache(&TemplateCacheConfig{
 			EnableDedup: true,
