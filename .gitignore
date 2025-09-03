@@ -63,3 +63,4 @@ test_summary.txt
 /tools/transpiler/gofasta*
 mock*
 pkg
+dist

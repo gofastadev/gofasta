@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/healtronlabs/gofasta/packages/core"
-	"github.com/healtronlabs/gofasta/packages/http"
+	// "github.com/healtronlabs/gofasta/packages/http"
 	"github.com/healtronlabs/gofasta/packages/orm"
 	"github.com/healtronlabs/gofasta/packages/validation"
 )
@@ -114,7 +114,7 @@ func NewAppModule() *AppModule {
 	}
 
 	// Import other modules
-	module.AddImport(http.NewHTTPModule(3000))
+	// module.AddImport(http.NewHTTPModule(3000))
 	module.AddImport(validation.NewValidationModule())
 	module.AddImport(NewUserModule())
 

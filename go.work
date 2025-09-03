@@ -26,4 +26,5 @@ use (
 	./plugins/swagger
 	./plugins/tracing
 	./tools/transpiler
+	./tests/integration
 )
