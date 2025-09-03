@@ -939,3 +939,320 @@ func BenchmarkConcurrentExecute(b *testing.B) {
 		}
 	})
 }
+
+// TestUnquote tests string unquoting with escape handling
+func TestUnquote(t *testing.T) {
+	t.Run("simple quoted string", func(t *testing.T) {
+		result, err := unquote(`"hello world"`)
+		if err != nil {
+			t.Fatalf("unquote() error = %v", err)
+		}
+		if result != "hello world" {
+			t.Errorf("unquote() = %q, want %q", result, "hello world")
+		}
+	})
+	
+	t.Run("string without quotes", func(t *testing.T) {
+		result, err := unquote("no quotes")
+		if err != nil {
+			t.Fatalf("unquote() error = %v", err)
+		}
+		if result != "no quotes" {
+			t.Errorf("unquote() = %q, want %q", result, "no quotes")
+		}
+	})
+	
+	t.Run("empty string", func(t *testing.T) {
+		result, err := unquote(`""`)
+		if err != nil {
+			t.Fatalf("unquote() error = %v", err)
+		}
+		if result != "" {
+			t.Errorf("unquote() = %q, want %q", result, "")
+		}
+	})
+	
+	t.Run("string with single quote", func(t *testing.T) {
+		result, err := unquote(`"single quote"`)
+		if err != nil {
+			t.Fatalf("unquote() error = %v", err)
+		}
+		if result != "single quote" {
+			t.Errorf("unquote() = %q, want %q", result, "single quote")
+		}
+	})
+	
+	t.Run("string with escaped content", func(t *testing.T) {
+		result, err := unquote(`"with \"escaped\" quotes"`)
+		if err != nil {
+			t.Fatalf("unquote() error = %v", err)
+		}
+		expected := `with \"escaped\" quotes`
+		if result != expected {
+			t.Errorf("unquote() = %q, want %q", result, expected)
+		}
+	})
+}
+
+// TestCoalesce tests value coalescing with nil/empty checks
+func TestCoalesce(t *testing.T) {
+	t.Run("first non-empty value", func(t *testing.T) {
+		result := coalesce("", "hello", "world")
+		if result != "hello" {
+			t.Errorf("coalesce() = %v, want %q", result, "hello")
+		}
+	})
+	
+	t.Run("nil then valid value", func(t *testing.T) {
+		result := coalesce(nil, "valid")
+		if result != "valid" {
+			t.Errorf("coalesce() = %v, want %q", result, "valid")
+		}
+	})
+	
+	t.Run("all empty returns nil", func(t *testing.T) {
+		result := coalesce("", nil)
+		if result != nil {
+			t.Errorf("coalesce() = %v, want nil", result)
+		}
+	})
+	
+	t.Run("integer values", func(t *testing.T) {
+		// Note: 0 is not considered empty by isEmpty(), so it should return 0
+		result := coalesce(0, 42, 100)
+		if result != 0 {
+			t.Errorf("coalesce() = %v, want %d", result, 0)
+		}
+	})
+	
+	t.Run("mixed types", func(t *testing.T) {
+		result := coalesce(nil, "", "string", 123)
+		if result != "string" {
+			t.Errorf("coalesce() = %v, want %q", result, "string")
+		}
+	})
+	
+	t.Run("boolean values", func(t *testing.T) {
+		// Note: false is not considered empty by isEmpty(), so it should return false
+		result := coalesce(false, true)
+		if result != false {
+			t.Errorf("coalesce() = %v, want false", result)
+		}
+	})
+	
+	t.Run("empty slice", func(t *testing.T) {
+		result := coalesce([]interface{}{}, "fallback")
+		if result != "fallback" {
+			t.Errorf("coalesce() = %v, want %q", result, "fallback")
+		}
+	})
+}
+
+// TestListFunction tests list creation and manipulation
+func TestListFunction(t *testing.T) {
+	t.Run("create empty list", func(t *testing.T) {
+		result := list()
+		if len(result) != 0 {
+			t.Errorf("list() length = %d, want 0", len(result))
+		}
+		// Note: list() with no args returns nil, which has length 0
+		if result != nil && len(result) != 0 {
+			t.Errorf("list() = %v, want nil or empty slice", result)
+		}
+	})
+	
+	t.Run("create list with single item", func(t *testing.T) {
+		result := list("single")
+		if len(result) != 1 {
+			t.Errorf("list() length = %d, want 1", len(result))
+		}
+		if result[0] != "single" {
+			t.Errorf("list()[0] = %v, want %q", result[0], "single")
+		}
+	})
+	
+	t.Run("create list with multiple items", func(t *testing.T) {
+		result := list("first", 42, true, nil)
+		if len(result) != 4 {
+			t.Errorf("list() length = %d, want 4", len(result))
+		}
+		
+		expected := []interface{}{"first", 42, true, nil}
+		for i, exp := range expected {
+			if result[i] != exp {
+				t.Errorf("list()[%d] = %v, want %v", i, result[i], exp)
+			}
+		}
+	})
+	
+	t.Run("create list with mixed types", func(t *testing.T) {
+		result := list("string", 123, 45.67, []int{1, 2, 3})
+		if len(result) != 4 {
+			t.Errorf("list() length = %d, want 4", len(result))
+		}
+		
+		if result[0] != "string" {
+			t.Errorf("list()[0] = %v, want %q", result[0], "string")
+		}
+		if result[1] != 123 {
+			t.Errorf("list()[1] = %v, want %d", result[1], 123)
+		}
+		if result[2] != 45.67 {
+			t.Errorf("list()[2] = %v, want %f", result[2], 45.67)
+		}
+	})
+	
+	t.Run("list preserves order", func(t *testing.T) {
+		items := []interface{}{1, 2, 3, 4, 5}
+		result := list(items...)
+		
+		for i, item := range items {
+			if result[i] != item {
+				t.Errorf("list()[%d] = %v, want %v (order not preserved)", i, result[i], item)
+			}
+		}
+	})
+}
+
+// TestFormatDate tests date formatting with various formats
+func TestFormatDate(t *testing.T) {
+	// Use a fixed time for consistent testing
+	testTime := time.Date(2025, 9, 3, 23, 5, 30, 123456789, time.UTC)
+	
+	t.Run("RFC3339 format", func(t *testing.T) {
+		result := formatDate(time.RFC3339, testTime)
+		expected := "2025-09-03T23:05:30Z"
+		if result != expected {
+			t.Errorf("formatDate(RFC3339) = %q, want %q", result, expected)
+		}
+	})
+	
+	t.Run("kitchen format", func(t *testing.T) {
+		result := formatDate(time.Kitchen, testTime)
+		expected := "11:05PM"
+		if result != expected {
+			t.Errorf("formatDate(Kitchen) = %q, want %q", result, expected)
+		}
+	})
+	
+	t.Run("custom date format", func(t *testing.T) {
+		result := formatDate("2006-01-02", testTime)
+		expected := "2025-09-03"
+		if result != expected {
+			t.Errorf("formatDate(custom date) = %q, want %q", result, expected)
+		}
+	})
+	
+	t.Run("custom time format", func(t *testing.T) {
+		result := formatDate("15:04:05", testTime)
+		expected := "23:05:30"
+		if result != expected {
+			t.Errorf("formatDate(custom time) = %q, want %q", result, expected)
+		}
+	})
+	
+	t.Run("custom datetime format", func(t *testing.T) {
+		result := formatDate("Jan 2, 2006 at 3:04pm", testTime)
+		expected := "Sep 3, 2025 at 11:05pm"
+		if result != expected {
+			t.Errorf("formatDate(custom datetime) = %q, want %q", result, expected)
+		}
+	})
+	
+	t.Run("day of week format", func(t *testing.T) {
+		result := formatDate("Monday", testTime)
+		expected := "Wednesday" // September 3, 2025 is a Wednesday
+		if result != expected {
+			t.Errorf("formatDate(weekday) = %q, want %q", result, expected)
+		}
+	})
+	
+	t.Run("month format", func(t *testing.T) {
+		result := formatDate("January", testTime)
+		expected := "September"
+		if result != expected {
+			t.Errorf("formatDate(month) = %q, want %q", result, expected)
+		}
+	})
+	
+	t.Run("year format", func(t *testing.T) {
+		result := formatDate("2006", testTime)
+		expected := "2025"
+		if result != expected {
+			t.Errorf("formatDate(year) = %q, want %q", result, expected)
+		}
+	})
+}
+
+// TestTimestamp tests timestamp generation and formatting
+func TestTimestamp(t *testing.T) {
+	t.Run("returns current unix timestamp", func(t *testing.T) {
+		before := time.Now().Unix()
+		result := timestamp()
+		after := time.Now().Unix()
+		
+		if result < before || result > after {
+			t.Errorf("timestamp() = %d, expected between %d and %d", result, before, after)
+		}
+	})
+	
+	t.Run("returns valid unix timestamp format", func(t *testing.T) {
+		result := timestamp()
+		
+		// Unix timestamps should be positive integers
+		if result <= 0 {
+			t.Errorf("timestamp() = %d, expected positive integer", result)
+		}
+		
+		// Should be within reasonable range (after year 2020, before year 2030)
+		// 1577836800 = Jan 1, 2020 00:00:00 UTC
+		// 1893456000 = Jan 1, 2030 00:00:00 UTC
+		if result < 1577836800 || result > 1893456000 {
+			t.Errorf("timestamp() = %d, expected reasonable timestamp between 2020-2030", result)
+		}
+	})
+	
+	t.Run("subsequent calls are consistent", func(t *testing.T) {
+		first := timestamp()
+		second := timestamp()
+		
+		// Since Unix timestamps have second precision, they should be equal or second >= first
+		if second < first {
+			t.Errorf("timestamp() second call = %d, should be >= first call = %d", second, first)
+		}
+	})
+	
+	t.Run("can be converted to time", func(t *testing.T) {
+		ts := timestamp()
+		converted := time.Unix(ts, 0)
+		
+		// Should be close to now (within 1 second)
+		now := time.Now()
+		diff := now.Sub(converted)
+		if diff < 0 {
+			diff = -diff
+		}
+		
+		if diff > time.Second {
+			t.Errorf("timestamp() converted time difference = %v, expected < 1 second", diff)
+		}
+	})
+	
+	t.Run("multiple calls in sequence", func(t *testing.T) {
+		timestamps := make([]int64, 5)
+		for i := range timestamps {
+			timestamps[i] = timestamp()
+			if i > 0 {
+				time.Sleep(1 * time.Millisecond)
+			}
+		}
+		
+		// All timestamps should be in ascending order (or equal due to precision)
+		for i := 1; i < len(timestamps); i++ {
+			if timestamps[i] < timestamps[i-1] {
+				t.Errorf("timestamp()[%d] = %d < timestamp()[%d] = %d, expected non-decreasing", 
+					i, timestamps[i], i-1, timestamps[i-1])
+			}
+		}
+	})
+}
