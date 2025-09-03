@@ -6,6 +6,7 @@ import (
 	"go/token"
 	"go/types"
 	"fmt"
+	"strings"
 	"golang.org/x/tools/go/analysis"
 	"testing"
 	"time"
@@ -601,4 +602,602 @@ func TestSkipPasses(t *testing.T) {
 	if !exists {
 		t.Error("bools analyzer should be registered")
 	}
+}
+
+// TestSetupPackageFacts tests package fact initialization
+func TestSetupPackageFacts(t *testing.T) {
+	cache := NewAnalysisCache(nil)
+	
+	// Create a mock package
+	pkg := createSimpleTestPackage(t)
+	
+	t.Run("setup with valid package", func(t *testing.T) {
+		// Create a mock analyzer and pass
+		analyzer := &analysis.Analyzer{
+			Name: "test-analyzer",
+			Doc:  "Test analyzer for package facts",
+			Run: func(pass *analysis.Pass) (interface{}, error) {
+				return nil, nil
+			},
+		}
+		
+		pass := &analysis.Pass{
+			Analyzer:  analyzer,
+			Fset:      pkg.Fset,
+			Files:     pkg.Files,
+			Pkg:       pkg.Pkg,
+			TypesInfo: pkg.TypesInfo,
+		}
+		
+		// SetupPackageFacts should not panic and should complete without error
+		cache.SetupPackageFacts(pass, pkg)
+		
+		// Since the function is currently a no-op, we just verify it doesn't crash
+		// In a full implementation, we would verify that package facts are properly initialized
+	})
+	
+	t.Run("setup with nil pass", func(t *testing.T) {
+		// Should handle nil pass gracefully
+		cache.SetupPackageFacts(nil, pkg)
+	})
+	
+	t.Run("setup with nil package", func(t *testing.T) {
+		analyzer := &analysis.Analyzer{Name: "test"}
+		pass := &analysis.Pass{Analyzer: analyzer}
+		
+		// Should handle nil package gracefully  
+		cache.SetupPackageFacts(pass, nil)
+	})
+	
+	t.Run("setup with both nil", func(t *testing.T) {
+		// Should handle both nil parameters gracefully
+		cache.SetupPackageFacts(nil, nil)
+	})
+}
+
+// TestFindDiagnosticsByType tests type-specific diagnostic filtering
+func TestFindDiagnosticsByType(t *testing.T) {
+	cache := NewAnalysisCache(nil)
+	
+	// Add some test diagnostics to the cache
+	testDiags := []*analysis.Diagnostic{
+		{Message: "unused variable detected"},
+		{Message: "ineffective assignment found"},
+		{Message: "variable not used properly"},
+		{Message: "function parameter unused"},
+		{Message: "deadcode detected in function"},
+	}
+	
+	// Manually populate cache diagnostics for testing
+	cache.diagnostics["test-key-1"] = testDiags[:2]
+	cache.diagnostics["test-key-2"] = testDiags[2:4]
+	cache.diagnostics["test-key-3"] = testDiags[4:]
+	
+	t.Run("find unused diagnostics", func(t *testing.T) {
+		result := cache.FindDiagnosticsByType("unused")
+		
+		// Based on our test data: "unused variable detected" and "function parameter unused"
+		expectedCount := 2  
+		if len(result) != expectedCount {
+			t.Errorf("FindDiagnosticsByType('unused') = %d diagnostics, want %d", len(result), expectedCount)
+		}
+		
+		// Verify all returned diagnostics contain "unused"
+		for _, diag := range result {
+			if !strings.Contains(diag.Message, "unused") {
+				t.Errorf("Diagnostic message %q should contain 'unused'", diag.Message)
+			}
+		}
+	})
+	
+	t.Run("find variable diagnostics", func(t *testing.T) {
+		result := cache.FindDiagnosticsByType("variable")
+		
+		expectedCount := 2 // "unused variable" and "variable not used"
+		if len(result) != expectedCount {
+			t.Errorf("FindDiagnosticsByType('variable') = %d diagnostics, want %d", len(result), expectedCount)
+		}
+	})
+	
+	t.Run("find non-existent type", func(t *testing.T) {
+		result := cache.FindDiagnosticsByType("nonexistent")
+		
+		if len(result) != 0 {
+			t.Errorf("FindDiagnosticsByType('nonexistent') = %d diagnostics, want 0", len(result))
+		}
+	})
+	
+	t.Run("find with empty string", func(t *testing.T) {
+		result := cache.FindDiagnosticsByType("")
+		
+		// All diagnostics should contain empty string
+		expectedCount := len(testDiags)
+		if len(result) != expectedCount {
+			t.Errorf("FindDiagnosticsByType('') = %d diagnostics, want %d", len(result), expectedCount)
+		}
+	})
+	
+	t.Run("concurrent access", func(t *testing.T) {
+		done := make(chan bool, 10)
+		
+		// Start multiple goroutines accessing diagnostics
+		for i := 0; i < 10; i++ {
+			go func() {
+				_ = cache.FindDiagnosticsByType("unused")
+				done <- true
+			}()
+		}
+		
+		// Wait for all goroutines to complete
+		for i := 0; i < 10; i++ {
+			<-done
+		}
+	})
+}
+
+// TestCreateReportFunc tests report function creation and execution
+func TestCreateReportFunc(t *testing.T) {
+	cache := NewAnalysisCache(nil)
+	
+	t.Run("create and use report function", func(t *testing.T) {
+		key := "test-report-key"
+		reportFunc := cache.createReportFunc(key)
+		
+		if reportFunc == nil {
+			t.Fatal("createReportFunc() returned nil function")
+		}
+		
+		// Create a test diagnostic
+		testDiag := analysis.Diagnostic{
+			Message: "test diagnostic message",
+			Pos:     token.NoPos,
+		}
+		
+		// Initial state - no diagnostics
+		initialCount := len(cache.diagnostics[key])
+		
+		// Use the report function
+		reportFunc(testDiag)
+		
+		// Verify diagnostic was added
+		if len(cache.diagnostics[key]) != initialCount+1 {
+			t.Errorf("Expected diagnostic count to increase by 1, got %d -> %d", 
+				initialCount, len(cache.diagnostics[key]))
+		}
+		
+		// Verify the diagnostic content
+		storedDiag := cache.diagnostics[key][len(cache.diagnostics[key])-1]
+		if storedDiag.Message != testDiag.Message {
+			t.Errorf("Stored diagnostic message = %q, want %q", storedDiag.Message, testDiag.Message)
+		}
+		
+		// Verify total diagnostics counter
+		if cache.totalDiags == 0 {
+			t.Error("Expected totalDiags to be incremented")
+		}
+	})
+	
+	t.Run("multiple reports to same key", func(t *testing.T) {
+		key := "multi-report-key"
+		reportFunc := cache.createReportFunc(key)
+		
+		// Report multiple diagnostics
+		diag1 := analysis.Diagnostic{Message: "first diagnostic"}
+		diag2 := analysis.Diagnostic{Message: "second diagnostic"}
+		diag3 := analysis.Diagnostic{Message: "third diagnostic"}
+		
+		reportFunc(diag1)
+		reportFunc(diag2)
+		reportFunc(diag3)
+		
+		// Verify all diagnostics are stored
+		if len(cache.diagnostics[key]) != 3 {
+			t.Errorf("Expected 3 diagnostics for key %q, got %d", key, len(cache.diagnostics[key]))
+		}
+		
+		// Verify order is preserved
+		messages := []string{"first diagnostic", "second diagnostic", "third diagnostic"}
+		for i, expectedMsg := range messages {
+			if cache.diagnostics[key][i].Message != expectedMsg {
+				t.Errorf("Diagnostic[%d].Message = %q, want %q", i, cache.diagnostics[key][i].Message, expectedMsg)
+			}
+		}
+	})
+	
+	t.Run("different keys have separate diagnostics", func(t *testing.T) {
+		key1 := "separate-key-1"
+		key2 := "separate-key-2"
+		
+		reportFunc1 := cache.createReportFunc(key1)
+		reportFunc2 := cache.createReportFunc(key2)
+		
+		// Report to different keys
+		reportFunc1(analysis.Diagnostic{Message: "key1 diagnostic"})
+		reportFunc2(analysis.Diagnostic{Message: "key2 diagnostic"})
+		
+		// Verify separation
+		if len(cache.diagnostics[key1]) != 1 {
+			t.Errorf("Expected 1 diagnostic for key1, got %d", len(cache.diagnostics[key1]))
+		}
+		if len(cache.diagnostics[key2]) != 1 {
+			t.Errorf("Expected 1 diagnostic for key2, got %d", len(cache.diagnostics[key2]))
+		}
+		
+		// Verify correct content
+		if cache.diagnostics[key1][0].Message != "key1 diagnostic" {
+			t.Error("key1 diagnostic has wrong message")
+		}
+		if cache.diagnostics[key2][0].Message != "key2 diagnostic" {
+			t.Error("key2 diagnostic has wrong message")
+		}
+	})
+	
+	t.Run("concurrent reporting", func(t *testing.T) {
+		key := "concurrent-key"
+		reportFunc := cache.createReportFunc(key)
+		
+		done := make(chan bool, 100)
+		
+		// Start 100 concurrent reports
+		for i := 0; i < 100; i++ {
+			go func(id int) {
+				diag := analysis.Diagnostic{Message: fmt.Sprintf("concurrent diagnostic %d", id)}
+				reportFunc(diag)
+				done <- true
+			}(i)
+		}
+		
+		// Wait for all reports
+		for i := 0; i < 100; i++ {
+			<-done
+		}
+		
+		// Verify all diagnostics were stored
+		if len(cache.diagnostics[key]) != 100 {
+			t.Errorf("Expected 100 diagnostics after concurrent reporting, got %d", len(cache.diagnostics[key]))
+		}
+	})
+}
+
+// TestInvalidateResult tests result invalidation and cleanup
+func TestInvalidateResult(t *testing.T) {
+	cache := NewAnalysisCache(nil)
+	
+	t.Run("invalidate existing result", func(t *testing.T) {
+		key := "test-invalidate-key"
+		
+		// Set up some cached data
+		cache.resultCache[key] = &CachedResult{
+			Result: "test result",
+			Facts:  make(map[analysis.Fact]bool),
+		}
+		cache.diagnostics[key] = []*analysis.Diagnostic{
+			{Message: "test diagnostic"},
+		}
+		cache.factCache[key] = make(map[analysis.Fact]bool)
+		
+		// Verify data exists before invalidation
+		if _, exists := cache.resultCache[key]; !exists {
+			t.Fatal("Test setup failed - result should exist")
+		}
+		if _, exists := cache.diagnostics[key]; !exists {
+			t.Fatal("Test setup failed - diagnostics should exist") 
+		}
+		if _, exists := cache.factCache[key]; !exists {
+			t.Fatal("Test setup failed - facts should exist")
+		}
+		
+		// Invalidate the result
+		cache.InvalidateResult(key)
+		
+		// Verify all data was removed
+		if _, exists := cache.resultCache[key]; exists {
+			t.Error("Result cache should be cleared after invalidation")
+		}
+		if _, exists := cache.diagnostics[key]; exists {
+			t.Error("Diagnostics should be cleared after invalidation")
+		}
+		if _, exists := cache.factCache[key]; exists {
+			t.Error("Fact cache should be cleared after invalidation")
+		}
+	})
+	
+	t.Run("invalidate non-existent result", func(t *testing.T) {
+		key := "non-existent-key"
+		
+		// Should not panic when invalidating non-existent key
+		cache.InvalidateResult(key)
+		
+		// Verify no data exists (should be safe to check)
+		if _, exists := cache.resultCache[key]; exists {
+			t.Error("Non-existent key should not have result cache entry")
+		}
+	})
+	
+	t.Run("invalidate partial data", func(t *testing.T) {
+		key := "partial-data-key"
+		
+		// Set up only some cached data
+		cache.resultCache[key] = &CachedResult{Result: "test"}
+		// No diagnostics or facts for this key
+		
+		// Should handle partial data safely
+		cache.InvalidateResult(key)
+		
+		// Verify result was removed
+		if _, exists := cache.resultCache[key]; exists {
+			t.Error("Result cache should be cleared even for partial data")
+		}
+	})
+	
+	t.Run("invalidate preserves other keys", func(t *testing.T) {
+		key1 := "preserve-key-1"
+		key2 := "preserve-key-2"
+		keyToInvalidate := "invalidate-this-key"
+		
+		// Set up data for multiple keys
+		cache.resultCache[key1] = &CachedResult{Result: "result1"}
+		cache.resultCache[key2] = &CachedResult{Result: "result2"}
+		cache.resultCache[keyToInvalidate] = &CachedResult{Result: "to-be-invalidated"}
+		
+		cache.diagnostics[key1] = []*analysis.Diagnostic{{Message: "diag1"}}
+		cache.diagnostics[key2] = []*analysis.Diagnostic{{Message: "diag2"}}
+		cache.diagnostics[keyToInvalidate] = []*analysis.Diagnostic{{Message: "diag-invalidate"}}
+		
+		// Invalidate only one key
+		cache.InvalidateResult(keyToInvalidate)
+		
+		// Verify other keys are preserved
+		if _, exists := cache.resultCache[key1]; !exists {
+			t.Error("key1 result should be preserved")
+		}
+		if _, exists := cache.resultCache[key2]; !exists {
+			t.Error("key2 result should be preserved")
+		}
+		if _, exists := cache.diagnostics[key1]; !exists {
+			t.Error("key1 diagnostics should be preserved")
+		}
+		if _, exists := cache.diagnostics[key2]; !exists {
+			t.Error("key2 diagnostics should be preserved")
+		}
+		
+		// Verify invalidated key is gone
+		if _, exists := cache.resultCache[keyToInvalidate]; exists {
+			t.Error("Invalidated key should be removed")
+		}
+		if _, exists := cache.diagnostics[keyToInvalidate]; exists {
+			t.Error("Invalidated key diagnostics should be removed")
+		}
+	})
+	
+	t.Run("concurrent invalidation", func(t *testing.T) {
+		// Set up multiple keys for concurrent invalidation
+		keys := make([]string, 50)
+		for i := 0; i < 50; i++ {
+			key := fmt.Sprintf("concurrent-invalidate-%d", i)
+			keys[i] = key
+			cache.resultCache[key] = &CachedResult{Result: fmt.Sprintf("result-%d", i)}
+			cache.diagnostics[key] = []*analysis.Diagnostic{{Message: fmt.Sprintf("diag-%d", i)}}
+		}
+		
+		done := make(chan bool, 50)
+		
+		// Invalidate concurrently
+		for _, key := range keys {
+			go func(k string) {
+				cache.InvalidateResult(k)
+				done <- true
+			}(key)
+		}
+		
+		// Wait for all invalidations
+		for i := 0; i < 50; i++ {
+			<-done
+		}
+		
+		// Verify all keys were invalidated
+		for _, key := range keys {
+			if _, exists := cache.resultCache[key]; exists {
+				t.Errorf("Key %q should be invalidated", key)
+			}
+		}
+	})
+}
+
+// TestGetCachedResult tests cache result retrieval
+func TestGetCachedResult(t *testing.T) {
+	cache := NewAnalysisCache(nil)
+	
+	t.Run("get existing cached result", func(t *testing.T) {
+		key := "existing-result-key"
+		expectedResult := &CachedResult{
+			Result: "test cached result",
+			Facts:  make(map[analysis.Fact]bool),
+		}
+		
+		// Add result to cache
+		cache.resultCache[key] = expectedResult
+		
+		// Retrieve the result
+		result, exists := cache.GetCachedResult(key)
+		
+		if !exists {
+			t.Error("GetCachedResult() exists = false, want true for existing key")
+		}
+		
+		if result != expectedResult {
+			t.Error("GetCachedResult() returned different result object")
+		}
+		
+		if result.Result != expectedResult.Result {
+			t.Errorf("GetCachedResult().Result = %v, want %v", result.Result, expectedResult.Result)
+		}
+	})
+	
+	t.Run("get non-existent cached result", func(t *testing.T) {
+		key := "non-existent-key"
+		
+		result, exists := cache.GetCachedResult(key)
+		
+		if exists {
+			t.Error("GetCachedResult() exists = true, want false for non-existent key")
+		}
+		
+		if result != nil {
+			t.Error("GetCachedResult() result should be nil for non-existent key")
+		}
+	})
+	
+	t.Run("get multiple different results", func(t *testing.T) {
+		keys := []string{"result-1", "result-2", "result-3"}
+		expectedResults := []*CachedResult{
+			{Result: "first result"},
+			{Result: "second result"}, 
+			{Result: "third result"},
+		}
+		
+		// Add multiple results
+		for i, key := range keys {
+			cache.resultCache[key] = expectedResults[i]
+		}
+		
+		// Verify each result can be retrieved correctly
+		for i, key := range keys {
+			result, exists := cache.GetCachedResult(key)
+			
+			if !exists {
+				t.Errorf("GetCachedResult(%q) exists = false, want true", key)
+			}
+			
+			if result != expectedResults[i] {
+				t.Errorf("GetCachedResult(%q) returned wrong result object", key)
+			}
+			
+			if result.Result != expectedResults[i].Result {
+				t.Errorf("GetCachedResult(%q).Result = %v, want %v", key, result.Result, expectedResults[i].Result)
+			}
+		}
+	})
+	
+	t.Run("get result with complex data", func(t *testing.T) {
+		key := "complex-result-key"
+		expectedResult := &CachedResult{
+			Result: map[string]interface{}{
+				"findings": []string{"issue1", "issue2"},
+				"score":    85,
+				"metadata": map[string]string{"analyzer": "test", "version": "1.0"},
+			},
+			Facts: make(map[analysis.Fact]bool),
+		}
+		
+		// Add complex result to cache
+		cache.resultCache[key] = expectedResult
+		
+		result, exists := cache.GetCachedResult(key)
+		
+		if !exists {
+			t.Error("GetCachedResult() exists = false, want true for complex result")
+		}
+		
+		// Verify complex data structure is preserved
+		resultData, ok := result.Result.(map[string]interface{})
+		if !ok {
+			t.Error("Result data should be preserved as map[string]interface{}")
+		}
+		
+		if len(resultData) != 3 {
+			t.Errorf("Expected 3 fields in result data, got %d", len(resultData))
+		}
+	})
+	
+	t.Run("concurrent access to cached results", func(t *testing.T) {
+		key := "concurrent-access-key"
+		expectedResult := &CachedResult{
+			Result: "concurrent test result",
+		}
+		
+		cache.resultCache[key] = expectedResult
+		
+		done := make(chan bool, 100)
+		
+		// Start 100 concurrent reads
+		for i := 0; i < 100; i++ {
+			go func() {
+				result, exists := cache.GetCachedResult(key)
+				if !exists {
+					t.Error("Concurrent access should find existing result")
+				}
+				if result == nil {
+					t.Error("Concurrent access should return non-nil result")
+				}
+				done <- true
+			}()
+		}
+		
+		// Wait for all reads
+		for i := 0; i < 100; i++ {
+			<-done
+		}
+	})
+	
+	t.Run("get after invalidation", func(t *testing.T) {
+		key := "invalidation-test-key"
+		
+		// Add result
+		cache.resultCache[key] = &CachedResult{Result: "to be invalidated"}
+		
+		// Verify it exists
+		_, exists := cache.GetCachedResult(key)
+		if !exists {
+			t.Fatal("Result should exist before invalidation")
+		}
+		
+		// Invalidate
+		cache.InvalidateResult(key)
+		
+		// Verify it's gone
+		result, exists := cache.GetCachedResult(key)
+		if exists {
+			t.Error("GetCachedResult() exists = true after invalidation, want false")
+		}
+		if result != nil {
+			t.Error("GetCachedResult() should return nil after invalidation")
+		}
+	})
+}
+
+// createSimpleTestPackage creates a simple test package for analysis
+func createSimpleTestPackage(t *testing.T) *Package {
+	const src = `package test
+
+func ExampleFunc() {
+	var x int
+	return
+}
+`
+	
+	fset := token.NewFileSet()
+	file, err := parser.ParseFile(fset, "test.go", src, parser.ParseComments)
+	if err != nil {
+		t.Fatalf("Failed to parse test file: %v", err)
+	}
+	
+	// Create types package and info
+	pkg := types.NewPackage("test", "test")
+	info := &types.Info{
+		Types: make(map[ast.Expr]types.TypeAndValue),
+		Defs:  make(map[*ast.Ident]types.Object),
+		Uses:  make(map[*ast.Ident]types.Object),
+	}
+	
+	// Create the Package struct
+	testPkg := &Package{
+		Path:      "test",
+		Fset:      fset,
+		Files:     []*ast.File{file},
+		Pkg:       pkg,
+		TypesInfo: info,
+	}
+	
+	return testPkg
 }
