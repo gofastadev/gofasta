@@ -1,4 +1,4 @@
-module github.com/healtronlabs/gofasta/tools/transpiler/examples/core/printer-cache
+module build-cache-example
 
 go 1.24
 

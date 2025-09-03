@@ -8,8 +8,6 @@ import (
 	"go/parser"
 	"go/token"
 	"log"
-	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/healtronlabs/gofasta/tools/transpiler/core"

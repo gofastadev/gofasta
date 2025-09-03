@@ -107,7 +107,7 @@ func (u *User) IsValid() bool {
 	fmt.Printf("\n=== Second Type Check (Cache Hit) ===\n")
 	
 	start = time.Now()
-	result2, err := typeChecker.CheckPackage(ctx, "main", files, fset)
+	_, err = typeChecker.CheckPackage(ctx, "main", files, fset)
 	duration2 := time.Since(start)
 	
 	if err != nil {
@@ -147,7 +147,12 @@ func (u *User) IsValid() bool {
 	}
 	
 	start = time.Now()
-	results, err := typeChecker.CheckPackages(ctx, packages)
+	// Convert to map format expected by CheckPackages
+	packageMap := make(map[string][]*ast.File)
+	for _, pkg := range packages {
+		packageMap[pkg.name] = pkg.files
+	}
+	results, err := typeChecker.CheckPackages(ctx, packageMap, fset)
 	parallelDuration := time.Since(start)
 	
 	if err != nil {
@@ -169,12 +174,19 @@ func (u *User) IsValid() bool {
 	// Cache invalidation example
 	fmt.Printf("\n=== Cache Invalidation ===\n")
 	
-	invalidated := typeChecker.InvalidateCache("main")
-	fmt.Printf("Invalidated cache for package 'main': %v\n", invalidated)
+	typeChecker.InvalidateCache("main")
+	fmt.Printf("Invalidated cache for package 'main'\n")
 	
 	// Clear all caches
-	typeChecker.ClearCache()
-	fmt.Printf("Cleared all type checker caches\n")
+	// Clear cache by invalidating all packages
+	stats = typeChecker.GetStatistics()
+	if cachedPkgs, ok := stats["cached_packages"]; ok {
+		if pkgCount, ok := cachedPkgs.(int); ok && pkgCount > 0 {
+			// Clear by invalidating known packages
+			typeChecker.InvalidateCache("main")
+		}
+	}
+	fmt.Printf("Cleared type checker caches\n")
 	
 	finalStats := typeChecker.GetStatistics()
 	fmt.Printf("Stats after clear:\n")

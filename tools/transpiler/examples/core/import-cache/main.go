@@ -3,7 +3,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/healtronlabs/gofasta/tools/transpiler/core"
@@ -67,7 +66,7 @@ func main() {
 	start = time.Now()
 	
 	for _, pkgPath := range packages {
-		pkg, err := importer.Import(pkgPath)
+		_, err := importer.Import(pkgPath)
 		if err != nil {
 			fmt.Printf("✗ Failed to import %s: %v\n", pkgPath, err)
 		} else {
