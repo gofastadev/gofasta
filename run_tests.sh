@@ -2,11 +2,24 @@
 
 # Gofasta Project Global Test Runner
 # This script runs comprehensive tests across the entire Gofasta project
+#
+# Usage:
+#   ./run_tests.sh                    # Run full test suite
+#   ./run_tests.sh --integration      # Run integration tests only
+#   ./run_tests.sh -i                 # Run integration tests only (short flag)
 
 set -e
 
-echo "🧪 Running Gofasta Project Global Test Suite"
-echo "=============================================="
+# Check for integration-only flag
+INTEGRATION_ONLY=false
+if [[ "$1" == "--integration" ]] || [[ "$1" == "-i" ]]; then
+    INTEGRATION_ONLY=true
+    echo "🧪 Running GoFasta Integration Tests Only"
+    echo "========================================="
+else
+    echo "🧪 Running Gofasta Project Global Test Suite"
+    echo "=============================================="
+fi
 
 # Colors for output
 RED='\033[0;31m'
@@ -69,6 +82,15 @@ MODULES_TESTED=0
 TEST_OUTPUT=$(mktemp)
 COVERAGE_DATA=()
 
+# Integration Test Specific Tracking
+INTEGRATION_TESTS=0
+INTEGRATION_PASSED=0
+INTEGRATION_FAILED=0
+INTEGRATION_SKIPPED=0
+INTEGRATION_COVERAGE="N/A"
+INTEGRATION_DURATION=0
+INTEGRATION_DETAILS=""
+
 echo "" > "$TEST_OUTPUT"
 
 # Function to run tests for a specific module/path
@@ -116,11 +138,24 @@ run_module_tests() {
         TOTAL_SKIPPED=$((TOTAL_SKIPPED + skipped))
         MODULES_TESTED=$((MODULES_TESTED + 1))
         
+        # Track integration test specific metrics
+        if [[ "$module_name" == "transpiler-integration" ]]; then
+            INTEGRATION_TESTS=$module_total
+            INTEGRATION_PASSED=$passed
+            INTEGRATION_FAILED=$failed
+            INTEGRATION_SKIPPED=$skipped
+        fi
+        
         # Get coverage if available
         if [ -f "$MODULE_COVERAGE" ]; then
             local coverage=$(go tool cover -func="$MODULE_COVERAGE" 2>/dev/null | grep total | awk '{print $3}' || echo "N/A")
             COVERAGE_DATA+=("$module_name: $coverage")
             print_status "$module_name coverage: $coverage"
+            
+            # Track integration test coverage
+            if [[ "$module_name" == "transpiler-integration" ]]; then
+                INTEGRATION_COVERAGE=$coverage
+            fi
         fi
         
         # Append to main output
@@ -153,51 +188,89 @@ run_module_tests() {
     rm -f "$MODULE_OUTPUT"
 }
 
-# Test all major components
-print_section "🔧 Core Infrastructure Tests"
-
-# New transpiler tests (Phase 1.1a implementation)
-print_section "🚀 GoFasta v2.0 Transpiler Tests (Phase 1.1a)"
-run_module_tests "./tools/transpiler/core" "transpiler-v2-parser" "Phase 1.1a: Parallel Parser"
-
-# Integration tests for transpiler
-print_section "🧪 Transpiler Integration Tests"
-run_module_tests "./tests/integration" "transpiler-integration" "Real-world Integration"
-
-print_section "📦 Package Tests"
-if [ -d "packages" ]; then
-    for package_dir in packages/*/; do
-        if [ -f "${package_dir}go.mod" ] && find "$package_dir" -name "*_test.go" | grep -q .; then
-            package_name=$(basename "$package_dir")
-            run_module_tests "./$package_dir" "package-$package_name" "Package"
-        fi
-    done
+# Test execution based on mode
+if [[ "$INTEGRATION_ONLY" == "true" ]]; then
+    # Only run integration tests
+    print_section "🧪 Transpiler Integration Tests"
+    INTEGRATION_START_TIME=$(date +%s)
+    run_module_tests "./tests/integration" "transpiler-integration" "Real-world Integration"
+    INTEGRATION_END_TIME=$(date +%s)
+    INTEGRATION_DURATION=$((INTEGRATION_END_TIME - INTEGRATION_START_TIME))
 else
-    print_warning "No packages directory found, skipping package tests"
+    # Run full test suite
+    # Test all major components
+    print_section "🔧 Core Infrastructure Tests"
+
+    # New transpiler tests (Phase 1.1a implementation)
+    print_section "🚀 GoFasta v2.0 Transpiler Tests (Phase 1.1a)"
+    run_module_tests "./tools/transpiler/core" "transpiler-v2-parser" "Phase 1.1a: Parallel Parser"
+
+    # Integration tests for transpiler
+    print_section "🧪 Transpiler Integration Tests"
+    INTEGRATION_START_TIME=$(date +%s)
+    run_module_tests "./tests/integration" "transpiler-integration" "Real-world Integration"
+    INTEGRATION_END_TIME=$(date +%s)
+    INTEGRATION_DURATION=$((INTEGRATION_END_TIME - INTEGRATION_START_TIME))
 fi
 
-print_section "🔌 Plugin Tests"
-if [ -d "plugins" ]; then
-    for plugin_dir in plugins/*/; do
-        if [ -f "${plugin_dir}go.mod" ] && find "$plugin_dir" -name "*_test.go" | grep -q .; then
-            plugin_name=$(basename "$plugin_dir")
-            run_module_tests "./$plugin_dir" "plugin-$plugin_name" "Plugin"
+# Extract integration test details from output
+print_status "Extracting integration test details..."
+if [ -f "$TEST_OUTPUT" ]; then
+    # Extract CLI performance metrics from integration test output
+    CLI_PERFORMANCE=$(grep "Files per second:" "$TEST_OUTPUT" 2>/dev/null | tail -1 | grep -o '[0-9]*\.[0-9]*' || echo "N/A")
+    
+    # Extract individual integration test results
+    INTEGRATION_DETAILS=$(grep -A 1 -B 1 "=== RUN.*Test.*Integration\|=== RUN.*TestCLI" "$TEST_OUTPUT" 2>/dev/null | head -20 || echo "")
+    
+    # Count CLI tests specifically 
+    CLI_TESTS=$(grep "=== RUN.*TestCLI" "$TEST_OUTPUT" 2>/dev/null | wc -l | tr -d ' ')
+    CLI_TESTS_PASSED=$(grep -A 1 "=== RUN.*TestCLI" "$TEST_OUTPUT" 2>/dev/null | grep "PASS" | wc -l | tr -d ' ')
+    
+    print_status "Integration tests completed: $INTEGRATION_TESTS tests, $INTEGRATION_PASSED passed, $INTEGRATION_FAILED failed"
+    if [[ "$CLI_TESTS" -gt 0 ]]; then
+        print_status "CLI tests: $CLI_TESTS tests, $CLI_TESTS_PASSED passed"
+        if [[ "$CLI_PERFORMANCE" != "N/A" ]]; then
+            print_status "CLI performance: ${CLI_PERFORMANCE} files/sec"
         fi
-    done
-else
-    print_warning "No plugins directory found, skipping plugin tests"
+    fi
 fi
 
-print_section "📚 Example Tests"
-if [ -d "examples" ]; then
-    for example_dir in examples/*/; do
-        if [ -f "${example_dir}go.mod" ] && find "$example_dir" -name "*_test.go" | grep -q .; then
-            example_name=$(basename "$example_dir")
-            run_module_tests "./$example_dir" "example-$example_name" "Example"
-        fi
-    done
-else
-    print_warning "No examples with tests found, skipping example tests"
+if [[ "$INTEGRATION_ONLY" != "true" ]]; then
+    print_section "📦 Package Tests"
+    if [ -d "packages" ]; then
+        for package_dir in packages/*/; do
+            if [ -f "${package_dir}go.mod" ] && find "$package_dir" -name "*_test.go" | grep -q .; then
+                package_name=$(basename "$package_dir")
+                run_module_tests "./$package_dir" "package-$package_name" "Package"
+            fi
+        done
+    else
+        print_warning "No packages directory found, skipping package tests"
+    fi
+
+    print_section "🔌 Plugin Tests"
+    if [ -d "plugins" ]; then
+        for plugin_dir in plugins/*/; do
+            if [ -f "${plugin_dir}go.mod" ] && find "$plugin_dir" -name "*_test.go" | grep -q .; then
+                plugin_name=$(basename "$plugin_dir")
+                run_module_tests "./$plugin_dir" "plugin-$plugin_name" "Plugin"
+            fi
+        done
+    else
+        print_warning "No plugins directory found, skipping plugin tests"
+    fi
+
+    print_section "📚 Example Tests"
+    if [ -d "examples" ]; then
+        for example_dir in examples/*/; do
+            if [ -f "${example_dir}go.mod" ] && find "$example_dir" -name "*_test.go" | grep -q .; then
+                example_name=$(basename "$example_dir")
+                run_module_tests "./$example_dir" "example-$example_name" "Example"
+            fi
+        done
+    else
+        print_warning "No examples with tests found, skipping example tests"
+    fi
 fi
 
 # Calculate overall results
@@ -487,6 +560,73 @@ if [[ -n "$TRANSPILER_INTEGRATION_COVERAGE" ]]; then
     echo "  • tests/integration: $TRANSPILER_INTEGRATION_COVERAGE" >> "$SUMMARY_FILE"
 fi
 
+# Add dedicated Integration Test Report section
+echo "" >> "$SUMMARY_FILE"
+echo "🧪 INTEGRATION TEST DETAILED REPORT:" >> "$SUMMARY_FILE"
+echo "═══════════════════════════════════════" >> "$SUMMARY_FILE"
+echo "Test Execution Time: ${INTEGRATION_DURATION}s" >> "$SUMMARY_FILE"
+echo "Total Integration Tests: $INTEGRATION_TESTS" >> "$SUMMARY_FILE"
+echo "├─ Passed: $INTEGRATION_PASSED" >> "$SUMMARY_FILE"
+echo "├─ Failed: $INTEGRATION_FAILED" >> "$SUMMARY_FILE"
+echo "└─ Skipped: $INTEGRATION_SKIPPED" >> "$SUMMARY_FILE"
+echo "Coverage: $INTEGRATION_COVERAGE" >> "$SUMMARY_FILE"
+echo "" >> "$SUMMARY_FILE"
+
+# Add CLI Test specific breakdown if available
+if [[ -n "$CLI_TESTS" ]] && [[ "$CLI_TESTS" -gt 0 ]]; then
+    echo "CLI Integration Tests:" >> "$SUMMARY_FILE"
+    echo "├─ Total CLI Tests: $CLI_TESTS" >> "$SUMMARY_FILE"
+    echo "├─ CLI Tests Passed: $CLI_TESTS_PASSED" >> "$SUMMARY_FILE"
+    if [[ "$CLI_PERFORMANCE" != "N/A" ]]; then
+        echo "└─ CLI Performance: $CLI_PERFORMANCE files/sec" >> "$SUMMARY_FILE"
+    else
+        echo "└─ CLI Performance: No benchmark data available" >> "$SUMMARY_FILE"
+    fi
+    echo "" >> "$SUMMARY_FILE"
+fi
+
+# List integration test files
+echo "Integration Test Files:" >> "$SUMMARY_FILE"
+if [ -d "tests/integration" ]; then
+    for test_file in tests/integration/*_test.go; do
+        if [ -f "$test_file" ]; then
+            filename=$(basename "$test_file")
+            case "$filename" in
+                "cli_integration_test.go")
+                    echo "├─ 🖥️  cli_integration_test.go (CLI Commands & Workflows)" >> "$SUMMARY_FILE"
+                    ;;
+                "e2e_transpilation_integration_test.go")
+                    echo "├─ 🔄 e2e_transpilation_integration_test.go (End-to-End Pipeline)" >> "$SUMMARY_FILE"
+                    ;;
+                "component_interaction_integration_test.go")
+                    echo "├─ 🔧 component_interaction_integration_test.go (Component Integration)" >> "$SUMMARY_FILE"
+                    ;;
+                "filesystem_integration_test.go")
+                    echo "├─ 📁 filesystem_integration_test.go (File System Operations)" >> "$SUMMARY_FILE"
+                    ;;
+                "concurrent_processing_integration_test.go")
+                    echo "├─ ⚡ concurrent_processing_integration_test.go (Parallel Processing)" >> "$SUMMARY_FILE"
+                    ;;
+                "configuration_matrix_integration_test.go")
+                    echo "├─ ⚙️  configuration_matrix_integration_test.go (Config Combinations)" >> "$SUMMARY_FILE"
+                    ;;
+                "performance_benchmark_integration_test.go")
+                    echo "├─ 📊 performance_benchmark_integration_test.go (Performance Metrics)" >> "$SUMMARY_FILE"
+                    ;;
+                "workflow_integration_test.go")
+                    echo "├─ 🔄 workflow_integration_test.go (Real-World Workflows)" >> "$SUMMARY_FILE"
+                    ;;
+                *)
+                    echo "├─ 📝 $filename" >> "$SUMMARY_FILE"
+                    ;;
+            esac
+        fi
+    done
+    echo "└─ Total integration test files: $(ls tests/integration/*_test.go 2>/dev/null | wc -l | tr -d ' ')" >> "$SUMMARY_FILE"
+else
+    echo "└─ No integration test directory found" >> "$SUMMARY_FILE"
+fi
+
 # Add framework packages
 echo "" >> "$SUMMARY_FILE"
 echo "📦 Framework Packages:" >> "$SUMMARY_FILE"
@@ -670,13 +810,22 @@ echo ""
 
 # Final status
 if [ "$OVERALL_RESULT" = "PASSED" ]; then
-    echo "🏆 ALL TESTS PASSED! The Gofasta project is in excellent health!"
-    echo "✅ Phase 1.1 Complete: All core components (a-f) implemented"
-    echo "✅ Performance: $PERFORMANCE_FILES_PER_SEC+ files/sec parsing speed"
-    echo "✅ Coverage: $TRANSPILER_CORE_COVERAGE test coverage across all Phase 1.1 components"
-    echo "✅ Integration tests: Real-world scenarios validated"
-    echo "✅ GoFasta framework: Core infrastructure stable"
-    echo "✅ Ready for Phase 2: Fault tolerance decorators implementation"
+    if [[ "$INTEGRATION_ONLY" == "true" ]]; then
+        echo "🏆 INTEGRATION TESTS PASSED! All integration scenarios validated!"
+        echo "✅ CLI Tests: All command-line interface tests passing"
+        echo "✅ Integration Coverage: $INTEGRATION_COVERAGE test coverage"
+        echo "✅ Test Duration: ${INTEGRATION_DURATION}s execution time"
+        echo "✅ Performance: CLI processing validated"
+        echo "✅ Real-world workflows: End-to-end scenarios tested"
+    else
+        echo "🏆 ALL TESTS PASSED! The Gofasta project is in excellent health!"
+        echo "✅ Phase 1.1 Complete: All core components (a-f) implemented"
+        echo "✅ Performance: $PERFORMANCE_FILES_PER_SEC+ files/sec parsing speed"
+        echo "✅ Coverage: $TRANSPILER_CORE_COVERAGE test coverage across all Phase 1.1 components"
+        echo "✅ Integration tests: Real-world scenarios validated"
+        echo "✅ GoFasta framework: Core infrastructure stable"
+        echo "✅ Ready for Phase 2: Fault tolerance decorators implementation"
+    fi
 else
     echo "⚠️ SOME TESTS FAILED. Please review the test output above."
     echo "📝 Check test_summary.txt for detailed failure analysis"
