@@ -628,6 +628,244 @@ func BenchmarkPrinterCacheExecuteTemplate(b *testing.B) {
 	}
 }
 
+// TestPrintNodeToWriter tests direct writer output with formatting
+func TestPrintNodeToWriter(t *testing.T) {
+	pc := NewPrinterCache(nil)
+	
+	// Create a simple identifier node (position info not required for basic printing)
+	ident := &ast.Ident{
+		Name: "testVariable",
+	}
+	
+	t.Run("successful write to buffer", func(t *testing.T) {
+		var buf strings.Builder
+		
+		// Check initial stats
+		initialStats := pc.GetStatistics()
+		initialPrintOps := int64(0)
+		if ops, ok := initialStats["print_operations"]; ok {
+			initialPrintOps = ops.(int64)
+		}
+		
+		err := pc.PrintNodeToWriter(&buf, ident)
+		if err != nil {
+			t.Fatalf("PrintNodeToWriter() error = %v", err)
+		}
+		
+		output := buf.String()
+		if output != "testVariable" {
+			t.Errorf("PrintNodeToWriter() output = %q, want %q", output, "testVariable")
+		}
+		
+		// Verify metrics were updated
+		stats := pc.GetStatistics()
+		currentPrintOps := int64(0)
+		if ops, ok := stats["print_operations"]; ok {
+			currentPrintOps = ops.(int64)
+		}
+		
+		if currentPrintOps <= initialPrintOps {
+			t.Errorf("expected print_operations to be incremented from %d to >%d, got %d", initialPrintOps, initialPrintOps, currentPrintOps)
+		}
+	})
+	
+	t.Run("write complex node", func(t *testing.T) {
+		// Create a more complex AST node - a function call
+		callExpr := &ast.CallExpr{
+			Fun: &ast.Ident{
+				Name: "fmt.Println",
+			},
+			Args: []ast.Expr{
+				&ast.BasicLit{
+					Kind:  token.STRING,
+					Value: `"Hello, World!"`,
+				},
+			},
+		}
+		
+		var buf strings.Builder
+		err := pc.PrintNodeToWriter(&buf, callExpr)
+		if err != nil {
+			t.Fatalf("PrintNodeToWriter() complex node error = %v", err)
+		}
+		
+		output := buf.String()
+		if !strings.Contains(output, "fmt.Println") {
+			t.Errorf("PrintNodeToWriter() complex output should contain 'fmt.Println', got %q", output)
+		}
+	})
+	
+	t.Run("write to multiple writers", func(t *testing.T) {
+		var buf1, buf2 strings.Builder
+		
+		// Write to first buffer
+		err := pc.PrintNodeToWriter(&buf1, ident)
+		if err != nil {
+			t.Fatalf("PrintNodeToWriter() first write error = %v", err)
+		}
+		
+		// Write to second buffer
+		err = pc.PrintNodeToWriter(&buf2, ident)
+		if err != nil {
+			t.Fatalf("PrintNodeToWriter() second write error = %v", err)
+		}
+		
+		if buf1.String() != buf2.String() {
+			t.Errorf("PrintNodeToWriter() inconsistent output: %q vs %q", buf1.String(), buf2.String())
+		}
+	})
+}
+
+// TestGenerateFromTemplate tests template-based code generation
+func TestGenerateFromTemplate(t *testing.T) {
+	pc := NewPrinterCache(nil)
+	
+	t.Run("generate with simple template", func(t *testing.T) {
+		// First compile a template
+		templateSource := `package {{.Package}}
+
+import "fmt"
+
+func {{.FuncName}}() {
+	fmt.Println("{{.Message}}")
+}`
+		
+		err := pc.CompileTemplate("simple_func", templateSource)
+		if err != nil {
+			t.Fatalf("CompileTemplate() error = %v", err)
+		}
+		
+		// Test data
+		data := map[string]string{
+			"Package":  "main",
+			"FuncName": "hello",
+			"Message":  "Hello, World!",
+		}
+		
+		// Generate code from template
+		node, err := pc.GenerateFromTemplate("simple_func", data)
+		
+		// Note: Since ParseString is not yet implemented, we expect an error
+		if err == nil {
+			t.Error("GenerateFromTemplate() expected error for unimplemented ParseString, got nil")
+		} else if !strings.Contains(err.Error(), "ParseString not yet implemented") {
+			t.Errorf("GenerateFromTemplate() expected ParseString error, got %v", err)
+		}
+		
+		// The node should be nil since parsing failed
+		if node != nil {
+			t.Error("GenerateFromTemplate() expected nil node when ParseString fails")
+		}
+	})
+	
+	t.Run("generate with non-existent template", func(t *testing.T) {
+		data := map[string]string{"Name": "test"}
+		
+		node, err := pc.GenerateFromTemplate("nonexistent", data)
+		if err == nil {
+			t.Error("GenerateFromTemplate() expected error for non-existent template")
+		}
+		if node != nil {
+			t.Error("GenerateFromTemplate() expected nil node for non-existent template")
+		}
+	})
+	
+	t.Run("generate with invalid template data", func(t *testing.T) {
+		// Compile a template that requires specific fields
+		templateSource := `{{.RequiredField}}`
+		err := pc.CompileTemplate("required_field", templateSource)
+		if err != nil {
+			t.Fatalf("CompileTemplate() error = %v", err)
+		}
+		
+		// Try to generate with missing field data
+		data := map[string]string{"WrongField": "value"}
+		
+		node, err := pc.GenerateFromTemplate("required_field", data)
+		// Should fail during template execution
+		if err == nil {
+			t.Error("GenerateFromTemplate() expected error for missing template data")
+		}
+		if node != nil {
+			t.Error("GenerateFromTemplate() expected nil node when template execution fails")
+		}
+	})
+}
+
+// TestParseString tests string parsing with error handling
+func TestParseString(t *testing.T) {
+	t.Run("parse simple identifier", func(t *testing.T) {
+		source := "testVar"
+		
+		node, err := ParseString(source)
+		
+		// Since ParseString is not yet implemented, we expect an error
+		if err == nil {
+			t.Error("ParseString() expected error for unimplemented function, got nil")
+		} else if !strings.Contains(err.Error(), "ParseString not yet implemented") {
+			t.Errorf("ParseString() expected not implemented error, got %v", err)
+		}
+		
+		// The node should be nil since parsing is not implemented
+		if node != nil {
+			t.Error("ParseString() expected nil node when not implemented")
+		}
+	})
+	
+	t.Run("parse function declaration", func(t *testing.T) {
+		source := `func hello() {
+	fmt.Println("Hello, World!")
+}`
+		
+		node, err := ParseString(source)
+		
+		// Should return not implemented error
+		if err == nil {
+			t.Error("ParseString() expected error for unimplemented function")
+		} else if !strings.Contains(err.Error(), "ParseString not yet implemented") {
+			t.Errorf("ParseString() expected not implemented error, got %v", err)
+		}
+		
+		if node != nil {
+			t.Error("ParseString() expected nil node when not implemented")
+		}
+	})
+	
+	t.Run("parse invalid syntax", func(t *testing.T) {
+		source := "invalid go syntax here $$$ @@@"
+		
+		node, err := ParseString(source)
+		
+		// Should return not implemented error (not syntax error, since it's not implemented)
+		if err == nil {
+			t.Error("ParseString() expected error for unimplemented function")
+		} else if !strings.Contains(err.Error(), "ParseString not yet implemented") {
+			t.Errorf("ParseString() expected not implemented error, got %v", err)
+		}
+		
+		if node != nil {
+			t.Error("ParseString() expected nil node when not implemented")
+		}
+	})
+	
+	t.Run("parse empty string", func(t *testing.T) {
+		source := ""
+		
+		node, err := ParseString(source)
+		
+		// Should return not implemented error
+		if err == nil {
+			t.Error("ParseString() expected error for unimplemented function")
+		} else if !strings.Contains(err.Error(), "ParseString not yet implemented") {
+			t.Errorf("ParseString() expected not implemented error, got %v", err)
+		}
+		
+		if node != nil {
+			t.Error("ParseString() expected nil node when not implemented")
+		}
+	})
+}
+
 func BenchmarkPrintNode(b *testing.B) {
 	pc := NewPrinterCache(nil)
 	node := &ast.Ident{Name: "BenchmarkIdent"}
