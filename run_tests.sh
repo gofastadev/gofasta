@@ -364,16 +364,16 @@ if [[ -z "$TRANSPILER_V2_COVERAGE" ]] || [[ "$TRANSPILER_V2_COVERAGE" == "N/A" ]
     fi
 fi
 
-# Display transpiler coverage with Phase 1.1 breakdown
+# Display transpiler coverage with Phase 1.1, 1.2, and 1.3 breakdown
 if [[ -n "$TRANSPILER_V2_COVERAGE" ]] && [[ "$TRANSPILER_V2_COVERAGE" != "N/A" ]] && [[ "$TRANSPILER_V2_COVERAGE" != "0.0%" ]]; then
-    echo "  • tools/transpiler/core: $TRANSPILER_V2_COVERAGE (Phase 1.1 & 1.2 Components)" >> "$SUMMARY_FILE"
+    echo "  • tools/transpiler/core: $TRANSPILER_V2_COVERAGE (Phase 1.1, 1.2 & 1.3 Components)" >> "$SUMMARY_FILE"
 else
     # Default to showing N/A if no coverage found
-    echo "  • tools/transpiler/core: ${TRANSPILER_V2_COVERAGE:-0.0%} (Phase 1.1 & 1.2 Components)" >> "$SUMMARY_FILE"
+    echo "  • tools/transpiler/core: ${TRANSPILER_V2_COVERAGE:-0.0%} (Phase 1.1, 1.2 & 1.3 Components)" >> "$SUMMARY_FILE"
 fi
     
     
-# If we have the coverage file, show file-level breakdown for Phase 1.1 & 1.2
+# If we have the coverage file, show file-level breakdown for Phase 1.1, 1.2 & 1.3
 if [[ -n "$TRANSPILER_V2_COVERAGE" ]] && [[ "$TRANSPILER_V2_COVERAGE" != "N/A" ]] && [[ "$TRANSPILER_V2_COVERAGE" != "0.0%" ]]; then
     # Find the coverage file for transpiler
     COVERAGE_FILE=""
@@ -416,12 +416,24 @@ if [[ -n "$TRANSPILER_V2_COVERAGE" ]] && [[ "$TRANSPILER_V2_COVERAGE" != "N/A" ]
         done
         
         echo "    Phase 1.2 Components:" >> "$SUMMARY_FILE"
-        for target_file in astutil_cache.go analysis_cache.go constant_cache.go build_cache.go godoc_cache.go; do
+        for target_file in printer_cache.go template_cache.go doc_cache.go package_cache.go astutil_cache.go analysis_cache.go constant_cache.go build_cache.go godoc_cache.go; do
             # Get coverage for this specific file from go tool cover output
             file_coverage=$(echo "$COVERAGE_OUTPUT" | grep "${target_file}" | tail -1 | awk '{print $NF}')
             
             if [[ -n "$file_coverage" ]] && [[ "$file_coverage" != "(statements)" ]]; then
                 case "$target_file" in
+                    "printer_cache.go")
+                        echo "      ├─ Phase 1.2a printer_cache.go: $file_coverage" >> "$SUMMARY_FILE"
+                        ;;
+                    "template_cache.go")
+                        echo "      ├─ Phase 1.2b template_cache.go: $file_coverage" >> "$SUMMARY_FILE"
+                        ;;
+                    "doc_cache.go")
+                        echo "      ├─ Phase 1.2c doc_cache.go: $file_coverage" >> "$SUMMARY_FILE"
+                        ;;
+                    "package_cache.go")
+                        echo "      ├─ Phase 1.2d package_cache.go: $file_coverage" >> "$SUMMARY_FILE"
+                        ;;
                     "astutil_cache.go")
                         echo "      ├─ Phase 1.2e astutil_cache.go: $file_coverage" >> "$SUMMARY_FILE"
                         ;;
@@ -436,6 +448,32 @@ if [[ -n "$TRANSPILER_V2_COVERAGE" ]] && [[ "$TRANSPILER_V2_COVERAGE" != "N/A" ]
                         ;;
                     "godoc_cache.go")
                         echo "      └─ Phase 1.2i godoc_cache.go: $file_coverage" >> "$SUMMARY_FILE"
+                        ;;
+                esac
+            fi
+        done
+        
+        echo "    Phase 1.3 Components:" >> "$SUMMARY_FILE"
+        for target_file in decorator_extractor.go decorator_registry.go code_generator.go file_handler.go error_handler.go; do
+            # Get coverage for this specific file from go tool cover output
+            file_coverage=$(echo "$COVERAGE_OUTPUT" | grep "${target_file}" | tail -1 | awk '{print $NF}')
+            
+            if [[ -n "$file_coverage" ]] && [[ "$file_coverage" != "(statements)" ]]; then
+                case "$target_file" in
+                    "decorator_extractor.go")
+                        echo "      ├─ Phase 1.3a decorator_extractor.go: $file_coverage" >> "$SUMMARY_FILE"
+                        ;;
+                    "decorator_registry.go")
+                        echo "      ├─ Phase 1.3b decorator_registry.go: $file_coverage" >> "$SUMMARY_FILE"
+                        ;;
+                    "code_generator.go")
+                        echo "      ├─ Phase 1.3c code_generator.go: $file_coverage" >> "$SUMMARY_FILE"
+                        ;;
+                    "file_handler.go")
+                        echo "      ├─ Phase 1.3d file_handler.go: $file_coverage" >> "$SUMMARY_FILE"
+                        ;;
+                    "error_handler.go")
+                        echo "      └─ Phase 1.3e error_handler.go: $file_coverage" >> "$SUMMARY_FILE"
                         ;;
                 esac
             fi
