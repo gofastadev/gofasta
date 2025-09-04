@@ -12,6 +12,65 @@ import (
 	"github.com/healtronlabs/gofasta/transpiler/decorators/faulttolerance/common"
 )
 
+// ActorCodeGenerator implements code generation for Actor decorators
+type ActorCodeGenerator struct{}
+
+// Ensure ActorCodeGenerator implements DecoratorCodeGenerator interface  
+var _ core.DecoratorCodeGenerator = (*ActorCodeGenerator)(nil)
+
+// GenerateCode generates Go source code for an Actor decorator
+func (acg *ActorCodeGenerator) GenerateCode(decorator core.Decorator) (string, error) {
+	// Extract parameters
+	mailboxSize := 1000
+	poolSize := 10
+	supervised := true
+
+	// Parse properties
+	for key, value := range decorator.Properties {
+		switch key {
+		case "mailboxSize":
+			if v, ok := value.(int); ok {
+				mailboxSize = v
+			}
+		case "poolSize":
+			if v, ok := value.(int); ok {
+				poolSize = v
+			}
+		case "supervised":
+			if v, ok := value.(bool); ok {
+				supervised = v
+			}
+		}
+	}
+
+	return fmt.Sprintf(`
+// Generated actor system code
+type ActorMailbox struct {
+	messages chan interface{}
+	size     int
+}
+
+type ActorPool struct {
+	workers  int
+	mailbox  *ActorMailbox
+}
+
+// Generated actor code
+var actorPool = &ActorPool{
+	workers: %d,
+	mailbox: &ActorMailbox{
+		messages: make(chan interface{}, %d),
+		size:     %d,
+	},
+}
+
+func initActor() {
+	// Initialize actor with mailbox size: %d, pool size: %d, supervised: %t
+	log.Printf("Initializing actor with mailbox size: %d, pool size: %d, supervised: %t")
+}
+`, poolSize, mailboxSize, mailboxSize, mailboxSize, poolSize, supervised, mailboxSize, poolSize, supervised), nil
+}
+
 func init() {
 	// Register Actor decorator
 	core.RegisterDecorator(&core.RegisteredDecorator{
@@ -19,6 +78,7 @@ func init() {
 		Type:        "fault_tolerance",
 		Description: "Actor model implementation with memory pooling",
 		Handler:     ActorDecorator,
+		CodeGen:     &ActorCodeGenerator{},
 		Schema: &core.DecoratorSchema{
 			Properties: map[string]core.PropertyDef{
 				"mailboxSize":          {Type: "int", Default: 1000},

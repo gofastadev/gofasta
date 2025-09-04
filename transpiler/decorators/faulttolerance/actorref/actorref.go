@@ -4,6 +4,7 @@ package actorref
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -12,6 +13,35 @@ import (
 	"github.com/healtronlabs/gofasta/transpiler/decorators/faulttolerance/common"
 )
 
+// ActorRefCodeGenerator implements code generation for ActorRef decorators
+type ActorRefCodeGenerator struct{}
+
+var _ core.DecoratorCodeGenerator = (*ActorRefCodeGenerator)(nil)
+
+func (arcg *ActorRefCodeGenerator) GenerateCode(decorator core.Decorator) (string, error) {
+	path := "/default/path"
+	if len(decorator.Arguments) > 0 {
+		path = strings.Trim(decorator.Arguments[0], "\"")
+	}
+
+	return fmt.Sprintf(`
+// Generated ActorRef code
+type ActorRefLookup struct {
+	path     string
+	fastLookup bool
+}
+
+var actorRef = &ActorRefLookup{
+	path:     "%s",
+	fastLookup: true,
+}
+
+func initActorRef() {
+	log.Printf("Initializing ActorRef with path: %s")
+}
+`, path, path), nil
+}
+
 func init() {
 	// Register ActorRef decorator
 	core.RegisterDecorator(&core.RegisteredDecorator{
@@ -19,6 +49,7 @@ func init() {
 		Type:        "fault_tolerance",
 		Description: "Actor references with fast lookup tables",
 		Handler:     ActorRefDecorator,
+		CodeGen:     &ActorRefCodeGenerator{},
 		Schema: &core.DecoratorSchema{
 			Properties: map[string]core.PropertyDef{
 				"fastLookup":      {Type: "bool", Default: true},

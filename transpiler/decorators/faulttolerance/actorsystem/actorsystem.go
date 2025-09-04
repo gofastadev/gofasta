@@ -4,6 +4,7 @@ package actorsystem
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -12,6 +13,53 @@ import (
 	"github.com/healtronlabs/gofasta/transpiler/decorators/faulttolerance/common"
 )
 
+// ActorSystemCodeGenerator implements code generation for ActorSystem decorators
+type ActorSystemCodeGenerator struct{}
+
+var _ core.DecoratorCodeGenerator = (*ActorSystemCodeGenerator)(nil)
+
+func (ascg *ActorSystemCodeGenerator) GenerateCode(decorator core.Decorator) (string, error) {
+	systemName := "DefaultSystem"
+	maxActors := 10000
+	clustering := false
+
+	if len(decorator.Arguments) > 0 {
+		systemName = strings.Trim(decorator.Arguments[0], "\"")
+	}
+
+	for key, value := range decorator.Properties {
+		switch key {
+		case "maxActors":
+			if v, ok := value.(int); ok {
+				maxActors = v
+			}
+		case "clustering":
+			if v, ok := value.(bool); ok {
+				clustering = v
+			}
+		}
+	}
+
+	return fmt.Sprintf(`
+// Generated actor system code
+type ActorSystemConfig struct {
+	name       string
+	maxActors  int
+	clustering bool
+}
+
+var actorSystem = &ActorSystemConfig{
+	name:       "%s",
+	maxActors:  %d,
+	clustering: %t,
+}
+
+func initActorSystem() {
+	log.Printf("Initializing ActorSystem: %s, maxActors: %d, clustering: %t")
+}
+`, systemName, maxActors, clustering, systemName, maxActors, clustering), nil
+}
+
 func init() {
 	// Register ActorSystem decorator
 	core.RegisterDecorator(&core.RegisteredDecorator{
@@ -19,6 +67,7 @@ func init() {
 		Type:        "fault_tolerance",
 		Description: "Actor system management with parallel startup",
 		Handler:     ActorSystemDecorator,
+		CodeGen:     &ActorSystemCodeGenerator{},
 		Schema: &core.DecoratorSchema{
 			Arguments: []core.ArgumentSchema{
 				{Name: "name", Type: "string", Required: true, Description: "Actor system name"},

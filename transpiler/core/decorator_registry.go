@@ -66,6 +66,7 @@ type RegisteredDecorator struct {
 	Version      string                 `json:"version"`
 	Author       string                 `json:"author"`
 	Handler      DecoratorHandler       `json:"-"`
+	CodeGen      DecoratorCodeGenerator `json:"-"`
 	Schema       *DecoratorSchema       `json:"schema,omitempty"`
 	Metadata     map[string]interface{} `json:"metadata,omitempty"`
 	RegisteredAt time.Time             `json:"registered_at"`
@@ -85,6 +86,11 @@ type LoadedPlugin struct {
 
 // DecoratorHandler is the function signature for decorator handlers
 type DecoratorHandler func(ctx context.Context, args DecoratorArgs) (DecoratorResult, error)
+
+// DecoratorCodeGenerator generates Go source code for decorators during transpilation
+type DecoratorCodeGenerator interface {
+	GenerateCode(decorator Decorator) (string, error)
+}
 
 // DecoratorArgs contains arguments passed to a decorator
 type DecoratorArgs struct {
@@ -146,6 +152,12 @@ func init() {
 // RegisterDecorator registers a decorator in the global registry
 func RegisterDecorator(decorator *RegisteredDecorator) error {
 	return GlobalRegistry.Register(decorator)
+}
+
+// GetRegisteredDecorator retrieves a registered decorator by name
+func GetRegisteredDecorator(name string) *RegisteredDecorator {
+	decorator, _ := GlobalRegistry.Get(name)
+	return decorator
 }
 
 // DefaultRegistryConfig returns the default configuration

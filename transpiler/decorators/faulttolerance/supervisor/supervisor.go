@@ -4,6 +4,7 @@ package supervisor
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -12,6 +13,67 @@ import (
 	"github.com/healtronlabs/gofasta/transpiler/decorators/faulttolerance/common"
 )
 
+// SupervisorCodeGenerator implements code generation for Supervisor decorators
+type SupervisorCodeGenerator struct{}
+
+// Ensure SupervisorCodeGenerator implements DecoratorCodeGenerator interface
+var _ core.DecoratorCodeGenerator = (*SupervisorCodeGenerator)(nil)
+
+// GenerateCode generates Go source code for a Supervisor decorator
+func (scg *SupervisorCodeGenerator) GenerateCode(decorator core.Decorator) (string, error) {
+	// Extract parameters from decorator
+	strategy := "OneForOne"
+	maxRetries := 3
+	retryInterval := "1s"
+
+	if len(decorator.Arguments) > 0 {
+		strategy = strings.Trim(decorator.Arguments[0], "\"")
+	}
+
+	// Parse properties
+	for key, value := range decorator.Properties {
+		switch key {
+		case "maxRetries":
+			if v, ok := value.(int); ok {
+				maxRetries = v
+			}
+		case "retryInterval":
+			if v, ok := value.(string); ok {
+				retryInterval = strings.Trim(v, "\"")
+			}
+		}
+	}
+
+	return fmt.Sprintf(`
+// Generated type definitions for supervisor
+type SupervisorState struct {
+	strategy      string
+	maxRetries    int
+	retryInterval string
+	children      map[string]*ChildState
+}
+
+type ChildState struct {
+	name       string
+	restarts   int
+	lastRestart time.Time
+}
+
+// Generated supervisor code for %s strategy
+var supervisorState = &SupervisorState{
+	strategy: "%s",
+	maxRetries: %d,
+	retryInterval: "%s",
+	children: make(map[string]*ChildState),
+}
+
+func initSupervisor() {
+	// Initialize supervision with %s strategy
+	log.Printf("Initializing supervisor with strategy: %s")
+}
+`, strategy, strategy, maxRetries, retryInterval, strategy, strategy), nil
+}
+
 func init() {
 	// Register Supervisor decorator
 	core.RegisterDecorator(&core.RegisteredDecorator{
@@ -19,6 +81,7 @@ func init() {
 		Type:        "fault_tolerance",
 		Description: "Hierarchical supervision trees with fast initialization",
 		Handler:     SupervisorDecorator,
+		CodeGen:     &SupervisorCodeGenerator{},
 		Schema: &core.DecoratorSchema{
 			Arguments: []core.ArgumentSchema{
 				{Name: "strategy", Type: "string", Required: false, Default: "OneForOne", Description: "Supervision strategy: OneForOne, OneForAll, RestForOne"},
