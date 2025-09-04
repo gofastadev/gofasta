@@ -563,8 +563,6 @@ func (cli *CLI) generateCodeForDecorator(decorator core.Decorator) (string, erro
 		return cli.generateActorSystemCode(decorator)
 	case "SupervisionStrategy":
 		return cli.generateSupervisorCode(decorator)
-	case "Mugirase":
-		return cli.generateMugiraseCode(decorator)
 	default:
 		// Return error for unknown decorators to prevent silent failures
 		return "", fmt.Errorf("unknown decorator '@%s' - supported decorators: @Supervisor, @Actor, @ActorRef, @ActorSystem", decorator.Name)
@@ -915,12 +913,3 @@ func (cli *CLI) addNecessaryImports(sourceCode string, decorators []core.Decorat
 	return sourceCode
 }
 
-// generateMugiraseCode generates custom Mugirase decorator code
-func (cli *CLI) generateMugiraseCode(decorator core.Decorator) (string, error) {
-	return fmt.Sprintf(`
-// Generated Mugirase code - custom decorator example
-func initMugirase() {
-	log.Printf("Mugirase decorator activated! 🎌")
-}
-`), nil
-}

@@ -30,7 +30,6 @@ type PaymentRequest struct {
 
 // Basic actor that processes user requests
 @Actor(mailboxSize: 1000, poolSize: 10, supervised: true)
-@Mugirase()
 func UserActor(ctx context.Context) {
 	fmt.Println("UserActor started with mailbox size 1000")
 	
