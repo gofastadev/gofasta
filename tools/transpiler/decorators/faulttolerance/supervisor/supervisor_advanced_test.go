@@ -1,4 +1,4 @@
-package fault_tolerance
+package supervisor
 
 import (
 	"context"

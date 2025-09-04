@@ -1,4 +1,4 @@
-package fault_tolerance
+package actor
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/healtronlabs/gofasta/tools/transpiler/core"
+	"github.com/healtronlabs/gofasta/tools/transpiler/decorators/faulttolerance/common"
 )
 
 func TestActorDecorator_Registration(t *testing.T) {
@@ -63,7 +64,7 @@ func TestActorDecorator_Registration(t *testing.T) {
 					t.Errorf("expected error but got nil")
 					return
 				}
-				if tt.errContains != "" && !contains(err.Error(), tt.errContains) {
+				if tt.errContains != "" && !common.Contains(err.Error(), tt.errContains) {
 					t.Errorf("expected error to contain %q, got %q", tt.errContains, err.Error())
 				}
 				return
@@ -639,7 +640,7 @@ func TestActorDecorator_ErrorHandling(t *testing.T) {
 					t.Errorf("expected error message but got empty string")
 					return
 				}
-				if !contains(result.Error, tt.errMsg) {
+				if !common.Contains(result.Error, tt.errMsg) {
 					t.Errorf("expected error to contain %q, got %q", tt.errMsg, result.Error)
 				}
 			} else {
@@ -659,6 +660,7 @@ func mockActorTarget() interface{} {
 		"source":   "test_file.go",
 	}
 }
+
 
 // actorHandler will be implemented in actor.go
 var actorHandler = ActorDecorator

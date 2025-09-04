@@ -1,4 +1,4 @@
-package fault_tolerance
+package supervisor
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/healtronlabs/gofasta/tools/transpiler/core"
+	"github.com/healtronlabs/gofasta/tools/transpiler/decorators/faulttolerance/common"
 )
 
 func TestSupervisorDecorator_Registration(t *testing.T) {
@@ -64,7 +65,7 @@ func TestSupervisorDecorator_Registration(t *testing.T) {
 					t.Errorf("expected error but got nil")
 					return
 				}
-				if tt.errContains != "" && !contains(err.Error(), tt.errContains) {
+				if tt.errContains != "" && !common.Contains(err.Error(), tt.errContains) {
 					t.Errorf("expected error to contain %q, got %q", tt.errContains, err.Error())
 				}
 				return
@@ -506,12 +507,6 @@ func mockSupervisorTarget() interface{} {
 	}
 }
 
-// Helper function to check if string contains substring
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && s[len(s)-len(substr):] == substr || 
-		   (len(s) > len(substr) && s[:len(substr)] == substr) ||
-		   (len(substr) > 0 && len(s) > 0 && s[0:1] == substr[0:1])
-}
 
 // supervisorHandler will be implemented in supervisor.go
 var supervisorHandler = SupervisorDecorator

@@ -1,5 +1,5 @@
-// Package fault_tolerance provides fault tolerance decorators for GoFasta
-package fault_tolerance
+// Package supervisor provides supervisor decorator for GoFasta fault tolerance
+package supervisor
 
 import (
 	"context"
@@ -9,28 +9,23 @@ import (
 	"time"
 
 	"github.com/healtronlabs/gofasta/tools/transpiler/core"
+	"github.com/healtronlabs/gofasta/tools/transpiler/decorators/faulttolerance/common"
 )
 
-// SupervisorStrategy defines the restart strategy for supervised actors
-type SupervisorStrategy int
+// Using shared types from common package
+type SupervisorStrategy = common.SupervisorStrategy
+type SupervisorConfig = common.SupervisorConfig
 
+// Supervisor strategy constants
 const (
-	OneForOne SupervisorStrategy = iota
-	OneForAll
-	RestForOne
+	OneForOne  = common.OneForOne
+	OneForAll  = common.OneForAll
+	RestForOne = common.RestForOne
 )
-
-// SupervisorConfig holds configuration for a supervisor
-type SupervisorConfig struct {
-	Strategy      SupervisorStrategy
-	MaxRetries    int
-	RetryInterval time.Duration
-	Name          string
-}
 
 // SupervisorState tracks the state of supervised actors
 type SupervisorState struct {
-	config       SupervisorConfig
+	config       common.SupervisorConfig
 	children     map[string]*ChildState
 	mu           sync.RWMutex
 	restarts     int64
@@ -122,23 +117,10 @@ type SupervisedTarget struct {
 	state    *SupervisorState
 }
 
-// strategyToString converts strategy enum to string
-func strategyToString(strategy SupervisorStrategy) string {
-	switch strategy {
-	case OneForOne:
-		return "OneForOne"
-	case OneForAll:
-		return "OneForAll" 
-	case RestForOne:
-		return "RestForOne"
-	default:
-		return "OneForOne"
-	}
-}
 
 // parseSupevisorArgs parses supervisor decorator arguments
-func parseSupevisorArgs(args core.DecoratorArgs) (SupervisorConfig, error) {
-	config := SupervisorConfig{
+func parseSupevisorArgs(args core.DecoratorArgs) (common.SupervisorConfig, error) {
+	config := common.SupervisorConfig{
 		Strategy:      OneForOne,
 		MaxRetries:    3,
 		RetryInterval: 1 * time.Second,
@@ -275,12 +257,12 @@ func (s *SupervisorState) GetStats() map[string]interface{} {
 }
 
 // buildSupervisorMetadata builds metadata based on configuration and properties
-func buildSupervisorMetadata(config SupervisorConfig, args core.DecoratorArgs) map[string]interface{} {
+func buildSupervisorMetadata(config common.SupervisorConfig, args core.DecoratorArgs) map[string]interface{} {
 	metadata := map[string]interface{}{
 		"supervisor_name":      config.Name,
 		"strategy":            config.Strategy,
 		"max_retries":         config.MaxRetries,
-		"supervision_strategy": strategyToString(config.Strategy),
+		"supervision_strategy": config.Strategy.String(),
 		"escalate_failures":   true,
 		"fast_initialization": true,
 		"memory_pool_size":    10,

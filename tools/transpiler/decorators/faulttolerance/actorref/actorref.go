@@ -1,5 +1,5 @@
-// Package fault_tolerance provides fault tolerance decorators for GoFasta
-package fault_tolerance
+// Package actor provides fault tolerance decorators for GoFasta
+package actorref
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/healtronlabs/gofasta/tools/transpiler/core"
+	"github.com/healtronlabs/gofasta/tools/transpiler/decorators/faulttolerance/common"
 )
 
 // ActorRefConfig holds configuration for an actor reference
@@ -196,7 +197,7 @@ func (r *ActorRefRuntime) getConnection() *Connection {
 }
 
 // SendMessage sends a message through the actor ref
-func (r *ActorRefRuntime) SendMessage(msg Message) error {
+func (r *ActorRefRuntime) SendMessage(msg common.Message) error {
 	conn := r.getConnection()
 	if conn == nil {
 		return fmt.Errorf("no available connections")
@@ -231,7 +232,7 @@ func (r *ActorRefRuntime) SendMessage(msg Message) error {
 }
 
 // attemptSend attempts to send a message through a connection
-func (r *ActorRefRuntime) attemptSend(conn *Connection, msg Message) error {
+func (r *ActorRefRuntime) attemptSend(conn *Connection, msg common.Message) error {
 	conn.mu.Lock()
 	defer conn.mu.Unlock()
 

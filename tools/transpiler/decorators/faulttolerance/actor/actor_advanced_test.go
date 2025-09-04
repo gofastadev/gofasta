@@ -1,4 +1,4 @@
-package fault_tolerance
+package actor
 
 import (
 	"context"

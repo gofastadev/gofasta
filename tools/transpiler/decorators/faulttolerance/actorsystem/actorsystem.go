@@ -1,5 +1,5 @@
-// Package fault_tolerance provides fault tolerance decorators for GoFasta
-package fault_tolerance
+// Package actor provides fault tolerance decorators for GoFasta
+package actorsystem
 
 import (
 	"context"
@@ -9,6 +9,10 @@ import (
 	"time"
 
 	"github.com/healtronlabs/gofasta/tools/transpiler/core"
+	"github.com/healtronlabs/gofasta/tools/transpiler/decorators/faulttolerance/actor"
+	"github.com/healtronlabs/gofasta/tools/transpiler/decorators/faulttolerance/actorref"
+	"github.com/healtronlabs/gofasta/tools/transpiler/decorators/faulttolerance/common"
+	"github.com/healtronlabs/gofasta/tools/transpiler/decorators/faulttolerance/supervisor"
 )
 
 // ActorSystemConfig holds configuration for an actor system
@@ -40,9 +44,9 @@ type PersistenceConfig struct {
 // ActorSystemRuntime manages the actor system
 type ActorSystemRuntime struct {
 	config         ActorSystemConfig
-	actors         map[string]*ActorRuntime
-	supervisors    map[string]*SupervisorState
-	actorRefs      map[string]*ActorRefRuntime
+	actors         map[string]common.ActorInterface      // Actor implementations
+	supervisors    map[string]common.SupervisorInterface // Supervisor implementations  
+	actorRefs      map[string]common.ActorRefInterface   // ActorRef implementations
 	totalMessages  int64
 	totalActors    int64
 	totalErrors    int64
@@ -100,9 +104,9 @@ func ActorSystemDecorator(ctx context.Context, args core.DecoratorArgs) (core.De
 	systemCtx, cancel := context.WithCancel(ctx)
 	runtime := &ActorSystemRuntime{
 		config:      config,
-		actors:      make(map[string]*ActorRuntime),
-		supervisors: make(map[string]*SupervisorState),
-		actorRefs:   make(map[string]*ActorRefRuntime),
+		actors:      make(map[string]common.ActorInterface),
+		supervisors: make(map[string]common.SupervisorInterface),
+		actorRefs:   make(map[string]common.ActorRefInterface),
 		ctx:         systemCtx,
 		cancel:      cancel,
 	}
@@ -189,7 +193,7 @@ func parseActorSystemArgs(args core.DecoratorArgs) (ActorSystemConfig, error) {
 }
 
 // RegisterActor registers an actor in the system
-func (r *ActorSystemRuntime) RegisterActor(id string, actor *ActorRuntime) error {
+func (r *ActorSystemRuntime) RegisterActor(id string, actor *actor.ActorRuntime) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -204,7 +208,7 @@ func (r *ActorSystemRuntime) RegisterActor(id string, actor *ActorRuntime) error
 }
 
 // RegisterSupervisor registers a supervisor in the system
-func (r *ActorSystemRuntime) RegisterSupervisor(name string, supervisor *SupervisorState) {
+func (r *ActorSystemRuntime) RegisterSupervisor(name string, supervisor *supervisor.SupervisorState) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -212,7 +216,7 @@ func (r *ActorSystemRuntime) RegisterSupervisor(name string, supervisor *Supervi
 }
 
 // RegisterActorRef registers an actor ref in the system
-func (r *ActorSystemRuntime) RegisterActorRef(id string, actorRef *ActorRefRuntime) {
+func (r *ActorSystemRuntime) RegisterActorRef(id string, actorRef *actorref.ActorRefRuntime) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -220,7 +224,7 @@ func (r *ActorSystemRuntime) RegisterActorRef(id string, actorRef *ActorRefRunti
 }
 
 // RouteMessage routes a message to the appropriate actor
-func (r *ActorSystemRuntime) RouteMessage(actorID string, msg Message) error {
+func (r *ActorSystemRuntime) RouteMessage(actorID string, msg common.Message) error {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
