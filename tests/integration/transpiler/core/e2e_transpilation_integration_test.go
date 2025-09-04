@@ -1,5 +1,5 @@
 // End-to-End Transpilation Integration Tests - Tests complete .gofa to .go transpilation pipeline
-package integration
+package core
 
 import (
 	"bytes"

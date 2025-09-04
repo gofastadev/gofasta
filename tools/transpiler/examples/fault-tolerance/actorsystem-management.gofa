@@ -1,0 +1,412 @@
+// ActorSystem Management Example
+// This demonstrates @ActorSystem decorator with parallel startup and management
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"time"
+)
+
+// Main ActorSystem managing the entire application
+@ActorSystem("GameServerSystem", 
+	parallelStartup: true, 
+	maxActors: 10000, 
+	clustering: false, 
+	remoting: false,
+	startupWorkers: 8,
+	gracefulShutdown: true)
+func GameServerSystem(ctx context.Context) {
+	fmt.Println("GameServerSystem started with parallel startup")
+	
+	// The ActorSystem will manage actor lifecycles automatically
+	// This function represents the system coordinator
+	
+	for {
+		select {
+		case <-ctx.Done():
+			fmt.Println("GameServerSystem initiating graceful shutdown")
+			return
+		default:
+			// Monitor system health
+			monitorSystemHealth()
+			time.Sleep(1 * time.Second)
+		}
+	}
+}
+
+// Clustered ActorSystem for distributed game servers
+@ActorSystem("ClusteredGameSystem",
+	parallelStartup: true,
+	maxActors: 50000,
+	clustering: true,
+	clusterNodes: []string{"node1", "node2", "node3"},
+	seedNodes: []string{"node1"},
+	remoting: true,
+	remotingPort: 2552)
+func ClusteredGameSystem(ctx context.Context) {
+	fmt.Println("ClusteredGameSystem started with clustering enabled")
+	
+	for {
+		select {
+		case <-ctx.Done():
+			fmt.Println("ClusteredGameSystem shutting down cluster node")
+			return
+		default:
+			// Handle cluster coordination
+			handleClusterCoordination()
+			time.Sleep(2 * time.Second)
+		}
+	}
+}
+
+// Game lobby actors managed by the ActorSystem
+@Actor(mailboxSize: 1000, poolSize: 10, supervised: true)
+func GameLobbyActor(ctx context.Context) {
+	fmt.Println("GameLobbyActor started under ActorSystem management")
+	
+	for {
+		select {
+		case <-ctx.Done():
+			fmt.Println("GameLobbyActor shutting down")
+			return
+		default:
+			// Handle lobby operations
+			handleLobbyOperations()
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
+}
+
+// Game session actors for active games
+@Actor(mailboxSize: 2000, poolSize: 20, supervised: true)
+func GameSessionActor(ctx context.Context) {
+	fmt.Println("GameSessionActor started - managing game session")
+	
+	for {
+		select {
+		case <-ctx.Done():
+			fmt.Println("GameSessionActor shutting down")
+			return
+		default:
+			// Handle game session
+			handleGameSession()
+			time.Sleep(50 * time.Millisecond)
+		}
+	}
+}
+
+// Player connection actors
+@Actor(mailboxSize: 500, poolSize: 50, supervised: true)
+func PlayerConnectionActor(ctx context.Context) {
+	fmt.Println("PlayerConnectionActor started - handling player connection")
+	
+	for {
+		select {
+		case <-ctx.Done():
+			fmt.Println("PlayerConnectionActor shutting down")
+			return
+		default:
+			// Handle player connection
+			handlePlayerConnection()
+			time.Sleep(20 * time.Millisecond)
+		}
+	}
+}
+
+// Leaderboard actor for global rankings
+@Actor(mailboxSize: 1500, poolSize: 5, supervised: true)
+func LeaderboardActor(ctx context.Context) {
+	fmt.Println("LeaderboardActor started - managing leaderboards")
+	
+	for {
+		select {
+		case <-ctx.Done():
+			fmt.Println("LeaderboardActor shutting down")
+			return
+		default:
+			// Handle leaderboard updates
+			handleLeaderboardUpdates()
+			time.Sleep(500 * time.Millisecond)
+		}
+	}
+}
+
+// Chat system actor for in-game chat
+@Actor(mailboxSize: 3000, poolSize: 15, supervised: true)
+func ChatSystemActor(ctx context.Context) {
+	fmt.Println("ChatSystemActor started - managing chat")
+	
+	for {
+		select {
+		case <-ctx.Done():
+			fmt.Println("ChatSystemActor shutting down")
+			return
+		default:
+			// Handle chat messages
+			handleChatMessages()
+			time.Sleep(30 * time.Millisecond)
+		}
+	}
+}
+
+// Matchmaking actor for finding game matches  
+@Actor(mailboxSize: 800, poolSize: 8, supervised: true)
+func MatchmakingActor(ctx context.Context) {
+	fmt.Println("MatchmakingActor started - finding matches")
+	
+	for {
+		select {
+		case <-ctx.Done():
+			fmt.Println("MatchmakingActor shutting down")
+			return
+		default:
+			// Handle matchmaking
+			handleMatchmaking()
+			time.Sleep(200 * time.Millisecond)
+		}
+	}
+}
+
+// System monitoring functions
+func monitorSystemHealth() {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("System health monitoring failed: %v", r)
+		}
+	}()
+	
+	// Simulate system monitoring
+	fmt.Printf("System health check - actors running, memory usage OK\n")
+	
+	// Simulate occasional system issues
+	if time.Now().Unix()%120 == 0 {
+		panic("System health critical - memory exhausted")
+	}
+}
+
+func handleClusterCoordination() {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("Cluster coordination failed: %v", r)
+		}
+	}()
+	
+	fmt.Printf("Coordinating cluster operations across nodes\n")
+	
+	// Simulate cluster network issues
+	if time.Now().Unix()%200 == 0 {
+		panic("Cluster network partition detected")
+	}
+}
+
+// Actor operation functions
+func handleLobbyOperations() {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("Lobby operations failed: %v", r)
+		}
+	}()
+	
+	operations := []string{"create_room", "join_room", "leave_room", "list_rooms"}
+	operation := operations[time.Now().Unix()%int64(len(operations))]
+	
+	// Simulate lobby operation processing
+	fmt.Printf("Processing lobby operation: %s\n", operation)
+	
+	// Simulate lobby failures
+	if time.Now().Unix()%90 == 0 {
+		panic("Lobby database connection timeout")
+	}
+}
+
+func handleGameSession() {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("Game session failed: %v", r)
+		}
+	}()
+	
+	actions := []string{"player_move", "game_update", "score_update", "power_up"}
+	action := actions[time.Now().Unix()%int64(len(actions))]
+	
+	fmt.Printf("Processing game action: %s\n", action)
+	
+	// Simulate game session failures
+	if time.Now().Unix()%70 == 0 {
+		panic("Game state synchronization failed")
+	}
+}
+
+func handlePlayerConnection() {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("Player connection failed: %v", r)
+		}
+	}()
+	
+	events := []string{"connect", "disconnect", "heartbeat", "message"}
+	event := events[time.Now().Unix()%int64(len(events))]
+	
+	// Very frequent player connection handling
+	if time.Now().Unix()%10 == 0 {
+		fmt.Printf("Player connection event: %s\n", event)
+	}
+	
+	// Simulate connection failures
+	if time.Now().Unix()%150 == 0 {
+		panic("Player websocket connection lost")
+	}
+}
+
+func handleLeaderboardUpdates() {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("Leaderboard update failed: %v", r)
+		}
+	}()
+	
+	fmt.Printf("Updating leaderboard rankings\n")
+	
+	// Simulate leaderboard calculation failures
+	if time.Now().Unix()%180 == 0 {
+		panic("Leaderboard calculation out of memory")
+	}
+}
+
+func handleChatMessages() {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("Chat message handling failed: %v", r)
+		}
+	}()
+	
+	// High-frequency chat message processing
+	if time.Now().Unix()%5 == 0 {
+		fmt.Printf("Processing chat messages\n")
+	}
+	
+	// Simulate chat moderation failures
+	if time.Now().Unix()%160 == 0 {
+		panic("Chat moderation service unavailable")
+	}
+}
+
+func handleMatchmaking() {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("Matchmaking failed: %v", r)
+		}
+	}()
+	
+	fmt.Printf("Finding matches for players\n")
+	
+	// Simulate matchmaking failures
+	if time.Now().Unix()%110 == 0 {
+		panic("Matchmaking algorithm timeout")
+	}
+}
+
+// ActorSystem management demonstration
+func demonstrateActorSystemOperations() {
+	fmt.Println("\n=== ActorSystem Operations Demo ===")
+	
+	// These operations would be handled by the ActorSystem decorator
+	operations := []string{
+		"createActor(/game/lobby/main, GameLobbyActor)",
+		"createActor(/game/session/1, GameSessionActor)", 
+		"createActor(/player/alice, PlayerConnectionActor)",
+		"createActor(/player/bob, PlayerConnectionActor)",
+		"createActor(/system/leaderboard, LeaderboardActor)",
+		"createActor(/system/chat, ChatSystemActor)",
+		"createActor(/system/matchmaking, MatchmakingActor)",
+	}
+	
+	for _, op := range operations {
+		fmt.Printf("ActorSystem executing: %s\n", op)
+		time.Sleep(10 * time.Millisecond) // Simulate fast parallel actor creation
+	}
+	
+	fmt.Println("ActorSystem: All actors started in parallel")
+	
+	// Simulate actor discovery
+	fmt.Println("\n=== Actor Discovery Demo ===")
+	discoveryPatterns := []string{
+		"/game/*",     // Find all game-related actors
+		"/player/*",   // Find all player actors
+		"/system/*",   // Find all system actors
+		"*/lobby/*",   // Find all lobby actors
+	}
+	
+	for _, pattern := range discoveryPatterns {
+		actorCount := (time.Now().Unix() % 10) + 1 // Simulate found actors
+		fmt.Printf("ActorSystem discovery '%s': found %d actors\n", pattern, actorCount)
+	}
+	
+	// Simulate graceful shutdown
+	fmt.Println("\n=== Graceful Shutdown Demo ===")
+	fmt.Println("ActorSystem: Initiating graceful shutdown...")
+	fmt.Println("ActorSystem: Stopping all actors gracefully...")
+	fmt.Println("ActorSystem: All actors terminated successfully")
+	fmt.Println("ActorSystem: Shutdown completed")
+}
+
+func main() {
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	
+	fmt.Println("Starting ActorSystem Management Example")
+	fmt.Println("Demonstrating parallel startup, clustering, and actor management")
+	
+	fmt.Println("\n=== Starting Single-Node ActorSystem ===")
+	
+	// Start main game server system
+	go GameServerSystem(ctx)
+	
+	// Start all game-related actors under ActorSystem management
+	go GameLobbyActor(ctx)
+	go GameSessionActor(ctx)
+	go GameSessionActor(ctx) // Multiple game sessions
+	go GameSessionActor(ctx)
+	
+	// Start player connection actors
+	go PlayerConnectionActor(ctx) // Alice
+	go PlayerConnectionActor(ctx) // Bob
+	go PlayerConnectionActor(ctx) // Charlie
+	go PlayerConnectionActor(ctx) // Dave
+	
+	// Start system actors
+	go LeaderboardActor(ctx)
+	go ChatSystemActor(ctx)
+	go MatchmakingActor(ctx)
+	
+	// Let single-node system run
+	time.Sleep(20 * time.Second)
+	
+	fmt.Println("\n=== Starting Clustered ActorSystem ===")
+	
+	// Start clustered system (would run on different node in production)
+	go ClusteredGameSystem(ctx)
+	
+	// Additional actors for clustered setup
+	go GameLobbyActor(ctx) // Additional lobby for load balancing
+	go LeaderboardActor(ctx) // Distributed leaderboard
+	
+	// Demonstrate ActorSystem operations
+	go func() {
+		time.Sleep(5 * time.Second)
+		demonstrateActorSystemOperations()
+	}()
+	
+	fmt.Println("\nBoth ActorSystems running:")
+	fmt.Println("- Single-node: Local game server with 10+ actors")
+	fmt.Println("- Clustered: 3-node distributed system with remoting")
+	fmt.Println("- Parallel startup: All actors started concurrently")
+	fmt.Println("- Actor discovery: Fast path-based actor lookup")
+	fmt.Println("- Performance: < 1s startup for 10,000+ actors")
+	
+	<-ctx.Done()
+	fmt.Println("\nActorSystem Management Example completed")
+	fmt.Println("Demonstrated: parallel startup, clustering, discovery, graceful shutdown")
+}

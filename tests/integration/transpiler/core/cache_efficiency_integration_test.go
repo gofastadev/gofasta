@@ -1,5 +1,5 @@
 // Cache efficiency integration tests for Phase 1.1 caching components
-package integration
+package core
 
 import (
 	"context"

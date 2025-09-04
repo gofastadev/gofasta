@@ -1,5 +1,5 @@
 // Full pipeline integration tests for Phase 1.1 components working together
-package integration
+package core
 
 import (
 	"context"

@@ -1,5 +1,5 @@
 // CLI Integration Tests - Tests the GoFasta CLI binary with real commands and workflows
-package integration
+package core
 
 import (
 	"bytes"

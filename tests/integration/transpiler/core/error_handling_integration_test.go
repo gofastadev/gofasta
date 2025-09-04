@@ -1,5 +1,5 @@
 // Error handling integration tests for Phase 1.1 components
-package integration
+package core
 
 import (
 	"context"
