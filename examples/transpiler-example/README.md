@@ -1649,7 +1649,7 @@ func HealthCheck() {}  // Simple endpoint doesn't need all pipes
 
 ### Controller Example (`user.controller.gofa` → `user.controller.go`)
 
-**Before (GoFasta):**
+**Before (Gofasta):**
 ```go
 @Controller("/api/v1/users")
 @UseGuards("auth")
@@ -1686,7 +1686,7 @@ func (c *UserController) GetUser(ctx *httpPackage.RequestContext, id string) {
 
 ### Service Example (`user.service.gofa` → `user.service.go`)
 
-**Before (GoFasta):**
+**Before (Gofasta):**
 ```go
 @Injectable()
 type UserService struct {
@@ -1721,7 +1721,7 @@ func (s *UserService) GetUserById(id string) *User {
 
 ## 🎓 Key Learning Points
 
-1. **Declarative Syntax**: GoFasta uses decorators to declare routes and dependencies
+1. **Declarative Syntax**: Gofasta uses decorators to declare routes and dependencies
 2. **Code Generation**: The transpiler generates boilerplate Go code automatically
 3. **Dependency Injection**: `inject:""` tags enable automatic DI setup
 4. **Route Generation**: Method decorators become HTTP route registrations

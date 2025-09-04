@@ -34,7 +34,7 @@ func TestE2EBasicTranspilation(t *testing.T) {
 import "fmt"
 
 func main() {
-	fmt.Println("Hello, GoFasta!")
+	fmt.Println("Hello, Gofasta!")
 }`,
 			expectedOutput: true,
 			description:    "Simple Go file without decorators should transpile successfully",
@@ -120,7 +120,7 @@ func main() {
 	fmt.Println("Controller example")
 }`,
 			expectedOutput: false,
-			description:    "GoFasta file with decorators should fail parsing (Phase 1 limitation)",
+			description:    "Gofasta file with decorators should fail parsing (Phase 1 limitation)",
 		},
 	}
 
@@ -145,7 +145,7 @@ func main() {
 			cmd.Stderr = &stderr
 
 			err := cmd.Run()
-			
+
 			if tt.expectedOutput {
 				// Should succeed
 				if err != nil {
@@ -240,14 +240,14 @@ func SubFunction() int { return 42 }`,
 
 	err := cmd.Run()
 	if err != nil {
-		t.Fatalf("Multi-file transpilation failed: %v\nStdout: %s\nStderr: %s", 
+		t.Fatalf("Multi-file transpilation failed: %v\nStdout: %s\nStderr: %s",
 			err, stdout.String(), stderr.String())
 	}
 
 	// Verify all output files were created
 	expectedOutputs := []string{
 		"file1.go",
-		"file2.go", 
+		"file2.go",
 		"file3.go",
 		"subdir/file4.go",
 	}
@@ -287,13 +287,13 @@ func TestE2EDirectoryStructure(t *testing.T) {
 
 	// Create complex directory structure
 	structure := map[string]string{
-		"main.gofa":              "package main\nfunc main() {}",
-		"utils/helper.gofa":      "package utils\nfunc Help() {}",
-		"models/user.gofa":       "package models\ntype User struct{}",
-		"controllers/base.gofa":  "package controllers\ntype Base struct{}",
-		"api/v1/routes.gofa":     "package v1\nfunc Routes() {}",
-		"api/v2/routes.gofa":     "package v2\nfunc Routes() {}",
-		"internal/config.gofa":   "package internal\nvar Config string",
+		"main.gofa":             "package main\nfunc main() {}",
+		"utils/helper.gofa":     "package utils\nfunc Help() {}",
+		"models/user.gofa":      "package models\ntype User struct{}",
+		"controllers/base.gofa": "package controllers\ntype Base struct{}",
+		"api/v1/routes.gofa":    "package v1\nfunc Routes() {}",
+		"api/v2/routes.gofa":    "package v2\nfunc Routes() {}",
+		"internal/config.gofa":  "package internal\nvar Config string",
 	}
 
 	// Create input files
@@ -313,7 +313,7 @@ func TestE2EDirectoryStructure(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Directory structure transpilation failed: %v\nOutput: %s", err, string(output))
 	}
-	
+
 	// Debug: show what was actually created
 	t.Logf("Transpilation output: %s", string(output))
 	t.Logf("Checking output directory: %s", outputDir)
@@ -329,7 +329,7 @@ func TestE2EDirectoryStructure(t *testing.T) {
 		// Convert .gofa to .go
 		outputPath := strings.Replace(relPath, ".gofa", ".go", 1)
 		fullOutputPath := filepath.Join(outputDir, outputPath)
-		
+
 		if _, err := os.Stat(fullOutputPath); os.IsNotExist(err) {
 			t.Errorf("Expected output file %s was not created", fullOutputPath)
 		} else {
@@ -394,12 +394,12 @@ func main() {
 				if !strings.Contains(output, "Print greeting") {
 					t.Error("Output should preserve inline comments")
 				}
-				
+
 				// Check that imports are formatted properly
 				if !strings.Contains(output, "import (") {
 					t.Error("Output should preserve import grouping")
 				}
-				
+
 				// Check that the code structure is maintained
 				if !strings.Contains(output, "func main()") {
 					t.Error("Output should contain main function")
@@ -427,7 +427,7 @@ func (m MyStruct) Method() string {
 				if !strings.Contains(output, "package mypackage") {
 					t.Error("Output should preserve package name")
 				}
-				
+
 				// Check that constants, variables, types, and methods are preserved
 				elements := []string{"const Version", "var GlobalVar", "type MyStruct", "func (m MyStruct) Method()"}
 				for _, element := range elements {
@@ -472,11 +472,11 @@ func TestE2EErrorPropagation(t *testing.T) {
 	tempDir := t.TempDir()
 
 	errorCases := []struct {
-		name           string
-		input          string
-		expectError    bool
+		name             string
+		input            string
+		expectError      bool
 		expectedInOutput string
-		description    string
+		description      string
 	}{
 		{
 			name: "syntax_error",
@@ -485,9 +485,9 @@ func TestE2EErrorPropagation(t *testing.T) {
 func main() {
 	fmt.Println("Missing import"
 }`,
-			expectError: true,
+			expectError:      true,
 			expectedInOutput: "missing",
-			description: "File with syntax errors should report parsing errors",
+			description:      "File with syntax errors should report parsing errors",
 		},
 		{
 			name: "decorator_syntax",
@@ -497,18 +497,18 @@ func main() {
 type MyController struct {}
 
 func main() {}`,
-			expectError: true,
+			expectError:      true,
 			expectedInOutput: "illegal character U+0040 '@'",
-			description: "Decorator syntax should report specific parsing error",
+			description:      "Decorator syntax should report specific parsing error",
 		},
 		{
 			name: "malformed_package",
 			input: `packag main
 
 func main() {}`,
-			expectError: true,
+			expectError:      true,
 			expectedInOutput: "expected",
-			description: "Malformed package declaration should be caught",
+			description:      "Malformed package declaration should be caught",
 		},
 	}
 
@@ -533,7 +533,7 @@ func main() {}`,
 				// Should have error or warning in output
 				allOutput := stdout.String() + stderr.String()
 				if !strings.Contains(strings.ToLower(allOutput), strings.ToLower(tc.expectedInOutput)) {
-					t.Errorf("%s: Expected error message containing '%s', got: %s", 
+					t.Errorf("%s: Expected error message containing '%s', got: %s",
 						tc.description, tc.expectedInOutput, allOutput)
 				}
 			} else {
@@ -732,11 +732,11 @@ func init() {
 	for _, config := range configurations {
 		t.Run(config.name, func(t *testing.T) {
 			outputDir := filepath.Join(tempDir, "output_"+config.name)
-			
+
 			// Build command with configuration
 			args := append([]string{"-input", tempDir, "-output", outputDir}, config.flags...)
 			args = append(args, "-pattern", "pipeline_test.gofa")
-			
+
 			cmd := exec.Command(binaryPath, args...)
 			output, err := cmd.CombinedOutput()
 
@@ -758,7 +758,7 @@ func init() {
 			requiredElements := []string{
 				"package integration",
 				"type TestStruct struct",
-				"type TestInterface interface", 
+				"type TestInterface interface",
 				"func (ts TestStruct) Process",
 				"func TestFunction",
 				"func ProcessItems",
@@ -819,15 +819,15 @@ func main() {
 	}
 
 	b.ResetTimer()
-	
+
 	for i := 0; i < b.N; i++ {
 		outputDir := filepath.Join(tempDir, fmt.Sprintf("output_%d", i))
-		
+
 		cmd := exec.Command(binaryPath, "-input", tempDir, "-output", outputDir, "-pattern", "benchmark.gofa")
 		if err := cmd.Run(); err != nil {
 			b.Fatalf("Benchmark transpilation failed: %v", err)
 		}
-		
+
 		// Clean up for next iteration
 		os.RemoveAll(outputDir)
 	}

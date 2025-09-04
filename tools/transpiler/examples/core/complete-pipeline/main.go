@@ -16,11 +16,11 @@ import (
 
 func main() {
 	fmt.Println("=== Complete Phase 1.1 Pipeline Example ===")
-	
+
 	// Setup: Create a sample Go project
 	projectDir := setupSampleProject()
 	defer os.RemoveAll(projectDir)
-	
+
 	// Initialize all Phase 1.1 components with optimized settings
 	pipeline := &GoFastaPipeline{
 		Parser: core.NewParallelParser(&core.ParserConfig{
@@ -64,16 +64,16 @@ func main() {
 			MaxMemoryMB:   150,
 		}),
 	}
-	
+
 	// Warm up components
 	fmt.Printf("Warming up components...\n")
 	pipeline.TokenPool.WarmUp(20)
 	pipeline.ImportCache.WarmUp()
-	
+
 	// Process the project
 	ctx := context.Background()
 	results := pipeline.ProcessProject(ctx, projectDir)
-	
+
 	// Display comprehensive results
 	pipeline.ShowResults(results)
 }
@@ -100,28 +100,28 @@ type PipelineResults struct {
 // ProcessProject runs the complete pipeline on a Go project
 func (p *GoFastaPipeline) ProcessProject(ctx context.Context, projectDir string) *PipelineResults {
 	start := time.Now()
-	
+
 	fmt.Printf("\n=== Pipeline Processing: %s ===\n", projectDir)
-	
+
 	// Step 1: Parse all Go files
 	fmt.Printf("Step 1: Parsing files...\n")
 	parseStart := time.Now()
-	
+
 	parseResults, err := p.Parser.ParseDirectory(ctx, projectDir)
 	if err != nil {
 		log.Printf("Parse error: %v", err)
 	}
-	
+
 	parseTime := time.Since(parseStart)
 	fmt.Printf("✓ Parsed %d files in %v\n", len(parseResults), parseTime)
-	
+
 	// Step 2: Cache ASTs for future use
 	fmt.Printf("\nStep 2: Caching ASTs...\n")
 	cacheStart := time.Now()
-	
+
 	validFiles := make(map[string]*ast.File)
 	var mainFset *token.FileSet
-	
+
 	for _, result := range parseResults {
 		if result.Error == nil {
 			// Get file modification time
@@ -130,61 +130,61 @@ func (p *GoFastaPipeline) ProcessProject(ctx context.Context, projectDir string)
 			if info != nil {
 				modTime = info.ModTime()
 			}
-			
+
 			// Cache the AST
 			p.ASTCache.Put(result.FilePath, result.File, result.FileSet, modTime, result.Size)
 			validFiles[result.FilePath] = result.File
-			
+
 			if mainFset == nil {
 				mainFset = result.FileSet
 			}
 		}
 	}
-	
+
 	cacheTime := time.Since(cacheStart)
 	fmt.Printf("✓ Cached %d ASTs in %v\n", len(validFiles), cacheTime)
-	
+
 	// Step 3: Type check packages
 	fmt.Printf("\nStep 3: Type checking...\n")
 	typeStart := time.Now()
-	
+
 	// Group files by package (simplified - assumes all files are in main package)
 	files := make([]*ast.File, 0, len(validFiles))
 	for _, file := range validFiles {
 		files = append(files, file)
 	}
-	
+
 	typeResult, err := p.TypeChecker.CheckPackage(ctx, "main", files, mainFset)
 	if err != nil {
 		fmt.Printf("Type checking completed with errors: %v\n", err)
 	} else {
 		fmt.Printf("✓ Type checking succeeded\n")
 	}
-	
+
 	typeTime := time.Since(typeStart)
 	fmt.Printf("✓ Type checking completed in %v\n", typeTime)
-	
+
 	// Step 4: Format all files
 	fmt.Printf("\nStep 4: Formatting files...\n")
 	formatStart := time.Now()
-	
+
 	formatResults, err := p.Formatter.FormatFiles(ctx, validFiles, mainFset)
 	if err != nil {
 		fmt.Printf("Formatting completed with some errors: %v\n", err)
 	}
-	
+
 	formatTime := time.Since(formatStart)
 	fmt.Printf("✓ Formatted %d files in %v\n", len(formatResults), formatTime)
-	
+
 	totalDuration := time.Since(start)
-	
+
 	// Collect statistics from all components
 	statistics := map[string]interface{}{
-		"parse":       p.Parser.GetStatistics(),
-		"ast_cache":   p.ASTCache.GetStatistics(),
-		"token_pool":  p.TokenPool.GetStatistics(),
-		"type_check":  p.TypeChecker.GetStatistics(),
-		"formatter":   p.Formatter.GetStatistics(),
+		"parse":        p.Parser.GetStatistics(),
+		"ast_cache":    p.ASTCache.GetStatistics(),
+		"token_pool":   p.TokenPool.GetStatistics(),
+		"type_check":   p.TypeChecker.GetStatistics(),
+		"formatter":    p.Formatter.GetStatistics(),
 		"import_cache": p.ImportCache.GetStatistics(),
 		"timings": map[string]interface{}{
 			"parse_time":  parseTime,
@@ -194,11 +194,11 @@ func (p *GoFastaPipeline) ProcessProject(ctx context.Context, projectDir string)
 			"total_time":  totalDuration,
 		},
 	}
-	
+
 	typeResults := map[string]*core.TypeCheckResult{
 		"main": typeResult,
 	}
-	
+
 	return &PipelineResults{
 		ParseResults:  parseResults,
 		TypeResults:   typeResults,
@@ -211,16 +211,16 @@ func (p *GoFastaPipeline) ProcessProject(ctx context.Context, projectDir string)
 // ShowResults displays comprehensive pipeline results
 func (p *GoFastaPipeline) ShowResults(results *PipelineResults) {
 	fmt.Printf("\n=== Pipeline Results Summary ===\n")
-	
+
 	timings := results.Statistics["timings"].(map[string]interface{})
-	
+
 	fmt.Printf("Performance Timings:\n")
 	fmt.Printf("  Parse Time: %v\n", timings["parse_time"])
 	fmt.Printf("  Cache Time: %v\n", timings["cache_time"])
 	fmt.Printf("  Type Check Time: %v\n", timings["type_time"])
 	fmt.Printf("  Format Time: %v\n", timings["format_time"])
 	fmt.Printf("  Total Time: %v\n", timings["total_time"])
-	
+
 	// Component statistics
 	parseStats := results.Statistics["parse"].(map[string]interface{})
 	astStats := results.Statistics["ast_cache"].(map[string]interface{})
@@ -228,7 +228,7 @@ func (p *GoFastaPipeline) ShowResults(results *PipelineResults) {
 	typeStats := results.Statistics["type_check"].(map[string]interface{})
 	formatStats := results.Statistics["formatter"].(map[string]interface{})
 	importStats := results.Statistics["import_cache"].(map[string]interface{})
-	
+
 	fmt.Printf("\nComponent Performance:\n")
 	fmt.Printf("  Parser Rate: %.0f files/sec\n", parseStats["files_per_second"])
 	fmt.Printf("  AST Cache Hit Ratio: %.1f%%\n", astStats["hit_ratio"])
@@ -236,17 +236,17 @@ func (p *GoFastaPipeline) ShowResults(results *PipelineResults) {
 	fmt.Printf("  Type Check Hit Ratio: %.1f%%\n", typeStats["hit_ratio"])
 	fmt.Printf("  Formatter Rate: %.0f files/sec\n", formatStats["files_per_second"])
 	fmt.Printf("  Import Cache Hit Ratio: %.1f%%\n", importStats["hit_ratio"])
-	
+
 	fmt.Printf("\nAccuracy Metrics:\n")
 	fmt.Printf("  Parse Success Rate: %.1f%%\n", parseStats["success_rate"])
 	fmt.Printf("  Format Success Rate: %.1f%%\n", formatStats["success_rate"])
 	fmt.Printf("  Type Check Errors: %v\n", len(results.TypeResults))
-	
+
 	fmt.Printf("\nMemory Efficiency:\n")
 	fmt.Printf("  AST Cache Memory: %v MB\n", astStats["memory_mb"])
 	fmt.Printf("  Import Cache Memory: %v MB\n", importStats["memory_mb"])
 	fmt.Printf("  Token Pool Size: %v\n", poolStats["pool_size"])
-	
+
 	// Show potential optimizations
 	p.suggestOptimizations(results)
 }
@@ -254,47 +254,47 @@ func (p *GoFastaPipeline) ShowResults(results *PipelineResults) {
 // suggestOptimizations analyzes results and suggests improvements
 func (p *GoFastaPipeline) suggestOptimizations(results *PipelineResults) {
 	fmt.Printf("\n=== Optimization Suggestions ===\n")
-	
+
 	astStats := results.Statistics["ast_cache"].(map[string]interface{})
 	typeStats := results.Statistics["type_check"].(map[string]interface{})
 	formatStats := results.Statistics["formatter"].(map[string]interface{})
 	importStats := results.Statistics["import_cache"].(map[string]interface{})
-	
+
 	// Analyze cache hit ratios
 	astHitRatio := astStats["hit_ratio"].(float64)
 	typeHitRatio := typeStats["hit_ratio"].(float64)
 	importHitRatio := importStats["hit_ratio"].(float64)
-	
+
 	if astHitRatio < 80.0 {
 		fmt.Printf("• Consider increasing AST cache TTL or size (current hit ratio: %.1f%%)\n", astHitRatio)
 	}
-	
+
 	if typeHitRatio < 70.0 {
 		fmt.Printf("• Consider increasing type checker cache TTL (current hit ratio: %.1f%%)\n", typeHitRatio)
 	}
-	
+
 	if importHitRatio < 90.0 {
 		fmt.Printf("• Consider pre-warming import cache (current hit ratio: %.1f%%)\n", importHitRatio)
 	}
-	
+
 	// Analyze performance
 	formatRate := formatStats["files_per_second"].(float64)
 	if formatRate < 1000 {
 		fmt.Printf("• Consider increasing formatter batch size or workers (current rate: %.0f files/sec)\n", formatRate)
 	}
-	
+
 	// Analyze memory usage
 	astMemory := astStats["memory_mb"].(int64)
 	importMemory := importStats["memory_mb"].(int64)
-	
+
 	if astMemory > 100 {
 		fmt.Printf("• Consider reducing AST cache size to lower memory usage (%d MB)\n", astMemory)
 	}
-	
+
 	if importMemory > 50 {
 		fmt.Printf("• Consider reducing import cache size (%d MB)\n", importMemory)
 	}
-	
+
 	fmt.Printf("✓ Analysis complete\n")
 }
 
@@ -305,7 +305,7 @@ func setupSampleProject() string {
 	if err != nil {
 		log.Fatalf("Failed to create temp dir: %v", err)
 	}
-	
+
 	// Sample project files
 	files := map[string]string{
 		"main.go": `package main
@@ -336,7 +336,7 @@ import (
 func createGreeting(name string) string {
 	cleanName := strings.TrimSpace(name)
 	timeOfDay := getTimeOfDay()
-	return fmt.Sprintf("%s, %s! Welcome to GoFasta.", timeOfDay, cleanName)
+	return fmt.Sprintf("%s, %s! Welcome to Gofasta.", timeOfDay, cleanName)
 }
 
 func getTimeOfDay() string {
@@ -372,7 +372,7 @@ func (c *Config) String() string {
 
 func loadConfig() *Config {
 	return &Config{
-		AppName:  "GoFasta Example",
+		AppName:  "Gofasta Example",
 		Version:  "1.0.0",
 		Debug:    true,
 		LogLevel: 1,
@@ -430,7 +430,7 @@ func (u *User) ToJSON() ([]byte, error) {
 	return json.Marshal(u)
 }`,
 	}
-	
+
 	// Write all files
 	for filename, content := range files {
 		path := filepath.Join(tempDir, filename)
@@ -439,9 +439,9 @@ func (u *User) ToJSON() ([]byte, error) {
 			log.Printf("Failed to write %s: %v", filename, err)
 		}
 	}
-	
+
 	fmt.Printf("Created sample project in: %s\n", tempDir)
 	fmt.Printf("Project contains %d Go files\n", len(files))
-	
+
 	return tempDir
 }

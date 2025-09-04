@@ -13,6 +13,12 @@ import (
 	"time"
 
 	"github.com/healtronlabs/gofasta/tools/transpiler/core"
+
+	// Import fault tolerance decorators to ensure they're compiled into the binary
+	_ "github.com/healtronlabs/gofasta/tools/transpiler/decorators/faulttolerance/actor"
+	_ "github.com/healtronlabs/gofasta/tools/transpiler/decorators/faulttolerance/actorref"
+	_ "github.com/healtronlabs/gofasta/tools/transpiler/decorators/faulttolerance/actorsystem"
+	_ "github.com/healtronlabs/gofasta/tools/transpiler/decorators/faulttolerance/supervisor"
 )
 
 const (
@@ -24,24 +30,24 @@ const (
 ██    ██ ██    ██ ██      ██   ██      ██    ██    ██   ██
  ██████   ██████  ██      ██   ██ ███████    ██    ██   ██
                                                           
-GoFasta Enterprise Backend Framework - Transpiler %s
+Gofasta Enterprise Backend Framework - Transpiler %s
 `
 )
 
 type Config struct {
-	InputDir     string
-	OutputDir    string
-	Pattern      string
-	Verbose      bool
-	Force        bool
-	DryRun       bool
-	Watch        bool
-	ShowVersion  bool
-	ShowHelp     bool
-	Parallel     int
-	CacheDir     string
-	EnableCache  bool
-	LogLevel     string
+	InputDir    string
+	OutputDir   string
+	Pattern     string
+	Verbose     bool
+	Force       bool
+	DryRun      bool
+	Watch       bool
+	ShowVersion bool
+	ShowHelp    bool
+	Parallel    int
+	CacheDir    string
+	EnableCache bool
+	LogLevel    string
 }
 
 type CLI struct {
@@ -59,7 +65,7 @@ func main() {
 	}
 
 	if cli.config.ShowVersion {
-		fmt.Printf("GoFasta Transpiler %s\n", version)
+		fmt.Printf("Gofasta Transpiler %s\n", version)
 		return
 	}
 
@@ -69,7 +75,7 @@ func main() {
 	}
 
 	fmt.Printf(banner, version)
-	
+
 	if err := cli.run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
@@ -82,10 +88,10 @@ func parseFlags() *Config {
 
 func parseFlagsFromArgs(args []string) *Config {
 	config := &Config{}
-	
+
 	// Create a new FlagSet to avoid redefinition issues in tests
 	fs := flag.NewFlagSet("gofasta", flag.ExitOnError)
-	
+
 	fs.StringVar(&config.InputDir, "input", ".", "Input directory containing .gofa files")
 	fs.StringVar(&config.InputDir, "i", ".", "Input directory containing .gofa files (short)")
 	fs.StringVar(&config.OutputDir, "output", ".", "Output directory for generated .go files")
@@ -107,7 +113,7 @@ func parseFlagsFromArgs(args []string) *Config {
 	fs.StringVar(&config.CacheDir, "cache-dir", ".gofasta-cache", "Cache directory")
 	fs.BoolVar(&config.EnableCache, "cache", true, "Enable caching")
 	fs.StringVar(&config.LogLevel, "log-level", "info", "Log level (debug, info, warn, error)")
-	
+
 	if len(args) > 1 {
 		fs.Parse(args[1:])
 	}
@@ -116,9 +122,9 @@ func parseFlagsFromArgs(args []string) *Config {
 
 func (cli *CLI) run() error {
 	start := time.Now()
-	
+
 	if cli.config.Verbose {
-		fmt.Printf("🚀 Starting GoFasta transpilation\n")
+		fmt.Printf("🚀 Starting Gofasta transpilation\n")
 		fmt.Printf("   Input:  %s\n", cli.config.InputDir)
 		fmt.Printf("   Output: %s\n", cli.config.OutputDir)
 		fmt.Printf("   Pattern: %s\n", cli.config.Pattern)
@@ -132,7 +138,7 @@ func (cli *CLI) run() error {
 		return fmt.Errorf("failed to initialize components: %v", err)
 	}
 
-	// Find GoFasta files
+	// Find Gofasta files
 	files, err := cli.findGofastaFiles()
 	if err != nil {
 		return fmt.Errorf("failed to find .gofa files: %v", err)
@@ -194,71 +200,64 @@ func (cli *CLI) initializeComponents() error {
 	}
 	cli.generator = core.NewCodeGenerator(generatorConfig)
 
-	// Initialize decorator registry
-	registryConfig := &core.RegistryConfig{
-		EnableHotReload:    false,
-		ParallelLoading:    true,
-		LoadWorkers:        cli.config.Parallel,
-		MaxDecorators:      1000,
-		EnableMetrics:      cli.config.Verbose,
-	}
-	cli.registry = core.NewDecoratorRegistry(registryConfig)
+	// Use the global decorator registry
+	cli.registry = core.GlobalRegistry
 
 	return nil
 }
 
 func (cli *CLI) findGofastaFiles() ([]string, error) {
 	var files []string
-	
+
 	err := filepath.WalkDir(cli.config.InputDir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		
+
 		if d.IsDir() {
 			return nil
 		}
-		
+
 		if matched, _ := filepath.Match(cli.config.Pattern, filepath.Base(path)); matched {
 			files = append(files, path)
 		}
-		
+
 		return nil
 	})
-	
+
 	return files, err
 }
 
 func (cli *CLI) transpileFiles(files []string) ([]*TranspileResult, error) {
 	ctx := context.Background()
 	results := make([]*TranspileResult, 0, len(files))
-	
+
 	for i, file := range files {
 		if cli.config.Verbose {
 			fmt.Printf("[%d/%d] 📝 Processing %s...\n", i+1, len(files), filepath.Base(file))
 		}
-		
+
 		result, err := cli.transpileFile(ctx, file)
 		if err != nil {
 			result = &TranspileResult{
-				InputFile:  file,
-				Success:    false,
-				Error:      err,
-				StartTime:  time.Now(),
-				Duration:   0,
+				InputFile: file,
+				Success:   false,
+				Error:     err,
+				StartTime: time.Now(),
+				Duration:  0,
 			}
 		}
-		
+
 		results = append(results, result)
-		
+
 		if cli.config.Verbose && result.Success {
-			fmt.Printf("   ✅ Generated %s (%d bytes → %d bytes) in %v\n", 
+			fmt.Printf("   ✅ Generated %s (%d bytes → %d bytes) in %v\n",
 				filepath.Base(result.OutputFile), result.InputSize, result.OutputSize, result.Duration)
 		} else if cli.config.Verbose && !result.Success {
 			fmt.Printf("   ❌ Failed: %v\n", result.Error)
 		}
 	}
-	
+
 	return results, nil
 }
 
@@ -290,7 +289,7 @@ func (cli *CLI) transpileFile(ctx context.Context, inputFile string) (*Transpile
 		result.Error = fmt.Errorf("failed to extract decorators: %v", err)
 		return result, err
 	}
-	
+
 	decorators := extractionResult.Decorators
 
 	if cli.config.Verbose && len(decorators) > 0 {
@@ -361,30 +360,30 @@ func (cli *CLI) getOutputPath(inputFile string) string {
 	if strings.HasSuffix(base, ".gofa") {
 		base = strings.TrimSuffix(base, ".gofa") + ".go"
 	}
-	
+
 	// Handle relative paths
 	if cli.config.OutputDir == "." {
 		return filepath.Join(filepath.Dir(inputFile), base)
 	}
-	
+
 	// Handle absolute output directory
 	relPath, _ := filepath.Rel(cli.config.InputDir, inputFile)
 	relDir := filepath.Dir(relPath)
 	if relDir == "." {
 		return filepath.Join(cli.config.OutputDir, base)
 	}
-	
+
 	return filepath.Join(cli.config.OutputDir, relDir, base)
 }
 
 func (cli *CLI) dryRun(files []string) error {
 	fmt.Printf("🔍 Dry run mode - showing what would be done:\n\n")
-	
+
 	for _, file := range files {
 		outputFile := cli.getOutputPath(file)
 		fmt.Printf("📝 %s → %s\n", file, outputFile)
 	}
-	
+
 	fmt.Printf("\n✨ Would process %d files\n", len(files))
 	return nil
 }
@@ -422,11 +421,11 @@ func (cli *CLI) showResults(results []*TranspileResult, totalDuration time.Durat
 	fmt.Printf("   📦 Input size: %d bytes\n", totalInputSize)
 	fmt.Printf("   📦 Output size: %d bytes\n", totalOutputSize)
 	fmt.Printf("   ⚡ Total duration: %v\n", totalDuration)
-	
+
 	if successCount > 0 {
 		avgDuration := totalDuration / time.Duration(successCount)
 		fmt.Printf("   📊 Average per file: %v\n", avgDuration)
-		
+
 		if totalDuration > 0 {
 			filesPerSecond := float64(successCount) / totalDuration.Seconds()
 			fmt.Printf("   🚀 Files per second: %.1f\n", filesPerSecond)
@@ -487,8 +486,8 @@ type TranspileResult struct {
 // generateFallback creates basic Go code when template generation fails
 func (cli *CLI) generateFallback(sourceCode string, decorators []core.Decorator) string {
 	// Add header comment
-	header := fmt.Sprintf("// Code generated by GoFasta %s; DO NOT EDIT.\n\n", version)
-	
+	header := fmt.Sprintf("// Code generated by Gofasta %s; DO NOT EDIT.\n\n", version)
+
 	// Add decorator information as comments
 	if len(decorators) > 0 {
 		header += "// Detected decorators:\n"
@@ -497,6 +496,6 @@ func (cli *CLI) generateFallback(sourceCode string, decorators []core.Decorator)
 		}
 		header += "\n"
 	}
-	
+
 	return header + sourceCode
 }

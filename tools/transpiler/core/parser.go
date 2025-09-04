@@ -1,4 +1,4 @@
-// Package core provides high-performance parsing capabilities for GoFasta transpiler.
+// Package core provides high-performance parsing capabilities for Gofasta transpiler.
 // This implements Phase 1.1a: Set up go/parser with parallel file processing.
 package core
 
@@ -34,17 +34,17 @@ type ParserConfig struct {
 	// MaxWorkers sets the maximum number of parallel workers.
 	// If 0, defaults to runtime.NumCPU()
 	MaxWorkers int
-	
+
 	// ParseComments enables comment parsing
 	ParseComments bool
-	
+
 	// AllowErrors continues parsing even when individual files have errors
 	AllowErrors bool
-	
+
 	// FileExtensions specifies which file extensions to parse
 	// Defaults to [".gofa", ".go"] if empty
 	FileExtensions []string
-	
+
 	// ExcludeDirs specifies directory patterns to exclude
 	ExcludeDirs []string
 }
@@ -62,17 +62,17 @@ func DefaultConfig() *ParserConfig {
 
 // ParallelParser provides high-performance parallel parsing capabilities
 type ParallelParser struct {
-	config   *ParserConfig
-	fileSet  *token.FileSet
-	results  []*ParseResult
-	mu       sync.RWMutex
-	
+	config  *ParserConfig
+	fileSet *token.FileSet
+	results []*ParseResult
+	mu      sync.RWMutex
+
 	// Performance metrics
-	startTime     time.Time
-	totalFiles    int
-	totalBytes    int64
-	successCount  int
-	errorCount    int
+	startTime    time.Time
+	totalFiles   int
+	totalBytes   int64
+	successCount int
+	errorCount   int
 }
 
 // NewParallelParser creates a new high-performance parallel parser
@@ -80,19 +80,19 @@ func NewParallelParser(config *ParserConfig) *ParallelParser {
 	if config == nil {
 		config = DefaultConfig()
 	}
-	
+
 	if config.MaxWorkers <= 0 {
 		config.MaxWorkers = runtime.NumCPU()
 	}
-	
+
 	if len(config.FileExtensions) == 0 {
 		config.FileExtensions = []string{".gofa", ".go"}
 	}
-	
+
 	if config.ExcludeDirs == nil {
 		config.ExcludeDirs = []string{}
 	}
-	
+
 	return &ParallelParser{
 		config:  config,
 		fileSet: token.NewFileSet(),
@@ -104,27 +104,27 @@ func NewParallelParser(config *ParserConfig) *ParallelParser {
 func (p *ParallelParser) ParseDirectory(ctx context.Context, rootPath string) ([]*ParseResult, error) {
 	p.startTime = time.Now()
 	p.reset()
-	
+
 	files, err := p.discoverFiles(rootPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to discover files: %w", err)
 	}
-	
+
 	p.totalFiles = len(files)
 	if p.totalFiles == 0 {
 		return p.results, nil
 	}
-	
+
 	// Create error group with context for parallel processing
 	eg, ctx := errgroup.WithContext(ctx)
 	eg.SetLimit(p.config.MaxWorkers)
-	
+
 	// Channel for collecting results
 	resultChan := make(chan *ParseResult, p.totalFiles)
-	
+
 	// Start result collector goroutine
 	go p.collectResults(resultChan)
-	
+
 	// Process files in parallel
 	for _, filePath := range files {
 		filePath := filePath // capture loop variable
@@ -139,18 +139,18 @@ func (p *ParallelParser) ParseDirectory(ctx context.Context, rootPath string) ([
 			}
 		})
 	}
-	
+
 	// Wait for all parsing to complete
 	if err := eg.Wait(); err != nil {
 		close(resultChan)
 		return nil, fmt.Errorf("parallel parsing failed: %w", err)
 	}
-	
+
 	close(resultChan)
-	
+
 	// Wait for result collection to complete
 	p.waitForCollection()
-	
+
 	return p.GetResults(), nil
 }
 
@@ -158,22 +158,22 @@ func (p *ParallelParser) ParseDirectory(ctx context.Context, rootPath string) ([
 func (p *ParallelParser) ParseFiles(ctx context.Context, filePaths []string) ([]*ParseResult, error) {
 	p.startTime = time.Now()
 	p.reset()
-	
+
 	p.totalFiles = len(filePaths)
 	if p.totalFiles == 0 {
 		return p.results, nil
 	}
-	
+
 	// Create error group with context for parallel processing
 	eg, ctx := errgroup.WithContext(ctx)
 	eg.SetLimit(p.config.MaxWorkers)
-	
+
 	// Channel for collecting results
 	resultChan := make(chan *ParseResult, p.totalFiles)
-	
+
 	// Start result collector goroutine
 	go p.collectResults(resultChan)
-	
+
 	// Process files in parallel
 	for _, filePath := range filePaths {
 		filePath := filePath // capture loop variable
@@ -188,18 +188,18 @@ func (p *ParallelParser) ParseFiles(ctx context.Context, filePaths []string) ([]
 			}
 		})
 	}
-	
+
 	// Wait for all parsing to complete
 	if err := eg.Wait(); err != nil {
 		close(resultChan)
 		return nil, fmt.Errorf("parallel parsing failed: %w", err)
 	}
-	
+
 	close(resultChan)
-	
+
 	// Wait for result collection to complete
 	p.waitForCollection()
-	
+
 	return p.GetResults(), nil
 }
 
@@ -207,7 +207,7 @@ func (p *ParallelParser) ParseFiles(ctx context.Context, filePaths []string) ([]
 func (p *ParallelParser) GetResults() []*ParseResult {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
-	
+
 	// Return a copy to prevent external modifications
 	results := make([]*ParseResult, len(p.results))
 	copy(results, p.results)
@@ -218,7 +218,7 @@ func (p *ParallelParser) GetResults() []*ParseResult {
 func (p *ParallelParser) GetSuccessfulResults() []*ParseResult {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
-	
+
 	var successful []*ParseResult
 	for _, result := range p.results {
 		if result.Error == nil && result.File != nil {
@@ -232,9 +232,9 @@ func (p *ParallelParser) GetSuccessfulResults() []*ParseResult {
 func (p *ParallelParser) GetStatistics() map[string]interface{} {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
-	
+
 	totalDuration := time.Since(p.startTime)
-	
+
 	stats := map[string]interface{}{
 		"total_files":       p.totalFiles,
 		"successful_files":  p.successCount,
@@ -244,24 +244,24 @@ func (p *ParallelParser) GetStatistics() map[string]interface{} {
 		"max_workers":       p.config.MaxWorkers,
 		"files_per_second":  float64(p.totalFiles) / totalDuration.Seconds(),
 	}
-	
+
 	if p.totalBytes > 0 {
 		stats["bytes_per_second"] = float64(p.totalBytes) / totalDuration.Seconds()
 		stats["mb_per_second"] = float64(p.totalBytes) / (1024 * 1024) / totalDuration.Seconds()
 	}
-	
+
 	return stats
 }
 
 // discoverFiles finds all eligible files in a directory tree
 func (p *ParallelParser) discoverFiles(rootPath string) ([]string, error) {
 	var files []string
-	
+
 	err := filepath.WalkDir(rootPath, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		
+
 		// Skip excluded directories
 		if d.IsDir() {
 			for _, excluded := range p.config.ExcludeDirs {
@@ -271,7 +271,7 @@ func (p *ParallelParser) discoverFiles(rootPath string) ([]string, error) {
 			}
 			return nil
 		}
-		
+
 		// Check file extension
 		ext := filepath.Ext(path)
 		for _, allowedExt := range p.config.FileExtensions {
@@ -280,10 +280,10 @@ func (p *ParallelParser) discoverFiles(rootPath string) ([]string, error) {
 				break
 			}
 		}
-		
+
 		return nil
 	})
-	
+
 	return files, err
 }
 
@@ -293,21 +293,21 @@ func (p *ParallelParser) parseFile(filePath string) *ParseResult {
 	result := &ParseResult{
 		FilePath: filePath,
 	}
-	
+
 	// Get file info for size
 	if stat, err := os.Stat(filePath); err == nil {
 		result.Size = stat.Size()
 	}
-	
+
 	// Parse mode configuration
 	mode := parser.ParseComments
 	if !p.config.ParseComments {
 		mode = 0
 	}
-	
+
 	// Create file-specific token.FileSet for this parse operation
 	fset := token.NewFileSet()
-	
+
 	// Parse the file
 	file, err := parser.ParseFile(fset, filePath, nil, mode)
 	if err != nil {
@@ -316,7 +316,7 @@ func (p *ParallelParser) parseFile(filePath string) *ParseResult {
 		result.File = file
 		result.FileSet = fset
 	}
-	
+
 	result.Duration = time.Since(startTime)
 	return result
 }
@@ -327,7 +327,7 @@ func (p *ParallelParser) collectResults(resultChan <-chan *ParseResult) {
 		p.mu.Lock()
 		p.results = append(p.results, result)
 		p.totalBytes += result.Size
-		
+
 		if result.Error != nil {
 			p.errorCount++
 		} else {
@@ -344,7 +344,7 @@ func (p *ParallelParser) waitForCollection() {
 		p.mu.RLock()
 		collected := len(p.results)
 		p.mu.RUnlock()
-		
+
 		if collected == p.totalFiles {
 			break
 		}
@@ -356,7 +356,7 @@ func (p *ParallelParser) waitForCollection() {
 func (p *ParallelParser) reset() {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	
+
 	p.results = make([]*ParseResult, 0)
 	p.totalFiles = 0
 	p.totalBytes = 0
@@ -368,7 +368,7 @@ func (p *ParallelParser) reset() {
 func (p *ParallelParser) FilterResultsByExtension(extension string) []*ParseResult {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
-	
+
 	var filtered []*ParseResult
 	for _, result := range p.results {
 		if strings.HasSuffix(result.FilePath, extension) {

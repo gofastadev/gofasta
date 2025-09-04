@@ -1,4 +1,4 @@
-// Package actor provides fault tolerance decorators for GoFasta
+// Package actor provides fault tolerance decorators for Gofasta
 package actor
 
 import (
@@ -11,6 +11,26 @@ import (
 	"github.com/healtronlabs/gofasta/tools/transpiler/core"
 	"github.com/healtronlabs/gofasta/tools/transpiler/decorators/faulttolerance/common"
 )
+
+func init() {
+	// Register Actor decorator
+	core.RegisterDecorator(&core.RegisteredDecorator{
+		Name:        "Actor",
+		Type:        "fault_tolerance",
+		Description: "Actor model implementation with memory pooling",
+		Handler:     ActorDecorator,
+		Schema: &core.DecoratorSchema{
+			Properties: map[string]core.PropertyDef{
+				"mailboxSize":          {Type: "int", Default: 1000},
+				"memoryPooling":        {Type: "bool", Default: true},
+				"maxMessageSize":       {Type: "int", Default: 1048576},
+				"processingTimeout":    {Type: "duration", Default: "30s"},
+				"backpressureStrategy": {Type: "string", Default: "block", Enum: []string{"block", "drop", "overflow"}},
+				"hotSwapEnabled":       {Type: "bool", Default: true},
+			},
+		},
+	})
+}
 
 // Using shared types from common package
 type ActorState = common.ActorState
@@ -37,7 +57,6 @@ type ActorRuntime struct {
 	cancel       context.CancelFunc
 	pool         *WorkerPool
 }
-
 
 // WorkerPool manages a pool of worker goroutines
 type WorkerPool struct {
@@ -107,7 +126,7 @@ type ActorTarget struct {
 func parseActorArgs(args core.DecoratorArgs) (common.ActorConfig, error) {
 	config := common.ActorConfig{
 		ID:          fmt.Sprintf("actor-%d", time.Now().UnixNano()),
-		Supervised:  true,  // Default to supervised as expected by tests
+		Supervised:  true, // Default to supervised as expected by tests
 		MailboxSize: 1000,
 		PoolSize:    10, // Use default instead of NumCPU for test consistency
 		MaxMessages: -1, // unlimited
@@ -317,14 +336,14 @@ func (p *WorkerPool) Close() {
 // buildActorMetadata builds metadata based on configuration and properties
 func buildActorMetadata(config common.ActorConfig, args core.DecoratorArgs) map[string]interface{} {
 	metadata := map[string]interface{}{
-		"actor_id":       config.ID,
-		"supervised":     config.Supervised,
-		"mailbox_size":   config.MailboxSize,
-		"pool_size":      config.PoolSize,
-		"actor_type":     "basic",
-		"memory_pooled":  true,
-		"max_messages":   config.MaxMessages,
-		"timeout":        config.Timeout.String(),
+		"actor_id":      config.ID,
+		"supervised":    config.Supervised,
+		"mailbox_size":  config.MailboxSize,
+		"pool_size":     config.PoolSize,
+		"actor_type":    "basic",
+		"memory_pooled": true,
+		"max_messages":  config.MaxMessages,
+		"timeout":       config.Timeout.String(),
 	}
 
 	// Add supervisor metadata if supervised
@@ -378,8 +397,8 @@ func buildActorMetadata(config common.ActorConfig, args core.DecoratorArgs) map[
 	// Add backpressure metadata
 	if backpressure, ok := args.Properties["backpressure"].(bool); ok && backpressure {
 		backpressureConfig := map[string]interface{}{
-			"enabled":        true,
-			"strategy":       getPropertyOrDefault(args, "backpressureStrategy", "dropOldest"),
+			"enabled":         true,
+			"strategy":        getPropertyOrDefault(args, "backpressureStrategy", "dropOldest"),
 			"overflow_policy": getPropertyOrDefault(args, "overflowPolicy", "reject"),
 			"mailbox_limit":   config.MailboxSize,
 		}
@@ -410,21 +429,21 @@ func buildActorMetadata(config common.ActorConfig, args core.DecoratorArgs) map[
 func buildMemoryPoolMetadata(poolSize int) map[string]interface{} {
 	if poolSize <= 5 {
 		return map[string]interface{}{
-			"initial_size":   poolSize,
-			"max_size":       poolSize * 10,
-			"growth_factor":  2.0,
+			"initial_size":  poolSize,
+			"max_size":      poolSize * 10,
+			"growth_factor": 2.0,
 		}
 	} else if poolSize >= 100 {
 		return map[string]interface{}{
-			"initial_size":   poolSize,
-			"max_size":       poolSize * 10,
-			"growth_factor":  1.5,
+			"initial_size":  poolSize,
+			"max_size":      poolSize * 10,
+			"growth_factor": 1.5,
 		}
 	} else {
 		return map[string]interface{}{
-			"initial_size":   poolSize,
-			"max_size":       poolSize * 10,
-			"growth_factor":  2.0,
+			"initial_size":  poolSize,
+			"max_size":      poolSize * 10,
+			"growth_factor": 2.0,
 		}
 	}
 }

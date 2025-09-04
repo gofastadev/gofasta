@@ -33,8 +33,8 @@ func testWatchModeWorkflow(t *testing.T) {
 
 	// Simulate watch mode scenarios
 	watchScenarios := []struct {
-		name        string
-		changeFunc  func() error
+		name          string
+		changeFunc    func() error
 		expectRebuild bool
 		expectFiles   []string
 	}{
@@ -105,43 +105,43 @@ func (c *NewController) CreateNew() {
 			// Simulate initial build
 			config := core.DefaultConfig()
 			parser := core.NewParallelParser(config)
-			
+
 			// Get all .gofa files for initial build
 			var allFiles []string
 			for _, fileList := range projectStructure {
 				allFiles = append(allFiles, fileList...)
 			}
-			
+
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
-			
+
 			// Initial build
 			initialResults, err := parser.ParseFiles(ctx, allFiles)
 			if err != nil {
 				t.Fatalf("Initial build failed: %v", err)
 			}
-			
+
 			initialCount := len(initialResults)
-			
+
 			// Apply change
 			changeErr := scenario.changeFunc()
 			if changeErr != nil {
 				t.Fatalf("Failed to apply change for %s: %v", scenario.name, changeErr)
 			}
-			
+
 			// Simulate watch mode rebuild
 			time.Sleep(100 * time.Millisecond) // Brief delay to simulate file system events
-			
+
 			// Get updated file list
 			updatedFiles, _ := findGofaFiles(testDir)
-			
+
 			if scenario.expectRebuild {
 				// Rebuild should occur
 				rebuildResults, err := parser.ParseFiles(ctx, updatedFiles)
 				if err != nil {
 					t.Errorf("Rebuild failed for %s: %v", scenario.name, err)
 				} else {
-					t.Logf("Watch mode %s: initial=%d files, rebuilt=%d files", 
+					t.Logf("Watch mode %s: initial=%d files, rebuilt=%d files",
 						scenario.name, initialCount, len(rebuildResults))
 				}
 			} else {
@@ -161,10 +161,10 @@ func testIncrementalBuildScenarios(t *testing.T) {
 	projectFiles := createIncrementalTestProject(t, testDir)
 
 	incrementalScenarios := []struct {
-		name           string
-		modifyFiles    []string
-		expectRebuilt  []string
-		expectCached   []string
+		name          string
+		modifyFiles   []string
+		expectRebuilt []string
+		expectCached  []string
 	}{
 		{
 			"SingleFileChange",
@@ -188,7 +188,7 @@ func testIncrementalBuildScenarios(t *testing.T) {
 
 	// Simulate incremental caching system
 	cache := make(map[string]time.Time)
-	
+
 	for _, scenario := range incrementalScenarios {
 		t.Run(scenario.name, func(t *testing.T) {
 			// Simulate file modification times
@@ -204,32 +204,32 @@ func testIncrementalBuildScenarios(t *testing.T) {
 					t.Fatalf("Failed to modify file: %v", err)
 				}
 			}
-			
+
 			// Simulate incremental build logic
 			config := core.DefaultConfig()
 			parser := core.NewParallelParser(config)
-			
+
 			// Only rebuild modified files and their dependencies
 			filesToBuild := scenario.expectRebuilt
-			
+
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
-			
+
 			start := time.Now()
 			results, err := parser.ParseFiles(ctx, filesToBuild)
 			duration := time.Since(start)
-			
+
 			if err != nil {
 				t.Errorf("Incremental build failed for %s: %v", scenario.name, err)
 			}
-			
+
 			if len(results) != len(scenario.expectRebuilt) {
-				t.Errorf("Expected to rebuild %d files, actually rebuilt %d", 
+				t.Errorf("Expected to rebuild %d files, actually rebuilt %d",
 					len(scenario.expectRebuilt), len(results))
 			}
-			
+
 			// Validate that cached files were not rebuilt
-			t.Logf("Incremental build %s: rebuilt %d files, cached %d files, duration %v", 
+			t.Logf("Incremental build %s: rebuilt %d files, cached %d files, duration %v",
 				scenario.name, len(scenario.expectRebuilt), len(scenario.expectCached), duration)
 		})
 	}
@@ -256,7 +256,7 @@ func testCacheEffectivenessValidation(t *testing.T) {
 			10.0, // Second build should be within 10x of first (very permissive for micro-benchmarks)
 		},
 		{
-			"ConsistentCachePerformance", 
+			"ConsistentCachePerformance",
 			5,
 			true,
 			10.0, // Subsequent builds should be within 10x (very permissive for timing variations)
@@ -267,42 +267,42 @@ func testCacheEffectivenessValidation(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			config := core.DefaultConfig()
 			parser := core.NewParallelParser(config)
-			
+
 			var buildDurations []time.Duration
-			
+
 			for build := 0; build < test.buildCount; build++ {
 				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-				
+
 				start := time.Now()
 				results, err := parser.ParseFiles(ctx, projectFiles)
 				duration := time.Since(start)
 				cancel()
-				
+
 				if err != nil {
 					t.Errorf("Build %d failed: %v", build+1, err)
 					continue
 				}
-				
+
 				if len(results) != len(projectFiles) {
-					t.Errorf("Build %d: expected %d results, got %d", 
+					t.Errorf("Build %d: expected %d results, got %d",
 						build+1, len(projectFiles), len(results))
 				}
-				
+
 				buildDurations = append(buildDurations, duration)
 				t.Logf("Build %d duration: %v", build+1, duration)
-				
+
 				// Small delay between builds
 				time.Sleep(100 * time.Millisecond)
 			}
-			
+
 			if len(buildDurations) >= 2 {
 				firstBuild := buildDurations[0]
 				lastBuild := buildDurations[len(buildDurations)-1]
-				
+
 				ratio := float64(lastBuild) / float64(firstBuild)
-				
+
 				if test.expectImprovement && ratio > test.maxDurationRatio {
-					t.Errorf("Cache effectiveness below expected: ratio=%.2f, expected<%.2f", 
+					t.Errorf("Cache effectiveness below expected: ratio=%.2f, expected<%.2f",
 						ratio, test.maxDurationRatio)
 				} else if test.expectImprovement {
 					improvement := (1.0 - ratio) * 100
@@ -377,18 +377,18 @@ func testDevelopmentWorkflowSimulation(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Workflow step %s failed: %v", step.step, err)
 			}
-			
+
 			if step.expectBuild {
 				// Find all .gofa files and build
 				files, err := findGofaFiles(testDir)
 				if err != nil {
 					t.Fatalf("Failed to find gofa files: %v", err)
 				}
-				
+
 				if len(files) > 0 {
 					ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 					defer cancel()
-					
+
 					results, err := parser.ParseFiles(ctx, files)
 					if err != nil {
 						t.Errorf("Build failed for step %s: %v", step.step, err)
@@ -410,10 +410,10 @@ func testCICDPipelineIntegration(t *testing.T) {
 
 	// Simulate CI/CD pipeline stages
 	pipelineStages := []struct {
-		name        string
-		setup       func() error
-		validate    func() error
-		expectPass  bool
+		name       string
+		setup      func() error
+		validate   func() error
+		expectPass bool
 	}{
 		{
 			"StaticAnalysis",
@@ -426,18 +426,18 @@ func testCICDPipelineIntegration(t *testing.T) {
 				if err != nil {
 					return err
 				}
-				
+
 				config := core.DefaultConfig()
 				parser := core.NewParallelParser(config)
-				
+
 				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 				defer cancel()
-				
+
 				results, err := parser.ParseFiles(ctx, files)
 				if err != nil {
 					return fmt.Errorf("static analysis failed: %v", err)
 				}
-				
+
 				// Check for parsing errors
 				errorCount := 0
 				for _, result := range results {
@@ -445,11 +445,11 @@ func testCICDPipelineIntegration(t *testing.T) {
 						errorCount++
 					}
 				}
-				
+
 				if errorCount > 0 {
 					return fmt.Errorf("found %d parsing errors", errorCount)
 				}
-				
+
 				return nil
 			},
 			true,
@@ -463,41 +463,41 @@ func testCICDPipelineIntegration(t *testing.T) {
 			func() error {
 				// Test code generation for all files
 				files, _ := findGofaFiles(testDir)
-				
+
 				extractor := core.NewDecoratorExtractor(core.DefaultExtractorConfig())
 				generator := core.NewCodeGenerator(core.DefaultGeneratorConfig())
-				
+
 				successCount := 0
 				for _, filePath := range files {
 					content, err := os.ReadFile(filePath)
 					if err != nil {
 						continue
 					}
-					
+
 					result, err := extractor.Extract(content)
 					if err != nil {
 						continue
 					}
-					
+
 					// Test generation for each decorator
 					for _, decorator := range result.Decorators {
 						typeDef := core.TypeDefinition{
-							Name: fmt.Sprintf("Generated_%d", successCount),
-							Kind: "struct",
+							Name:       fmt.Sprintf("Generated_%d", successCount),
+							Kind:       "struct",
 							Decorators: []core.Decorator{decorator},
 						}
-						
+
 						_, err := generator.GenerateStruct(typeDef)
 						if err == nil {
 							successCount++
 						}
 					}
 				}
-				
+
 				if successCount == 0 {
 					return fmt.Errorf("no successful code generations")
 				}
-				
+
 				return nil
 			},
 			true,
@@ -510,11 +510,11 @@ func testCICDPipelineIntegration(t *testing.T) {
 			func() error {
 				// Validate quality metrics
 				files, _ := findGofaFiles(testDir)
-				
+
 				if len(files) < 3 {
 					return fmt.Errorf("insufficient test coverage: only %d files", len(files))
 				}
-				
+
 				// Check for minimum complexity
 				complexitySum := 0
 				for _, filePath := range files {
@@ -522,17 +522,17 @@ func testCICDPipelineIntegration(t *testing.T) {
 					if err != nil {
 						continue
 					}
-					
+
 					// Simple complexity metric: count decorators and functions
 					complexity := strings.Count(string(content), "@") + strings.Count(string(content), "func")
 					complexitySum += complexity
 				}
-				
+
 				avgComplexity := complexitySum / len(files)
 				if avgComplexity < 1 {
 					return fmt.Errorf("average file complexity too low: %d", avgComplexity)
 				}
-				
+
 				return nil
 			},
 			true,
@@ -545,26 +545,26 @@ func testCICDPipelineIntegration(t *testing.T) {
 			func() error {
 				// Run performance benchmarks
 				files, _ := findGofaFiles(testDir)
-				
+
 				config := core.DefaultConfig()
 				parser := core.NewParallelParser(config)
-				
+
 				ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 				defer cancel()
-				
+
 				start := time.Now()
 				results, err := parser.ParseFiles(ctx, files)
 				duration := time.Since(start)
-				
+
 				if err != nil {
 					return err
 				}
-				
+
 				filesPerSec := float64(len(results)) / duration.Seconds()
 				if filesPerSec < 100 {
 					return fmt.Errorf("performance below threshold: %.2f files/sec", filesPerSec)
 				}
-				
+
 				return nil
 			},
 			true,
@@ -578,7 +578,7 @@ func testCICDPipelineIntegration(t *testing.T) {
 			if err != nil {
 				t.Fatalf("Stage setup failed for %s: %v", stage.name, err)
 			}
-			
+
 			// Validate stage
 			err = stage.validate()
 			if stage.expectPass && err != nil {
@@ -612,7 +612,7 @@ func testBuildSystemCompatibility(t *testing.T) {
 .PHONY: build clean test
 
 build:
-	@echo "Building with GoFasta..."
+	@echo "Building with Gofasta..."
 	@gofasta transpile src/
 
 clean:
@@ -632,11 +632,11 @@ test: build
 				if err != nil {
 					return err
 				}
-				
+
 				if !strings.Contains(string(content), "gofasta transpile") {
 					return fmt.Errorf("Makefile missing gofasta command")
 				}
-				
+
 				return nil
 			},
 		},
@@ -673,11 +673,11 @@ ENTRYPOINT ["/app"]
 				if err != nil {
 					return err
 				}
-				
+
 				if !strings.Contains(string(content), "gofasta transpile") {
 					return fmt.Errorf("Dockerfile missing gofasta command")
 				}
-				
+
 				return nil
 			},
 		},
@@ -690,7 +690,7 @@ ENTRYPOINT ["/app"]
   "tasks": {
     "build": {
       "command": "gofasta transpile src/",
-      "description": "Transpile GoFasta files"
+      "description": "Transpile Gofasta files"
     },
     "watch": {
       "command": "gofasta watch src/",
@@ -711,11 +711,11 @@ ENTRYPOINT ["/app"]
 				if err != nil {
 					return err
 				}
-				
+
 				if !strings.Contains(string(content), "gofasta transpile") {
 					return fmt.Errorf("Task configuration missing gofasta commands")
 				}
-				
+
 				return nil
 			},
 		},
@@ -727,7 +727,7 @@ ENTRYPOINT ["/app"]
 			if err != nil {
 				t.Fatalf("Build system setup failed: %v", err)
 			}
-			
+
 			err = buildSystem.validate()
 			if err != nil {
 				t.Errorf("Build system validation failed: %v", err)
@@ -814,42 +814,42 @@ func (s *HotService) Process() {
 			// Initial build
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
-			
+
 			initialResults, err := parser.ParseFiles(ctx, projectFiles)
 			if err != nil {
 				t.Fatalf("Initial build failed: %v", err)
 			}
-			
+
 			// Apply modification
 			start := time.Now()
 			err = test.modifyFunc()
 			if err != nil {
 				t.Fatalf("Failed to apply modification: %v", err)
 			}
-			
+
 			if test.expectReload {
 				// Simulate hot reload detection and rebuild
 				time.Sleep(50 * time.Millisecond) // File system event delay
-				
+
 				reloadStart := time.Now()
 				reloadResults, err := parser.ParseFiles(ctx, projectFiles)
 				reloadDuration := time.Since(reloadStart)
-				
+
 				if err != nil {
 					t.Errorf("Hot reload failed: %v", err)
 				}
-				
+
 				if len(reloadResults) != len(initialResults) {
-					t.Errorf("Hot reload result count mismatch: expected %d, got %d", 
+					t.Errorf("Hot reload result count mismatch: expected %d, got %d",
 						len(initialResults), len(reloadResults))
 				}
-				
+
 				totalTime := time.Since(start)
-				
+
 				if reloadDuration > test.reloadTime*2 {
 					t.Errorf("Hot reload too slow: %v (expected < %v)", reloadDuration, test.reloadTime*2)
 				} else {
-					t.Logf("Hot reload %s: reload in %v, total time %v", 
+					t.Logf("Hot reload %s: reload in %v, total time %v",
 						test.name, reloadDuration, totalTime)
 				}
 			} else {
@@ -880,7 +880,7 @@ func createRealisticProjectStructure(t *testing.T, baseDir string) map[string][]
 		for i := 0; i < 3; i++ {
 			filename := fmt.Sprintf("%s_%d.gofa", category, i)
 			filepath := filepath.Join(dir, filename)
-			
+
 			content := fmt.Sprintf(`package %s
 
 // @%s
@@ -894,7 +894,7 @@ func (x *%s%d) Method%d() {
 			if err := os.WriteFile(filepath, []byte(content), 0644); err != nil {
 				t.Fatalf("Failed to create file %s: %v", filepath, err)
 			}
-			
+
 			structure[category] = append(structure[category], filepath)
 		}
 	}
@@ -952,11 +952,11 @@ func (c *UserController) GetUsers() {
 
 func createCacheTestProject(t *testing.T, baseDir string, fileCount int) []string {
 	var files []string
-	
+
 	for i := 0; i < fileCount; i++ {
 		filename := fmt.Sprintf("cache_test_%03d.gofa", i)
 		filepath := filepath.Join(baseDir, filename)
-		
+
 		content := fmt.Sprintf(`package cache
 
 // @Service("cache%d")
@@ -971,10 +971,10 @@ func (s *CacheService%d) GetData%d() interface{} {
 		if err := os.WriteFile(filepath, []byte(content), 0644); err != nil {
 			t.Fatalf("Failed to create cache test file: %v", err)
 		}
-		
+
 		files = append(files, filepath)
 	}
-	
+
 	return files
 }
 
@@ -995,13 +995,13 @@ func findGofaFiles(dir string) ([]string, error) {
 func createInitialProject(baseDir string) error {
 	// Create basic project structure
 	dirs := []string{"controllers", "services", "models"}
-	
+
 	for _, dir := range dirs {
 		if err := os.MkdirAll(filepath.Join(baseDir, dir), 0755); err != nil {
 			return err
 		}
 	}
-	
+
 	// Create initial files
 	initialFiles := map[string]string{
 		"controllers/main.gofa": `package controllers
@@ -1017,14 +1017,14 @@ type MainService struct {}`,
 // @Model
 type MainModel struct {}`,
 	}
-	
+
 	for path, content := range initialFiles {
 		fullPath := filepath.Join(baseDir, path)
 		if err := os.WriteFile(fullPath, []byte(content), 0644); err != nil {
 			return err
 		}
 	}
-	
+
 	return nil
 }
 
@@ -1039,14 +1039,14 @@ type FeatureController struct {}`,
 // @Service
 type FeatureService struct {}`,
 	}
-	
+
 	for path, content := range featureFiles {
 		fullPath := filepath.Join(baseDir, path)
 		if err := os.WriteFile(fullPath, []byte(content), 0644); err != nil {
 			return err
 		}
 	}
-	
+
 	return nil
 }
 
@@ -1062,7 +1062,7 @@ type MainController struct {}
 func (c *MainController) GetStatus() {
 	// Refactored method
 }`
-	
+
 	return os.WriteFile(mainController, []byte(content), 0644)
 }
 
@@ -1071,7 +1071,7 @@ func addTestFiles(baseDir string) error {
 	if err := os.MkdirAll(testDir, 0755); err != nil {
 		return err
 	}
-	
+
 	testFile := filepath.Join(testDir, "main_test.go")
 	content := `package tests
 
@@ -1080,7 +1080,7 @@ import "testing"
 func TestMain(t *testing.T) {
 	t.Log("Test added")
 }`
-	
+
 	return os.WriteFile(testFile, []byte(content), 0644)
 }
 
@@ -1096,7 +1096,7 @@ func (s *MainService) ProcessData() error {
 	// Bug fix: added error handling
 	return nil
 }`
-	
+
 	return os.WriteFile(mainService, []byte(content), 0644)
 }
 
@@ -1106,7 +1106,7 @@ func updateDocumentation(baseDir string) error {
 
 This project has been updated with new features and bug fixes.
 `
-	
+
 	return os.WriteFile(readme, []byte(content), 0644)
 }
 
@@ -1120,7 +1120,7 @@ func createHotReloadProject(t *testing.T, baseDir string) []string {
 		filepath.Join(baseDir, "hot_controller.gofa"),
 		filepath.Join(baseDir, "hot_service.gofa"),
 	}
-	
+
 	contents := []string{
 		`package main
 
@@ -1131,12 +1131,12 @@ type Controller struct {}`,
 // @Service
 type Service struct {}`,
 	}
-	
+
 	for i, file := range files {
 		if err := os.WriteFile(file, []byte(contents[i]), 0644); err != nil {
 			t.Fatalf("Failed to create hot reload file: %v", err)
 		}
 	}
-	
+
 	return files
 }

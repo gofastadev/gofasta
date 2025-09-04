@@ -1,6 +1,6 @@
 # Fault Tolerance Integration Tests
 
-This directory contains comprehensive integration tests for the GoFasta fault tolerance framework, covering all aspects of the @Supervisor, @Actor, @ActorRef, and @ActorSystem decorators working together in real-world scenarios.
+This directory contains comprehensive integration tests for the Gofasta fault tolerance framework, covering all aspects of the @Supervisor, @Actor, @ActorRef, and @ActorSystem decorators working together in real-world scenarios.
 
 ## Test Structure
 
@@ -271,4 +271,4 @@ After running these integration tests:
 4. **Production validation** - Deploy to staging environment for final validation
 5. **Documentation** - Update examples and documentation based on test insights
 
-These integration tests provide comprehensive validation of the GoFasta fault tolerance framework, ensuring that all decorators work together seamlessly to provide production-ready resilience capabilities.
+These integration tests provide comprehensive validation of the Gofasta fault tolerance framework, ensuring that all decorators work together seamlessly to provide production-ready resilience capabilities.

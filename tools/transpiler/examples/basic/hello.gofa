@@ -4,7 +4,7 @@ import "fmt"
 
 @Controller("/api/hello")
 func HelloController() {
-	fmt.Println("Hello from GoFasta!")
+	fmt.Println("Hello from Gofasta!")
 }
 
 @Get("/")

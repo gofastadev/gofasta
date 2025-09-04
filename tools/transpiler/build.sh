@@ -1,5 +1,5 @@
 #!/bin/bash
-# GoFasta Transpiler Build Script
+# Gofasta Transpiler Build Script
 # High-performance enterprise backend framework
 
 set -e
@@ -24,7 +24,7 @@ BUILD_FLAGS="-trimpath"
 
 print_banner() {
     echo -e "${BLUE}"
-    echo "🚀 GoFasta Transpiler Build Script"
+    echo "🚀 Gofasta Transpiler Build Script"
     echo "===================================="
     echo "Version: ${VERSION}"
     echo "Build Time: ${BUILD_TIME}"
@@ -82,7 +82,7 @@ run_tests() {
 }
 
 build_binary() {
-    print_step "Building GoFasta transpiler..."
+    print_step "Building Gofasta transpiler..."
     
     mkdir -p "${BUILD_DIR}"
     
@@ -113,7 +113,7 @@ import "fmt"
 
 @Controller("/api/hello")
 func HelloController() {
-	fmt.Println("Hello from GoFasta!")
+	fmt.Println("Hello from Gofasta!")
 }
 
 @Get("/")
@@ -240,7 +240,7 @@ show_usage() {
     echo "Usage: $0 [command]"
     echo ""
     echo "Commands:"
-    echo "  build       Build the GoFasta transpiler (default)"
+    echo "  build       Build the Gofasta transpiler (default)"
     echo "  test        Run tests only"
     echo "  clean       Clean build artifacts"
     echo "  examples    Create example files only"

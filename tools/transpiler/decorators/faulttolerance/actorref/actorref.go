@@ -1,4 +1,4 @@
-// Package actor provides fault tolerance decorators for GoFasta
+// Package actor provides fault tolerance decorators for Gofasta
 package actorref
 
 import (
@@ -11,6 +11,25 @@ import (
 	"github.com/healtronlabs/gofasta/tools/transpiler/core"
 	"github.com/healtronlabs/gofasta/tools/transpiler/decorators/faulttolerance/common"
 )
+
+func init() {
+	// Register ActorRef decorator
+	core.RegisterDecorator(&core.RegisteredDecorator{
+		Name:        "ActorRef",
+		Type:        "fault_tolerance",
+		Description: "Actor references with fast lookup tables",
+		Handler:     ActorRefDecorator,
+		Schema: &core.DecoratorSchema{
+			Properties: map[string]core.PropertyDef{
+				"fastLookup":      {Type: "bool", Default: true},
+				"cacheEnabled":    {Type: "bool", Default: true},
+				"lookupTimeout":   {Type: "duration", Default: "100µs"},
+				"maxReferences":   {Type: "int", Default: 10000},
+				"cleanupInterval": {Type: "duration", Default: "5m"},
+			},
+		},
+	})
+}
 
 // ActorRefConfig holds configuration for an actor reference
 type ActorRefConfig struct {
@@ -39,22 +58,22 @@ const (
 
 // ActorRefRuntime manages actor reference execution
 type ActorRefRuntime struct {
-	config        ActorRefConfig
-	sentMessages  int64
-	failedSends   int64
-	lastActivity  time.Time
-	mu            sync.RWMutex
-	connections   []*Connection
-	currentIndex  int64
+	config       ActorRefConfig
+	sentMessages int64
+	failedSends  int64
+	lastActivity time.Time
+	mu           sync.RWMutex
+	connections  []*Connection
+	currentIndex int64
 }
 
 // Connection represents a connection to an actor
 type Connection struct {
-	address   string
-	active    bool
-	lastUsed  time.Time
-	failures  int64
-	mu        sync.RWMutex
+	address  string
+	active   bool
+	lastUsed time.Time
+	failures int64
+	mu       sync.RWMutex
 }
 
 // ActorRefDecorator implements the @ActorRef decorator
@@ -121,7 +140,7 @@ func parseActorRefArgs(args core.DecoratorArgs) (ActorRefConfig, error) {
 	// Parse actor path from first argument (required by tests)
 	if len(args.Arguments) > 0 {
 		if actorPath, ok := args.Arguments[0].(string); ok {
-			config.ActorID = actorPath // Use path as ID
+			config.ActorID = actorPath       // Use path as ID
 			config.RemoteAddress = actorPath // Store path for lookup
 		}
 	}
@@ -251,10 +270,10 @@ func (r *ActorRefRuntime) attemptSend(conn *Connection, msg common.Message) erro
 	}
 
 	conn.lastUsed = time.Now()
-	
+
 	// Simulate network delay
 	time.Sleep(1 * time.Millisecond)
-	
+
 	return nil
 }
 
@@ -279,12 +298,12 @@ func (r *ActorRefRuntime) GetStats() map[string]interface{} {
 	defer r.mu.RUnlock()
 
 	return map[string]interface{}{
-		"actor_id":        r.config.ActorID,
-		"sent_messages":   atomic.LoadInt64(&r.sentMessages),
-		"failed_sends":    atomic.LoadInt64(&r.failedSends),
-		"connections":     len(r.connections),
-		"last_activity":   r.lastActivity,
-		"load_balancing":  r.config.LoadBalancing,
+		"actor_id":       r.config.ActorID,
+		"sent_messages":  atomic.LoadInt64(&r.sentMessages),
+		"failed_sends":   atomic.LoadInt64(&r.failedSends),
+		"connections":    len(r.connections),
+		"last_activity":  r.lastActivity,
+		"load_balancing": r.config.LoadBalancing,
 	}
 }
 
@@ -365,7 +384,7 @@ func handleActorRefOperation(ctx context.Context, target *ActorRefTarget, args c
 				start := time.Now()
 				// Simulate lookup logic (should be < 100μs)
 				lookupDuration := time.Since(start)
-				
+
 				metadata["lookup_successful"] = true
 				metadata["lookup_path"] = lookupPath
 				metadata["lookup_duration"] = lookupDuration.Nanoseconds()
@@ -377,7 +396,7 @@ func handleActorRefOperation(ctx context.Context, target *ActorRefTarget, args c
 		message := ""
 		messageType := "text"
 		sender := ""
-		
+
 		if msg, ok := args.Properties["message"].(string); ok {
 			message = msg
 		}
@@ -387,7 +406,7 @@ func handleActorRefOperation(ctx context.Context, target *ActorRefTarget, args c
 		if senderPath, ok := args.Properties["sender"].(string); ok {
 			sender = senderPath
 		}
-		
+
 		// Create and send message
 		msg := common.Message{
 			ID:        fmt.Sprintf("msg-%d", time.Now().UnixNano()),
@@ -395,7 +414,7 @@ func handleActorRefOperation(ctx context.Context, target *ActorRefTarget, args c
 			Sender:    sender,
 			Timestamp: time.Now(),
 		}
-		
+
 		err := target.runtime.SendMessage(msg)
 		if err != nil {
 			return core.DecoratorResult{
@@ -403,7 +422,7 @@ func handleActorRefOperation(ctx context.Context, target *ActorRefTarget, args c
 				Error:   fmt.Sprintf("failed to send message: %v", err),
 			}, nil
 		}
-		
+
 		metadata["message_sent"] = true
 		metadata["message_type"] = messageType
 		metadata["sender"] = sender

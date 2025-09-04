@@ -1,4 +1,4 @@
-// Package core provides import caching capabilities for GoFasta transpiler.
+// Package core provides import caching capabilities for Gofasta transpiler.
 // This implements Phase 1.1f: Configure go/importer with import caching.
 package core
 
@@ -24,14 +24,14 @@ type ImportCacheConfig struct {
 	// MaxEntries sets the maximum number of cached imports
 	// If 0, defaults to 1000
 	MaxEntries int
-	
+
 	// TTL sets the time-to-live for cached entries
 	// If 0, defaults to 1 hour
 	TTL time.Duration
-	
+
 	// EnableMetrics enables cache metrics collection
 	EnableMetrics bool
-	
+
 	// MaxMemoryMB sets the maximum memory usage in MB
 	// If 0, defaults to 256MB
 	MaxMemoryMB int64
@@ -49,12 +49,12 @@ func DefaultImportCacheConfig() *ImportCacheConfig {
 
 // CachedImporter provides high-performance import caching with LRU eviction
 type CachedImporter struct {
-	config    *ImportCacheConfig
-	cache     map[string]*ImportCacheEntry
-	lruList   []string
-	importer  types.Importer
-	mu        sync.RWMutex
-	
+	config   *ImportCacheConfig
+	cache    map[string]*ImportCacheEntry
+	lruList  []string
+	importer types.Importer
+	mu       sync.RWMutex
+
 	// Metrics
 	hits      int64
 	misses    int64
@@ -67,19 +67,19 @@ func NewCachedImporter(config *ImportCacheConfig) *CachedImporter {
 	if config == nil {
 		config = DefaultImportCacheConfig()
 	}
-	
+
 	if config.MaxEntries <= 0 {
 		config.MaxEntries = 1000
 	}
-	
+
 	if config.TTL <= 0 {
 		config.TTL = time.Hour
 	}
-	
+
 	if config.MaxMemoryMB <= 0 {
 		config.MaxMemoryMB = 256
 	}
-	
+
 	return &CachedImporter{
 		config:   config,
 		cache:    make(map[string]*ImportCacheEntry),
@@ -99,14 +99,14 @@ func (ci *CachedImporter) Import(path string) (*types.Package, error) {
 		}
 		return pkg, nil
 	}
-	
+
 	// Cache miss - import from source
 	if ci.config.EnableMetrics {
 		ci.mu.Lock()
 		ci.misses++
 		ci.mu.Unlock()
 	}
-	
+
 	pkg, err := ci.importer.Import(path)
 	if err != nil {
 		if ci.config.EnableMetrics {
@@ -116,10 +116,10 @@ func (ci *CachedImporter) Import(path string) (*types.Package, error) {
 		}
 		return nil, err
 	}
-	
+
 	// Cache successful import
 	ci.putInCache(path, pkg)
-	
+
 	return pkg, nil
 }
 
@@ -130,7 +130,7 @@ func (ci *CachedImporter) ImportWithFallback(path string, fallbackImporters ...t
 	if err == nil {
 		return pkg, nil
 	}
-	
+
 	// Try fallback importers
 	for _, fallback := range fallbackImporters {
 		if pkg, fallbackErr := fallback.Import(path); fallbackErr == nil {
@@ -139,7 +139,7 @@ func (ci *CachedImporter) ImportWithFallback(path string, fallbackImporters ...t
 			return pkg, nil
 		}
 	}
-	
+
 	// Return original error if all fallbacks fail
 	return nil, err
 }
@@ -147,13 +147,13 @@ func (ci *CachedImporter) ImportWithFallback(path string, fallbackImporters ...t
 // Preload preloads common packages into cache
 func (ci *CachedImporter) Preload(packages []string) map[string]error {
 	errors := make(map[string]error)
-	
+
 	for _, pkgPath := range packages {
 		if _, err := ci.Import(pkgPath); err != nil {
 			errors[pkgPath] = err
 		}
 	}
-	
+
 	return errors
 }
 
@@ -161,31 +161,31 @@ func (ci *CachedImporter) Preload(packages []string) map[string]error {
 func (ci *CachedImporter) GetStatistics() map[string]interface{} {
 	ci.mu.RLock()
 	defer ci.mu.RUnlock()
-	
+
 	totalRequests := ci.hits + ci.misses
 	hitRatio := 0.0
 	if totalRequests > 0 {
 		hitRatio = float64(ci.hits) / float64(totalRequests) * 100.0
 	}
-	
+
 	errorRate := 0.0
 	if totalRequests > 0 {
 		errorRate = float64(ci.errors) / float64(totalRequests) * 100.0
 	}
-	
+
 	memoryUsage := ci.estimateMemoryUsage()
-	
+
 	return map[string]interface{}{
-		"entries":       len(ci.cache),
-		"max_entries":   ci.config.MaxEntries,
-		"hits":          ci.hits,
-		"misses":        ci.misses,
-		"evictions":     ci.evictions,
-		"errors":        ci.errors,
-		"hit_ratio":     hitRatio,
-		"error_rate":    errorRate,
-		"memory_mb":     memoryUsage,
-		"max_memory":    ci.config.MaxMemoryMB,
+		"entries":        len(ci.cache),
+		"max_entries":    ci.config.MaxEntries,
+		"hits":           ci.hits,
+		"misses":         ci.misses,
+		"evictions":      ci.evictions,
+		"errors":         ci.errors,
+		"hit_ratio":      hitRatio,
+		"error_rate":     errorRate,
+		"memory_mb":      memoryUsage,
+		"max_memory":     ci.config.MaxMemoryMB,
 		"total_requests": totalRequests,
 	}
 }
@@ -194,7 +194,7 @@ func (ci *CachedImporter) GetStatistics() map[string]interface{} {
 func (ci *CachedImporter) Clear() {
 	ci.mu.Lock()
 	defer ci.mu.Unlock()
-	
+
 	ci.cache = make(map[string]*ImportCacheEntry)
 	ci.lruList = make([]string, 0, ci.config.MaxEntries)
 }
@@ -203,10 +203,10 @@ func (ci *CachedImporter) Clear() {
 func (ci *CachedImporter) Cleanup() int {
 	ci.mu.Lock()
 	defer ci.mu.Unlock()
-	
+
 	removed := 0
 	now := time.Now()
-	
+
 	for path, entry := range ci.cache {
 		if now.Sub(entry.CacheTime) > ci.config.TTL {
 			delete(ci.cache, path)
@@ -214,7 +214,7 @@ func (ci *CachedImporter) Cleanup() int {
 			removed++
 		}
 	}
-	
+
 	return removed
 }
 
@@ -222,12 +222,12 @@ func (ci *CachedImporter) Cleanup() int {
 func (ci *CachedImporter) GetCachedPackages() []string {
 	ci.mu.RLock()
 	defer ci.mu.RUnlock()
-	
+
 	packages := make([]string, 0, len(ci.cache))
 	for path := range ci.cache {
 		packages = append(packages, path)
 	}
-	
+
 	return packages
 }
 
@@ -235,26 +235,26 @@ func (ci *CachedImporter) GetCachedPackages() []string {
 func (ci *CachedImporter) getFromCache(path string) *types.Package {
 	ci.mu.Lock()
 	defer ci.mu.Unlock()
-	
+
 	entry, exists := ci.cache[path]
 	if !exists {
 		return nil
 	}
-	
+
 	// Check TTL
 	if time.Since(entry.CacheTime) > ci.config.TTL {
 		delete(ci.cache, path)
 		ci.removeFromLRU(path)
 		return nil
 	}
-	
+
 	// Update access metadata
 	entry.AccessTime = time.Now()
 	entry.AccessCount++
-	
+
 	// Move to front of LRU
 	ci.moveToFront(path)
-	
+
 	return entry.Package
 }
 
@@ -262,10 +262,10 @@ func (ci *CachedImporter) getFromCache(path string) *types.Package {
 func (ci *CachedImporter) putInCache(path string, pkg *types.Package) {
 	ci.mu.Lock()
 	defer ci.mu.Unlock()
-	
+
 	// Check if we need to evict entries
 	ci.evictIfNeeded()
-	
+
 	now := time.Now()
 	entry := &ImportCacheEntry{
 		Package:     pkg,
@@ -274,7 +274,7 @@ func (ci *CachedImporter) putInCache(path string, pkg *types.Package) {
 		AccessCount: 1,
 		Size:        ci.estimatePackageSize(pkg),
 	}
-	
+
 	ci.cache[path] = entry
 	ci.addToLRU(path)
 }
@@ -285,7 +285,7 @@ func (ci *CachedImporter) evictIfNeeded() {
 	for len(ci.cache) >= ci.config.MaxEntries {
 		ci.evictLRU()
 	}
-	
+
 	// Evict by memory
 	if ci.config.EnableMetrics {
 		memUsage := ci.estimateMemoryUsage()
@@ -301,11 +301,11 @@ func (ci *CachedImporter) evictLRU() {
 	if len(ci.lruList) == 0 {
 		return
 	}
-	
+
 	path := ci.lruList[len(ci.lruList)-1]
 	delete(ci.cache, path)
 	ci.lruList = ci.lruList[:len(ci.lruList)-1]
-	
+
 	if ci.config.EnableMetrics {
 		ci.evictions++
 	}
@@ -315,7 +315,7 @@ func (ci *CachedImporter) evictLRU() {
 func (ci *CachedImporter) addToLRU(path string) {
 	// Remove if already exists
 	ci.removeFromLRU(path)
-	
+
 	// Add to front
 	ci.lruList = append([]string{path}, ci.lruList...)
 }
@@ -342,7 +342,7 @@ func (ci *CachedImporter) estimateMemoryUsage() int64 {
 	for _, entry := range ci.cache {
 		totalSize += entry.Size
 	}
-	
+
 	return totalSize / (1024 * 1024) // Convert to MB
 }
 
@@ -351,15 +351,15 @@ func (ci *CachedImporter) estimatePackageSize(pkg *types.Package) int64 {
 	if pkg == nil {
 		return 0
 	}
-	
+
 	// Rough estimate based on package name length and scope
 	size := int64(len(pkg.Name()) + len(pkg.Path()))
-	
+
 	// Add estimate for scope contents
 	if scope := pkg.Scope(); scope != nil {
 		size += int64(scope.Len() * 100) // Rough estimate per scope entry
 	}
-	
+
 	return size
 }
 
@@ -370,7 +370,7 @@ func (ci *CachedImporter) WarmUp() error {
 		"net/http", "encoding/json", "strings", "strconv",
 		"errors", "log", "path/filepath", "regexp",
 	}
-	
+
 	errors := ci.Preload(standardPackages)
 	if len(errors) > 0 {
 		// Return first error encountered
@@ -378,7 +378,7 @@ func (ci *CachedImporter) WarmUp() error {
 			return fmt.Errorf("failed to preload %s: %w", pkg, err)
 		}
 	}
-	
+
 	return nil
 }
 

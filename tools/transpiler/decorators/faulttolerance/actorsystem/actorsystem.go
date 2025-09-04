@@ -1,4 +1,4 @@
-// Package actor provides fault tolerance decorators for GoFasta
+// Package actor provides fault tolerance decorators for Gofasta
 package actorsystem
 
 import (
@@ -9,11 +9,37 @@ import (
 	"time"
 
 	"github.com/healtronlabs/gofasta/tools/transpiler/core"
-	"github.com/healtronlabs/gofasta/tools/transpiler/decorators/faulttolerance/actor"
-	"github.com/healtronlabs/gofasta/tools/transpiler/decorators/faulttolerance/actorref"
 	"github.com/healtronlabs/gofasta/tools/transpiler/decorators/faulttolerance/common"
-	"github.com/healtronlabs/gofasta/tools/transpiler/decorators/faulttolerance/supervisor"
 )
+
+func init() {
+	// Register ActorSystem decorator
+	core.RegisterDecorator(&core.RegisteredDecorator{
+		Name:        "ActorSystem",
+		Type:        "fault_tolerance",
+		Description: "Actor system management with parallel startup",
+		Handler:     ActorSystemDecorator,
+		Schema: &core.DecoratorSchema{
+			Arguments: []core.ArgumentSchema{
+				{Name: "name", Type: "string", Required: true, Description: "Actor system name"},
+			},
+			Properties: map[string]core.PropertyDef{
+				"parallelStartup":       {Type: "bool", Default: true},
+				"startupWorkers":        {Type: "int", Default: 4},
+				"actorCount":            {Type: "int", Default: 0},
+				"clustering":            {Type: "bool", Default: false},
+				"clusterNodes":          {Type: "array"},
+				"seedNodes":             {Type: "array"},
+				"remoting":              {Type: "bool", Default: false},
+				"remotingPort":          {Type: "int", Default: 2552},
+				"persistence":           {Type: "bool", Default: false},
+				"persistenceConnection": {Type: "string"},
+				"discovery":             {Type: "bool", Default: true},
+				"loadBalancing":         {Type: "string", Default: "RoundRobin", Enum: []string{"RoundRobin", "Random", "LeastConnections"}},
+			},
+		},
+	})
+}
 
 // ActorSystemConfig holds configuration for an actor system
 type ActorSystemConfig struct {
@@ -27,10 +53,10 @@ type ActorSystemConfig struct {
 
 // DiscoveryConfig holds service discovery configuration
 type DiscoveryConfig struct {
-	Provider   string
-	Endpoints  []string
-	Interval   time.Duration
-	TTL        time.Duration
+	Provider  string
+	Endpoints []string
+	Interval  time.Duration
+	TTL       time.Duration
 }
 
 // PersistenceConfig holds persistence configuration
@@ -45,12 +71,12 @@ type PersistenceConfig struct {
 type ActorSystemRuntime struct {
 	config         ActorSystemConfig
 	actors         map[string]common.ActorInterface      // Actor implementations
-	supervisors    map[string]common.SupervisorInterface // Supervisor implementations  
+	supervisors    map[string]common.SupervisorInterface // Supervisor implementations
 	actorRefs      map[string]common.ActorRefInterface   // ActorRef implementations
 	totalMessages  int64
 	totalActors    int64
 	totalErrors    int64
-	expectedActors int64  // Expected actor count from system creation
+	expectedActors int64 // Expected actor count from system creation
 	mu             sync.RWMutex
 	ctx            context.Context
 	cancel         context.CancelFunc
@@ -60,20 +86,20 @@ type ActorSystemRuntime struct {
 
 // ServiceDiscovery manages service discovery
 type ServiceDiscovery struct {
-	config    DiscoveryConfig
-	nodes     map[string]*NodeInfo
-	mu        sync.RWMutex
-	ticker    *time.Ticker
-	stopChan  chan struct{}
+	config   DiscoveryConfig
+	nodes    map[string]*NodeInfo
+	mu       sync.RWMutex
+	ticker   *time.Ticker
+	stopChan chan struct{}
 }
 
 // NodeInfo holds information about a cluster node
 type NodeInfo struct {
-	ID        string
-	Address   string
-	LastSeen  time.Time
-	Active    bool
-	Load      float64
+	ID       string
+	Address  string
+	LastSeen time.Time
+	Active   bool
+	Load     float64
 }
 
 // PersistenceManager manages persistence operations
@@ -209,7 +235,7 @@ func parseActorSystemArgs(args core.DecoratorArgs) (ActorSystemConfig, error) {
 }
 
 // RegisterActor registers an actor in the system
-func (r *ActorSystemRuntime) RegisterActor(id string, actor *actor.ActorRuntime) error {
+func (r *ActorSystemRuntime) RegisterActor(id string, actor common.ActorInterface) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -224,7 +250,7 @@ func (r *ActorSystemRuntime) RegisterActor(id string, actor *actor.ActorRuntime)
 }
 
 // RegisterSupervisor registers a supervisor in the system
-func (r *ActorSystemRuntime) RegisterSupervisor(name string, supervisor *supervisor.SupervisorState) {
+func (r *ActorSystemRuntime) RegisterSupervisor(name string, supervisor common.SupervisorInterface) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -232,7 +258,7 @@ func (r *ActorSystemRuntime) RegisterSupervisor(name string, supervisor *supervi
 }
 
 // RegisterActorRef registers an actor ref in the system
-func (r *ActorSystemRuntime) RegisterActorRef(id string, actorRef *actorref.ActorRefRuntime) {
+func (r *ActorSystemRuntime) RegisterActorRef(id string, actorRef common.ActorRefInterface) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -289,14 +315,14 @@ func (r *ActorSystemRuntime) GetStats() map[string]interface{} {
 	defer r.mu.RUnlock()
 
 	return map[string]interface{}{
-		"system_name":     r.config.Name,
-		"total_actors":    len(r.actors),
+		"system_name":       r.config.Name,
+		"total_actors":      len(r.actors),
 		"total_supervisors": len(r.supervisors),
-		"total_actor_refs": len(r.actorRefs),
-		"total_messages":  atomic.LoadInt64(&r.totalMessages),
-		"total_errors":    atomic.LoadInt64(&r.totalErrors),
-		"cluster_enabled": r.config.ClusterEnabled,
-		"node_id":         r.config.NodeID,
+		"total_actor_refs":  len(r.actorRefs),
+		"total_messages":    atomic.LoadInt64(&r.totalMessages),
+		"total_errors":      atomic.LoadInt64(&r.totalErrors),
+		"cluster_enabled":   r.config.ClusterEnabled,
+		"node_id":           r.config.NodeID,
 	}
 }
 
@@ -400,10 +426,10 @@ func (pm *PersistenceManager) processBatch(batch []PersistenceEvent) {
 // buildActorSystemMetadata builds comprehensive metadata for ActorSystem
 func buildActorSystemMetadata(config ActorSystemConfig, args core.DecoratorArgs, runtime *ActorSystemRuntime) map[string]interface{} {
 	metadata := map[string]interface{}{
-		"system_name":      config.Name,
-		"max_actors":       config.MaxActors,
-		"cluster_enabled":  config.ClusterEnabled,
-		"node_id":          config.NodeID,
+		"system_name":     config.Name,
+		"max_actors":      config.MaxActors,
+		"cluster_enabled": config.ClusterEnabled,
+		"node_id":         config.NodeID,
 	}
 
 	// Add parallel startup metadata
@@ -427,24 +453,24 @@ func buildActorSystemMetadata(config ActorSystemConfig, args core.DecoratorArgs,
 	if clustering, ok := args.Properties["clustering"].(bool); ok {
 		clusteringEnabled = clustering || clusteringEnabled
 	}
-	
+
 	if clusteringEnabled {
 		clusterConfig := map[string]interface{}{
 			"clustering_enabled": true,
 		}
-		
+
 		if remoting, ok := args.Properties["remoting"].(bool); ok {
 			clusterConfig["remoting_enabled"] = remoting
 		}
-		
+
 		if clusterNodes, ok := args.Properties["clusterNodes"].([]string); ok {
 			clusterConfig["node_count"] = len(clusterNodes)
 		}
-		
+
 		if seedNodes, ok := args.Properties["seedNodes"].([]string); ok {
 			clusterConfig["seed_nodes"] = len(seedNodes)
 		}
-		
+
 		metadata["cluster_config"] = clusterConfig
 	}
 
@@ -452,7 +478,7 @@ func buildActorSystemMetadata(config ActorSystemConfig, args core.DecoratorArgs,
 	if actorPooling, ok := args.Properties["actorPooling"].(bool); ok && actorPooling {
 		metadata["actor_pooling"] = true
 	}
-	
+
 	if actorRecycling, ok := args.Properties["actorRecycling"].(bool); ok && actorRecycling {
 		metadata["actor_recycling"] = true
 	}
@@ -461,7 +487,7 @@ func buildActorSystemMetadata(config ActorSystemConfig, args core.DecoratorArgs,
 	if pooling, ok := args.Properties["pooling"].(bool); ok {
 		metadata["pooling_enabled"] = pooling
 	}
-	
+
 	if fastInit, ok := args.Properties["fastInit"].(bool); ok {
 		metadata["fast_initialization"] = fastInit
 	}
@@ -470,7 +496,7 @@ func buildActorSystemMetadata(config ActorSystemConfig, args core.DecoratorArgs,
 	if actorDiscovery, ok := args.Properties["actorDiscovery"].(bool); ok {
 		metadata["actor_discovery"] = actorDiscovery
 	}
-	
+
 	if registryEnabled, ok := args.Properties["registryEnabled"].(bool); ok {
 		metadata["registry_enabled"] = registryEnabled
 	}
@@ -502,17 +528,17 @@ func handleActorSystemOperation(ctx context.Context, target *ActorSystemTarget, 
 		// Handle actor creation
 		actorPath := ""
 		actorType := ""
-		
+
 		if path, ok := args.Properties["actorPath"].(string); ok {
 			actorPath = path
 		}
 		if aType, ok := args.Properties["actorType"].(string); ok {
 			actorType = aType
 		}
-		
+
 		// Simulate actor creation
 		atomic.AddInt64(&target.runtime.totalActors, 1)
-		
+
 		metadata["operation_completed"] = true
 		metadata["actor_created"] = actorPath
 		metadata["actor_type"] = actorType
@@ -531,26 +557,26 @@ func handleActorSystemOperation(ctx context.Context, target *ActorSystemTarget, 
 		if g, ok := args.Properties["graceful"].(bool); ok {
 			graceful = g
 		}
-		
+
 		reason := ""
 		if r, ok := args.Properties["reason"].(string); ok {
 			reason = r
 		}
-		
+
 		// Simulate shutdown
 		target.runtime.cancel()
-		
+
 		metadata["shutdown_completed"] = true
 		metadata["graceful_shutdown"] = graceful
 		metadata["shutdown_reason"] = reason
-		
+
 		// Use the expected actor count from system creation
 		actorsTerminated := int(atomic.LoadInt64(&target.runtime.expectedActors))
 		if actorsTerminated == 0 {
 			// Fallback to current totalActors count if no expected count was set
 			actorsTerminated = int(atomic.LoadInt64(&target.runtime.totalActors))
 		}
-		
+
 		metadata["actors_terminated"] = actorsTerminated
 
 	case "discover":
@@ -559,7 +585,7 @@ func handleActorSystemOperation(ctx context.Context, target *ActorSystemTarget, 
 		if p, ok := args.Properties["pattern"].(string); ok {
 			pattern = p
 		}
-		
+
 		// Simulate pattern matching
 		foundCount := 0
 		switch pattern {
@@ -574,7 +600,7 @@ func handleActorSystemOperation(ctx context.Context, target *ActorSystemTarget, 
 		default:
 			foundCount = 0
 		}
-		
+
 		metadata["actors_found"] = foundCount
 		metadata["search_pattern"] = pattern
 		metadata["discovery_completed"] = true

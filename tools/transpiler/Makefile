@@ -1,4 +1,4 @@
-# GoFasta Transpiler Makefile
+# Gofasta Transpiler Makefile
 # High-performance enterprise backend framework
 
 .PHONY: all build test clean install dev lint coverage help run example
@@ -31,14 +31,14 @@ all: clean build test ## Build everything and run tests
 
 ##@ Build
 
-build: ## Build the GoFasta transpiler
-	@echo "🔨 Building GoFasta transpiler $(VERSION)..."
+build: ## Build the Gofasta transpiler
+	@echo "🔨 Building Gofasta transpiler $(VERSION)..."
 	@mkdir -p $(BUILD_DIR)
 	go build $(BUILD_FLAGS) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME) ./cmd
 	@echo "✅ Built $(BUILD_DIR)/$(BINARY_NAME)"
 
 build-race: ## Build with race detection
-	@echo "🔨 Building GoFasta transpiler with race detection..."
+	@echo "🔨 Building Gofasta transpiler with race detection..."
 	@mkdir -p $(BUILD_DIR)
 	go build $(BUILD_FLAGS) $(RACE_FLAGS) $(LDFLAGS) -o $(BUILD_DIR)/$(BINARY_NAME)-race ./cmd
 	@echo "✅ Built $(BUILD_DIR)/$(BINARY_NAME)-race"
@@ -61,7 +61,7 @@ install: build ## Install the binary to GOPATH/bin
 ##@ Development
 
 dev: ## Build and run in development mode
-	@echo "🚀 Running GoFasta in development mode..."
+	@echo "🚀 Running Gofasta in development mode..."
 	go run $(BUILD_FLAGS) ./cmd -verbose
 
 watch: ## Watch for changes and rebuild
@@ -70,7 +70,7 @@ watch: ## Watch for changes and rebuild
 	find . -name "*.go" | entr -r make build
 
 run: build ## Build and run with example files
-	@echo "🚀 Running GoFasta transpiler..."
+	@echo "🚀 Running Gofasta transpiler..."
 	$(BUILD_DIR)/$(BINARY_NAME) -input $(EXAMPLES_DIR) -output ./generated -verbose -force
 
 example: ## Create and transpile example files
@@ -145,7 +145,7 @@ deps: ## Download dependencies
 	go mod download
 
 version: ## Show version information
-	@echo "GoFasta Transpiler"
+	@echo "Gofasta Transpiler"
 	@echo "Version: $(VERSION)"
 	@echo "Build Time: $(BUILD_TIME)"
 	@echo "Git Commit: $(GIT_COMMIT)"
@@ -165,7 +165,7 @@ import "fmt"
 
 @Controller("/api/hello")
 func HelloController() {
-	fmt.Println("Hello from GoFasta!")
+	fmt.Println("Hello from Gofasta!")
 }
 
 @Get("/")
@@ -327,7 +327,7 @@ package: build-all ## Package for distribution
 
 .PHONY: info
 info: ## Show project information
-	@echo "🚀 GoFasta Transpiler - Enterprise Backend Framework"
+	@echo "🚀 Gofasta Transpiler - Enterprise Backend Framework"
 	@echo "=================================================="
 	@echo "Version: $(VERSION)"
 	@echo "Build Time: $(BUILD_TIME)"

@@ -1,4 +1,4 @@
-// Package core provides AST caching capabilities for GoFasta transpiler.
+// Package core provides AST caching capabilities for Gofasta transpiler.
 // This implements Phase 1.1b: Integrate go/ast with AST caching system.
 package core
 
@@ -11,13 +11,13 @@ import (
 
 // ASTCacheEntry represents a cached AST with metadata
 type ASTCacheEntry struct {
-	File         *ast.File
-	FileSet      *token.FileSet
-	ModTime      time.Time
-	Size         int64
-	CacheTime    time.Time
-	AccessTime   time.Time
-	AccessCount  int64
+	File        *ast.File
+	FileSet     *token.FileSet
+	ModTime     time.Time
+	Size        int64
+	CacheTime   time.Time
+	AccessTime  time.Time
+	AccessCount int64
 }
 
 // ASTCacheConfig contains configuration options for the AST cache
@@ -25,15 +25,15 @@ type ASTCacheConfig struct {
 	// MaxEntries sets the maximum number of cached ASTs
 	// If 0, defaults to 1000
 	MaxEntries int
-	
+
 	// TTL sets the time-to-live for cached entries
 	// If 0, defaults to 1 hour
 	TTL time.Duration
-	
+
 	// MaxMemoryMB sets the maximum memory usage in MB
 	// If 0, defaults to 512MB
 	MaxMemoryMB int64
-	
+
 	// EnableMetrics enables cache metrics collection
 	EnableMetrics bool
 }
@@ -50,11 +50,11 @@ func DefaultASTCacheConfig() *ASTCacheConfig {
 
 // ASTCache provides high-performance AST caching with LRU eviction
 type ASTCache struct {
-	config    *ASTCacheConfig
-	cache     map[string]*ASTCacheEntry
-	lruList   []string
-	mu        sync.RWMutex
-	
+	config  *ASTCacheConfig
+	cache   map[string]*ASTCacheEntry
+	lruList []string
+	mu      sync.RWMutex
+
 	// Metrics
 	hits      int64
 	misses    int64
@@ -67,19 +67,19 @@ func NewASTCache(config *ASTCacheConfig) *ASTCache {
 	if config == nil {
 		config = DefaultASTCacheConfig()
 	}
-	
+
 	if config.MaxEntries <= 0 {
 		config.MaxEntries = 1000
 	}
-	
+
 	if config.TTL <= 0 {
 		config.TTL = time.Hour
 	}
-	
+
 	if config.MaxMemoryMB <= 0 {
 		config.MaxMemoryMB = 512
 	}
-	
+
 	return &ASTCache{
 		config:  config,
 		cache:   make(map[string]*ASTCacheEntry),
@@ -91,7 +91,7 @@ func NewASTCache(config *ASTCacheConfig) *ASTCache {
 func (c *ASTCache) Get(key string, modTime time.Time, size int64) (*ast.File, *token.FileSet, bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	entry, exists := c.cache[key]
 	if !exists {
 		if c.config.EnableMetrics {
@@ -99,7 +99,7 @@ func (c *ASTCache) Get(key string, modTime time.Time, size int64) (*ast.File, *t
 		}
 		return nil, nil, false
 	}
-	
+
 	// Check if entry is still valid
 	if !c.isValidEntry(entry, modTime, size) {
 		delete(c.cache, key)
@@ -109,18 +109,18 @@ func (c *ASTCache) Get(key string, modTime time.Time, size int64) (*ast.File, *t
 		}
 		return nil, nil, false
 	}
-	
+
 	// Update access metadata
 	entry.AccessTime = time.Now()
 	entry.AccessCount++
-	
+
 	// Move to front of LRU
 	c.moveToFront(key)
-	
+
 	if c.config.EnableMetrics {
 		c.hits++
 	}
-	
+
 	return entry.File, entry.FileSet, true
 }
 
@@ -128,7 +128,7 @@ func (c *ASTCache) Get(key string, modTime time.Time, size int64) (*ast.File, *t
 func (c *ASTCache) Put(key string, file *ast.File, fileSet *token.FileSet, modTime time.Time, size int64) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	now := time.Now()
 	entry := &ASTCacheEntry{
 		File:        file,
@@ -139,14 +139,14 @@ func (c *ASTCache) Put(key string, file *ast.File, fileSet *token.FileSet, modTi
 		AccessTime:  now,
 		AccessCount: 1,
 	}
-	
+
 	// Check if we need to evict entries
 	c.evictIfNeeded()
-	
+
 	// Add new entry
 	c.cache[key] = entry
 	c.addToLRU(key)
-	
+
 	// Update memory usage estimate
 	if c.config.EnableMetrics {
 		c.updateMemoryUsage()
@@ -157,7 +157,7 @@ func (c *ASTCache) Put(key string, file *ast.File, fileSet *token.FileSet, modTi
 func (c *ASTCache) Clear() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	c.cache = make(map[string]*ASTCacheEntry)
 	c.lruList = make([]string, 0, c.config.MaxEntries)
 	c.memoryMB = 0
@@ -167,22 +167,22 @@ func (c *ASTCache) Clear() {
 func (c *ASTCache) GetStatistics() map[string]interface{} {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	
+
 	totalRequests := c.hits + c.misses
 	hitRatio := 0.0
 	if totalRequests > 0 {
 		hitRatio = float64(c.hits) / float64(totalRequests) * 100.0
 	}
-	
+
 	return map[string]interface{}{
-		"entries":      len(c.cache),
-		"max_entries":  c.config.MaxEntries,
-		"hits":         c.hits,
-		"misses":       c.misses,
-		"evictions":    c.evictions,
-		"hit_ratio":    hitRatio,
-		"memory_mb":    c.memoryMB,
-		"max_memory":   c.config.MaxMemoryMB,
+		"entries":     len(c.cache),
+		"max_entries": c.config.MaxEntries,
+		"hits":        c.hits,
+		"misses":      c.misses,
+		"evictions":   c.evictions,
+		"hit_ratio":   hitRatio,
+		"memory_mb":   c.memoryMB,
+		"max_memory":  c.config.MaxMemoryMB,
 	}
 }
 
@@ -190,10 +190,10 @@ func (c *ASTCache) GetStatistics() map[string]interface{} {
 func (c *ASTCache) Cleanup() int {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	removed := 0
 	now := time.Now()
-	
+
 	for key, entry := range c.cache {
 		if now.Sub(entry.CacheTime) > c.config.TTL {
 			delete(c.cache, key)
@@ -201,11 +201,11 @@ func (c *ASTCache) Cleanup() int {
 			removed++
 		}
 	}
-	
+
 	if c.config.EnableMetrics {
 		c.updateMemoryUsage()
 	}
-	
+
 	return removed
 }
 
@@ -215,12 +215,12 @@ func (c *ASTCache) isValidEntry(entry *ASTCacheEntry, modTime time.Time, size in
 	if time.Since(entry.CacheTime) > c.config.TTL {
 		return false
 	}
-	
+
 	// Check if file has been modified
 	if !entry.ModTime.Equal(modTime) || entry.Size != size {
 		return false
 	}
-	
+
 	return true
 }
 
@@ -230,7 +230,7 @@ func (c *ASTCache) evictIfNeeded() {
 	for len(c.cache) >= c.config.MaxEntries {
 		c.evictLRU()
 	}
-	
+
 	// Evict by memory (rough estimate)
 	if c.config.EnableMetrics {
 		c.updateMemoryUsage()
@@ -245,11 +245,11 @@ func (c *ASTCache) evictLRU() {
 	if len(c.lruList) == 0 {
 		return
 	}
-	
+
 	key := c.lruList[len(c.lruList)-1]
 	delete(c.cache, key)
 	c.lruList = c.lruList[:len(c.lruList)-1]
-	
+
 	if c.config.EnableMetrics {
 		c.evictions++
 	}
@@ -259,7 +259,7 @@ func (c *ASTCache) evictLRU() {
 func (c *ASTCache) addToLRU(key string) {
 	// Remove if already exists
 	c.removeFromLRU(key)
-	
+
 	// Add to front
 	c.lruList = append([]string{key}, c.lruList...)
 }
@@ -290,7 +290,7 @@ func (c *ASTCache) updateMemoryUsage() {
 			totalNodes += int64(nodeCount)
 		}
 	}
-	
+
 	c.memoryMB = totalNodes / 1024 // KB to MB conversion (rough)
 }
 
@@ -299,7 +299,7 @@ func (c *ASTCache) countASTNodes(node ast.Node) int {
 	if node == nil {
 		return 0
 	}
-	
+
 	count := 1
 	ast.Inspect(node, func(n ast.Node) bool {
 		if n != nil && n != node {
@@ -307,6 +307,6 @@ func (c *ASTCache) countASTNodes(node ast.Node) int {
 		}
 		return true
 	})
-	
+
 	return count
 }

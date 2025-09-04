@@ -45,11 +45,11 @@ func CreateUser() {}
 
 	// Initialize Parser
 	parser := core.NewParallelParser(core.DefaultConfig())
-	
+
 	// Parse files
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	
+
 	results, err := parser.ParseDirectory(ctx, testDir)
 	if err != nil {
 		t.Fatalf("Parser failed: %v", err)
@@ -64,7 +64,7 @@ func CreateUser() {}
 		t.Fatalf("Parse error: %v", result.Error)
 	}
 
-	// Initialize DecoratorExtractor 
+	// Initialize DecoratorExtractor
 	extractorConfig := core.DefaultExtractorConfig()
 	extractor := core.NewDecoratorExtractor(extractorConfig)
 
@@ -98,7 +98,7 @@ func CreateUser() {}
 		}
 	}
 
-	t.Logf("Successfully integrated Parser → DecoratorExtractor: parsed %d files, extracted %d decorators", 
+	t.Logf("Successfully integrated Parser → DecoratorExtractor: parsed %d files, extracted %d decorators",
 		len(results), len(extractionResult.Decorators))
 }
 
@@ -180,11 +180,11 @@ func GetData() {}
 		t.Error("No decorators were successfully processed through the registry")
 	}
 
-	t.Logf("Successfully integrated DecoratorExtractor → DecoratorRegistry: processed %d/%d decorators", 
+	t.Logf("Successfully integrated DecoratorExtractor → DecoratorRegistry: processed %d/%d decorators",
 		processedCount, len(extractionResult.Decorators))
 }
 
-// Test 3: DecoratorRegistry → CodeGenerator interaction  
+// Test 3: DecoratorRegistry → CodeGenerator interaction
 func testDecoratorRegistryCodeGeneratorIntegration(t *testing.T) {
 	// Initialize components
 	registry := core.NewDecoratorRegistry(core.DefaultRegistryConfig())
@@ -198,7 +198,7 @@ func testDecoratorRegistryCodeGeneratorIntegration(t *testing.T) {
 
 	// Create different contexts for different template types
 	structContext := core.TypeDefinition{
-		Name: "UserService", 
+		Name: "UserService",
 		Kind: "struct",
 		Doc:  "UserService provides user management functionality",
 		Fields: []core.FieldDefinition{
@@ -216,10 +216,10 @@ func testDecoratorRegistryCodeGeneratorIntegration(t *testing.T) {
 				Doc:     "GetUser retrieves a user by ID",
 				Decorators: []core.Decorator{
 					{
-						Type: "rest",
-						Name: "GET",
+						Type:      "rest",
+						Name:      "GET",
 						Arguments: []string{"/api/users/{id}"},
-						Raw: "@GET(\"/api/users/{id}\")",
+						Raw:       "@GET(\"/api/users/{id}\")",
 					},
 				},
 			},
@@ -236,10 +236,10 @@ func testDecoratorRegistryCodeGeneratorIntegration(t *testing.T) {
 		Doc:     "GetUser retrieves a user by ID",
 		Decorators: []core.Decorator{
 			{
-				Type: "rest",
-				Name: "GET",
+				Type:      "rest",
+				Name:      "GET",
 				Arguments: []string{"/api/users/{id}"},
-				Raw: "@GET(\"/api/users/{id}\")",
+				Raw:       "@GET(\"/api/users/{id}\")",
 			},
 		},
 	}
@@ -273,7 +273,7 @@ func testDecoratorRegistryCodeGeneratorIntegration(t *testing.T) {
 		}
 
 		successCount++
-		t.Logf("Successfully generated %s template (%d chars) in %v", 
+		t.Logf("Successfully generated %s template (%d chars) in %v",
 			templateName, len(result.Code), result.Duration)
 	}
 
@@ -303,7 +303,7 @@ func testDecoratorRegistryCodeGeneratorIntegration(t *testing.T) {
 	}
 
 	totalTemplatesAttempted := len(templates) + 2 // +2 for the high-level methods
-	t.Logf("Successfully integrated DecoratorRegistry → CodeGenerator: generated %d/%d templates", 
+	t.Logf("Successfully integrated DecoratorRegistry → CodeGenerator: generated %d/%d templates",
 		successCount, totalTemplatesAttempted)
 }
 
@@ -357,10 +357,10 @@ func testFileHandlerParserIntegration(t *testing.T) {
 
 	// Initialize Parser and parse the read files
 	parser := core.NewParallelParser(core.DefaultConfig())
-	
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	
+
 	results, err := parser.ParseFiles(ctx, filePaths)
 	if err != nil {
 		t.Fatalf("Parser failed: %v", err)
@@ -375,7 +375,7 @@ func testFileHandlerParserIntegration(t *testing.T) {
 	for _, result := range results {
 		if result.Error == nil && result.File != nil {
 			successfulParses++
-			
+
 			// Verify file was read correctly
 			content, exists := fileContents[result.FilePath]
 			if !exists {
@@ -395,7 +395,7 @@ func testFileHandlerParserIntegration(t *testing.T) {
 		t.Fatal("No files were successfully parsed")
 	}
 
-	t.Logf("Successfully integrated FileHandler → Parser: scanned %d files, read %d files, parsed %d files", 
+	t.Logf("Successfully integrated FileHandler → Parser: scanned %d files, read %d files, parsed %d files",
 		len(project.Files), len(fileContents), successfulParses)
 }
 
@@ -463,7 +463,7 @@ func (s *UserService) FindUser(id string) (*User, error) {
 	// Initialize all components
 	fileHandler := core.NewFileHandler(core.DefaultFileHandlerConfig())
 	defer fileHandler.Shutdown()
-	
+
 	parser := core.NewParallelParser(core.DefaultConfig())
 	extractor := core.NewDecoratorExtractor(core.DefaultExtractorConfig())
 	registry := core.NewDecoratorRegistry(core.DefaultRegistryConfig())
@@ -487,7 +487,7 @@ func (s *UserService) FindUser(id string) (*User, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	
+
 	parseResults, err := parser.ParseFiles(ctx, filePaths)
 	if err != nil {
 		t.Fatalf("Parsing failed: %v", err)
@@ -544,18 +544,18 @@ func (s *UserService) FindUser(id string) (*User, error) {
 				Doc:  "GeneratedController handles HTTP requests",
 				Methods: []core.MethodDefinition{
 					{
-						Name:     "HandleRequest",
-						Receiver: "c *GeneratedController", 
-						Returns:  []string{"error"},
-						Body:     "return nil",
-						Doc:      "HandleRequest processes HTTP requests",
+						Name:       "HandleRequest",
+						Receiver:   "c *GeneratedController",
+						Returns:    []string{"error"},
+						Body:       "return nil",
+						Doc:        "HandleRequest processes HTTP requests",
 						Decorators: decoratorsByFile["controllers/user_controller.gofa"],
 					},
 				},
 			},
 		},
 		Metadata: map[string]interface{}{
-			"HeaderTemplate": "// Code generated by GoFasta. DO NOT EDIT.",
+			"HeaderTemplate": "// Code generated by Gofasta. DO NOT EDIT.",
 		},
 	}
 
@@ -571,19 +571,19 @@ func (s *UserService) FindUser(id string) (*User, error) {
 	if len(project.Files) == 0 {
 		t.Error("FileHandler found no files")
 	}
-	
+
 	if len(successfulParses) == 0 {
 		t.Error("Parser processed no files successfully")
 	}
-	
+
 	if totalDecorators == 0 {
 		t.Error("DecoratorExtractor found no decorators")
 	}
-	
+
 	if processedDecorators == 0 {
 		t.Error("DecoratorRegistry processed no decorators")
 	}
-	
+
 	if len(generatedCode) == 0 {
 		t.Error("CodeGenerator produced no code")
 	}
@@ -619,12 +619,12 @@ func TestEndpoint() string {
 	// Initialize components
 	fileHandler := core.NewFileHandler(core.DefaultFileHandlerConfig())
 	defer fileHandler.Shutdown()
-	
+
 	parser := core.NewParallelParser(core.DefaultConfig())
 	extractor := core.NewDecoratorExtractor(core.DefaultExtractorConfig())
 
 	// Trace data flow
-	
+
 	// 1. FileHandler reads content
 	readContent, err := fileHandler.ReadFile(testFile)
 	if err != nil {
@@ -635,10 +635,10 @@ func TestEndpoint() string {
 		t.Error("FileHandler altered file content during read")
 	}
 
-	// 2. Parser processes content  
+	// 2. Parser processes content
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	
+
 	parseResults, err := parser.ParseFiles(ctx, []string{testFile})
 	if err != nil {
 		t.Fatalf("Parser failed: %v", err)
@@ -678,9 +678,9 @@ func TestEndpoint() string {
 		case "Auth":
 			foundAuth = true
 			if len(decorator.Arguments) == 0 || decorator.Arguments[0] != "bearer" {
-				t.Error("Auth decorator lost argument data")  
+				t.Error("Auth decorator lost argument data")
 			}
-			// Note: Complex property parsing is a known limitation of the basic extractor  
+			// Note: Complex property parsing is a known limitation of the basic extractor
 			if decorator.Properties == nil {
 				t.Logf("Auth decorator properties parsing limitation noted")
 			}
@@ -730,9 +730,9 @@ func TestFunc() {}`,
 	// Test error propagation and handling
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	
+
 	parseResults, err := parser.ParseDirectory(ctx, testDir)
-	
+
 	// Parser should not fail entirely due to individual file errors
 	if err != nil {
 		t.Fatalf("Parser failed entirely: %v", err)
@@ -770,7 +770,7 @@ func TestFunc() {}`,
 
 	// Test component isolation - errors in one component shouldn't crash others
 	registry := core.NewDecoratorRegistry(core.DefaultRegistryConfig())
-	
+
 	// Try invalid decorator invocation
 	invalidArgs := core.DecoratorArgs{
 		Target:    nil,
@@ -833,7 +833,7 @@ func CreateEndpoint%d() {}
 
 	// 1. FileHandler + Parser performance
 	start := time.Now()
-	
+
 	project, err := fileHandler.ScanProject(testDir)
 	if err != nil {
 		t.Fatalf("Project scan failed: %v", err)
@@ -848,7 +848,7 @@ func CreateEndpoint%d() {}
 	start = time.Now()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-	
+
 	parseResults, err := parser.ParseFiles(ctx, filePaths)
 	if err != nil {
 		t.Fatalf("Parsing failed: %v", err)
@@ -858,7 +858,7 @@ func CreateEndpoint%d() {}
 	// 2. Parallel extraction performance
 	start = time.Now()
 	sources := make(map[string][]byte)
-	
+
 	for _, path := range filePaths {
 		content, err := fileHandler.ReadFile(path)
 		if err != nil {
@@ -867,7 +867,7 @@ func CreateEndpoint%d() {}
 		}
 		sources[path] = content
 	}
-	
+
 	extractionResults, err := extractor.ExtractParallel(sources)
 	if err != nil {
 		t.Fatalf("Parallel extraction failed: %v", err)
@@ -914,7 +914,7 @@ func CreateEndpoint%d() {}
 		t.Errorf("Extraction took too long: %v", extractionDuration)
 	}
 
-	t.Logf("Performance interaction test successful: processed %d files, extracted %d decorators", 
+	t.Logf("Performance interaction test successful: processed %d files, extracted %d decorators",
 		fileCount, totalExtractedDecorators)
 }
 

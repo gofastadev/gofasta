@@ -186,7 +186,7 @@ printf "${YELLOW}Skipped: $SKIPPED_TESTS${NC}\n"
 # Step 4: Check for specific transpiler features
 print_step "Checking for transpiler-specific patterns..."
 
-# Look for any GoFasta-specific patterns that might indicate transpiler usage
+# Look for any Gofasta-specific patterns that might indicate transpiler usage
 if find . -name "*.go" -exec grep -l "RegisterRoutes\|inject:" {} \; | head -1 >/dev/null 2>&1; then
     print_success "✓ Found transpiler-generated patterns in Go files"
 else

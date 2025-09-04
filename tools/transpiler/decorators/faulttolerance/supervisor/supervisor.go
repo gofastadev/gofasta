@@ -1,4 +1,4 @@
-// Package supervisor provides supervisor decorator for GoFasta fault tolerance
+// Package supervisor provides supervisor decorator for Gofasta fault tolerance
 package supervisor
 
 import (
@@ -11,6 +11,42 @@ import (
 	"github.com/healtronlabs/gofasta/tools/transpiler/core"
 	"github.com/healtronlabs/gofasta/tools/transpiler/decorators/faulttolerance/common"
 )
+
+func init() {
+	// Register Supervisor decorator
+	core.RegisterDecorator(&core.RegisteredDecorator{
+		Name:        "Supervisor",
+		Type:        "fault_tolerance",
+		Description: "Hierarchical supervision trees with fast initialization",
+		Handler:     SupervisorDecorator,
+		Schema: &core.DecoratorSchema{
+			Arguments: []core.ArgumentSchema{
+				{Name: "strategy", Type: "string", Required: false, Default: "OneForOne", Description: "Supervision strategy: OneForOne, OneForAll, RestForOne"},
+			},
+			Properties: map[string]core.PropertyDef{
+				"maxRetries":     {Type: "int", Default: 3},
+				"retryWindow":    {Type: "duration", Default: "1m"},
+				"escalateAfter":  {Type: "int", Default: 5},
+				"parallelStart":  {Type: "bool", Default: true},
+				"maxChildren":    {Type: "int", Default: 100},
+				"treeDepthLimit": {Type: "int", Default: 10},
+			},
+		},
+	})
+
+	// Register SupervisionStrategy decorator (alias for backward compatibility)
+	core.RegisterDecorator(&core.RegisteredDecorator{
+		Name:        "SupervisionStrategy",
+		Type:        "fault_tolerance",
+		Description: "Fast strategy compilation for supervision",
+		Handler:     SupervisorDecorator,
+		Schema: &core.DecoratorSchema{
+			Arguments: []core.ArgumentSchema{
+				{Name: "strategy", Type: "string", Required: true, Description: "OneForOne, OneForAll, or RestForOne"},
+			},
+		},
+	})
+}
 
 // Using shared types from common package
 type SupervisorStrategy = common.SupervisorStrategy
@@ -25,10 +61,10 @@ const (
 
 // SupervisorState tracks the state of supervised actors
 type SupervisorState struct {
-	config       common.SupervisorConfig
-	children     map[string]*ChildState
-	mu           sync.RWMutex
-	restarts     int64
+	config        common.SupervisorConfig
+	children      map[string]*ChildState
+	mu            sync.RWMutex
+	restarts      int64
 	totalFailures int64
 }
 
@@ -116,7 +152,6 @@ type SupervisedTarget struct {
 	original interface{}
 	state    *SupervisorState
 }
-
 
 // parseSupevisorArgs parses supervisor decorator arguments
 func parseSupevisorArgs(args core.DecoratorArgs) (common.SupervisorConfig, error) {
@@ -260,20 +295,20 @@ func (s *SupervisorState) GetStats() map[string]interface{} {
 func buildSupervisorMetadata(config common.SupervisorConfig, args core.DecoratorArgs) map[string]interface{} {
 	metadata := map[string]interface{}{
 		"supervisor_name":      config.Name,
-		"strategy":            config.Strategy,
-		"max_retries":         config.MaxRetries,
+		"strategy":             config.Strategy,
+		"max_retries":          config.MaxRetries,
 		"supervision_strategy": config.Strategy.String(),
-		"escalate_failures":   true,
-		"fast_initialization": true,
-		"memory_pool_size":    10,
+		"escalate_failures":    true,
+		"fast_initialization":  true,
+		"memory_pool_size":     10,
 	}
 
 	// Add restart policy metadata
 	metadata["restart_policy"] = map[string]interface{}{
-		"max_retries":     config.MaxRetries,
-		"retry_interval":  config.RetryInterval.String(),
-		"backoff_policy":  "exponential",
-		"max_backoff":     "30s",
+		"max_retries":    config.MaxRetries,
+		"retry_interval": config.RetryInterval.String(),
+		"backoff_policy": "exponential",
+		"max_backoff":    "30s",
 	}
 
 	// Add strategy-specific metadata

@@ -1,6 +1,6 @@
 package main
 
-// This example demonstrates all WebSocket configuration options supported by the GoFasta transpiler
+// This example demonstrates all WebSocket configuration options supported by the Gofasta transpiler
 // It showcases the enhanced configuration parsing and generation implemented in task 2.11
 
 // Example 1: Basic WebSocket Gateway with simple port configuration

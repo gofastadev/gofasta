@@ -1,6 +1,6 @@
 # Fault Tolerance Examples
 
-This directory contains examples demonstrating the GoFasta fault tolerance framework with `@Supervisor` and `@Actor` decorators.
+This directory contains examples demonstrating the Gofasta fault tolerance framework with `@Supervisor` and `@Actor` decorators.
 
 ## Overview
 

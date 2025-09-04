@@ -1,4 +1,4 @@
-// Package core provides token pooling capabilities for GoFasta transpiler.
+// Package core provides token pooling capabilities for Gofasta transpiler.
 // This implements Phase 1.1c: Configure go/token with memory pooling.
 package core
 
@@ -12,11 +12,11 @@ type TokenPoolConfig struct {
 	// InitialSize sets the initial pool size
 	// If 0, defaults to 10
 	InitialSize int
-	
+
 	// MaxSize sets the maximum pool size
 	// If 0, defaults to 100
 	MaxSize int
-	
+
 	// EnableMetrics enables pool metrics collection
 	EnableMetrics bool
 }
@@ -35,7 +35,7 @@ type TokenPool struct {
 	config *TokenPoolConfig
 	pool   chan *token.FileSet
 	mu     sync.RWMutex
-	
+
 	// Metrics
 	created   int64
 	reused    int64
@@ -47,24 +47,24 @@ func NewTokenPool(config *TokenPoolConfig) *TokenPool {
 	if config == nil {
 		config = DefaultTokenPoolConfig()
 	}
-	
+
 	if config.InitialSize <= 0 {
 		config.InitialSize = 10
 	}
-	
+
 	if config.MaxSize <= 0 {
 		config.MaxSize = 100
 	}
-	
+
 	if config.MaxSize < config.InitialSize {
 		config.MaxSize = config.InitialSize
 	}
-	
+
 	pool := &TokenPool{
 		config: config,
 		pool:   make(chan *token.FileSet, config.MaxSize),
 	}
-	
+
 	// Pre-populate pool with initial FileSets
 	for i := 0; i < config.InitialSize; i++ {
 		select {
@@ -78,7 +78,7 @@ func NewTokenPool(config *TokenPoolConfig) *TokenPool {
 		}
 	}
 donePopulating:
-	
+
 	return pool
 }
 
@@ -108,11 +108,11 @@ func (p *TokenPool) Put(fset *token.FileSet) {
 	if fset == nil {
 		return
 	}
-	
+
 	// Reset the FileSet by creating a new one
 	// (go/token.FileSet doesn't have a Reset method)
 	newFset := token.NewFileSet()
-	
+
 	select {
 	case p.pool <- newFset:
 		// Successfully returned to pool
@@ -130,20 +130,20 @@ func (p *TokenPool) Put(fset *token.FileSet) {
 func (p *TokenPool) GetStatistics() map[string]interface{} {
 	p.mu.RLock()
 	defer p.mu.RUnlock()
-	
+
 	poolSize := len(p.pool)
 	maxSize := cap(p.pool)
 	utilization := 0.0
 	if maxSize > 0 {
 		utilization = float64(maxSize-poolSize) / float64(maxSize) * 100.0
 	}
-	
+
 	reuseRate := 0.0
 	total := p.created + p.reused
 	if total > 0 {
 		reuseRate = float64(p.reused) / float64(total) * 100.0
 	}
-	
+
 	return map[string]interface{}{
 		"pool_size":      poolSize,
 		"max_size":       maxSize,
@@ -160,7 +160,7 @@ func (p *TokenPool) GetStatistics() map[string]interface{} {
 func (p *TokenPool) Drain() int {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	
+
 	drained := 0
 	for {
 		select {
@@ -177,13 +177,13 @@ func (p *TokenPool) Resize(newMaxSize int) {
 	if newMaxSize <= 0 {
 		return
 	}
-	
+
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	
+
 	// Create new pool
 	newPool := make(chan *token.FileSet, newMaxSize)
-	
+
 	// Transfer existing FileSets up to new capacity
 	transferred := 0
 	oldPoolSize := len(p.pool)
@@ -191,7 +191,7 @@ func (p *TokenPool) Resize(newMaxSize int) {
 	if oldPoolSize < maxTransfer {
 		maxTransfer = oldPoolSize
 	}
-	
+
 	for transferred < maxTransfer {
 		select {
 		case fset := <-p.pool:
@@ -208,7 +208,7 @@ func (p *TokenPool) Resize(newMaxSize int) {
 		}
 	}
 doneTransferring:
-	
+
 	// Update pool and config
 	p.pool = newPool
 	p.config.MaxSize = newMaxSize
@@ -219,10 +219,10 @@ func (p *TokenPool) WarmUp(targetSize int) {
 	if targetSize <= 0 || targetSize > p.config.MaxSize {
 		return // Do nothing for invalid sizes
 	}
-	
+
 	currentSize := len(p.pool)
 	needed := targetSize - currentSize
-	
+
 	for i := 0; i < needed; i++ {
 		select {
 		case p.pool <- token.NewFileSet():

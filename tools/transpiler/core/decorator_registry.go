@@ -136,6 +136,18 @@ type PluginInterface interface {
 	Shutdown() error
 }
 
+// GlobalRegistry is the global instance used for decorator registration
+var GlobalRegistry *DecoratorRegistry
+
+func init() {
+	GlobalRegistry = NewDecoratorRegistry(DefaultRegistryConfig())
+}
+
+// RegisterDecorator registers a decorator in the global registry
+func RegisterDecorator(decorator *RegisteredDecorator) error {
+	return GlobalRegistry.Register(decorator)
+}
+
 // DefaultRegistryConfig returns the default configuration
 func DefaultRegistryConfig() *RegistryConfig {
 	return &RegistryConfig{

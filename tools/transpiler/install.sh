@@ -1,5 +1,5 @@
 #!/bin/bash
-# GoFasta Transpiler Installation Script
+# Gofasta Transpiler Installation Script
 
 set -e
 
@@ -15,7 +15,7 @@ INSTALL_DIR="${GOPATH:-$HOME/go}/bin"
 
 print_banner() {
     echo -e "${BLUE}"
-    echo "📦 GoFasta Transpiler Installer"
+    echo "📦 Gofasta Transpiler Installer"
     echo "==============================="
     echo -e "${NC}"
 }
@@ -61,7 +61,7 @@ check_requirements() {
 }
 
 install_transpiler() {
-    print_step "Installing GoFasta transpiler..."
+    print_step "Installing Gofasta transpiler..."
     
     # Install using go install
     echo "  Installing from source..."
@@ -91,7 +91,7 @@ show_post_install() {
     echo "  1. Create a .gofa file:"
     echo "     echo 'package main' > hello.gofa"
     echo "     echo '@Controller(\"/hello\")' >> hello.gofa"
-    echo "     echo 'func Hello() { println(\"Hello GoFasta!\") }' >> hello.gofa"
+    echo "     echo 'func Hello() { println(\"Hello Gofasta!\") }' >> hello.gofa"
     echo ""
     echo "  2. Transpile it:"
     echo "     ${BINARY_NAME} -input . -verbose"
