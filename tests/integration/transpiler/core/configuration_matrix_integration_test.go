@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/healtronlabs/gofasta/tools/transpiler/core"
+	"github.com/healtronlabs/gofasta/transpiler/core"
 )
 
 // TestConfigurationMatrixIntegration tests all CLI flag combinations and configuration scenarios
@@ -35,8 +35,8 @@ func testAllCLIFlagCombinations(t *testing.T) {
 
 	// Define all possible CLI flag combinations
 	flagCombinations := []struct {
-		name     string
-		args     []string
+		name          string
+		args          []string
 		expectSuccess bool
 		expectOutput  string
 	}{
@@ -46,26 +46,26 @@ func testAllCLIFlagCombinations(t *testing.T) {
 		{"QuietFlag", []string{"transpile", "-q", testFiles[0]}, true, ""},
 		{"HelpFlag", []string{"-h"}, true, "usage"},
 		{"VersionFlag", []string{"--version"}, true, "version"},
-		
+
 		// Output configurations
 		{"OutputDir", []string{"transpile", "-o", filepath.Join(testDir, "output"), testFiles[0]}, true, ""},
 		{"ForceOverwrite", []string{"transpile", "-f", testFiles[0]}, true, ""},
 		{"DryRun", []string{"transpile", "--dry-run", testFiles[0]}, true, "dry-run"},
-		
+
 		// Worker configurations
 		{"SingleWorker", []string{"transpile", "--workers=1", testFiles[0]}, true, ""},
 		{"MaxWorkers", []string{"transpile", fmt.Sprintf("--workers=%d", runtime.NumCPU()*2), testFiles[0]}, true, ""},
 		{"ZeroWorkers", []string{"transpile", "--workers=0", testFiles[0]}, false, "invalid"},
-		
+
 		// Combined flags
 		{"VerboseForce", []string{"transpile", "-v", "-f", testFiles[0]}, true, "verbose"},
 		{"QuietOutput", []string{"transpile", "-q", "-o", filepath.Join(testDir, "quiet_output"), testFiles[0]}, true, ""},
 		{"VerboseDryRun", []string{"transpile", "-v", "--dry-run", testFiles[0]}, true, "verbose"},
 		{"WorkersOutput", []string{"transpile", "--workers=4", "-o", filepath.Join(testDir, "workers_output"), testFiles[0]}, true, ""},
-		
+
 		// All flags combined
 		{"AllFlags", []string{"transpile", "-v", "-f", "--workers=2", "-o", filepath.Join(testDir, "all_output"), testFiles[0]}, true, "verbose"},
-		
+
 		// Invalid combinations
 		{"ConflictingQuietVerbose", []string{"transpile", "-q", "-v", testFiles[0]}, false, "conflict"},
 		{"InvalidWorkerCount", []string{"transpile", "--workers=-1", testFiles[0]}, false, "invalid"},
@@ -84,7 +84,7 @@ func testAllCLIFlagCombinations(t *testing.T) {
 				if err != nil {
 					t.Errorf("Expected success for %s, got error: %v\nOutput: %s", combo.name, err, outputStr)
 				}
-				
+
 				// Validate expected output patterns
 				if combo.expectOutput != "" {
 					if !strings.Contains(strings.ToLower(outputStr), combo.expectOutput) {
@@ -95,7 +95,7 @@ func testAllCLIFlagCombinations(t *testing.T) {
 				if err == nil {
 					t.Errorf("Expected failure for %s, but command succeeded\nOutput: %s", combo.name, outputStr)
 				}
-				
+
 				// Validate error message patterns
 				if combo.expectOutput != "" {
 					if !strings.Contains(strings.ToLower(outputStr), combo.expectOutput) {
@@ -130,12 +130,12 @@ func testConfigurationPrecedence(t *testing.T) {
 	}
 
 	precedenceTests := []struct {
-		name           string
-		configFile     string
-		cliArgs        []string
+		name            string
+		configFile      string
+		cliArgs         []string
 		expectedWorkers int
 		expectedVerbose bool
-		expectedForce  bool
+		expectedForce   bool
 	}{
 		{
 			"DefaultsOnly",
@@ -167,7 +167,7 @@ func testConfigurationPrecedence(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			// Test configuration precedence by examining actual behavior
 			config := core.DefaultConfig()
-			
+
 			// Apply config file settings if specified
 			if test.configFile != "" {
 				// Simulate config file loading
@@ -175,7 +175,7 @@ func testConfigurationPrecedence(t *testing.T) {
 				config.ParseComments = true // Use actual config field
 				// Note: In real implementation, this would load from file
 			}
-			
+
 			// Apply CLI overrides (simulated)
 			cliVerbose := test.expectedVerbose // Track CLI verbose setting
 			for _, arg := range test.cliArgs {
@@ -196,13 +196,13 @@ func testConfigurationPrecedence(t *testing.T) {
 			if config.MaxWorkers != test.expectedWorkers {
 				t.Errorf("Expected %d workers, got %d", test.expectedWorkers, config.MaxWorkers)
 			}
-			
+
 			// Test CLI verbose override (simulated)
 			if cliVerbose != test.expectedVerbose {
 				t.Errorf("Expected verbose=%v, got %v", test.expectedVerbose, cliVerbose)
 			}
 
-			t.Logf("Configuration precedence %s: workers=%d, cli_verbose=%v", 
+			t.Logf("Configuration precedence %s: workers=%d, cli_verbose=%v",
 				test.name, config.MaxWorkers, cliVerbose)
 		})
 	}
@@ -222,16 +222,16 @@ func testDefaultValueValidation(t *testing.T) {
 			"ParserDefaults",
 			func() error {
 				config := core.DefaultConfig()
-				
+
 				// Validate parser defaults
 				if config.MaxWorkers <= 0 {
 					return fmt.Errorf("invalid default MaxWorkers: %d", config.MaxWorkers)
 				}
-				
+
 				if config.MaxWorkers > runtime.NumCPU()*4 {
 					return fmt.Errorf("default MaxWorkers too high: %d", config.MaxWorkers)
 				}
-				
+
 				return nil
 			},
 		},
@@ -239,26 +239,26 @@ func testDefaultValueValidation(t *testing.T) {
 			"ExtractorDefaults",
 			func() error {
 				config := core.DefaultExtractorConfig()
-				
+
 				// Validate extractor defaults
 				if config.WorkerCount <= 0 {
 					return fmt.Errorf("invalid default WorkerCount: %d", config.WorkerCount)
 				}
-				
+
 				return nil
 			},
 		},
 		{
-			"RegistryDefaults", 
+			"RegistryDefaults",
 			func() error {
 				config := core.DefaultRegistryConfig()
-				
+
 				// Validate registry defaults
 				if !config.ParallelLoading {
 					// Parallel loading should be enabled by default for performance
 					t.Logf("Registry parallel loading disabled by default")
 				}
-				
+
 				return nil
 			},
 		},
@@ -266,13 +266,13 @@ func testDefaultValueValidation(t *testing.T) {
 			"GeneratorDefaults",
 			func() error {
 				config := core.DefaultGeneratorConfig()
-				
+
 				// Validate generator defaults
 				// Check that default template directory is reasonable
 				if config.TemplateDir == "" {
 					t.Logf("Generator has empty default template directory")
 				}
-				
+
 				return nil
 			},
 		},
@@ -292,7 +292,7 @@ func testDefaultValueValidation(t *testing.T) {
 	// Test default behavior with actual components
 	t.Run("DefaultBehaviorValidation", func(t *testing.T) {
 		testFiles := createTestFilesForCLI(t, testDir, 3)
-		
+
 		// Test with completely default configuration
 		parser := core.NewParallelParser(core.DefaultConfig())
 		extractor := core.NewDecoratorExtractor(core.DefaultExtractorConfig())
@@ -303,15 +303,15 @@ func testDefaultValueValidation(t *testing.T) {
 		if parser == nil {
 			t.Error("Parser failed to initialize with default config")
 		}
-		
+
 		if extractor == nil {
 			t.Error("Extractor failed to initialize with default config")
 		}
-		
+
 		if registry == nil {
 			t.Error("Registry failed to initialize with default config")
 		}
-		
+
 		if generator == nil {
 			t.Error("Generator failed to initialize with default config")
 		}
@@ -319,12 +319,12 @@ func testDefaultValueValidation(t *testing.T) {
 		// Test basic functionality with defaults
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		
+
 		results, err := parser.ParseFiles(ctx, testFiles)
 		if err != nil {
 			t.Errorf("Default parser configuration failed: %v", err)
 		}
-		
+
 		if len(results) != len(testFiles) {
 			t.Errorf("Expected %d results, got %d", len(testFiles), len(results))
 		}
@@ -375,15 +375,15 @@ func testInvalidConfigurationHandling(t *testing.T) {
 	for _, test := range invalidConfigurations {
 		t.Run(test.name, func(t *testing.T) {
 			config := test.setupConfig()
-			
+
 			// Test if invalid config is handled gracefully
 			parser := core.NewParallelParser(config)
-			
+
 			if parser == nil && test.expectError != "" {
 				t.Logf("Invalid config correctly rejected: %s", test.name)
 				return
 			}
-			
+
 			if parser == nil {
 				t.Errorf("Parser failed to initialize for %s", test.name)
 				return
@@ -393,7 +393,7 @@ func testInvalidConfigurationHandling(t *testing.T) {
 			testFiles := createTestFilesForCLI(t, testDir, 2)
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 			defer cancel()
-			
+
 			_, err := parser.ParseFiles(ctx, testFiles)
 			if err != nil && test.expectError != "" {
 				if strings.Contains(strings.ToLower(err.Error()), strings.ToLower(test.expectError)) {
@@ -428,7 +428,7 @@ func testEnvironmentVariableIntegration(t *testing.T) {
 				// Simulate environment variable parsing
 				config := core.DefaultConfig()
 				config.MaxWorkers = 6 // Would be set from env var
-				
+
 				if config.MaxWorkers != 6 {
 					t.Errorf("Expected MaxWorkers=6 from env var, got %d", config.MaxWorkers)
 				}
@@ -440,11 +440,11 @@ func testEnvironmentVariableIntegration(t *testing.T) {
 			func(t *testing.T) {
 				// Simulate environment variable parsing
 				envVerbose := true // Would be set from env var
-				
+
 				if !envVerbose {
 					t.Error("Expected Verbose=true from env var")
 				}
-				
+
 				t.Logf("Environment verbose setting: %v", envVerbose)
 			},
 		},
@@ -454,7 +454,7 @@ func testEnvironmentVariableIntegration(t *testing.T) {
 			func(t *testing.T) {
 				// Simulate environment variable parsing
 				outputDir := "/tmp/gofasta_output"
-				
+
 				if outputDir != "/tmp/gofasta_output" {
 					t.Errorf("Expected output dir from env var, got %s", outputDir)
 				}
@@ -471,15 +471,15 @@ func testEnvironmentVariableIntegration(t *testing.T) {
 				config := core.DefaultConfig()
 				config.MaxWorkers = 8
 				envVerbose := true
-				
+
 				if config.MaxWorkers != 8 {
 					t.Errorf("Expected MaxWorkers=8, got %d", config.MaxWorkers)
 				}
-				
+
 				if !envVerbose {
 					t.Error("Expected Verbose=true")
 				}
-				
+
 				t.Logf("Multiple env vars: workers=%d, verbose=%v", config.MaxWorkers, envVerbose)
 			},
 		},
@@ -493,10 +493,10 @@ func testEnvironmentVariableIntegration(t *testing.T) {
 				os.Setenv(key, value)
 				defer os.Setenv(key, oldValue) // Restore after test
 			}
-			
+
 			// Run test expectations
 			test.expect(t)
-			
+
 			t.Logf("Environment variable integration test %s completed", test.name)
 		})
 	}
@@ -524,7 +524,7 @@ func testConfigFileFormatValidation(t *testing.T) {
 			true,
 			map[string]interface{}{
 				"max_workers": 4,
-				"verbose": true,
+				"verbose":     true,
 			},
 		},
 		{
@@ -576,7 +576,7 @@ func testConfigFileFormatValidation(t *testing.T) {
 			if format.valid {
 				// In a real implementation, this would parse the JSON
 				t.Logf("Config file %s successfully parsed", format.name)
-				
+
 				// Validate expected values
 				if format.expected != nil {
 					for key, expectedValue := range format.expected {
@@ -597,7 +597,7 @@ func testConfigFileFormatValidation(t *testing.T) {
 			"max_workers": 6,
 			"verbose": false
 		}`
-		
+
 		err := os.WriteFile(configFile, []byte(configContent), 0644)
 		if err != nil {
 			t.Fatalf("Failed to write precedence config: %v", err)
@@ -605,18 +605,18 @@ func testConfigFileFormatValidation(t *testing.T) {
 
 		// Test that CLI flags override config file values
 		config := core.DefaultConfig()
-		
+
 		// Simulate loading from config file
 		config.MaxWorkers = 6
 		configVerbose := false
-		
+
 		// Simulate CLI flag override
 		cliVerbose := true // CLI -v flag overrides config
-		
+
 		if config.MaxWorkers != 6 {
 			t.Errorf("Expected MaxWorkers from config file: 6, got %d", config.MaxWorkers)
 		}
-		
+
 		if !cliVerbose || configVerbose {
 			t.Error("Expected CLI flag to override config file verbose setting")
 		}
@@ -639,7 +639,7 @@ func testAdvancedConfigurationScenarios(t *testing.T) {
 			func(t *testing.T) {
 				// Test dynamic worker scaling based on file count
 				testFiles := createTestFilesForCLI(t, testDir, 100)
-				
+
 				config := core.DefaultConfig()
 				// Simulate dynamic scaling logic
 				fileCount := len(testFiles)
@@ -648,16 +648,16 @@ func testAdvancedConfigurationScenarios(t *testing.T) {
 				} else {
 					config.MaxWorkers = runtime.NumCPU()
 				}
-				
+
 				parser := core.NewParallelParser(config)
 				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 				defer cancel()
-				
+
 				results, err := parser.ParseFiles(ctx, testFiles)
 				if err != nil {
 					t.Errorf("Dynamic worker scaling failed: %v", err)
 				}
-				
+
 				if len(results) != len(testFiles) {
 					t.Errorf("Expected %d results, got %d", len(testFiles), len(results))
 				}
@@ -677,13 +677,13 @@ func testAdvancedConfigurationScenarios(t *testing.T) {
 					{"extract", true},
 					{"generate", false},
 				}
-				
+
 				for _, cfg := range configs {
 					config := core.DefaultConfig()
 					// Use actual config fields
 					config.ParseComments = cfg.verbose // Use actual field as proxy
-					
-					t.Logf("Operation %s: verbose=%v, parse_comments=%v", 
+
+					t.Logf("Operation %s: verbose=%v, parse_comments=%v",
 						cfg.operation, cfg.verbose, config.ParseComments)
 				}
 			},
@@ -694,9 +694,9 @@ func testAdvancedConfigurationScenarios(t *testing.T) {
 				// Test configuration adaptation based on available resources
 				var memStats runtime.MemStats
 				runtime.ReadMemStats(&memStats)
-				
+
 				config := core.DefaultConfig()
-				
+
 				// Simulate resource-adaptive configuration
 				availableMemMB := memStats.Sys / 1024 / 1024
 				if availableMemMB < 512 {
@@ -706,8 +706,8 @@ func testAdvancedConfigurationScenarios(t *testing.T) {
 				} else {
 					config.MaxWorkers = runtime.NumCPU() // Standard mode
 				}
-				
-				t.Logf("Resource adaptive config: %d MB available, %d workers configured", 
+
+				t.Logf("Resource adaptive config: %d MB available, %d workers configured",
 					availableMemMB, config.MaxWorkers)
 			},
 		},
@@ -735,10 +735,10 @@ func testAdvancedConfigurationScenarios(t *testing.T) {
 						return config, verbose
 					},
 				}
-				
+
 				for profileName, profileFunc := range profiles {
 					config, verbose := profileFunc()
-					t.Logf("Profile %s: workers=%d, verbose=%v", 
+					t.Logf("Profile %s: workers=%d, verbose=%v",
 						profileName, config.MaxWorkers, verbose)
 				}
 			},
@@ -759,7 +759,7 @@ func createTestFilesForCLI(t *testing.T, dir string, count int) []string {
 	for i := 0; i < count; i++ {
 		filename := fmt.Sprintf("test_%03d.gofa", i)
 		filepath := filepath.Join(dir, filename)
-		
+
 		content := fmt.Sprintf(`package test%d
 
 // @Controller("/api/test%d")
@@ -782,7 +782,7 @@ func (c *TestController%d) Endpoint%d() {
 func createCLICommand(args ...string) *exec.Cmd {
 	// In a real implementation, this would create the actual CLI command
 	// For testing purposes, we simulate CLI command execution based on args
-	
+
 	if len(args) > 0 {
 		switch {
 		case contains(args, "-h") || contains(args, "--help"):
@@ -807,7 +807,7 @@ func createCLICommand(args ...string) *exec.Cmd {
 			return exec.Command("echo", "transpilation completed successfully")
 		}
 	}
-	
+
 	return exec.Command("echo", "gofasta CLI ready")
 }
 

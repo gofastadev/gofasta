@@ -1,0 +1,341 @@
+// Advanced Supervisor Example
+// This demonstrates hierarchical supervision trees with different strategies
+package supervisor
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"time"
+)
+
+// Root supervisor using OneForAll strategy - if any child fails, restart all
+@Supervisor("OneForAll", maxRetries: 2, retryInterval: "2s", escalate: false)
+func RootSupervisor(ctx context.Context) {
+	fmt.Println("Root Supervisor started with OneForAll strategy")
+	
+	// Start child supervisors
+	go DatabaseSupervisor(ctx)
+	go WebServerSupervisor(ctx)
+	go BackgroundJobSupervisor(ctx)
+	
+	<-ctx.Done()
+	fmt.Println("Root Supervisor shutting down")
+}
+
+// Database supervisor using RestForOne strategy - restart this and subsequent children
+@Supervisor("RestForOne", maxRetries: 5, retryInterval: "1s", escalate: true, parent: "RootSupervisor")
+func DatabaseSupervisor(ctx context.Context) {
+	fmt.Println("Database Supervisor started with RestForOne strategy")
+	
+	// Database connections and pools
+	go primaryDatabaseConnection(ctx)
+	go secondaryDatabaseConnection(ctx)
+	go cacheConnection(ctx)
+	
+	<-ctx.Done()
+	fmt.Println("Database Supervisor shutting down")
+}
+
+// Web server supervisor using OneForOne strategy - restart only failed children
+@Supervisor("OneForOne", maxRetries: 10, retryInterval: "500ms", escalate: true, parent: "RootSupervisor")
+func WebServerSupervisor(ctx context.Context) {
+	fmt.Println("Web Server Supervisor started with OneForOne strategy")
+	
+	// HTTP handlers
+	go httpServer(ctx)
+	go websocketServer(ctx)
+	go healthCheckServer(ctx)
+	
+	<-ctx.Done()
+	fmt.Println("Web Server Supervisor shutting down")
+}
+
+// Background job supervisor with custom restart policy
+@Supervisor("OneForOne", maxRetries: 3, retryInterval: "5s", escalate: false, parent: "RootSupervisor")
+func BackgroundJobSupervisor(ctx context.Context) {
+	fmt.Println("Background Job Supervisor started")
+	
+	// Background workers
+	go emailWorker(ctx)
+	go reportGenerator(ctx)
+	go dataCleanupWorker(ctx)
+	
+	<-ctx.Done()
+	fmt.Println("Background Job Supervisor shutting down")
+}
+
+// Critical system supervisor - failures escalate immediately
+@Supervisor("OneForOne", maxRetries: 1, retryInterval: "100ms", escalate: true, fastInit: true)
+func CriticalSystemSupervisor(ctx context.Context) {
+	fmt.Println("Critical System Supervisor started with fast initialization")
+	
+	// Critical system components
+	go securityMonitor(ctx)
+	go systemHealthMonitor(ctx)
+	go auditLogger(ctx)
+	
+	<-ctx.Done()
+	fmt.Println("Critical System Supervisor shutting down")
+}
+
+// Database connection functions
+func primaryDatabaseConnection(ctx context.Context) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("Primary DB connection failed: %v", r)
+		}
+	}()
+	
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			time.Sleep(100 * time.Millisecond)
+			if time.Now().Unix()%30 == 0 {
+				panic("Primary database connection lost")
+			}
+		}
+	}
+}
+
+func secondaryDatabaseConnection(ctx context.Context) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("Secondary DB connection failed: %v", r)
+		}
+	}()
+	
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			time.Sleep(150 * time.Millisecond)
+			if time.Now().Unix()%45 == 0 {
+				panic("Secondary database timeout")
+			}
+		}
+	}
+}
+
+func cacheConnection(ctx context.Context) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("Cache connection failed: %v", r)
+		}
+	}()
+	
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			time.Sleep(50 * time.Millisecond)
+			if time.Now().Unix()%25 == 0 {
+				panic("Redis connection failed")
+			}
+		}
+	}
+}
+
+// Web server functions
+func httpServer(ctx context.Context) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("HTTP server failed: %v", r)
+		}
+	}()
+	
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			time.Sleep(10 * time.Millisecond)
+			if time.Now().Unix()%40 == 0 {
+				panic("HTTP server port bind failed")
+			}
+		}
+	}
+}
+
+func websocketServer(ctx context.Context) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("WebSocket server failed: %v", r)
+		}
+	}()
+	
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			time.Sleep(20 * time.Millisecond)
+			if time.Now().Unix()%35 == 0 {
+				panic("WebSocket upgrade failed")
+			}
+		}
+	}
+}
+
+func healthCheckServer(ctx context.Context) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("Health check server failed: %v", r)
+		}
+	}()
+	
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			time.Sleep(1000 * time.Millisecond)
+			if time.Now().Unix()%60 == 0 {
+				panic("Health check endpoint failed")
+			}
+		}
+	}
+}
+
+// Background job functions
+func emailWorker(ctx context.Context) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("Email worker failed: %v", r)
+		}
+	}()
+	
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			time.Sleep(2000 * time.Millisecond)
+			if time.Now().Unix()%50 == 0 {
+				panic("SMTP server unreachable")
+			}
+		}
+	}
+}
+
+func reportGenerator(ctx context.Context) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("Report generator failed: %v", r)
+		}
+	}()
+	
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			time.Sleep(5000 * time.Millisecond)
+			if time.Now().Unix()%80 == 0 {
+				panic("Report generation out of memory")
+			}
+		}
+	}
+}
+
+func dataCleanupWorker(ctx context.Context) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("Data cleanup worker failed: %v", r)
+		}
+	}()
+	
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			time.Sleep(10000 * time.Millisecond)
+			if time.Now().Unix()%100 == 0 {
+				panic("Cleanup process disk full")
+			}
+		}
+	}
+}
+
+// Critical system functions
+func securityMonitor(ctx context.Context) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("CRITICAL: Security monitor failed: %v", r)
+		}
+	}()
+	
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			time.Sleep(100 * time.Millisecond)
+			if time.Now().Unix()%200 == 0 {
+				panic("Security breach detected")
+			}
+		}
+	}
+}
+
+func systemHealthMonitor(ctx context.Context) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("CRITICAL: System health monitor failed: %v", r)
+		}
+	}()
+	
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			time.Sleep(500 * time.Millisecond)
+			if time.Now().Unix()%150 == 0 {
+				panic("System resources exhausted")
+			}
+		}
+	}
+}
+
+func auditLogger(ctx context.Context) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("CRITICAL: Audit logger failed: %v", r)
+		}
+	}()
+	
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			time.Sleep(50 * time.Millisecond)
+			if time.Now().Unix()%180 == 0 {
+				panic("Audit log storage full")
+			}
+		}
+	}
+}
+
+func main() {
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	
+	fmt.Println("Starting Advanced Hierarchical Supervisor Example")
+	
+	// Start root supervisor which manages the entire hierarchy
+	go RootSupervisor(ctx)
+	
+	// Start critical system supervisor independently
+	go CriticalSystemSupervisor(ctx)
+	
+	// Wait for completion
+	<-ctx.Done()
+	fmt.Println("Advanced Supervisor Example completed")
+}

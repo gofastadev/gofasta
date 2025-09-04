@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/healtronlabs/gofasta/tools/transpiler/core"
+	"github.com/healtronlabs/gofasta/transpiler/core"
 )
 
 // TestWorkflowIntegration tests real-world workflow scenarios and development patterns

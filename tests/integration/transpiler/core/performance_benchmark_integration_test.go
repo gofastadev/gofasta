@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/healtronlabs/gofasta/tools/transpiler/core"
+	"github.com/healtronlabs/gofasta/transpiler/core"
 )
 
 // TestPerformanceBenchmarkIntegration tests realistic performance scenarios and benchmarks
@@ -51,7 +51,7 @@ func testRealisticPerformanceScenarios(t *testing.T) {
 			}
 
 			var filePaths []string
-			
+
 			// Create realistic file structure
 			for i := 0; i < scenario.fileCount; i++ {
 				// Distribute files across subdirectories
@@ -66,7 +66,7 @@ func testRealisticPerformanceScenarios(t *testing.T) {
 
 				// Generate realistic content
 				content := generateRealisticContent(i, scenario.avgFileSize, scenario.decoratorCount)
-				
+
 				if err := os.WriteFile(filepath, []byte(content), 0644); err != nil {
 					t.Fatalf("Failed to create realistic test file: %v", err)
 				}
@@ -85,7 +85,7 @@ func testRealisticPerformanceScenarios(t *testing.T) {
 
 			for iter := 0; iter < iterations; iter++ {
 				ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-				
+
 				start := time.Now()
 				results, err := parser.ParseFiles(ctx, filePaths)
 				duration := time.Since(start)
@@ -123,7 +123,7 @@ func testRealisticPerformanceScenarios(t *testing.T) {
 
 			// Performance validation
 			if filesPerSec < scenario.expectMinRate {
-				t.Errorf("%s performance below expected: %.2f < %.2f files/sec", 
+				t.Errorf("%s performance below expected: %.2f < %.2f files/sec",
 					scenario.name, filesPerSec, scenario.expectMinRate)
 			}
 
@@ -131,7 +131,7 @@ func testRealisticPerformanceScenarios(t *testing.T) {
 			stats := parser.GetStatistics()
 			actualFilesPerSec, _ := stats["files_per_second"].(float64)
 
-			t.Logf("%s Performance: %.2f files/sec (measured), %.2f files/sec (calculated), %v avg duration, %d files", 
+			t.Logf("%s Performance: %.2f files/sec (measured), %.2f files/sec (calculated), %v avg duration, %d files",
 				scenario.name, actualFilesPerSec, filesPerSec, avgDuration, scenario.fileCount)
 		})
 	}
@@ -149,13 +149,13 @@ func testLargeCodebaseProcessing(t *testing.T) {
 
 	// Create a large codebase simulation
 	const (
-		totalFiles = 2000
-		packagesCount = 50
+		totalFiles      = 2000
+		packagesCount   = 50
 		filesPerPackage = totalFiles / packagesCount
 	)
 
 	var allFilePaths []string
-	
+
 	// Create package structure
 	for pkg := 0; pkg < packagesCount; pkg++ {
 		packageDir := filepath.Join(testDir, fmt.Sprintf("pkg%03d", pkg))
@@ -166,12 +166,12 @@ func testLargeCodebaseProcessing(t *testing.T) {
 		for file := 0; file < filesPerPackage; file++ {
 			filename := fmt.Sprintf("file_%03d.gofa", file)
 			filepath := filepath.Join(packageDir, filename)
-			
+
 			// Generate varied content sizes
 			contentSize := 1000 + (file*100)%5000 // 1KB to 6KB files
 			decorators := 5 + (file*2)%20         // 5 to 25 decorators
 			content := generateRealisticContent(pkg*filesPerPackage+file, contentSize, decorators)
-			
+
 			if err := os.WriteFile(filepath, []byte(content), 0644); err != nil {
 				t.Fatalf("Failed to create large codebase file: %v", err)
 			}
@@ -219,21 +219,21 @@ func testLargeCodebaseProcessing(t *testing.T) {
 
 			successRate := float64(successCount) / float64(totalFiles)
 			if successRate < 0.99 {
-				t.Errorf("Large codebase success rate too low with %d workers: %.1f%%", 
+				t.Errorf("Large codebase success rate too low with %d workers: %.1f%%",
 					workerCount, successRate*100)
 			}
 
 			filesPerSec := float64(totalFiles) / duration.Seconds()
 			bytesPerSec := float64(totalBytes) / duration.Seconds()
-			
+
 			// Performance thresholds for large codebases
 			minFilesPerSec := 50.0 // Conservative for large datasets
 			if filesPerSec < minFilesPerSec {
-				t.Errorf("Large codebase processing too slow with %d workers: %.2f files/sec", 
+				t.Errorf("Large codebase processing too slow with %d workers: %.2f files/sec",
 					workerCount, filesPerSec)
 			}
 
-			t.Logf("Large codebase with %d workers: %.2f files/sec, %.2f MB/sec, %v duration, %.1f%% success", 
+			t.Logf("Large codebase with %d workers: %.2f files/sec, %.2f MB/sec, %v duration, %.1f%% success",
 				workerCount, filesPerSec, bytesPerSec/1024/1024, duration, successRate*100)
 		})
 	}
@@ -246,14 +246,14 @@ func testMemoryUsageProfiling(t *testing.T) {
 
 	// Create files of varying sizes to test memory behavior
 	fileSizes := []struct {
-		name string
-		size int
+		name  string
+		size  int
 		count int
 	}{
-		{"Small", 500, 100},     // 100 small files
-		{"Medium", 5000, 50},    // 50 medium files  
-		{"Large", 50000, 10},    // 10 large files
-		{"Huge", 100000, 5},     // 5 huge files
+		{"Small", 500, 100},  // 100 small files
+		{"Medium", 5000, 50}, // 50 medium files
+		{"Large", 50000, 10}, // 10 large files
+		{"Huge", 100000, 5},  // 5 huge files
 	}
 
 	var allFiles []string
@@ -261,10 +261,10 @@ func testMemoryUsageProfiling(t *testing.T) {
 		for i := 0; i < sizeConfig.count; i++ {
 			filename := fmt.Sprintf("%s_%03d.gofa", sizeConfig.name, i)
 			filepath := filepath.Join(testDir, filename)
-			
+
 			decoratorCount := sizeConfig.size / 200 // Scale decorators with size
 			content := generateRealisticContent(i, sizeConfig.size, decoratorCount)
-			
+
 			if err := os.WriteFile(filepath, []byte(content), 0644); err != nil {
 				t.Fatalf("Failed to create memory profile test file: %v", err)
 			}
@@ -315,7 +315,7 @@ func testMemoryUsageProfiling(t *testing.T) {
 			// Calculate memory usage
 			memUsedMB := float64(memAfter.Sys-memBefore.Sys) / 1024 / 1024
 			allocsMB := float64(memAfter.TotalAlloc-memBefore.TotalAlloc) / 1024 / 1024
-			
+
 			successCount := 0
 			for _, result := range results {
 				if result.Error == nil {
@@ -332,7 +332,7 @@ func testMemoryUsageProfiling(t *testing.T) {
 				t.Errorf("High memory usage per file in %s: %.2f MB/file", config.name, memPerFile)
 			}
 
-			t.Logf("Memory profile %s: %.2f MB sys, %.2f MB allocs, %.3f MB/file, %.2f files/sec, %d workers", 
+			t.Logf("Memory profile %s: %.2f MB sys, %.2f MB allocs, %.3f MB/file, %.2f files/sec, %d workers",
 				config.name, memUsedMB, allocsMB, memPerFile, filesPerSec, config.maxWorkers)
 		})
 	}
@@ -345,10 +345,10 @@ func testProcessingSpeedBenchmarks(t *testing.T) {
 
 	// Create benchmark datasets
 	benchmarks := []struct {
-		name         string
-		fileCount    int
-		fileSize     int
-		complexity   string
+		name           string
+		fileCount      int
+		fileSize       int
+		complexity     string
 		minFilesPerSec float64
 	}{
 		{"SimpleFiles", 500, 800, "simple", 2000},
@@ -368,7 +368,7 @@ func testProcessingSpeedBenchmarks(t *testing.T) {
 			for i := 0; i < benchmark.fileCount; i++ {
 				filename := fmt.Sprintf("benchmark_%03d.gofa", i)
 				filepath := filepath.Join(benchmarkDir, filename)
-				
+
 				var content string
 				switch benchmark.complexity {
 				case "simple":
@@ -404,7 +404,7 @@ func testProcessingSpeedBenchmarks(t *testing.T) {
 
 			for run := 0; run < runs; run++ {
 				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-				
+
 				start := time.Now()
 				results, err := parser.ParseFiles(ctx, filePaths)
 				duration := time.Since(start)
@@ -440,14 +440,14 @@ func testProcessingSpeedBenchmarks(t *testing.T) {
 
 			// Performance validation
 			if filesPerSec < benchmark.minFilesPerSec {
-				t.Errorf("%s benchmark below threshold: %.2f < %.2f files/sec", 
+				t.Errorf("%s benchmark below threshold: %.2f < %.2f files/sec",
 					benchmark.name, filesPerSec, benchmark.minFilesPerSec)
 			}
 
 			stats := parser.GetStatistics()
 			actualFilesPerSec, _ := stats["files_per_second"].(float64)
 
-			t.Logf("%s Benchmark: %.2f files/sec avg (%.2f measured), %v avg duration, %d files, %d successful runs", 
+			t.Logf("%s Benchmark: %.2f files/sec avg (%.2f measured), %v avg duration, %d files, %d successful runs",
 				benchmark.name, filesPerSec, actualFilesPerSec, avgDuration, benchmark.fileCount, successfulRuns)
 		})
 	}
@@ -460,7 +460,7 @@ func testScalabilityTesting(t *testing.T) {
 
 	// Test scalability with increasing file counts
 	fileCounts := []int{10, 50, 100, 250, 500, 1000}
-	
+
 	for _, fileCount := range fileCounts {
 		t.Run(fmt.Sprintf("Files_%d", fileCount), func(t *testing.T) {
 			// Create test files
@@ -468,7 +468,7 @@ func testScalabilityTesting(t *testing.T) {
 			for i := 0; i < fileCount; i++ {
 				filename := fmt.Sprintf("scale_%04d.gofa", i)
 				filepath := filepath.Join(testDir, filename)
-				
+
 				content := generateRealisticContent(i, 1500, 8) // Standard complexity
 				if err := os.WriteFile(filepath, []byte(content), 0644); err != nil {
 					t.Fatalf("Failed to create scalability test file: %v", err)
@@ -512,7 +512,7 @@ func testScalabilityTesting(t *testing.T) {
 				t.Errorf("Low success rate with %d files: %.1f%%", fileCount, successRate*100)
 			}
 
-			t.Logf("Scalability %d files: %.2f files/sec, %v duration, %.1f%% success", 
+			t.Logf("Scalability %d files: %.2f files/sec, %v duration, %.1f%% success",
 				fileCount, filesPerSec, duration, successRate*100)
 
 			// Clean up files for next iteration
@@ -535,7 +535,7 @@ func testPerformanceRegressionDetection(t *testing.T) {
 	for i := 0; i < standardFileCount; i++ {
 		filename := fmt.Sprintf("regression_%03d.gofa", i)
 		filepath := filepath.Join(testDir, filename)
-		
+
 		// Use consistent content for reproducible performance
 		content := generateRealisticContent(i, 2000, 10)
 		if err := os.WriteFile(filepath, []byte(content), 0644); err != nil {
@@ -554,7 +554,7 @@ func testPerformanceRegressionDetection(t *testing.T) {
 
 	for run := 0; run < baselineRuns; run++ {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		
+
 		start := time.Now()
 		results, err := parser.ParseFiles(ctx, filePaths)
 		duration := time.Since(start)
@@ -585,7 +585,7 @@ func testPerformanceRegressionDetection(t *testing.T) {
 	var sum, min, max float64
 	min = baselineResults[0]
 	max = baselineResults[0]
-	
+
 	for _, result := range baselineResults {
 		sum += result
 		if result < min {
@@ -595,9 +595,9 @@ func testPerformanceRegressionDetection(t *testing.T) {
 			max = result
 		}
 	}
-	
+
 	avgBaseline := sum / float64(len(baselineResults))
-	
+
 	// Calculate variance
 	var variance float64
 	for _, result := range baselineResults {
@@ -608,12 +608,12 @@ func testPerformanceRegressionDetection(t *testing.T) {
 	stdDev := fmt.Sprintf("%.2f", variance)
 
 	// Performance regression thresholds
-	regressionThreshold := avgBaseline * 0.8 // 20% degradation threshold
+	regressionThreshold := avgBaseline * 0.8  // 20% degradation threshold
 	improvementThreshold := avgBaseline * 1.2 // 20% improvement detection
 
-	t.Logf("Performance baseline established: avg=%.2f files/sec, min=%.2f, max=%.2f, stddev=%s", 
+	t.Logf("Performance baseline established: avg=%.2f files/sec, min=%.2f, max=%.2f, stddev=%s",
 		avgBaseline, min, max, stdDev)
-	t.Logf("Regression threshold: %.2f files/sec, Improvement threshold: %.2f files/sec", 
+	t.Logf("Regression threshold: %.2f files/sec, Improvement threshold: %.2f files/sec",
 		regressionThreshold, improvementThreshold)
 
 	// Test current performance against baseline
@@ -622,7 +622,7 @@ func testPerformanceRegressionDetection(t *testing.T) {
 
 	for run := 0; run < currentRuns; run++ {
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-		
+
 		start := time.Now()
 		results, err := parser.ParseFiles(ctx, filePaths)
 		duration := time.Since(start)
@@ -657,13 +657,13 @@ func testPerformanceRegressionDetection(t *testing.T) {
 
 	// Regression detection
 	if avgCurrent < regressionThreshold {
-		t.Errorf("PERFORMANCE REGRESSION DETECTED: current %.2f files/sec < threshold %.2f files/sec (%.1f%% degradation)", 
+		t.Errorf("PERFORMANCE REGRESSION DETECTED: current %.2f files/sec < threshold %.2f files/sec (%.1f%% degradation)",
 			avgCurrent, regressionThreshold, (avgBaseline-avgCurrent)/avgBaseline*100)
 	} else if avgCurrent > improvementThreshold {
-		t.Logf("PERFORMANCE IMPROVEMENT DETECTED: current %.2f files/sec > baseline %.2f files/sec (%.1f%% improvement)", 
+		t.Logf("PERFORMANCE IMPROVEMENT DETECTED: current %.2f files/sec > baseline %.2f files/sec (%.1f%% improvement)",
 			avgCurrent, avgBaseline, (avgCurrent-avgBaseline)/avgBaseline*100)
 	} else {
-		t.Logf("Performance stable: current %.2f files/sec vs baseline %.2f files/sec (%.1f%% change)", 
+		t.Logf("Performance stable: current %.2f files/sec vs baseline %.2f files/sec (%.1f%% change)",
 			avgCurrent, avgBaseline, (avgCurrent-avgBaseline)/avgBaseline*100)
 	}
 }
@@ -681,10 +681,10 @@ func testComponentPerformanceIsolation(t *testing.T) {
 	for i := 0; i < testFileCount; i++ {
 		filename := fmt.Sprintf("component_%03d.gofa", i)
 		filepath := filepath.Join(testDir, filename)
-		
+
 		content := generateRealisticContent(i, 2000, 12)
 		testContent = append(testContent, []byte(content))
-		
+
 		if err := os.WriteFile(filepath, []byte(content), 0644); err != nil {
 			t.Fatalf("Failed to create component performance test file: %v", err)
 		}
@@ -693,67 +693,67 @@ func testComponentPerformanceIsolation(t *testing.T) {
 
 	// Test individual component performance
 	components := []struct {
-		name string
+		name     string
 		testFunc func() (float64, error)
 	}{
 		{"Parser", func() (float64, error) {
 			config := core.DefaultConfig()
 			parser := core.NewParallelParser(config)
-			
+
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			defer cancel()
-			
+
 			start := time.Now()
 			results, err := parser.ParseFiles(ctx, filePaths)
 			duration := time.Since(start)
-			
+
 			if err != nil {
 				return 0, err
 			}
-			
+
 			successCount := 0
 			for _, result := range results {
 				if result.Error == nil {
 					successCount++
 				}
 			}
-			
+
 			return float64(successCount) / duration.Seconds(), nil
 		}},
 		{"DecoratorExtractor", func() (float64, error) {
 			extractor := core.NewDecoratorExtractor(core.DefaultExtractorConfig())
-			
+
 			start := time.Now()
 			successCount := 0
-			
+
 			for _, content := range testContent {
 				_, err := extractor.Extract(content)
 				if err == nil {
 					successCount++
 				}
 			}
-			
+
 			duration := time.Since(start)
 			return float64(successCount) / duration.Seconds(), nil
 		}},
 		{"CodeGenerator", func() (float64, error) {
 			generator := core.NewCodeGenerator(core.DefaultGeneratorConfig())
-			
+
 			start := time.Now()
 			successCount := 0
-			
+
 			for i := 0; i < testFileCount; i++ {
 				typeDef := core.TypeDefinition{
 					Name: fmt.Sprintf("Generated%d", i),
 					Kind: "struct",
 				}
-				
+
 				_, err := generator.GenerateStruct(typeDef)
 				if err == nil {
 					successCount++
 				}
 			}
-			
+
 			duration := time.Since(start)
 			return float64(successCount) / duration.Seconds(), nil
 		}},
@@ -764,7 +764,7 @@ func testComponentPerformanceIsolation(t *testing.T) {
 		t.Run(component.name, func(t *testing.T) {
 			const runs = 5
 			var results []float64
-			
+
 			for run := 0; run < runs; run++ {
 				result, err := component.testFunc()
 				if err != nil {
@@ -773,15 +773,15 @@ func testComponentPerformanceIsolation(t *testing.T) {
 				}
 				results = append(results, result)
 			}
-			
+
 			if len(results) == 0 {
 				t.Fatalf("No successful runs for component %s", component.name)
 			}
-			
+
 			var sum, min, max float64
 			min = results[0]
 			max = results[0]
-			
+
 			for _, result := range results {
 				sum += result
 				if result < min {
@@ -791,9 +791,9 @@ func testComponentPerformanceIsolation(t *testing.T) {
 					max = result
 				}
 			}
-			
+
 			avg := sum / float64(len(results))
-			
+
 			// Component-specific performance expectations
 			var expectedMin float64
 			switch component.name {
@@ -804,13 +804,13 @@ func testComponentPerformanceIsolation(t *testing.T) {
 			case "CodeGenerator":
 				expectedMin = 1000.0 // generations per second
 			}
-			
+
 			if avg < expectedMin {
-				t.Errorf("Component %s performance below expected: %.2f < %.2f ops/sec", 
+				t.Errorf("Component %s performance below expected: %.2f < %.2f ops/sec",
 					component.name, avg, expectedMin)
 			}
-			
-			t.Logf("Component %s performance: avg=%.2f ops/sec, min=%.2f, max=%.2f, %d runs", 
+
+			t.Logf("Component %s performance: avg=%.2f ops/sec, min=%.2f, max=%.2f, %d runs",
 				component.name, avg, min, max, len(results))
 		})
 	}
@@ -820,10 +820,10 @@ func testComponentPerformanceIsolation(t *testing.T) {
 
 func generateRealisticContent(id int, targetSize int, decoratorCount int) string {
 	var builder strings.Builder
-	
+
 	packageName := fmt.Sprintf("realistic%d", id)
 	builder.WriteString(fmt.Sprintf("package %s\n\n", packageName))
-	
+
 	// Add imports
 	builder.WriteString("import (\n")
 	builder.WriteString("\t\"context\"\n")
@@ -831,20 +831,20 @@ func generateRealisticContent(id int, targetSize int, decoratorCount int) string
 	builder.WriteString("\t\"net/http\"\n")
 	builder.WriteString("\t\"time\"\n")
 	builder.WriteString(")\n\n")
-	
+
 	// Add decorators
 	for d := 0; d < decoratorCount; d++ {
 		decorator := fmt.Sprintf("// @Decorator%d(\"param%d\", %d)\n", d, d, d*10)
 		builder.WriteString(decorator)
 	}
-	
+
 	// Add struct
 	builder.WriteString(fmt.Sprintf("type Service%d struct {\n", id))
 	builder.WriteString("\tdb *sql.DB\n")
 	builder.WriteString("\tcache map[string]interface{}\n")
 	builder.WriteString("\tlogger Logger\n")
 	builder.WriteString("}\n\n")
-	
+
 	// Add methods to reach target size
 	methodCount := targetSize / 200 // Rough estimate
 	for m := 0; m < methodCount; m++ {
@@ -854,16 +854,16 @@ func generateRealisticContent(id int, targetSize int, decoratorCount int) string
 		builder.WriteString("\treturn nil\n")
 		builder.WriteString("}\n\n")
 	}
-	
+
 	return builder.String()
 }
 
 func generateSimpleContent(id int, targetSize int) string {
 	var builder strings.Builder
-	
+
 	packageName := fmt.Sprintf("simple%d", id)
 	builder.WriteString(fmt.Sprintf("package %s\n\n", packageName))
-	
+
 	// Simple function
 	functionCount := targetSize / 100
 	for f := 0; f < functionCount; f++ {
@@ -871,16 +871,16 @@ func generateSimpleContent(id int, targetSize int) string {
 		builder.WriteString("\t// Simple implementation\n")
 		builder.WriteString("}\n\n")
 	}
-	
+
 	return builder.String()
 }
 
 func generateComplexContent(id int, targetSize int) string {
 	var builder strings.Builder
-	
+
 	packageName := fmt.Sprintf("complex%d", id)
 	builder.WriteString(fmt.Sprintf("package %s\n\n", packageName))
-	
+
 	// Complex imports
 	builder.WriteString("import (\n")
 	builder.WriteString("\t\"context\"\n")
@@ -890,17 +890,17 @@ func generateComplexContent(id int, targetSize int) string {
 	builder.WriteString("\t\"sync\"\n")
 	builder.WriteString("\t\"time\"\n")
 	builder.WriteString(")\n\n")
-	
+
 	// Complex structs and interfaces
 	builder.WriteString("type ComplexInterface interface {\n")
 	builder.WriteString("\tProcess(ctx context.Context, data []byte) (interface{}, error)\n")
 	builder.WriteString("\tValidate(input map[string]interface{}) bool\n")
 	builder.WriteString("}\n\n")
-	
+
 	// Add content to reach target size
 	contentPerMethod := 300
 	methodCount := targetSize / contentPerMethod
-	
+
 	for m := 0; m < methodCount; m++ {
 		builder.WriteString(fmt.Sprintf("func ComplexMethod%d(ctx context.Context, params map[string]interface{}) (interface{}, error) {\n", m))
 		builder.WriteString("\tvar mu sync.RWMutex\n")
@@ -916,6 +916,6 @@ func generateComplexContent(id int, targetSize int) string {
 		builder.WriteString("\treturn nil, nil\n")
 		builder.WriteString("}\n\n")
 	}
-	
+
 	return builder.String()
 }

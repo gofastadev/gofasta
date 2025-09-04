@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/healtronlabs/gofasta/tools/transpiler/core"
+	"github.com/healtronlabs/gofasta/transpiler/core"
 )
 
 // TestConcurrentProcessingIntegration tests concurrent processing capabilities and thread safety
@@ -110,7 +110,7 @@ func CreateEndpoint%d() {
 			stats := parser.GetStatistics()
 			filesPerSec, _ := stats["files_per_second"].(float64)
 
-			t.Logf("Worker config %d: parsed %d files in %v (%.2f files/sec)", 
+			t.Logf("Worker config %d: parsed %d files in %v (%.2f files/sec)",
 				workerCount, numFiles, duration, filesPerSec)
 
 			// Validate performance expectations
@@ -178,20 +178,20 @@ func testWorkerPoolManagement(t *testing.T) {
 
 			// Calculate performance metrics
 			filesPerSec := float64(numFiles) / duration.Seconds()
-			
+
 			if filesPerSec < tc.expectMin {
-				t.Errorf("Worker performance below expected minimum: %.2f < %.2f files/sec", 
+				t.Errorf("Worker performance below expected minimum: %.2f < %.2f files/sec",
 					filesPerSec, tc.expectMin)
 			}
 
 			stats := parser.GetStatistics()
 			actualWorkers := stats["max_workers"].(int)
-			
+
 			if actualWorkers != tc.workerCount {
 				t.Errorf("Expected %d workers, parser configured with %d", tc.workerCount, actualWorkers)
 			}
 
-			t.Logf("Worker pool %s: %d workers, %.2f files/sec, %v duration", 
+			t.Logf("Worker pool %s: %d workers, %.2f files/sec, %v duration",
 				tc.name, tc.workerCount, filesPerSec, duration)
 		})
 	}
@@ -208,7 +208,7 @@ func testRaceConditionDetection(t *testing.T) {
 		filename := fmt.Sprintf("shared_%d.gofa", i)
 		filepath := filepath.Join(testDir, filename)
 		content := fmt.Sprintf("package shared%d\n\n// @Service\ntype Service%d struct {}", i, i)
-		
+
 		if err := os.WriteFile(filepath, []byte(content), 0644); err != nil {
 			t.Fatalf("Failed to create shared test file: %v", err)
 		}
@@ -236,7 +236,7 @@ func testRaceConditionDetection(t *testing.T) {
 		wg.Add(1)
 		go func(goroutineID int) {
 			defer wg.Done()
-			
+
 			for _, filePath := range sharedFiles {
 				// Read file content
 				content, err := os.ReadFile(filePath)
@@ -259,7 +259,7 @@ func testRaceConditionDetection(t *testing.T) {
 						Target:    fmt.Sprintf("goroutine_%d", goroutineID),
 						Arguments: []interface{}{decorator.Arguments},
 					}
-					
+
 					_, err := registry.Invoke(ctx, decorator.Name, args)
 					if err == nil {
 						atomic.AddInt64(&successfulOps, 1)
@@ -298,7 +298,7 @@ func testRaceConditionDetection(t *testing.T) {
 		t.Error("Registry shows no invocations (possible race condition)")
 	}
 
-	t.Logf("Race condition test: %d successful operations, %d errors across %d goroutines", 
+	t.Logf("Race condition test: %d successful operations, %d errors across %d goroutines",
 		successCount, raceCount, numGoroutines)
 }
 
@@ -353,8 +353,8 @@ func (c *TestController) CreateUser() {}
 			// Concurrent code generation
 			for _, decorator := range result.Decorators {
 				structDef := core.TypeDefinition{
-					Name: fmt.Sprintf("Generated%d", id),
-					Kind: "struct",
+					Name:       fmt.Sprintf("Generated%d", id),
+					Kind:       "struct",
 					Decorators: []core.Decorator{decorator},
 				}
 
@@ -388,16 +388,16 @@ func (c *TestController) CreateUser() {}
 	generatorStats := generator.GetStatistics()
 
 	if extractorExtractions, ok := extractorStats["extractions"].(int64); ok && extractorExtractions != successCount {
-		t.Logf("Extractor extractions (%d) vs successes (%d) - may be normal due to async updates", 
+		t.Logf("Extractor extractions (%d) vs successes (%d) - may be normal due to async updates",
 			extractorExtractions, successCount)
 	}
 
 	if generatorGenerations, ok := generatorStats["generations"].(int64); ok && generatorGenerations < successCount {
-		t.Logf("Generator operations (%d) vs successes (%d) - may indicate missing operations", 
+		t.Logf("Generator operations (%d) vs successes (%d) - may indicate missing operations",
 			generatorGenerations, successCount)
 	}
 
-	t.Logf("Thread safety validation: %d successes, %d errors out of %d concurrent operations", 
+	t.Logf("Thread safety validation: %d successes, %d errors out of %d concurrent operations",
 		successCount, errorCount, iterations)
 }
 
@@ -450,8 +450,8 @@ func (c *Controller%d) CreateItem(ctx context.Context, item Item) error {
 }
 
 type Item struct {
-	ID   int    ` + "`json:\"id\"`" + `
-	Name string ` + "`json:\"name\"`" + `
+	ID   int    `+"`json:\"id\"`"+`
+	Name string `+"`json:\"name\"`"+`
 }
 `, i, i, i*5, i, i, i*10, i)
 
@@ -463,8 +463,8 @@ type Item struct {
 
 	// Test resource contention with limited workers vs many workers
 	testConfigs := []struct {
-		name         string
-		maxWorkers   int
+		name                      string
+		maxWorkers                int
 		expectGracefulDegradation bool
 	}{
 		{"LimitedWorkers", 2, true},
@@ -518,7 +518,7 @@ type Item struct {
 			stats := parser.GetStatistics()
 			filesPerSec, _ := stats["files_per_second"].(float64)
 
-			t.Logf("Resource contention %s: %d workers, %.2f files/sec, %v duration, %.1f%% success", 
+			t.Logf("Resource contention %s: %d workers, %.2f files/sec, %v duration, %.1f%% success",
 				tc.name, tc.maxWorkers, filesPerSec, duration, successRate*100)
 		})
 	}
@@ -622,7 +622,7 @@ func testLoadBalancingAcrossWorkers(t *testing.T) {
 				t.Errorf("Poor load balancing performance: %.2f files/sec", filesPerSec)
 			}
 
-			t.Logf("Load balancing with %d workers: %.2f files/sec, avg %v per file (avg size: %d bytes)", 
+			t.Logf("Load balancing with %d workers: %.2f files/sec, avg %v per file (avg size: %d bytes)",
 				workerCount, filesPerSec, avgDurationPerFile, avgSize)
 		})
 	}
@@ -663,8 +663,8 @@ func (c *Controller%d) CreateItem(item Item) error {
 }
 
 type Item struct {
-	ID   int    ` + "`json:\"id\"`" + `
-	Name string ` + "`json:\"name\"`" + `
+	ID   int    `+"`json:\"id\"`"+`
+	Name string `+"`json:\"name\"`"+`
 }
 
 type Service%d struct {
@@ -680,15 +680,15 @@ type Service%d struct {
 
 	// Initialize all components for concurrent testing
 	parser := core.NewParallelParser(core.DefaultConfig())
-	
+
 	extractorConfig := core.DefaultExtractorConfig()
 	extractorConfig.ParallelExtraction = true
 	extractor := core.NewDecoratorExtractor(extractorConfig)
-	
+
 	registryConfig := core.DefaultRegistryConfig()
 	registryConfig.ParallelLoading = true
 	registry := core.NewDecoratorRegistry(registryConfig)
-	
+
 	generator := core.NewCodeGenerator(core.DefaultGeneratorConfig())
 
 	// Test full concurrent pipeline
@@ -728,12 +728,12 @@ type Service%d struct {
 			wg.Add(1)
 			go func(path string, dec core.Decorator) {
 				defer wg.Done()
-				
+
 				args := core.DecoratorArgs{
 					Target:    path,
 					Arguments: []interface{}{dec.Arguments},
 				}
-				
+
 				result, err := registry.Invoke(ctx, dec.Name, args)
 				if err == nil && result.Success {
 					atomic.AddInt64(&processedDecorators, 1)
@@ -789,7 +789,7 @@ type Service%d struct {
 		t.Errorf("Poor concurrent integration performance: %.2f files/sec", filesPerSec)
 	}
 
-	t.Logf("Concurrent component integration: %d files, %d extractions, %d processed decorators, %.2f files/sec in %v", 
+	t.Logf("Concurrent component integration: %d files, %d extractions, %d processed decorators, %.2f files/sec in %v",
 		numFiles, len(extractionResults), processedCount, filesPerSec, totalDuration)
 }
 
@@ -872,9 +872,9 @@ func (s *TestService) Test() {}
 	extractorStats := extractor.GetStatistics()
 	registryStats := registry.GetStatistics()
 
-	t.Logf("Memory consistency test: %d total operations, %d goroutines, extractor stats: %v", 
+	t.Logf("Memory consistency test: %d total operations, %d goroutines, extractor stats: %v",
 		totalOperations, goroutines, extractorStats["extractions"])
-	
+
 	if invocations, ok := registryStats["invocations"].(int64); ok {
 		t.Logf("Registry invocations: %d", invocations)
 	}
@@ -940,7 +940,7 @@ func (c *UserController) GetUsers() {}
 	for i := 0; i < attempts; i++ {
 		go func(attempt int) {
 			parser := core.NewParallelParser(core.DefaultConfig())
-			
+
 			// This should not deadlock
 			_, err := parser.ParseFiles(ctx, filePaths)
 			results <- err
@@ -962,7 +962,7 @@ func (c *UserController) GetUsers() {}
 				errors = append(errors, err)
 			}
 		case <-timeoutTimer.C:
-			t.Errorf("Deadlock detected: only %d/%d attempts completed within timeout", 
+			t.Errorf("Deadlock detected: only %d/%d attempts completed within timeout",
 				completedAttempts, attempts)
 			return
 		}
@@ -970,11 +970,11 @@ func (c *UserController) GetUsers() {}
 
 	// Validate no deadlocks occurred
 	if len(errors) > attempts/2 {
-		t.Errorf("High error rate may indicate deadlock issues: %d errors out of %d attempts", 
+		t.Errorf("High error rate may indicate deadlock issues: %d errors out of %d attempts",
 			len(errors), attempts)
 	}
 
-	t.Logf("Deadlock prevention test: %d/%d attempts completed successfully", 
+	t.Logf("Deadlock prevention test: %d/%d attempts completed successfully",
 		attempts-len(errors), attempts)
 }
 
@@ -1035,7 +1035,7 @@ type Repository3 struct {}`),
 	// Check cache statistics
 	stats := extractor.GetStatistics()
 	totalErrors := atomic.LoadInt64(&cacheErrors)
-	
+
 	cacheHitRate, ok := stats["cache_hit_rate"].(float64)
 	if !ok {
 		t.Error("Cache hit rate not available in statistics")
@@ -1054,7 +1054,7 @@ type Repository3 struct {}`),
 		t.Error("No extractions recorded (possible cache corruption)")
 	}
 
-	t.Logf("Concurrent cache operations: %.2f%% hit rate, %d extractions, %d errors across %d goroutines", 
+	t.Logf("Concurrent cache operations: %.2f%% hit rate, %d extractions, %d errors across %d goroutines",
 		cacheHitRate, extractions, totalErrors, goroutines)
 }
 

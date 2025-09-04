@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/healtronlabs/gofasta/tools/transpiler/core"
+	"github.com/healtronlabs/gofasta/transpiler/core"
 )
 
 // TestActorLifecycleIntegrationScenarios tests complete actor lifecycle with supervision
@@ -16,24 +16,24 @@ func TestActorLifecycleIntegrationScenarios(t *testing.T) {
 	defer registry.Shutdown()
 
 	tests := []struct {
-		name           string
-		actorConfig    map[string]any
-		lifecycleSteps []string
+		name            string
+		actorConfig     map[string]any
+		lifecycleSteps  []string
 		supervisionMode string
-		expected       map[string]any
+		expected        map[string]any
 	}{
 		{
 			name: "full_lifecycle_with_supervision",
 			actorConfig: map[string]any{
-				"mailboxSize":  1000,
-				"poolSize":     10,
-				"timeout":      "30s",
-				"supervised":   true,
-				"hotSwap":      false,
+				"mailboxSize":     1000,
+				"poolSize":        10,
+				"timeout":         "30s",
+				"supervised":      true,
+				"hotSwap":         false,
 				"stateManagement": false,
 			},
 			lifecycleSteps: []string{
-				"create", "initialize", "start", "process_messages", 
+				"create", "initialize", "start", "process_messages",
 				"handle_failure", "restart", "resume", "stop", "terminate",
 			},
 			supervisionMode: "OneForOne",
@@ -70,12 +70,12 @@ func TestActorLifecycleIntegrationScenarios(t *testing.T) {
 		{
 			name: "hot_swappable_actor",
 			actorConfig: map[string]any{
-				"mailboxSize":    500,
-				"poolSize":       5,
-				"timeout":        "10s",
-				"supervised":     true,
-				"hotSwap":        true,
-				"behaviorTypes":  []string{"normal", "degraded", "emergency"},
+				"mailboxSize":   500,
+				"poolSize":      5,
+				"timeout":       "10s",
+				"supervised":    true,
+				"hotSwap":       true,
+				"behaviorTypes": []string{"normal", "degraded", "emergency"},
 			},
 			lifecycleSteps: []string{
 				"create", "start", "normal_behavior", "swap_to_degraded",
@@ -84,10 +84,10 @@ func TestActorLifecycleIntegrationScenarios(t *testing.T) {
 			},
 			supervisionMode: "OneForAll",
 			expected: map[string]any{
-				"behavior_swaps":      3,
-				"swap_latency":        "<10ms",
-				"message_continuity":  true,
-				"state_consistency":   true,
+				"behavior_swaps":     3,
+				"swap_latency":       "<10ms",
+				"message_continuity": true,
+				"state_consistency":  true,
 			},
 		},
 	}
@@ -126,13 +126,13 @@ func TestActorHierarchyIntegrationScenarios(t *testing.T) {
 		{
 			name: "parent_child_supervision",
 			hierarchyConfig: map[string]any{
-				"maxChildren":     10,
-				"childTimeout":    "5s",
-				"parentStrategy":  "OneForOne",
-				"childStrategy":   "OneForAll",
+				"maxChildren":    10,
+				"childTimeout":   "5s",
+				"parentStrategy": "OneForOne",
+				"childStrategy":  "OneForAll",
 			},
 			actorTree: map[string][]string{
-				"root":   {"manager1", "manager2"},
+				"root":     {"manager1", "manager2"},
 				"manager1": {"worker1", "worker2", "worker3"},
 				"manager2": {"worker4", "worker5"},
 			},
@@ -147,9 +147,9 @@ func TestActorHierarchyIntegrationScenarios(t *testing.T) {
 		{
 			name: "dynamic_child_spawning",
 			hierarchyConfig: map[string]any{
-				"dynamicSpawning": true,
-				"maxChildren":     100,
-				"spawnStrategy":   "on_demand",
+				"dynamicSpawning":   true,
+				"maxChildren":       100,
+				"spawnStrategy":     "on_demand",
 				"terminationPolicy": "graceful",
 			},
 			actorTree: map[string][]string{
@@ -173,8 +173,8 @@ func TestActorHierarchyIntegrationScenarios(t *testing.T) {
 			},
 			actorTree: map[string][]string{
 				"resource_manager": {"db_pool", "http_pool", "cache_pool"},
-				"db_pool":         {"connection1", "connection2"},
-				"http_pool":       {"client1", "client2", "client3"},
+				"db_pool":          {"connection1", "connection2"},
+				"http_pool":        {"client1", "client2", "client3"},
 			},
 			failureScenario: "resource_exhaustion_recovery",
 			expected: map[string]any{
@@ -223,27 +223,27 @@ func TestBackpressureIntegrationScenarios(t *testing.T) {
 		{
 			name: "mailbox_overflow_drop_oldest",
 			backpressureConfig: map[string]any{
-				"mailboxSize":         100,
-				"backpressure":        true,
+				"mailboxSize":          100,
+				"backpressure":         true,
 				"backpressureStrategy": "dropOldest",
-				"overflowThreshold":   0.8,
+				"overflowThreshold":    0.8,
 			},
 			loadPattern:         "burst_overload",
 			supervisionStrategy: "OneForOne",
 			expected: map[string]any{
-				"messages_dropped":   ">0",
-				"drop_strategy":      "oldest_first",
-				"system_responsive":  true,
-				"memory_bounded":     true,
+				"messages_dropped":  ">0",
+				"drop_strategy":     "oldest_first",
+				"system_responsive": true,
+				"memory_bounded":    true,
 			},
 		},
 		{
 			name: "mailbox_overflow_drop_newest",
 			backpressureConfig: map[string]any{
-				"mailboxSize":         200,
-				"backpressure":        true,
+				"mailboxSize":          200,
+				"backpressure":         true,
 				"backpressureStrategy": "dropNewest",
-				"overflowThreshold":   0.9,
+				"overflowThreshold":    0.9,
 			},
 			loadPattern:         "sustained_overload",
 			supervisionStrategy: "RestForOne",
@@ -257,18 +257,18 @@ func TestBackpressureIntegrationScenarios(t *testing.T) {
 		{
 			name: "mailbox_overflow_reject",
 			backpressureConfig: map[string]any{
-				"mailboxSize":         50,
-				"backpressure":        true,
+				"mailboxSize":          50,
+				"backpressure":         true,
 				"backpressureStrategy": "reject",
-				"rejectionPolicy":     "fast_fail",
+				"rejectionPolicy":      "fast_fail",
 			},
 			loadPattern:         "spike_traffic",
 			supervisionStrategy: "OneForAll",
 			expected: map[string]any{
-				"messages_rejected":  ">0",
-				"fast_failure":       true,
-				"caller_notified":    true,
-				"system_protected":   true,
+				"messages_rejected": ">0",
+				"fast_failure":      true,
+				"caller_notified":   true,
+				"system_protected":  true,
 			},
 		},
 	}
@@ -301,19 +301,19 @@ func TestActorRefCommunicationScenarios(t *testing.T) {
 	defer registry.Shutdown()
 
 	tests := []struct {
-		name             string
+		name                 string
 		communicationPattern string
-		actorCount       int
-		messageVolume    int
-		failureInjection bool
-		expected         map[string]any
+		actorCount           int
+		messageVolume        int
+		failureInjection     bool
+		expected             map[string]any
 	}{
 		{
 			name:                 "high_volume_messaging",
 			communicationPattern: "all_to_all",
-			actorCount:          50,
-			messageVolume:       10000,
-			failureInjection:    false,
+			actorCount:           50,
+			messageVolume:        10000,
+			failureInjection:     false,
 			expected: map[string]any{
 				"messages_delivered": 10000,
 				"delivery_rate":      ">95%",
@@ -324,27 +324,27 @@ func TestActorRefCommunicationScenarios(t *testing.T) {
 		{
 			name:                 "messaging_with_failures",
 			communicationPattern: "hub_and_spoke",
-			actorCount:          20,
-			messageVolume:       5000,
-			failureInjection:    true,
+			actorCount:           20,
+			messageVolume:        5000,
+			failureInjection:     true,
 			expected: map[string]any{
-				"message_recovery":   true,
-				"dead_letter_queue":  ">0",
-				"route_healing":      true,
-				"supervision_ok":     true,
+				"message_recovery":  true,
+				"dead_letter_queue": ">0",
+				"route_healing":     true,
+				"supervision_ok":    true,
 			},
 		},
 		{
 			name:                 "broadcast_messaging",
 			communicationPattern: "broadcast",
-			actorCount:          100,
-			messageVolume:       1000,
-			failureInjection:    false,
+			actorCount:           100,
+			messageVolume:        1000,
+			failureInjection:     false,
 			expected: map[string]any{
-				"broadcast_success":  true,
-				"fan_out_latency":    "<50ms",
-				"memory_efficiency":  true,
-				"concurrent_safety":  true,
+				"broadcast_success": true,
+				"fan_out_latency":   "<50ms",
+				"memory_efficiency": true,
+				"concurrent_safety": true,
 			},
 		},
 	}
@@ -391,10 +391,10 @@ func TestPersistenceIntegrationScenarios(t *testing.T) {
 			dataPattern: "high_frequency_events",
 			failureType: "actor_crash_with_recovery",
 			expected: map[string]any{
-				"events_replayed":    ">100",
-				"state_consistency":  true,
-				"recovery_time":      "<5s",
-				"data_integrity":     true,
+				"events_replayed":   ">100",
+				"state_consistency": true,
+				"recovery_time":     "<5s",
+				"data_integrity":    true,
 			},
 		},
 		{
@@ -408,16 +408,16 @@ func TestPersistenceIntegrationScenarios(t *testing.T) {
 			dataPattern: "large_state_changes",
 			failureType: "system_restart",
 			expected: map[string]any{
-				"snapshots_created":  ">3",
-				"state_restored":     true,
-				"compression_ratio":  ">50%",
-				"async_performance":  true,
+				"snapshots_created": ">3",
+				"state_restored":    true,
+				"compression_ratio": ">50%",
+				"async_performance": true,
 			},
 		},
 		{
 			name: "distributed_persistence",
 			persistenceConfig: map[string]any{
-				"persistenceMode": "distributed",
+				"persistenceMode":   "distributed",
 				"replicationFactor": 3,
 				"consistency":       "eventual",
 				"partitioning":      "hash_based",
@@ -425,10 +425,10 @@ func TestPersistenceIntegrationScenarios(t *testing.T) {
 			dataPattern: "distributed_updates",
 			failureType: "node_partition",
 			expected: map[string]any{
-				"replication_ok":     true,
-				"partition_healing":  true,
+				"replication_ok":         true,
+				"partition_healing":      true,
 				"consistency_maintained": true,
-				"availability":       ">99%",
+				"availability":           ">99%",
 			},
 		},
 	}
@@ -467,23 +467,23 @@ type ActorLifecycleSystem struct {
 }
 
 type LifecycleActor struct {
-	name           string
-	state          string
-	config         map[string]any
-	mailbox        chan any
-	pool           *MemoryPool
-	stateManager   *StateManager
-	behaviorStack  []string
-	restartCount   int64
-	messageCount   int64
+	name          string
+	state         string
+	config        map[string]any
+	mailbox       chan any
+	pool          *MemoryPool
+	stateManager  *StateManager
+	behaviorStack []string
+	restartCount  int64
+	messageCount  int64
 }
 
 type StateManager struct {
-	currentState   map[string]any
-	snapshots      []Snapshot
-	journal        []Event
-	persistence    bool
-	mutex          sync.RWMutex
+	currentState map[string]any
+	snapshots    []Snapshot
+	journal      []Event
+	persistence  bool
+	mutex        sync.RWMutex
 }
 
 type Snapshot struct {
@@ -500,26 +500,26 @@ type Event struct {
 }
 
 type LifecycleMonitor struct {
-	stages    []string
-	timings   map[string]time.Duration
-	results   map[string]any
-	mutex     sync.RWMutex
+	stages  []string
+	timings map[string]time.Duration
+	results map[string]any
+	mutex   sync.RWMutex
 }
 
 type ActorHierarchy struct {
-	actors     map[string]*HierarchicalActor
-	parentMap  map[string]string
+	actors      map[string]*HierarchicalActor
+	parentMap   map[string]string
 	childrenMap map[string][]string
-	monitor    *HierarchyMonitor
+	monitor     *HierarchyMonitor
 }
 
 type HierarchicalActor struct {
-	name         string
-	parent       string
-	children     []string
-	resources    map[string]any
-	spawned      int64
-	terminated   int64
+	name       string
+	parent     string
+	children   []string
+	resources  map[string]any
+	spawned    int64
+	terminated int64
 }
 
 type HierarchyMonitor struct {
@@ -538,13 +538,13 @@ type BackpressureIntegration struct {
 }
 
 type BackpressureActor struct {
-	name        string
-	mailbox     chan any
-	strategy    string
-	threshold   float64
-	processed   int64
-	dropped     int64
-	rejected    int64
+	name      string
+	mailbox   chan any
+	strategy  string
+	threshold float64
+	processed int64
+	dropped   int64
+	rejected  int64
 }
 
 type BackpressureMonitor struct {
@@ -587,33 +587,33 @@ type CommunicationMonitor struct {
 }
 
 type PersistenceIntegration struct {
-	actors       map[string]*PersistentActor
-	storage      *PersistenceStorage
-	replication  *ReplicationManager
-	monitor      *PersistenceMonitor
+	actors      map[string]*PersistentActor
+	storage     *PersistenceStorage
+	replication *ReplicationManager
+	monitor     *PersistenceMonitor
 }
 
 type PersistentActor struct {
-	name         string
-	persistence  *StateManager
-	eventCount   int64
+	name          string
+	persistence   *StateManager
+	eventCount    int64
 	snapshotCount int64
-	recoveryTime time.Duration
+	recoveryTime  time.Duration
 }
 
 type PersistenceStorage struct {
-	mode           string
-	events         []Event
-	snapshots      []Snapshot
+	mode              string
+	events            []Event
+	snapshots         []Snapshot
 	replicationFactor int
-	consistency    string
+	consistency       string
 }
 
 type ReplicationManager struct {
-	replicas     map[string]*Replica
-	consistency  string
-	partitions   int
-	healingTime  time.Duration
+	replicas    map[string]*Replica
+	consistency string
+	partitions  int
+	healingTime time.Duration
 }
 
 type Replica struct {
@@ -624,11 +624,11 @@ type Replica struct {
 }
 
 type PersistenceMonitor struct {
-	eventsStored    int64
+	eventsStored     int64
 	snapshotsCreated int64
-	recoveryTime    time.Duration
-	replicationLag  time.Duration
-	mutex           sync.RWMutex
+	recoveryTime     time.Duration
+	replicationLag   time.Duration
+	mutex            sync.RWMutex
 }
 
 // Implementation helper functions (placeholder implementations)
@@ -698,7 +698,7 @@ func generateBackpressureLoad(ctx context.Context, integration *BackpressureInte
 
 func mergeBackpressureResults(loadResults map[string]any, integration *BackpressureIntegration) map[string]any {
 	return map[string]any{
-		"messages_dropped": atomic.LoadInt64(&integration.droppedMessages),
+		"messages_dropped":  atomic.LoadInt64(&integration.droppedMessages),
 		"system_responsive": true,
 	}
 }

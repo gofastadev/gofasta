@@ -55,7 +55,7 @@ print_status "Preparing workspace dependencies..."
 print_status "Running comprehensive test suite for improved coverage..."
 TEST_OUTPUT=$(mktemp)
 COVERAGE_FILE="$SCRIPT_DIR/coverage.out"
-if go test -v -coverprofile="$COVERAGE_FILE" -timeout=5m ./tools/transpiler/... 2>&1 | tee "$TEST_OUTPUT"; then
+if go test -v -coverprofile="$COVERAGE_FILE" -timeout=5m ./transpiler/... 2>&1 | tee "$TEST_OUTPUT"; then
     TEST_RESULT="PASSED"
     print_success "Comprehensive test suite passed!"
 else
@@ -76,7 +76,7 @@ go tool cover -func="$COVERAGE_FILE" | grep "0\.0%" | head -20 || echo "No funct
 
 # Run go vet
 print_status "Running go vet..."
-if go vet ./tools/transpiler/...; then
+if go vet ./transpiler/...; then
     print_success "go vet passed!"
 else
     print_warning "go vet found issues (non-critical for core functionality)"

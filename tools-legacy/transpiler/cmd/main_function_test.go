@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/healtronlabs/gofasta/tools/transpiler/cli"
+	"github.com/healtronlabs/gofasta/transpiler/cli"
 )
 
 // Test the main function indirectly by testing the setup it does
@@ -31,7 +31,7 @@ func TestMainFunctionSetup(t *testing.T) {
 			return &WatchModeAdapter{watchMode: nil} // Mock
 		},
 	}
-	
+
 	// Test that dependencies are properly structured
 	if deps.TranspileFile == nil {
 		t.Error("TranspileFile dependency should be set")
@@ -96,7 +96,7 @@ func TestAdapterOptionConversion(t *testing.T) {
 	if !batchAdapter.opts.Verbose {
 		t.Error("Expected Verbose to be true")
 	}
-	
+
 	// Test that TranspileProject method exists and can be called
 	err := batchAdapter.TranspileProject("nonexistent")
 	// This will error, but we're testing that the method exists and runs
@@ -144,7 +144,7 @@ func TestAdapterInterfaceImplementation(t *testing.T) {
 		t.Error("BatchTranspilerAdapter should implement cli.BatchTranspiler")
 	}
 
-	// Verify ParallelTranspilerAdapter implements cli.ParallelTranspiler  
+	// Verify ParallelTranspilerAdapter implements cli.ParallelTranspiler
 	var parallelInterface cli.ParallelTranspiler = &ParallelTranspilerAdapter{}
 	if parallelInterface == nil {
 		t.Error("ParallelTranspilerAdapter should implement cli.ParallelTranspiler")
@@ -165,8 +165,8 @@ func TestMainFunctionExecution(t *testing.T) {
 
 	// Test that main function can be called with help argument (should exit cleanly)
 	cmd := exec.Command("go", "run", "main.go", "help")
-	cmd.Dir = "/Users/descholar/descholar/myprojects/healtronlabs/gofasta/tools/transpiler/cmd"
-	
+	cmd.Dir = "/Users/descholar/descholar/myprojects/healtronlabs/gofasta/transpiler/cmd"
+
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		t.Logf("Main function execution with help failed (may be expected): %v", err)
@@ -190,27 +190,27 @@ func TestAdapterEdgeCases(t *testing.T) {
 
 	// Test ParallelTranspilerAdapter methods
 	parallelAdapter := &ParallelTranspilerAdapter{transpiler: nil}
-	
+
 	// These will likely panic with nil transpiler, but we can test the method existence
 	defer func() {
 		if r := recover(); r != nil {
 			t.Logf("ParallelTranspilerAdapter methods panicked as expected with nil transpiler: %v", r)
 		}
 	}()
-	
+
 	// Test methods exist (will panic with nil transpiler)
 	// files, _ := parallelAdapter.FindGofaFiles("test")
 	// path := parallelAdapter.GetOutputPath("input", "test.gofa")
-	
+
 	// Instead, just verify the methods exist by checking the interface
 	var _ cli.ParallelTranspiler = parallelAdapter
-	
+
 	// Test WatchModeAdapter methods
 	watchAdapter := &WatchModeAdapter{watchMode: nil}
-	
+
 	// Stop should be safe to call even with nil
 	watchAdapter.Stop()
-	
+
 	// Start will panic with nil, but we test interface conformance
 	var _ cli.WatchMode = watchAdapter
 }

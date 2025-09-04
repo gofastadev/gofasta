@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/healtronlabs/gofasta/tools/transpiler/cli"
+	"github.com/healtronlabs/gofasta/transpiler/cli"
 )
 
 // Test adapter types
@@ -18,7 +18,7 @@ func TestBatchTranspilerAdapter(t *testing.T) {
 	}
 
 	adapter := &BatchTranspilerAdapter{opts: opts}
-	
+
 	// Test that the adapter was created
 	if adapter.opts.MaxWorkers != 2 {
 		t.Errorf("Expected MaxWorkers 2, got %d", adapter.opts.MaxWorkers)
@@ -73,27 +73,27 @@ func TestMainDependencyCreation(t *testing.T) {
 	newBatch := func(opts cli.TranspileOptions) cli.BatchTranspiler {
 		return &BatchTranspilerAdapter{opts: opts}
 	}
-	
+
 	batcher := newBatch(opts)
 	if batcher == nil {
 		t.Error("NewBatchTranspiler returned nil")
 	}
-	
-	// Test NewParallelTranspiler dependency function  
+
+	// Test NewParallelTranspiler dependency function
 	newParallel := func(opts cli.TranspileOptions) cli.ParallelTranspiler {
 		return &ParallelTranspilerAdapter{transpiler: nil} // Mock
 	}
-	
+
 	parallel := newParallel(opts)
 	if parallel == nil {
 		t.Error("NewParallelTranspiler returned nil")
 	}
-	
+
 	// Test NewWatchMode dependency function
 	newWatch := func(opts cli.TranspileOptions, inputDir string, debounce time.Duration) cli.WatchMode {
 		return &WatchModeAdapter{watchMode: nil} // Mock
 	}
-	
+
 	watcher := newWatch(opts, ".", time.Second)
 	if watcher == nil {
 		t.Error("NewWatchMode returned nil")
@@ -109,9 +109,9 @@ func TestBatchTranspilerAdapter_TranspileProject(t *testing.T) {
 		PreserveStruct: false,
 		Verbose:        false,
 	}
-	
+
 	adapter := &BatchTranspilerAdapter{opts: opts}
-	
+
 	// Test that calling TranspileProject doesn't panic (it will likely error due to missing files)
 	err := adapter.TranspileProject("nonexistent_dir")
 	// We expect this to error because the directory doesn't exist
@@ -122,10 +122,10 @@ func TestBatchTranspilerAdapter_TranspileProject(t *testing.T) {
 	}
 }
 
-// Test ParallelTranspilerAdapter methods 
+// Test ParallelTranspilerAdapter methods
 func TestParallelTranspilerAdapter_Methods(t *testing.T) {
 	adapter := &ParallelTranspilerAdapter{transpiler: nil} // Mock
-	
+
 	// These methods would normally call the transpiler methods
 	// We can't test the actual calls without a real transpiler
 	// But we can test that the methods exist and can be called
@@ -137,24 +137,24 @@ func TestParallelTranspilerAdapter_Methods(t *testing.T) {
 // Test WatchModeAdapter methods
 func TestWatchModeAdapter_Methods(t *testing.T) {
 	adapter := &WatchModeAdapter{watchMode: nil} // Mock
-	
+
 	// Test that adapter exists
 	if adapter == nil {
 		t.Fatal("Adapter should not be nil")
 	}
-	
+
 	// Note: Can't safely call Stop() with nil watchMode as it would panic
 	// This test covers the type creation
 }
 
-// Test type conformance 
+// Test type conformance
 func TestAdapterTypeConformance(t *testing.T) {
 	// Test BatchTranspilerAdapter implements cli.BatchTranspiler
 	var _ cli.BatchTranspiler = (*BatchTranspilerAdapter)(nil)
-	
-	// Test ParallelTranspilerAdapter implements cli.ParallelTranspiler  
+
+	// Test ParallelTranspilerAdapter implements cli.ParallelTranspiler
 	var _ cli.ParallelTranspiler = (*ParallelTranspilerAdapter)(nil)
-	
+
 	// Test WatchModeAdapter implements cli.WatchMode
 	var _ cli.WatchMode = (*WatchModeAdapter)(nil)
 }

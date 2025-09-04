@@ -14,7 +14,7 @@ import (
 
 const (
 	// Test binary path relative to integration test directory
-	testBinaryPath = "../../tools/transpiler/dist/gofasta"
+	testBinaryPath = "../../transpiler/dist/gofasta"
 	testTimeout    = 30 * time.Second
 )
 

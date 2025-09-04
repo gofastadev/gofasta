@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/healtronlabs/gofasta/tools/transpiler/core"
+	"github.com/healtronlabs/gofasta/transpiler/core"
 )
 
 // TestHierarchicalSupervisionScenarios tests multi-level supervision trees
@@ -55,9 +55,9 @@ func TestHierarchicalSupervisionScenarios(t *testing.T) {
 			strategies:  []string{"OneForAll", "OneForOne", "RestForOne", "OneForOne", "OneForAll"},
 			failureType: "deep_leaf_failure",
 			expected: map[string]any{
-				"max_depth":        5,
-				"escalation_path":  []string{"level5", "level4", "level3", "level2", "level1"},
-				"final_strategy":   "OneForAll",
+				"max_depth":       5,
+				"escalation_path": []string{"level5", "level4", "level3", "level2", "level1"},
+				"final_strategy":  "OneForAll",
 			},
 		},
 	}
@@ -69,7 +69,7 @@ func TestHierarchicalSupervisionScenarios(t *testing.T) {
 
 			// Create hierarchical supervision structure
 			supervisors := createHierarchicalSupervisors(t, registry, tt.levels, tt.strategies)
-			
+
 			// Start supervision tree
 			var wg sync.WaitGroup
 			for level, supervisor := range supervisors {
@@ -119,9 +119,9 @@ func TestSupervisionEscalationPatterns(t *testing.T) {
 			retryInterval:    "0ms",
 			failurePattern:   "continuous_failure",
 			expected: map[string]any{
-				"escalated":        true,
-				"retry_attempts":   0,
-				"escalation_time":  "<10ms",
+				"escalated":       true,
+				"retry_attempts":  0,
+				"escalation_time": "<10ms",
 			},
 		},
 		{
@@ -131,9 +131,9 @@ func TestSupervisionEscalationPatterns(t *testing.T) {
 			retryInterval:    "100ms",
 			failurePattern:   "persistent_failure",
 			expected: map[string]any{
-				"escalated":        true,
-				"retry_attempts":   3,
-				"escalation_time":  "<500ms",
+				"escalated":       true,
+				"retry_attempts":  3,
+				"escalation_time": "<500ms",
 			},
 		},
 		{
@@ -182,12 +182,12 @@ func TestSupervisionPerformanceUnderLoad(t *testing.T) {
 	defer registry.Shutdown()
 
 	tests := []struct {
-		name           string
-		supervisors    int
-		actorsPerSup   int
-		failureRate    float64
-		loadDuration   time.Duration
-		expectedPerf   map[string]any
+		name         string
+		supervisors  int
+		actorsPerSup int
+		failureRate  float64
+		loadDuration time.Duration
+		expectedPerf map[string]any
 	}{
 		{
 			name:         "high_volume_low_failure",
@@ -262,13 +262,13 @@ func TestActorSystemIntegrationScenarios(t *testing.T) {
 	defer registry.Shutdown()
 
 	tests := []struct {
-		name         string
-		systemType   string
-		actors       int
-		clustering   bool
-		remoting     bool
-		scenario     string
-		expected     map[string]any
+		name       string
+		systemType string
+		actors     int
+		clustering bool
+		remoting   bool
+		scenario   string
+		expected   map[string]any
 	}{
 		{
 			name:       "single_node_large_scale",
@@ -278,9 +278,9 @@ func TestActorSystemIntegrationScenarios(t *testing.T) {
 			remoting:   false,
 			scenario:   "mass_actor_creation_with_supervision",
 			expected: map[string]any{
-				"startup_time":    "<5s",
-				"actors_created":  1000,
-				"supervision_ok":  true,
+				"startup_time":   "<5s",
+				"actors_created": 1000,
+				"supervision_ok": true,
 			},
 		},
 		{
@@ -346,24 +346,24 @@ func TestCircuitBreakerIntegrationScenarios(t *testing.T) {
 			name: "fast_failure_detection",
 			circuitConfig: map[string]any{
 				"failure_threshold": 5,
-				"timeout":          "100ms",
-				"reset_timeout":    "1s",
+				"timeout":           "100ms",
+				"reset_timeout":     "1s",
 			},
 			failurePattern:  "rapid_consecutive_failures",
 			supervisionMode: "OneForOne",
 			expected: map[string]any{
-				"circuit_state":   "OPEN",
-				"detection_time":  "<500ms",
-				"supervision_ok":  true,
+				"circuit_state":  "OPEN",
+				"detection_time": "<500ms",
+				"supervision_ok": true,
 			},
 		},
 		{
 			name: "gradual_recovery",
 			circuitConfig: map[string]any{
 				"failure_threshold": 10,
-				"timeout":          "200ms",
-				"reset_timeout":    "2s",
-				"half_open_max":    3,
+				"timeout":           "200ms",
+				"reset_timeout":     "2s",
+				"half_open_max":     3,
 			},
 			failurePattern:  "intermittent_recovery",
 			supervisionMode: "RestForOne",
@@ -400,12 +400,12 @@ func TestMemoryPoolingIntegrationScenarios(t *testing.T) {
 	defer registry.Shutdown()
 
 	tests := []struct {
-		name         string
-		poolConfig   map[string]any
-		actorTypes   []string
-		loadPattern  string
-		memoryLimit  int64 // MB
-		expected     map[string]any
+		name        string
+		poolConfig  map[string]any
+		actorTypes  []string
+		loadPattern string
+		memoryLimit int64 // MB
+		expected    map[string]any
 	}{
 		{
 			name: "memory_efficient_restart",
@@ -419,18 +419,18 @@ func TestMemoryPoolingIntegrationScenarios(t *testing.T) {
 			loadPattern: "memory_intensive_with_failures",
 			memoryLimit: 100, // 100 MB limit
 			expected: map[string]any{
-				"memory_reuse":     ">90%",
-				"gc_pressure":      "<10%",
-				"restart_success":  true,
+				"memory_reuse":    ">90%",
+				"gc_pressure":     "<10%",
+				"restart_success": true,
 			},
 		},
 		{
 			name: "pool_exhaustion_recovery",
 			poolConfig: map[string]any{
-				"initial_size":   10,
-				"max_size":       50,
-				"growth_factor":  1.5,
-				"emergency_gc":   true,
+				"initial_size":  10,
+				"max_size":      50,
+				"growth_factor": 1.5,
+				"emergency_gc":  true,
 			},
 			actorTypes:  []string{"memory_hungry", "memory_hungry", "memory_hungry"},
 			loadPattern: "memory_exhaustion",
@@ -468,13 +468,13 @@ func TestMemoryPoolingIntegrationScenarios(t *testing.T) {
 // Helper types and functions
 
 type TestSupervisor struct {
-	name      string
-	strategy  string
-	children  []string
-	parent    *TestSupervisor
-	level     int
-	restarts  int64
-	failures  int64
+	name     string
+	strategy string
+	children []string
+	parent   *TestSupervisor
+	level    int
+	restarts int64
+	failures int64
 }
 
 type SupervisionChain struct {
@@ -500,9 +500,9 @@ type TestActor struct {
 }
 
 type PerformanceMonitor struct {
-	startTime     time.Time
-	metrics       map[string]any
-	mutex         sync.RWMutex
+	startTime time.Time
+	metrics   map[string]any
+	mutex     sync.RWMutex
 }
 
 type IntegratedActorSystem struct {
@@ -521,13 +521,13 @@ type CircuitBreakerIntegration struct {
 }
 
 type TestCircuitBreaker struct {
-	state          string
-	failures       int64
-	successes      int64
-	threshold      int
-	timeout        time.Duration
-	resetTimeout   time.Duration
-	lastFailure    time.Time
+	state        string
+	failures     int64
+	successes    int64
+	threshold    int
+	timeout      time.Duration
+	resetTimeout time.Duration
+	lastFailure  time.Time
 }
 
 type MemoryPoolingIntegration struct {
@@ -549,12 +549,12 @@ type MemoryPool struct {
 }
 
 type MemoryMonitor struct {
-	limit         int64
-	current       int64
-	peak          int64
-	gcTriggers    int64
-	emergencyGCs  int64
-	mutex         sync.RWMutex
+	limit        int64
+	current      int64
+	peak         int64
+	gcTriggers   int64
+	emergencyGCs int64
+	mutex        sync.RWMutex
 }
 
 // Implementation of helper functions (placeholder implementations for compilation)

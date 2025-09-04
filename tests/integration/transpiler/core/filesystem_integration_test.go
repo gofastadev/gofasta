@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/healtronlabs/gofasta/tools/transpiler/core"
+	"github.com/healtronlabs/gofasta/transpiler/core"
 )
 
 // TestFileSystemIntegration tests file system operations and project structure handling
@@ -40,10 +40,10 @@ func testFileOperationsIntegration(t *testing.T) {
 
 	// Test file creation and writing
 	testFiles := map[string]string{
-		"simple.txt":     "Hello, World!",
-		"unicode.txt":    "Hello, 世界! 🌍",
-		"large.txt":      strings.Repeat("Line of text\n", 1000),
-		"empty.txt":      "",
+		"simple.txt":      "Hello, World!",
+		"unicode.txt":     "Hello, 世界! 🌍",
+		"large.txt":       strings.Repeat("Line of text\n", 1000),
+		"empty.txt":       "",
 		"nested/deep.txt": "Nested file content",
 	}
 
@@ -58,13 +58,13 @@ func testFileOperationsIntegration(t *testing.T) {
 	writtenFiles := 0
 	for relativePath, content := range testFiles {
 		fullPath := filepath.Join(testDir, relativePath)
-		
+
 		err := fileHandler.WriteFile(fullPath, []byte(content), writeOptions)
 		if err != nil {
 			t.Errorf("Failed to write file %s: %v", relativePath, err)
 			continue
 		}
-		
+
 		writtenFiles++
 		t.Logf("Successfully wrote file: %s (%d bytes)", relativePath, len(content))
 	}
@@ -77,19 +77,19 @@ func testFileOperationsIntegration(t *testing.T) {
 	readFiles := 0
 	for relativePath, expectedContent := range testFiles {
 		fullPath := filepath.Join(testDir, relativePath)
-		
+
 		content, err := fileHandler.ReadFile(fullPath)
 		if err != nil {
 			t.Errorf("Failed to read file %s: %v", relativePath, err)
 			continue
 		}
-		
+
 		if string(content) != expectedContent {
-			t.Errorf("File %s content mismatch. Expected %q, got %q", 
+			t.Errorf("File %s content mismatch. Expected %q, got %q",
 				relativePath, expectedContent, string(content))
 			continue
 		}
-		
+
 		readFiles++
 	}
 
@@ -116,19 +116,19 @@ func testFileOperationsIntegration(t *testing.T) {
 	deletedFiles := 0
 	for relativePath := range testFiles {
 		fullPath := filepath.Join(testDir, relativePath)
-		
+
 		err := fileHandler.DeleteFile(fullPath)
 		if err != nil {
 			t.Errorf("Failed to delete file %s: %v", relativePath, err)
 			continue
 		}
-		
+
 		// Verify file is deleted
 		if _, err := os.Stat(fullPath); !os.IsNotExist(err) {
 			t.Errorf("File %s still exists after deletion", relativePath)
 			continue
 		}
-		
+
 		deletedFiles++
 	}
 
@@ -155,17 +155,17 @@ func testDirectoryTraversalIntegration(t *testing.T) {
 
 	// Create complex directory structure
 	structure := map[string]string{
-		"src/main.gofa":           "package main",
-		"src/models/user.gofa":    "package models",
-		"src/models/product.gofa": "package models", 
-		"src/controllers/api.gofa": "package controllers",
-		"tests/unit/user_test.go": "package tests",
+		"src/main.gofa":                 "package main",
+		"src/models/user.gofa":          "package models",
+		"src/models/product.gofa":       "package models",
+		"src/controllers/api.gofa":      "package controllers",
+		"tests/unit/user_test.go":       "package tests",
 		"tests/integration/api_test.go": "package tests",
-		"docs/README.md":          "# Documentation",
-		"configs/app.yaml":        "config: value",
-		"vendor/external.go":      "package external",
-		".git/config":            "[core]",
-		"node_modules/lib.js":    "module.exports = {}",
+		"docs/README.md":                "# Documentation",
+		"configs/app.yaml":              "config: value",
+		"vendor/external.go":            "package external",
+		".git/config":                   "[core]",
+		"node_modules/lib.js":           "module.exports = {}",
 	}
 
 	// Create all files
@@ -246,7 +246,7 @@ func testDirectoryTraversalIntegration(t *testing.T) {
 			t.Logf("Expected package %s not found in analysis (may be due to directory structure)", expectedPkg)
 		}
 	}
-	
+
 	// Just verify we found some packages
 	if len(project.Packages) == 0 {
 		t.Error("No packages found in analysis")
@@ -338,7 +338,7 @@ func testFilePermissionsIntegration(t *testing.T) {
 
 			actualPerms := info.Mode().Perm()
 			if actualPerms != test.permissions {
-				t.Logf("File %s permissions may differ due to umask. Expected %o, got %o", 
+				t.Logf("File %s permissions may differ due to umask. Expected %o, got %o",
 					test.name, test.permissions, actualPerms)
 			}
 
@@ -407,12 +407,12 @@ func testSymbolicLinkIntegration(t *testing.T) {
 	for _, fileInfo := range project.Files {
 		if fileInfo.IsSymlink {
 			symlinkFound = true
-			
+
 			// Verify link target is recorded
 			if fileInfo.LinkTarget == "" {
 				t.Error("Symlink target not recorded")
 			}
-			
+
 			t.Logf("Detected symlink: %s -> %s", fileInfo.Path, fileInfo.LinkTarget)
 		}
 	}
@@ -463,17 +463,17 @@ func testLargeFileProcessingIntegration(t *testing.T) {
 		size int
 	}{
 		{"small.txt", 1024},        // 1KB
-		{"medium.txt", 1024 * 100}, // 100KB  
+		{"medium.txt", 1024 * 100}, // 100KB
 		{"large.txt", 1024 * 1024}, // 1MB
 	}
 
 	for _, test := range fileSizes {
 		t.Run(test.name, func(t *testing.T) {
 			filePath := filepath.Join(testDir, test.name)
-			
+
 			// Generate content of specified size
 			content := strings.Repeat("A", test.size)
-			
+
 			// Measure write performance
 			start := time.Now()
 			err := fileHandler.WriteFile(filePath, []byte(content), core.FileOptions{
@@ -481,37 +481,37 @@ func testLargeFileProcessingIntegration(t *testing.T) {
 				Atomic:     true,
 			})
 			writeDuration := time.Since(start)
-			
+
 			if err != nil {
 				t.Fatalf("Failed to write large file %s: %v", test.name, err)
 			}
-			
+
 			// Measure read performance
 			start = time.Now()
 			readContent, err := fileHandler.ReadFile(filePath)
 			readDuration := time.Since(start)
-			
+
 			if err != nil {
 				t.Fatalf("Failed to read large file %s: %v", test.name, err)
 			}
-			
+
 			if len(readContent) != test.size {
-				t.Errorf("Size mismatch for %s. Expected %d, got %d", 
+				t.Errorf("Size mismatch for %s. Expected %d, got %d",
 					test.name, test.size, len(readContent))
 			}
-			
+
 			// Calculate throughput
 			writeMBps := float64(test.size) / (1024 * 1024) / writeDuration.Seconds()
 			readMBps := float64(test.size) / (1024 * 1024) / readDuration.Seconds()
-			
-			t.Logf("Large file %s: write %.2f MB/s, read %.2f MB/s", 
+
+			t.Logf("Large file %s: write %.2f MB/s, read %.2f MB/s",
 				test.name, writeMBps, readMBps)
-			
+
 			// Performance thresholds (adjust based on expected performance)
 			if writeMBps < 10.0 {
 				t.Logf("Write performance for %s below threshold: %.2f MB/s", test.name, writeMBps)
 			}
-			
+
 			if readMBps < 50.0 {
 				t.Logf("Read performance for %s below threshold: %.2f MB/s", test.name, readMBps)
 			}
@@ -524,7 +524,7 @@ func testLargeFileProcessingIntegration(t *testing.T) {
 		// Cache shouldn't hold all large files in memory
 		totalFileSize := int64(1024 + 1024*100 + 1024*1024) // Sum of all test files
 		if cacheBytes > totalFileSize {
-			t.Errorf("Cache using too much memory: %d bytes (total files: %d)", 
+			t.Errorf("Cache using too much memory: %d bytes (total files: %d)",
 				cacheBytes, totalFileSize)
 		}
 	}
@@ -547,7 +547,7 @@ func testConcurrentFileAccessIntegration(t *testing.T) {
 	// Create initial test files
 	numFiles := 20
 	testFiles := make(map[string][]byte)
-	
+
 	for i := 0; i < numFiles; i++ {
 		filename := fmt.Sprintf("file_%03d.txt", i)
 		content := fmt.Sprintf("Content for file %d\n", i)
@@ -574,7 +574,7 @@ func testConcurrentFileAccessIntegration(t *testing.T) {
 	start := time.Now()
 	batchContent, err := fileHandler.BatchRead(filePaths)
 	readDuration := time.Since(start)
-	
+
 	if err != nil {
 		t.Fatalf("Concurrent batch read failed: %v", err)
 	}
@@ -591,7 +591,7 @@ func testConcurrentFileAccessIntegration(t *testing.T) {
 			t.Errorf("File %s missing from batch read results", filename)
 			continue
 		}
-		
+
 		if string(actualContent) != string(expectedContent) {
 			t.Errorf("Content mismatch for %s", filename)
 		}
@@ -601,7 +601,7 @@ func testConcurrentFileAccessIntegration(t *testing.T) {
 	throughput := float64(numFiles) / readDuration.Seconds()
 	t.Logf("Concurrent read performance: %.2f files/second", throughput)
 
-	// Test concurrent writes (should be safe even if disabled) 
+	// Test concurrent writes (should be safe even if disabled)
 	newContent := make(map[string][]byte)
 	for filename := range testFiles {
 		fullPath := filepath.Join(testDir, filename)
@@ -611,7 +611,7 @@ func testConcurrentFileAccessIntegration(t *testing.T) {
 	start = time.Now()
 	err = fileHandler.BatchWrite(newContent, core.FileOptions{})
 	writeDuration := time.Since(start)
-	
+
 	if err != nil {
 		t.Fatalf("Concurrent batch write failed: %v", err)
 	}
@@ -623,7 +623,7 @@ func testConcurrentFileAccessIntegration(t *testing.T) {
 			t.Errorf("Failed to read updated file %s: %v", fullPath, err)
 			continue
 		}
-		
+
 		if string(actualContent) != string(expectedContent) {
 			t.Logf("Updated content mismatch for %s (may be due to async operations)", filepath.Base(fullPath))
 		}
@@ -698,7 +698,7 @@ func testProjectStructureIntegration(t *testing.T) {
 	start := time.Now()
 	project2, err := fileHandler.ScanProject(testDir)
 	rescanDuration := time.Since(start)
-	
+
 	if err != nil {
 		t.Fatalf("Failed to rescan project: %v", err)
 	}
@@ -712,7 +712,7 @@ func testProjectStructureIntegration(t *testing.T) {
 		t.Error("File count changed between scans")
 	}
 
-	t.Logf("Project structure integration successful: created and scanned project with %d files", 
+	t.Logf("Project structure integration successful: created and scanned project with %d files",
 		project.FileCount)
 }
 
@@ -731,7 +731,7 @@ func testFileCachingIntegration(t *testing.T) {
 	// Create test files
 	testFiles := map[string]string{
 		"cached1.txt": strings.Repeat("A", 1024),
-		"cached2.txt": strings.Repeat("B", 1024), 
+		"cached2.txt": strings.Repeat("B", 1024),
 		"cached3.txt": strings.Repeat("C", 1024),
 	}
 
@@ -754,7 +754,7 @@ func testFileCachingIntegration(t *testing.T) {
 
 	stats1 := fileHandler.GetStatistics()
 	initialCacheSize, _ := stats1["cache_size"].(int)
-	
+
 	if initialCacheSize == 0 {
 		t.Error("No files cached after initial reads")
 	}
@@ -782,7 +782,7 @@ func testFileCachingIntegration(t *testing.T) {
 		t.Errorf("Cache hit rate too low: %.2f%%", hitRate)
 	}
 
-	t.Logf("Cache performance: %.2f%% hit rate, cached read time: %v", 
+	t.Logf("Cache performance: %.2f%% hit rate, cached read time: %v",
 		hitRate, cachedReadDuration)
 
 	// Test cache eviction by creating files larger than cache size
@@ -794,7 +794,7 @@ func testFileCachingIntegration(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to write large file %s: %v", filename, err)
 		}
-		
+
 		// Read to trigger caching
 		_, err = fileHandler.ReadFile(fullPath)
 		if err != nil {
@@ -812,7 +812,7 @@ func testFileCachingIntegration(t *testing.T) {
 		t.Logf("Cache size significantly exceeded limit: %d bytes (limit: %d) - may need cleanup", cacheBytes, maxCacheBytes)
 	}
 
-	t.Logf("File caching integration successful: %d files cached, %.2f%% hit rate, %d bytes used", 
+	t.Logf("File caching integration successful: %d files cached, %.2f%% hit rate, %d bytes used",
 		finalCacheSize, hitRate, cacheBytes)
 }
 
@@ -828,7 +828,7 @@ func testFileWatchingIntegration(t *testing.T) {
 
 	testFile := filepath.Join(testDir, "watched.txt")
 	initialContent := "Initial content"
-	
+
 	// Create initial file
 	err := fileHandler.WriteFile(testFile, []byte(initialContent), core.FileOptions{})
 	if err != nil {

@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/healtronlabs/gofasta/tools/transpiler/core"
+	"github.com/healtronlabs/gofasta/transpiler/core"
 )
 
 // TestRealWorldProjectParsing tests parsing against a real project structure
@@ -305,7 +305,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 		if err != nil {
 			t.Fatalf("Failed to create directory for %s: %v", filePath, err)
 		}
-		
+
 		err = os.WriteFile(fullPath, []byte(content), 0644)
 		if err != nil {
 			t.Fatalf("Failed to write file %s: %v", filePath, err)
@@ -315,67 +315,67 @@ func AuthMiddleware(next http.Handler) http.Handler {
 	// Test parsing with default configuration
 	config := core.DefaultConfig()
 	parser := core.NewParallelParser(config)
-	
+
 	ctx := context.Background()
 	start := time.Now()
-	
+
 	results, err := parser.ParseDirectory(ctx, tempDir)
 	if err != nil {
 		t.Fatalf("Failed to parse project: %v", err)
 	}
-	
+
 	parseDuration := time.Since(start)
 	stats := parser.GetStatistics()
-	
+
 	t.Logf("Parsing completed in %v", parseDuration)
 	t.Logf("Total files found: %d", len(results))
 	t.Logf("Successful parses: %v", stats["successful_files"])
 	t.Logf("Failed parses: %v", stats["failed_files"])
 	t.Logf("Files per second: %.2f", stats["files_per_second"])
-	
+
 	// Verify we found the expected files
 	expectedGoFaFiles := []string{
 		"api/users.gofa",
-		"api/orders.gofa", 
+		"api/orders.gofa",
 		"models/user.gofa",
 		"models/order.gofa",
 		"websocket/chat.gofa",
 		"graphql/resolvers.gofa",
 		"grpc/services.gofa",
 	}
-	
+
 	expectedGoFiles := []string{
 		"main.go",
 		"config/config.go",
 		"middleware/auth.go",
 	}
-	
+
 	gofaResults := parser.FilterResultsByExtension(".gofa")
 	goResults := parser.FilterResultsByExtension(".go")
-	
+
 	if len(gofaResults) != len(expectedGoFaFiles) {
 		t.Errorf("Expected %d .gofa files, got %d", len(expectedGoFaFiles), len(gofaResults))
 		for _, result := range gofaResults {
 			t.Logf("Found .gofa: %s", result.FilePath)
 		}
 	}
-	
+
 	if len(goResults) != len(expectedGoFiles) {
 		t.Errorf("Expected %d .go files, got %d", len(expectedGoFiles), len(goResults))
 		for _, result := range goResults {
 			t.Logf("Found .go: %s", result.FilePath)
 		}
 	}
-	
+
 	// Verify excluded directories are actually excluded
 	for _, result := range results {
 		if strings.Contains(result.FilePath, "vendor") ||
-		   strings.Contains(result.FilePath, "node_modules") ||
-		   strings.Contains(result.FilePath, ".git") {
+			strings.Contains(result.FilePath, "node_modules") ||
+			strings.Contains(result.FilePath, ".git") {
 			t.Errorf("Expected excluded file to not be parsed: %s", result.FilePath)
 		}
 	}
-	
+
 	// Test performance requirement (< 50ms initialization as per roadmap)
 	if parseDuration > 200*time.Millisecond { // Allow some buffer for test environment
 		t.Logf("WARNING: Parse time %v exceeds performance target", parseDuration)
@@ -397,20 +397,20 @@ func TestLargeProjectPerformance(t *testing.T) {
 	// Create a large number of files to test performance
 	numFiles := 200
 	numDirs := 10
-	
+
 	for dir := 0; dir < numDirs; dir++ {
 		dirPath := filepath.Join(tempDir, fmt.Sprintf("module%d", dir))
 		err := os.MkdirAll(dirPath, 0755)
 		if err != nil {
 			t.Fatalf("Failed to create directory %s: %v", dirPath, err)
 		}
-		
+
 		for file := 0; file < numFiles/numDirs; file++ {
 			// Create a mix of valid .go files and .gofa files with decorators
 			// .go files should parse successfully, .gofa files will fail due to decorators
 			var content string
 			var filename string
-			
+
 			if file%2 == 0 {
 				// Create valid .go files (should parse successfully)
 				content = fmt.Sprintf(`package module%d
@@ -443,13 +443,13 @@ func (c *Controller%d) Create(req *Request) (*Response, error) {
 }
 
 type Response struct {
-	ID     int    ` + "`json:\"id\"`" + `
-	Module int    ` + "`json:\"module\"`" + `
-	Data   string ` + "`json:\"data\"`" + `
+	ID     int    `+"`json:\"id\"`"+`
+	Module int    `+"`json:\"module\"`"+`
+	Data   string `+"`json:\"data\"`"+`
 }
 
 type Request struct {
-	Name string ` + "`json:\"name\"`" + `
+	Name string `+"`json:\"name\"`"+`
 }`, dir, dir, file, file, file, file, dir, file, file, dir, file)
 				filename = fmt.Sprintf("controller%d.go", file)
 			} else {
@@ -478,9 +478,9 @@ func (c *Controller%d) Create(@Body() req *Request) (*Response, error) {
 }`, dir, dir, file, file, file, file, dir, file, file)
 				filename = fmt.Sprintf("controller%d.gofa", file)
 			}
-			
+
 			filePath := filepath.Join(dirPath, filename)
-			
+
 			err := os.WriteFile(filePath, []byte(content), 0644)
 			if err != nil {
 				t.Fatalf("Failed to write file %s: %v", filePath, err)
@@ -502,31 +502,31 @@ func (c *Controller%d) Create(@Body() req *Request) (*Response, error) {
 		t.Run(tc.name, func(t *testing.T) {
 			config := core.DefaultConfig()
 			config.MaxWorkers = tc.maxWorkers
-			
+
 			parser := core.NewParallelParser(config)
 			ctx := context.Background()
-			
+
 			start := time.Now()
 			results, err := parser.ParseDirectory(ctx, tempDir)
 			if err != nil {
 				t.Fatalf("Failed to parse large project: %v", err)
 			}
-			
+
 			duration := time.Since(start)
 			stats := parser.GetStatistics()
-			
-			t.Logf("Workers: %d, Files: %d, Duration: %v, Files/sec: %.2f", 
+
+			t.Logf("Workers: %d, Files: %d, Duration: %v, Files/sec: %.2f",
 				tc.maxWorkers, len(results), duration, stats["files_per_second"])
-			
+
 			if len(results) != numFiles {
 				t.Errorf("Expected %d files, got %d", numFiles, len(results))
 			}
-			
+
 			// Since we create 50% .go files (valid) and 50% .gofa files (invalid due to @ decorators),
 			// we expect about half to parse successfully in Phase 1.1a
 			successful := parser.GetSuccessfulResults()
 			expectedSuccessful := numFiles / 2 // Only .go files should parse successfully
-			
+
 			if len(successful) < expectedSuccessful-5 || len(successful) > expectedSuccessful+5 {
 				t.Errorf("Expected approximately %d successful parses, got %d/%d", expectedSuccessful, len(successful), numFiles)
 				t.Logf("Note: .gofa files fail due to @ decorators - this is expected in Phase 1.1a")
@@ -552,25 +552,25 @@ func TestMemoryEfficiency(t *testing.T) {
 	// Create files with varying sizes
 	fileSizes := []int{1024, 5120, 10240, 51200} // 1KB, 5KB, 10KB, 50KB
 	var filePaths []string
-	
+
 	for i, size := range fileSizes {
 		content := fmt.Sprintf(`package test%d
 
 // Large comment block for file %d
 `, i, i)
-		
+
 		// Pad with comments to reach desired size
 		for len(content) < size {
 			content += fmt.Sprintf("// Additional comment line for padding %d\n", len(content))
 		}
-		
+
 		content += `
 // @Controller("/api/test")
 // @UseGuards("jwt")
 func TestHandler() (*Response, error) {
 	return nil, nil
 }`
-		
+
 		filePath := filepath.Join(tempDir, fmt.Sprintf("large_file_%d.gofa", i))
 		err := os.WriteFile(filePath, []byte(content), 0644)
 		if err != nil {
@@ -581,22 +581,22 @@ func TestHandler() (*Response, error) {
 
 	parser := core.NewParallelParser(core.DefaultConfig())
 	ctx := context.Background()
-	
+
 	results, err := parser.ParseFiles(ctx, filePaths)
 	if err != nil {
 		t.Fatalf("Failed to parse files: %v", err)
 	}
-	
+
 	if len(results) != len(filePaths) {
 		t.Errorf("Expected %d results, got %d", len(filePaths), len(results))
 	}
-	
+
 	stats := parser.GetStatistics()
 	totalBytes := stats["total_bytes"].(int64)
-	
+
 	t.Logf("Total bytes processed: %d", totalBytes)
 	t.Logf("MB/sec: %.2f", stats["mb_per_second"])
-	
+
 	// Verify all files were processed successfully
 	successful := parser.GetSuccessfulResults()
 	if len(successful) != len(filePaths) {

@@ -4,7 +4,7 @@ go 1.24
 
 toolchain go1.24.5
 
-require github.com/healtronlabs/gofasta/tools/transpiler v0.0.0-00010101000000-000000000000
+require github.com/healtronlabs/gofasta/transpiler v0.0.0-00010101000000-000000000000
 
 require (
 	golang.org/x/mod v0.22.0 // indirect
@@ -12,4 +12,4 @@ require (
 	golang.org/x/tools v0.28.0 // indirect
 )
 
-replace github.com/healtronlabs/gofasta/tools/transpiler => ../../tools/transpiler
+replace github.com/healtronlabs/gofasta/transpiler => ../../transpiler

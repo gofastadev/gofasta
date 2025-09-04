@@ -4,7 +4,7 @@ echo "Testing coverage extraction..."
 
 # Run tests and generate coverage
 cd /Users/descholar/descholar/myprojects/healtronlabs/gofasta
-go test -v -coverprofile="test_coverage.out" ./tools/transpiler/core 2>/dev/null
+go test -v -coverprofile="test_coverage.out" ./transpiler/core 2>/dev/null
 
 if [[ -f "test_coverage.out" ]]; then
     echo "Coverage file created successfully"

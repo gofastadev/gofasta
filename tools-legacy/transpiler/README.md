@@ -27,12 +27,12 @@ A powerful transpiler that transforms `.gofa` files with advanced decorators int
 
 ### As a Library
 ```bash
-go get github.com/healtronlabs/gofasta/tools/transpiler
+go get github.com/healtronlabs/gofasta/transpiler
 ```
 
 ### As a CLI Tool
 ```bash
-go install github.com/healtronlabs/gofasta/tools/transpiler/cmd/gofasta-transpiler@latest
+go install github.com/healtronlabs/gofasta/transpiler/cmd/gofasta-transpiler@latest
 ```
 
 ## 🎯 Quick Start
@@ -329,7 +329,7 @@ watch:
 **Docker**
 ```dockerfile
 FROM golang:1.21-alpine AS transpiler
-RUN go install github.com/healtronlabs/gofasta/tools/transpiler/cmd/gofasta-transpiler@latest
+RUN go install github.com/healtronlabs/gofasta/transpiler/cmd/gofasta-transpiler@latest
 COPY src/ /app/src/
 WORKDIR /app
 RUN gofasta-transpiler transpile -input src -output generated

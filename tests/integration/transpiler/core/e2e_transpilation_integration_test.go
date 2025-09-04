@@ -14,7 +14,7 @@ import (
 
 const (
 	e2eTestTimeout = 60 * time.Second
-	binaryPath     = "../../tools/transpiler/dist/gofasta"
+	binaryPath     = "../../transpiler/dist/gofasta"
 )
 
 // TestE2EBasicTranspilation tests basic end-to-end transpilation functionality

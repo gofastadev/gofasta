@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"go/format"
 	"strings"
-	
-	"github.com/healtronlabs/gofasta/tools/transpiler/core"
-	"github.com/healtronlabs/gofasta/tools/transpiler/parsing"
+
+	"github.com/healtronlabs/gofasta/transpiler/core"
+	"github.com/healtronlabs/gofasta/transpiler/parsing"
 )
 
 // Use core types
@@ -52,7 +52,7 @@ func GetDecoratorTypeString(name string) string {
 	return name // For backward compatibility, just return the string
 }
 
-// Decorator constants for backward compatibility with tests  
+// Decorator constants for backward compatibility with tests
 const (
 	CatchDecorator      = "Catch"
 	HeaderDecorator     = "Header"
@@ -88,24 +88,24 @@ const (
 
 // CodeGenerator generates Go code from Gofasta AST
 type CodeGenerator struct {
-	packageName       string
-	imports           []string
-	decoratorRegistry map[string]*DecoratorNode
-	generatedCode     strings.Builder
-	indentLevel       int
+	packageName        string
+	imports            []string
+	decoratorRegistry  map[string]*DecoratorNode
+	generatedCode      strings.Builder
+	indentLevel        int
 	webSocketFunctions []*WebSocketFunctionDeclaration // Track standalone WebSocket functions
-	currentContext    GenerationContext              // Track current generation context
-	currentMethod     *MethodNode                    // Track current method being processed
+	currentContext     GenerationContext               // Track current generation context
+	currentMethod      *MethodNode                     // Track current method being processed
 }
 
 // NewCodeGenerator creates a new code generator
 func NewCodeGenerator(packageName string) *CodeGenerator {
 	return &CodeGenerator{
-		packageName:       packageName,
-		imports:           []string{},
-		decoratorRegistry: make(map[string]*DecoratorNode),
+		packageName:        packageName,
+		imports:            []string{},
+		decoratorRegistry:  make(map[string]*DecoratorNode),
 		webSocketFunctions: []*WebSocketFunctionDeclaration{},
-		currentContext:    HTTPContext, // Default to HTTP context
+		currentContext:     HTTPContext, // Default to HTTP context
 	}
 }
 
@@ -119,10 +119,10 @@ func (g *CodeGenerator) GenerateGoCode(file *GofaFile) (string, error) {
 
 	// Add validation imports if needed
 	g.addValidationImportsIfNeeded(file)
-	
+
 	// Add WebSocket imports if needed
 	g.addWebSocketImportsIfNeeded(file)
-	
+
 	// Collect imports
 	g.collectImports(file)
 
@@ -143,7 +143,7 @@ func (g *CodeGenerator) GenerateGoCode(file *GofaFile) (string, error) {
 
 	// First, collect all WebSocket function declarations for later registration
 	g.collectWebSocketFunctions(file)
-	
+
 	// Generate declarations
 	for _, decl := range file.Declarations {
 		if err := g.generateDeclaration(decl); err != nil {
@@ -244,7 +244,7 @@ func NewLexer(input string) *parsing.Lexer {
 	return parsing.NewLexer(input)
 }
 
-// NewParser creates a new parser - bridge to parsing package  
+// NewParser creates a new parser - bridge to parsing package
 func NewParser(lexer *parsing.Lexer) *parsing.Parser {
 	return parsing.NewParser(lexer)
 }
@@ -252,7 +252,7 @@ func NewParser(lexer *parsing.Lexer) *parsing.Parser {
 // addWebSocketImportsIfNeeded adds WebSocket imports if needed
 func (g *CodeGenerator) addWebSocketImportsIfNeeded(file *GofaFile) {
 	hasWebSocket := false
-	
+
 	// Check if file has WebSocket declarations
 	for _, decl := range file.Declarations {
 		switch decl.(type) {
@@ -265,11 +265,11 @@ func (g *CodeGenerator) addWebSocketImportsIfNeeded(file *GofaFile) {
 			break
 		}
 	}
-	
+
 	if hasWebSocket {
 		// Add WebSocket package import
 		g.imports = append(g.imports, "github.com/healtronlabs/gofasta/packages/websocket")
-		
+
 		// Ensure HTTP package is also imported for WebSocket integration
 		httpImportExists := false
 		for _, imp := range g.imports {
@@ -278,11 +278,11 @@ func (g *CodeGenerator) addWebSocketImportsIfNeeded(file *GofaFile) {
 				break
 			}
 		}
-		
+
 		if !httpImportExists {
 			g.imports = append(g.imports, "github.com/healtronlabs/gofasta/packages/http")
 		}
-		
+
 		// Add conditional imports based on WebSocket features used
 		g.addConditionalWebSocketImports(file)
 	}
@@ -294,7 +294,7 @@ func (g *CodeGenerator) addConditionalWebSocketImports(file *GofaFile) {
 	needsJSON := false
 	needsLog := false
 	needsContext := false
-	
+
 	for _, decl := range file.Declarations {
 		switch d := decl.(type) {
 		case *WebSocketGatewayDeclaration:
@@ -302,17 +302,17 @@ func (g *CodeGenerator) addConditionalWebSocketImports(file *GofaFile) {
 			if g.hasWebSocketMiddleware(d) {
 				needsContext = true
 			}
-			
+
 			// Check for error handling decorators
 			if g.hasWebSocketErrorHandling(d) {
 				needsErrors = true
 			}
-			
+
 			// Check for JSON parameter decorators
 			if g.hasWebSocketJSONFeatures(d) {
 				needsJSON = true
 			}
-			
+
 			// Check for logging features
 			if g.hasWebSocketLogging(d) {
 				needsLog = true
@@ -324,7 +324,7 @@ func (g *CodeGenerator) addConditionalWebSocketImports(file *GofaFile) {
 			}
 		}
 	}
-	
+
 	// Add imports only if needed to avoid unnecessary imports
 	if needsErrors && !g.hasImport("errors") {
 		g.imports = append(g.imports, "errors")
@@ -353,7 +353,7 @@ func (g *CodeGenerator) hasImport(importPath string) bool {
 // hasWebSocketMiddleware checks if WebSocket gateway uses middleware
 func (g *CodeGenerator) hasWebSocketMiddleware(gateway *WebSocketGatewayDeclaration) bool {
 	middlewareDecorators := []string{"UseGuards", "UseInterceptors", "UsePipes", "UseFilters"}
-	
+
 	// Check gateway-level middleware
 	for _, decorator := range gateway.Decorators {
 		for _, middleware := range middlewareDecorators {
@@ -362,7 +362,7 @@ func (g *CodeGenerator) hasWebSocketMiddleware(gateway *WebSocketGatewayDeclarat
 			}
 		}
 	}
-	
+
 	// Check method-level middleware
 	for _, method := range gateway.Methods {
 		for _, decorator := range method.Decorators {
@@ -373,7 +373,7 @@ func (g *CodeGenerator) hasWebSocketMiddleware(gateway *WebSocketGatewayDeclarat
 			}
 		}
 	}
-	
+
 	return false
 }
 
@@ -385,14 +385,14 @@ func (g *CodeGenerator) hasWebSocketErrorHandling(gateway *WebSocketGatewayDecla
 		if method.ReturnType != "" && strings.Contains(strings.ToLower(method.ReturnType), "error") {
 			return true
 		}
-		
+
 		// Also check method signature if ReturnType is not set
 		if method.ReturnType == "" {
 			// If we have parameters but no return type specified, assume simple method
 			// We'll need to analyze the generated code for error patterns
 			continue
 		}
-		
+
 		// Check for Catch decorators
 		for _, decorator := range method.Decorators {
 			if decorator.Name == "Catch" {
@@ -400,7 +400,7 @@ func (g *CodeGenerator) hasWebSocketErrorHandling(gateway *WebSocketGatewayDecla
 			}
 		}
 	}
-	
+
 	// For now, if we don't have explicit error handling, don't add errors import
 	// This can be enhanced later to analyze the generated method bodies
 	return false
@@ -422,7 +422,7 @@ func (g *CodeGenerator) hasWebSocketJSONFeatures(gateway *WebSocketGatewayDeclar
 			}
 		}
 	}
-	
+
 	return false
 }
 
@@ -434,7 +434,7 @@ func (g *CodeGenerator) hasWebSocketLogging(gateway *WebSocketGatewayDeclaration
 			return true
 		}
 	}
-	
+
 	for _, method := range gateway.Methods {
 		for _, decorator := range method.Decorators {
 			if strings.Contains(strings.ToLower(decorator.Name), "log") {
@@ -442,15 +442,15 @@ func (g *CodeGenerator) hasWebSocketLogging(gateway *WebSocketGatewayDeclaration
 			}
 		}
 	}
-	
+
 	return false
 }
 
-// hasWebSocketParameterDecoratorsForParams checks if parameters have WebSocket decorators  
+// hasWebSocketParameterDecoratorsForParams checks if parameters have WebSocket decorators
 func (g *CodeGenerator) hasWebSocketParameterDecoratorsForParams(params []*ParameterNode) bool {
-	wsDecorators := []string{"MessageBody", "ConnectedSocket", "MessageAck", "MessagePattern", 
+	wsDecorators := []string{"MessageBody", "ConnectedSocket", "MessageAck", "MessagePattern",
 		"Rooms", "Namespace", "CurrentUser", "ClientIP", "EventName", "Server"}
-	
+
 	for _, param := range params {
 		for _, decorator := range param.Decorators {
 			for _, wsDecorator := range wsDecorators {
@@ -460,7 +460,7 @@ func (g *CodeGenerator) hasWebSocketParameterDecoratorsForParams(params []*Param
 			}
 		}
 	}
-	
+
 	return false
 }
 

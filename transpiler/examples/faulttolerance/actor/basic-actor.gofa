@@ -1,0 +1,318 @@
+// Basic Actor Example
+// This demonstrates the @Actor decorator with memory pooling
+package actor
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"time"
+)
+
+// Message types for actor communication
+type Message struct {
+	Type    string
+	Payload interface{}
+	Sender  string
+}
+
+type UserRequest struct {
+	UserID  int
+	Action  string
+	Data    map[string]interface{}
+}
+
+type PaymentRequest struct {
+	Amount   float64
+	Currency string
+	UserID   int
+}
+
+// Basic actor that processes user requests
+@Actor(mailboxSize: 1000, poolSize: 10, supervised: true)
+@Mugirase()
+func UserActor(ctx context.Context) {
+	fmt.Println("UserActor started with mailbox size 1000")
+	
+	// Actor's message processing loop
+	for {
+		select {
+		case <-ctx.Done():
+			fmt.Println("UserActor shutting down")
+			return
+		default:
+			// Simulate message processing
+			message := receiveMessage("user-queue")
+			if message != nil {
+				processUserMessage(message)
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+	}
+}
+
+// High-throughput actor for payment processing
+@Actor(mailboxSize: 10000, poolSize: 50, timeout: "100ms", supervised: true, supervisor: "PaymentSupervisor")
+func PaymentActor(ctx context.Context) {
+	fmt.Println("PaymentActor started with large mailbox and pool")
+	
+	for {
+		select {
+		case <-ctx.Done():
+			fmt.Println("PaymentActor shutting down")
+			return
+		default:
+			// Process payment messages with high throughput
+			message := receiveMessage("payment-queue")
+			if message != nil {
+				processPaymentMessage(message)
+			}
+			time.Sleep(1 * time.Millisecond) // Very fast processing
+		}
+	}
+}
+
+// Low-latency actor for real-time notifications
+@Actor(mailboxSize: 100, poolSize: 5, timeout: "1ms", supervised: false)
+func NotificationActor(ctx context.Context) {
+	fmt.Println("NotificationActor started for low-latency processing")
+	
+	for {
+		select {
+		case <-ctx.Done():
+			fmt.Println("NotificationActor shutting down")
+			return
+		default:
+			// Process notifications with minimal latency
+			message := receiveMessage("notification-queue")
+			if message != nil {
+				processNotificationMessage(message)
+			}
+		}
+	}
+}
+
+// Reliable actor for audit logging
+@Actor(mailboxSize: 5000, poolSize: 20, timeout: "5s", supervised: true, supervisor: "AuditSupervisor")
+func AuditActor(ctx context.Context) {
+	fmt.Println("AuditActor started for reliable audit logging")
+	
+	for {
+		select {
+		case <-ctx.Done():
+			fmt.Println("AuditActor shutting down")
+			return
+		default:
+			// Process audit messages with reliability
+			message := receiveMessage("audit-queue")
+			if message != nil {
+				processAuditMessage(message)
+			}
+			time.Sleep(50 * time.Millisecond)
+		}
+	}
+}
+
+// Batch processing actor
+@Actor(mailboxSize: 2000, poolSize: 15, timeout: "30s", supervised: true)
+func BatchProcessorActor(ctx context.Context) {
+	fmt.Println("BatchProcessorActor started for batch processing")
+	
+	batch := make([]Message, 0, 100)
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+	
+	for {
+		select {
+		case <-ctx.Done():
+			// Process remaining batch before shutdown
+			if len(batch) > 0 {
+				processBatch(batch)
+			}
+			fmt.Println("BatchProcessorActor shutting down")
+			return
+		case <-ticker.C:
+			// Process batch periodically
+			if len(batch) > 0 {
+				processBatch(batch)
+				batch = batch[:0] // Reset batch
+			}
+		default:
+			// Collect messages for batch processing
+			message := receiveMessage("batch-queue")
+			if message != nil {
+				batch = append(batch, *message)
+				
+				// Process batch when full
+				if len(batch) >= 100 {
+					processBatch(batch)
+					batch = batch[:0] // Reset batch
+				}
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+	}
+}
+
+// Actor communication functions
+func receiveMessage(queueName string) *Message {
+	// Simulate message receiving from different queues
+	switch queueName {
+	case "user-queue":
+		if time.Now().Unix()%5 == 0 {
+			return &Message{
+				Type: "user-request",
+				Payload: UserRequest{
+					UserID: int(time.Now().Unix() % 1000),
+					Action: "update-profile",
+					Data:   map[string]interface{}{"field": "email"},
+				},
+				Sender: "web-api",
+			}
+		}
+	case "payment-queue":
+		if time.Now().Unix()%3 == 0 {
+			return &Message{
+				Type: "payment-request",
+				Payload: PaymentRequest{
+					Amount:   99.99,
+					Currency: "USD",
+					UserID:   int(time.Now().Unix() % 1000),
+				},
+				Sender: "payment-service",
+			}
+		}
+	case "notification-queue":
+		if time.Now().Unix()%2 == 0 {
+			return &Message{
+				Type:    "notification",
+				Payload: "New message received",
+				Sender:  "notification-service",
+			}
+		}
+	case "audit-queue":
+		if time.Now().Unix()%7 == 0 {
+			return &Message{
+				Type:    "audit-log",
+				Payload: "User login attempt",
+				Sender:  "security-service",
+			}
+		}
+	case "batch-queue":
+		if time.Now().Unix()%4 == 0 {
+			return &Message{
+				Type:    "batch-item",
+				Payload: fmt.Sprintf("batch-data-%d", time.Now().UnixNano()),
+				Sender:  "batch-service",
+			}
+		}
+	}
+	return nil
+}
+
+// Message processing functions
+func processUserMessage(message *Message) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("UserActor message processing failed: %v", r)
+		}
+	}()
+	
+	fmt.Printf("UserActor processing: %s from %s\n", message.Type, message.Sender)
+	
+	// Simulate occasional failures
+	if time.Now().Unix()%50 == 0 {
+		panic("User database connection lost")
+	}
+	
+	// Simulate processing time
+	time.Sleep(20 * time.Millisecond)
+}
+
+func processPaymentMessage(message *Message) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("PaymentActor message processing failed: %v", r)
+		}
+	}()
+	
+	fmt.Printf("PaymentActor processing: %s from %s\n", message.Type, message.Sender)
+	
+	// Simulate payment gateway failures
+	if time.Now().Unix()%100 == 0 {
+		panic("Payment gateway timeout")
+	}
+	
+	// Fast processing
+	time.Sleep(2 * time.Millisecond)
+}
+
+func processNotificationMessage(message *Message) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("NotificationActor message processing failed: %v", r)
+		}
+	}()
+	
+	fmt.Printf("NotificationActor processing: %s from %s\n", message.Type, message.Sender)
+	
+	// Very fast processing for real-time notifications
+	// No artificial delays
+}
+
+func processAuditMessage(message *Message) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("AuditActor message processing failed: %v", r)
+		}
+	}()
+	
+	fmt.Printf("AuditActor processing: %s from %s\n", message.Type, message.Sender)
+	
+	// Simulate audit log writing
+	if time.Now().Unix()%80 == 0 {
+		panic("Audit log storage full")
+	}
+	
+	// Reliable processing with some delay
+	time.Sleep(30 * time.Millisecond)
+}
+
+func processBatch(batch []Message) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("BatchProcessorActor batch processing failed: %v", r)
+		}
+	}()
+	
+	fmt.Printf("BatchProcessorActor processing batch of %d messages\n", len(batch))
+	
+	// Simulate batch processing
+	for _, message := range batch {
+		// Process each message in the batch
+		time.Sleep(1 * time.Millisecond)
+	}
+	
+	// Simulate batch operation failures
+	if time.Now().Unix()%60 == 0 {
+		panic("Batch processing database deadlock")
+	}
+}
+
+func main() {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	
+	fmt.Println("Starting Basic Actor Example")
+	
+	// Start actors
+	go UserActor(ctx)
+	go PaymentActor(ctx)
+	go NotificationActor(ctx)
+	go AuditActor(ctx)
+	go BatchProcessorActor(ctx)
+	
+	// Wait for completion
+	<-ctx.Done()
+	fmt.Println("Basic Actor Example completed")
+}

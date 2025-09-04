@@ -203,7 +203,7 @@ else
 
     # New transpiler tests (Phase 1.1a implementation)
     print_section "🚀 Gofasta v2.0 Transpiler Tests (Phase 1.1a)"
-    run_module_tests "./tools/transpiler/core" "transpiler-v2-parser" "Phase 1.1a: Parallel Parser"
+    run_module_tests "./transpiler/core" "transpiler-v2-parser" "Phase 1.1a: Parallel Parser"
 
     # Integration tests for transpiler
     print_section "🧪 Transpiler Integration Tests"
@@ -306,7 +306,7 @@ VET_ISSUES=""
 vet_failed=false
 
 # Check transpiler modules
-if ! go vet ./tools/transpiler/... 2>/dev/null; then
+if ! go vet ./transpiler/... 2>/dev/null; then
     vet_failed=true
 fi
 
@@ -750,7 +750,7 @@ GENERATED FILES:
 
 USEFUL COMMANDS:
 - ./run_tests.sh                           # Run complete global test suite
-- go test ./tools/transpiler/core -v       # Run Phase 1.1a parser tests
+- go test ./transpiler/core -v       # Run Phase 1.1a parser tests
 - go test ./tests/integration -v           # Run transpiler integration tests
 - go test ./packages/...                   # Run framework package tests
 - go test ./plugins/...                    # Run framework plugin tests
@@ -758,8 +758,8 @@ USEFUL COMMANDS:
 - go tool cover -html=coverage_combined.out # View combined coverage report
 
 TRANSPILER SPECIFIC:
-- go run ./tools/transpiler/examples/basic/parser_example.go  # Run parser demo
-- go test ./tools/transpiler/core -bench=.                    # Run parser benchmarks
+- go run ./transpiler/examples/basic/parser_example.go  # Run parser demo
+- go test ./transpiler/core -bench=.                    # Run parser benchmarks
 - go test ./tests/integration -run TestLargeProjectPerformance # Test performance
 
 PROJECT STRUCTURE TESTED:
