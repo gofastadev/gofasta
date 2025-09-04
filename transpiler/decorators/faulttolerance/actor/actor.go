@@ -19,56 +19,13 @@ type ActorCodeGenerator struct{}
 var _ core.DecoratorCodeGenerator = (*ActorCodeGenerator)(nil)
 
 // GenerateCode generates Go source code for an Actor decorator
+// NOTE: This method is deprecated - the new dynamic AST-based transpiler in cmd/main.go
+// uses core.CodeGenerator with templates instead of these string generators
 func (acg *ActorCodeGenerator) GenerateCode(decorator core.Decorator) (string, error) {
-	// Extract parameters
-	mailboxSize := 1000
-	poolSize := 10
-	supervised := true
-
-	// Parse properties
-	for key, value := range decorator.Properties {
-		switch key {
-		case "mailboxSize":
-			if v, ok := value.(int); ok {
-				mailboxSize = v
-			}
-		case "poolSize":
-			if v, ok := value.(int); ok {
-				poolSize = v
-			}
-		case "supervised":
-			if v, ok := value.(bool); ok {
-				supervised = v
-			}
-		}
-	}
-
-	return fmt.Sprintf(`
-// Generated actor system code
-type ActorMailbox struct {
-	messages chan interface{}
-	size     int
-}
-
-type ActorPool struct {
-	workers  int
-	mailbox  *ActorMailbox
-}
-
-// Generated actor code
-var actorPool = &ActorPool{
-	workers: %d,
-	mailbox: &ActorMailbox{
-		messages: make(chan interface{}, %d),
-		size:     %d,
-	},
-}
-
-func initActor() {
-	// Initialize actor with mailbox size: %d, pool size: %d, supervised: %t
-	log.Printf("Initializing actor with mailbox size: %d, pool size: %d, supervised: %t")
-}
-`, poolSize, mailboxSize, mailboxSize, mailboxSize, poolSize, supervised, mailboxSize, poolSize, supervised), nil
+	// This is no longer used by the new dynamic transpiler system
+	// The new system uses core.CodeGenerator with sophisticated templates
+	// This method is kept only for backwards compatibility
+	return "", fmt.Errorf("deprecated: use dynamic AST-based transpiler with core.CodeGenerator instead")
 }
 
 func init() {

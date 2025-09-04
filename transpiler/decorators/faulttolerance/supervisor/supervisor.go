@@ -4,7 +4,6 @@ package supervisor
 import (
 	"context"
 	"fmt"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -19,59 +18,14 @@ type SupervisorCodeGenerator struct{}
 // Ensure SupervisorCodeGenerator implements DecoratorCodeGenerator interface
 var _ core.DecoratorCodeGenerator = (*SupervisorCodeGenerator)(nil)
 
-// GenerateCode generates Go source code for a Supervisor decorator
+// GenerateCode generates Go source code for a Supervisor decorator using runtime decorator
+// NOTE: This method is deprecated - the new dynamic AST-based transpiler in cmd/main.go
+// uses core.CodeGenerator with templates instead of these string generators
 func (scg *SupervisorCodeGenerator) GenerateCode(decorator core.Decorator) (string, error) {
-	// Extract parameters from decorator
-	strategy := "OneForOne"
-	maxRetries := 3
-	retryInterval := "1s"
-
-	if len(decorator.Arguments) > 0 {
-		strategy = strings.Trim(decorator.Arguments[0], "\"")
-	}
-
-	// Parse properties
-	for key, value := range decorator.Properties {
-		switch key {
-		case "maxRetries":
-			if v, ok := value.(int); ok {
-				maxRetries = v
-			}
-		case "retryInterval":
-			if v, ok := value.(string); ok {
-				retryInterval = strings.Trim(v, "\"")
-			}
-		}
-	}
-
-	return fmt.Sprintf(`
-// Generated type definitions for supervisor
-type SupervisorState struct {
-	strategy      string
-	maxRetries    int
-	retryInterval string
-	children      map[string]*ChildState
-}
-
-type ChildState struct {
-	name       string
-	restarts   int
-	lastRestart time.Time
-}
-
-// Generated supervisor code for %s strategy
-var supervisorState = &SupervisorState{
-	strategy: "%s",
-	maxRetries: %d,
-	retryInterval: "%s",
-	children: make(map[string]*ChildState),
-}
-
-func initSupervisor() {
-	// Initialize supervision with %s strategy
-	log.Printf("Initializing supervisor with strategy: %s")
-}
-`, strategy, strategy, maxRetries, retryInterval, strategy, strategy), nil
+	// This is no longer used by the new dynamic transpiler system
+	// The new system uses core.CodeGenerator with sophisticated templates
+	// This method is kept only for backwards compatibility
+	return "", fmt.Errorf("deprecated: use dynamic AST-based transpiler with core.CodeGenerator instead")
 }
 
 func init() {

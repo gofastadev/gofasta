@@ -4,7 +4,6 @@ package actorref
 import (
 	"context"
 	"fmt"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -19,27 +18,10 @@ type ActorRefCodeGenerator struct{}
 var _ core.DecoratorCodeGenerator = (*ActorRefCodeGenerator)(nil)
 
 func (arcg *ActorRefCodeGenerator) GenerateCode(decorator core.Decorator) (string, error) {
-	path := "/default/path"
-	if len(decorator.Arguments) > 0 {
-		path = strings.Trim(decorator.Arguments[0], "\"")
-	}
-
-	return fmt.Sprintf(`
-// Generated ActorRef code
-type ActorRefLookup struct {
-	path     string
-	fastLookup bool
-}
-
-var actorRef = &ActorRefLookup{
-	path:     "%s",
-	fastLookup: true,
-}
-
-func initActorRef() {
-	log.Printf("Initializing ActorRef with path: %s")
-}
-`, path, path), nil
+	// This is no longer used by the new dynamic transpiler system
+	// The new system uses core.CodeGenerator with sophisticated templates
+	// This method is kept only for backwards compatibility
+	return "", fmt.Errorf("deprecated: use dynamic AST-based transpiler with core.CodeGenerator instead")
 }
 
 func init() {

@@ -4,7 +4,6 @@ package actorsystem
 import (
 	"context"
 	"fmt"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -19,45 +18,10 @@ type ActorSystemCodeGenerator struct{}
 var _ core.DecoratorCodeGenerator = (*ActorSystemCodeGenerator)(nil)
 
 func (ascg *ActorSystemCodeGenerator) GenerateCode(decorator core.Decorator) (string, error) {
-	systemName := "DefaultSystem"
-	maxActors := 10000
-	clustering := false
-
-	if len(decorator.Arguments) > 0 {
-		systemName = strings.Trim(decorator.Arguments[0], "\"")
-	}
-
-	for key, value := range decorator.Properties {
-		switch key {
-		case "maxActors":
-			if v, ok := value.(int); ok {
-				maxActors = v
-			}
-		case "clustering":
-			if v, ok := value.(bool); ok {
-				clustering = v
-			}
-		}
-	}
-
-	return fmt.Sprintf(`
-// Generated actor system code
-type ActorSystemConfig struct {
-	name       string
-	maxActors  int
-	clustering bool
-}
-
-var actorSystem = &ActorSystemConfig{
-	name:       "%s",
-	maxActors:  %d,
-	clustering: %t,
-}
-
-func initActorSystem() {
-	log.Printf("Initializing ActorSystem: %s, maxActors: %d, clustering: %t")
-}
-`, systemName, maxActors, clustering, systemName, maxActors, clustering), nil
+	// This is no longer used by the new dynamic transpiler system
+	// The new system uses core.CodeGenerator with sophisticated templates
+	// This method is kept only for backwards compatibility
+	return "", fmt.Errorf("deprecated: use dynamic AST-based transpiler with core.CodeGenerator instead")
 }
 
 func init() {
