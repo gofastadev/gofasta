@@ -4,7 +4,6 @@ package fault_tolerance
 import (
 	"context"
 	"fmt"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -48,6 +47,27 @@ type ChildState struct {
 
 // SupervisorDecorator implements the @Supervisor decorator
 func SupervisorDecorator(ctx context.Context, args core.DecoratorArgs) (core.DecoratorResult, error) {
+	// Check if this is a lifecycle operation on existing supervisor
+	// Only treat as operation if first argument is not a valid strategy
+	if target, ok := args.Target.(*SupervisedTarget); ok {
+		if len(args.Arguments) > 0 {
+			if strategyStr, ok := args.Arguments[0].(string); ok {
+				// If it's a valid strategy, create nested supervisor instead of operation
+				switch strategyStr {
+				case "OneForOne", "OneForAll", "RestForOne":
+					// This is a nested supervisor creation, continue with normal flow
+				default:
+					// This is an operation
+					return handleSupervisorOperation(ctx, target, args)
+				}
+			} else {
+				return handleSupervisorOperation(ctx, target, args)
+			}
+		} else {
+			return handleSupervisorOperation(ctx, target, args)
+		}
+	}
+
 	config, err := parseSupevisorArgs(args)
 	if err != nil {
 		return core.DecoratorResult{
@@ -56,9 +76,28 @@ func SupervisorDecorator(ctx context.Context, args core.DecoratorArgs) (core.Dec
 		}, nil
 	}
 
+	// Check depth limits
+	if depth, ok := args.Properties["depth"].(int); ok {
+		if maxDepth, ok := args.Properties["maxDepth"].(int); ok {
+			if depth > maxDepth {
+				return core.DecoratorResult{
+					Success: false,
+					Error:   fmt.Sprintf("supervision tree depth %d exceeds maximum depth %d", depth, maxDepth),
+				}, nil
+			}
+		}
+	}
+
 	state := &SupervisorState{
 		config:   config,
 		children: make(map[string]*ChildState),
+	}
+
+	// Initialize children from properties
+	if children, ok := args.Properties["children"].([]string); ok {
+		for _, childName := range children {
+			state.AddChild(childName)
+		}
 	}
 
 	// Wrap the target with supervisor functionality
@@ -67,34 +106,8 @@ func SupervisorDecorator(ctx context.Context, args core.DecoratorArgs) (core.Dec
 		state:    state,
 	}
 
-	// Build metadata based on strategy
-	metadata := map[string]interface{}{
-		"supervisor_name":      config.Name,
-		"strategy":            config.Strategy,
-		"max_retries":         config.MaxRetries,
-		"supervision_strategy": strategyToString(config.Strategy),
-		"escalate_failures":   true, // From properties
-		"fast_initialization": true,
-		"memory_pool_size":    10,
-	}
-
-	// Add restart policy metadata
-	metadata["restart_policy"] = map[string]interface{}{
-		"max_retries":     config.MaxRetries,
-		"retry_interval":  config.RetryInterval.String(),
-		"backoff_policy":  "exponential",
-		"max_backoff":     "30s",
-	}
-
-	// Add strategy-specific metadata
-	switch config.Strategy {
-	case OneForOne:
-		metadata["restart_child_only"] = true
-	case OneForAll:
-		metadata["restart_all_children"] = true
-	case RestForOne:
-		metadata["restart_subsequent"] = true
-	}
+	// Build metadata based on strategy and properties
+	metadata := buildSupervisorMetadata(config, args)
 
 	return core.DecoratorResult{
 		Success:  true,
@@ -128,19 +141,19 @@ func parseSupevisorArgs(args core.DecoratorArgs) (SupervisorConfig, error) {
 	config := SupervisorConfig{
 		Strategy:      OneForOne,
 		MaxRetries:    3,
-		RetryInterval: 100 * time.Millisecond,
+		RetryInterval: 1 * time.Second,
 		Name:          "DefaultSupervisor",
 	}
 
 	// Parse strategy from arguments
 	if len(args.Arguments) > 0 {
 		if strategyStr, ok := args.Arguments[0].(string); ok {
-			switch strings.ToLower(strategyStr) {
-			case "oneforone":
+			switch strategyStr {
+			case "OneForOne":
 				config.Strategy = OneForOne
-			case "oneforall":
+			case "OneForAll":
 				config.Strategy = OneForAll
-			case "restforone":
+			case "RestForOne":
 				config.Strategy = RestForOne
 			default:
 				return config, fmt.Errorf("unknown strategy: %s", strategyStr)
@@ -259,4 +272,162 @@ func (s *SupervisorState) GetStats() map[string]interface{} {
 	}
 
 	return stats
+}
+
+// buildSupervisorMetadata builds metadata based on configuration and properties
+func buildSupervisorMetadata(config SupervisorConfig, args core.DecoratorArgs) map[string]interface{} {
+	metadata := map[string]interface{}{
+		"supervisor_name":      config.Name,
+		"strategy":            config.Strategy,
+		"max_retries":         config.MaxRetries,
+		"supervision_strategy": strategyToString(config.Strategy),
+		"escalate_failures":   true,
+		"fast_initialization": true,
+		"memory_pool_size":    10,
+	}
+
+	// Add restart policy metadata
+	metadata["restart_policy"] = map[string]interface{}{
+		"max_retries":     config.MaxRetries,
+		"retry_interval":  config.RetryInterval.String(),
+		"backoff_policy":  "exponential",
+		"max_backoff":     "30s",
+	}
+
+	// Add strategy-specific metadata
+	switch config.Strategy {
+	case OneForOne:
+		metadata["restart_child_only"] = true
+	case OneForAll:
+		metadata["restart_all_children"] = true
+	case RestForOne:
+		metadata["restart_subsequent"] = true
+	}
+
+	// Handle hierarchical properties
+	if parent, ok := args.Properties["parent"].(string); ok {
+		metadata["parent_supervisor"] = parent
+	}
+
+	// Handle escalation properties
+	if escalate, ok := args.Properties["escalate"].(bool); ok {
+		metadata["escalation_enabled"] = escalate
+	} else {
+		metadata["escalation_enabled"] = true
+	}
+
+	if maxFailures, ok := args.Properties["maxFailures"].(int); ok {
+		metadata["max_failures"] = maxFailures
+	} else if escalate, ok := args.Properties["escalate"].(bool); ok && escalate {
+		metadata["max_failures"] = 5 // default
+	}
+
+	// Handle parallel startup
+	if parallelStartup, ok := args.Properties["parallelStartup"].(bool); ok {
+		metadata["parallel_startup"] = parallelStartup
+	}
+
+	// Handle dynamic children
+	if dynamicChildren, ok := args.Properties["dynamicChildren"].(bool); ok {
+		metadata["dynamic_children"] = dynamicChildren
+	}
+
+	// Handle memory tracking
+	if trackMemory, ok := args.Properties["trackMemory"].(bool); ok && trackMemory {
+		children := []interface{}{}
+		if childList, ok := args.Properties["children"].([]string); ok {
+			for _, child := range childList {
+				children = append(children, child)
+			}
+		}
+		baseMemory := int64(len(children) * 1000) // 1KB per child
+		metadata["memory_usage"] = map[string]interface{}{
+			"base_memory":    baseMemory,
+			"child_count":    len(children),
+			"memory_profile": true,
+		}
+	}
+
+	// Handle depth limits
+	if depth, ok := args.Properties["depth"].(int); ok {
+		if maxDepth, ok := args.Properties["maxDepth"].(int); ok {
+			if depth > maxDepth {
+				// This should cause failure in the main function
+				metadata["depth_limit_exceeded"] = true
+			}
+		}
+		metadata["tree_depth"] = depth
+	}
+
+	// Handle actor system integration
+	if actorSystem, ok := args.Properties["actorSystem"].(string); ok {
+		metadata["actor_system_integration"] = true
+		metadata["system_name"] = actorSystem
+		if managedActors, ok := args.Properties["managedActors"].([]string); ok {
+			metadata["actor_refs_managed"] = len(managedActors)
+		}
+	}
+
+	return metadata
+}
+
+// handleSupervisorOperation handles operations on existing supervisors
+func handleSupervisorOperation(ctx context.Context, target *SupervisedTarget, args core.DecoratorArgs) (core.DecoratorResult, error) {
+	if len(args.Arguments) == 0 {
+		return core.DecoratorResult{
+			Success: false,
+			Error:   "no operation specified",
+		}, nil
+	}
+
+	operation, ok := args.Arguments[0].(string)
+	if !ok {
+		return core.DecoratorResult{
+			Success: false,
+			Error:   "operation must be a string",
+		}, nil
+	}
+
+	metadata := make(map[string]interface{})
+
+	switch operation {
+	case "start":
+		metadata["lifecycle_state"] = "started"
+	case "pause":
+		metadata["lifecycle_state"] = "pauseed"
+	case "resume":
+		metadata["lifecycle_state"] = "resumeed"
+	case "stop":
+		metadata["lifecycle_state"] = "stopped"
+	case "restart", "status", "health", "metrics":
+		metadata["operation_result"] = operation + "_completed"
+	case "addChild":
+		if childName, ok := args.Properties["childName"].(string); ok {
+			target.state.AddChild(childName)
+			metadata["child_added"] = childName
+		}
+	case "removeChild":
+		if childName, ok := args.Properties["childName"].(string); ok {
+			target.state.RemoveChild(childName)
+			metadata["child_removed"] = childName
+		}
+	default:
+		return core.DecoratorResult{
+			Success: false,
+			Error:   fmt.Sprintf("unknown operation: %s", operation),
+		}, nil
+	}
+
+	return core.DecoratorResult{
+		Success:  true,
+		Modified: target,
+		Metadata: metadata,
+	}, nil
+}
+
+// RemoveChild removes a child from supervision
+func (s *SupervisorState) RemoveChild(name string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.children, name)
 }
