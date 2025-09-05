@@ -67,14 +67,15 @@ type GeneratorTemplate struct {
 
 // GenerationContext contains context for code generation
 type GenerationContext struct {
-	PackageName string
-	Imports     []string
-	Decorators  []Decorator
-	Types       []TypeDefinition
-	Functions   []FunctionDefinition
-	Variables   []VariableDefinition
-	Constants   []ConstantDefinition
-	Metadata    map[string]interface{}
+	PackageName    string
+	HeaderTemplate string
+	Imports        []string
+	Decorators     []Decorator
+	Types          []TypeDefinition
+	Functions      []FunctionDefinition
+	Variables      []VariableDefinition
+	Constants      []ConstantDefinition
+	Metadata       map[string]interface{}
 }
 
 // TypeDefinition represents a type in generated code
@@ -179,6 +180,8 @@ var builtinTemplates = map[string]string{
 {{.Body}}
 }
 `,
+
+	"type": `{{if eq .Kind "struct"}}{{template "struct" .}}{{else if eq .Kind "interface"}}{{template "interface" .}}{{else}}type {{.Name}} {{.Type}}{{end}}`,
 
 	"method": `{{if .Doc}}// {{.Doc}}
 {{end}}{{range .Decorators}}// {{.Raw}}
