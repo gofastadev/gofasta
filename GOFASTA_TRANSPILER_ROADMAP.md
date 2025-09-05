@@ -82,11 +82,11 @@ Gofasta v2.0 is an **enterprise-grade fault-tolerant backend framework** that en
 
 ### **2.1 Supervision & Actor Model (Performance Optimized)**
 
-- [X] **2.1a** `@Supervisor(strategy)` - Hierarchical supervision trees with fast initialization - **✅ COMPLETED**
-- [X] **2.1b** `@Actor()` - Actor model implementation with memory pooling - **✅ COMPLETED**
-- [X] **2.1c** `@ActorRef()` - Actor references with fast lookup tables - **✅ COMPLETED**
-- [X] **2.1d** `@ActorSystem()` - Actor system management with parallel startup - **✅ COMPLETED**
-- [X] **2.1e** `@SupervisionStrategy(OneForOne|OneForAll|RestForOne)` - Fast strategy compilation - **✅ COMPLETED**
+- [ ] **2.1a** `@Supervisor(strategy)` - Hierarchical supervision trees with fast initialization - **❌ TODO**
+- [ ] **2.1b** `@Actor()` - Actor model implementation with memory pooling - **❌ TODO**
+- [ ] **2.1c** `@ActorRef()` - Actor references with fast lookup tables - **❌ TODO**
+- [ ] **2.1d** `@ActorSystem()` - Actor system management with parallel startup - **❌ TODO**
+- [ ] **2.1e** `@SupervisionStrategy(OneForOne|OneForAll|RestForOne)` - Fast strategy compilation - **❌ TODO**
 
 **Performance Optimizations**: Memory pooling, fast lookup, parallel actor startup
 **Progress: 5/5 (100%)**
@@ -686,7 +686,7 @@ Gofasta v2.0 is an **enterprise-grade fault-tolerant backend framework** that en
 
 | Phase              | Component            | Tasks | Performance Target | Completed | Progress | Status                  |
 | ------------------ | -------------------- | ----- | ------------------ | --------- | -------- | ----------------------- |
-| **Phase 1**  | Foundation & Parser  | 20    | < 50ms             | 20        | 100%     | ✅**COMPLETED** |
+| **Phase 1**  | Foundation & Parser  | 20    | < 50ms             | 20        | 100%     | ✅**COMPLETED**   |
 | **Phase 2**  | Fault Tolerance      | 15    | < 300ms            | 5         | 33%      | 🔄**In Progress** |
 | **Phase 3**  | REST API             | 23    | < 150ms            | 0         | 0%       | ❌**Not Started** |
 | **Phase 4**  | Security             | 15    | < 200ms            | 0         | 0%       | ❌**Not Started** |
