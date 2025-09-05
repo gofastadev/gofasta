@@ -3,8 +3,8 @@ package parsing
 import (
 	"strings"
 	"testing"
-	
-	"github.com/healtronlabs/gofasta/tools/transpiler/core"
+
+	"github.com/healtronlabs/gofasta/transpiler/core"
 )
 
 // TestParserFixForInfiniteLoop tests that parser no longer hangs on complex input
@@ -40,11 +40,11 @@ type TestController struct {
 	if err != nil {
 		t.Fatalf("Simple parse failed: %v", err)
 	}
-	
+
 	if file == nil || file.Package.Name != "main" {
 		t.Error("Failed to parse simple input correctly")
 	}
-	
+
 	if len(file.Declarations) != 1 {
 		t.Errorf("Expected 1 declaration, got %d", len(file.Declarations))
 	}
@@ -62,11 +62,11 @@ type TestController struct {
 	if err != nil {
 		t.Fatalf("Decorator parse failed: %v", err)
 	}
-	
+
 	if file == nil || len(file.Declarations) != 1 {
 		t.Error("Failed to parse decorated struct")
 	}
-	
+
 	controller, ok := file.Declarations[0].(*core.ControllerDeclaration)
 	if !ok {
 		t.Error("Expected ControllerDeclaration")
@@ -78,12 +78,12 @@ type TestController struct {
 // TestParserErrorRecoveryFixed tests that parser recovers from errors without hanging
 func TestParserErrorRecoveryFixed(t *testing.T) {
 	tests := []string{
-		"@Controller",          // incomplete decorator
-		"type struct {}",       // missing type name
-		"@Get(/invalid)",       // invalid decorator args
+		"@Controller",           // incomplete decorator
+		"type struct {}",        // missing type name
+		"@Get(/invalid)",        // invalid decorator args
 		"func InvalidFunction(", // incomplete function
 	}
-	
+
 	for _, input := range tests {
 		t.Run("input: "+input, func(t *testing.T) {
 			_, err := ParseGofaFile(input)
@@ -107,7 +107,7 @@ func TestParserWithInvalidTokens(t *testing.T) {
 		"}}}}",
 		strings.Repeat("@Controller", 100), // Repetitive tokens
 	}
-	
+
 	for i, input := range inputs {
 		t.Run("invalid_input_"+string(rune('A'+i)), func(t *testing.T) {
 			_, err := ParseGofaFile(input)
@@ -120,6 +120,7 @@ func TestParserWithInvalidTokens(t *testing.T) {
 		})
 	}
 }
+
 // TestWebSocketGatewayParsingSimple tests basic WebSocket gateway parsing with port
 func TestWebSocketGatewayParsingSimple(t *testing.T) {
 	input := `package main
@@ -134,21 +135,21 @@ type ChatGateway struct {
 	if err != nil {
 		t.Fatalf("WebSocket gateway parse failed: %v", err)
 	}
-	
+
 	if file == nil || len(file.Declarations) != 1 {
 		t.Fatalf("Expected 1 declaration, got %d", len(file.Declarations))
 	}
-	
+
 	gateway, ok := file.Declarations[0].(*core.WebSocketGatewayDeclaration)
 	if !ok {
 		t.Fatalf("Expected WebSocketGatewayDeclaration, got %T", file.Declarations[0])
 	}
-	
+
 	// Check basic properties
 	if gateway.Name != "ChatGateway" {
 		t.Errorf("Expected name \"ChatGateway\", got \"%s\"", gateway.Name)
 	}
-	
+
 	// Check that we have the WebSocketGateway decorator at the struct level
 	found := false
 	for _, decorator := range gateway.Decorators {
@@ -160,19 +161,19 @@ type ChatGateway struct {
 	if !found {
 		t.Error("Expected to find WebSocketGateway decorator")
 	}
-	
+
 	// Check port extraction
 	if gateway.Port == nil {
 		t.Error("Expected port to be set")
 	} else if *gateway.Port != 8080 {
 		t.Errorf("Expected port 8080, got %d", *gateway.Port)
 	}
-	
+
 	// Check fields
 	if len(gateway.Fields) != 1 {
 		t.Errorf("Expected 1 field, got %d", len(gateway.Fields))
 	}
-	
+
 	if len(gateway.Fields) > 0 && gateway.Fields[0].Name != "chatService" {
 		t.Errorf("Expected field name \"chatService\", got \"%s\"", gateway.Fields[0].Name)
 	}
@@ -196,40 +197,40 @@ type AdvancedGateway struct {
 	if err != nil {
 		t.Fatalf("Advanced WebSocket gateway parse failed: %v", err)
 	}
-	
+
 	if file == nil || len(file.Declarations) != 1 {
 		t.Fatalf("Expected 1 declaration, got %d", len(file.Declarations))
 	}
-	
+
 	gateway, ok := file.Declarations[0].(*core.WebSocketGatewayDeclaration)
 	if !ok {
 		t.Fatalf("Expected WebSocketGatewayDeclaration, got %T", file.Declarations[0])
 	}
-	
+
 	// Check basic properties
 	if gateway.Name != "AdvancedGateway" {
 		t.Errorf("Expected name \"AdvancedGateway\", got \"%s\"", gateway.Name)
 	}
-	
+
 	// Check port extraction
 	if gateway.Port == nil {
 		t.Error("Expected port to be set")
 	} else if *gateway.Port != 8080 {
 		t.Errorf("Expected port 8080, got %d", *gateway.Port)
 	}
-	
+
 	// Check namespace extraction
 	if gateway.Namespace == nil {
 		t.Error("Expected namespace to be set")
 	} else if *gateway.Namespace != "/chat" {
 		t.Errorf("Expected namespace \"/chat\", got \"%s\"", *gateway.Namespace)
 	}
-	
+
 	// Check additional configuration
 	if gateway.Config == nil {
 		t.Error("Expected config to be initialized")
 	}
-	
+
 	if corsValue, exists := gateway.Config["cors"]; !exists {
 		t.Error("Expected \"cors\" in config")
 	} else if cors, ok := corsValue.(bool); !ok || !cors {
@@ -256,46 +257,46 @@ type ChatGateway struct {
 	if err != nil {
 		t.Fatalf("SubscribeMessage parse failed: %v", err)
 	}
-	
+
 	if file == nil || len(file.Declarations) != 1 {
 		t.Fatalf("Expected 1 declaration, got %d", len(file.Declarations))
 	}
-	
+
 	gateway, ok := file.Declarations[0].(*core.WebSocketGatewayDeclaration)
 	if !ok {
 		t.Fatalf("Expected WebSocketGatewayDeclaration, got %T", file.Declarations[0])
 	}
-	
+
 	// Check that we have one method
 	if len(gateway.Methods) != 1 {
 		t.Fatalf("Expected 1 method, got %d", len(gateway.Methods))
 	}
-	
+
 	method := gateway.Methods[0]
 	if method.Name != "handleMessage" {
 		t.Errorf("Expected method name \"handleMessage\", got \"%s\"", method.Name)
 	}
-	
+
 	// Check that the method has the SubscribeMessage decorator
 	if len(method.Decorators) != 1 {
 		t.Fatalf("Expected 1 decorator on method, got %d", len(method.Decorators))
 	}
-	
+
 	decorator := method.Decorators[0]
 	if decorator.Name != "SubscribeMessage" {
 		t.Errorf("Expected decorator name \"SubscribeMessage\", got \"%s\"", decorator.Name)
 	}
-	
+
 	// Check decorator argument
 	if len(decorator.Args) != 1 {
 		t.Fatalf("Expected 1 decorator argument, got %d", len(decorator.Args))
 	}
-	
+
 	arg := decorator.Args[0]
 	if arg.Key != "" {
 		t.Errorf("Expected no key for decorator argument, got \"%s\"", arg.Key)
 	}
-	
+
 	if argValue, ok := arg.Value.(string); !ok || argValue != "message" {
 		t.Errorf("Expected argument value \"message\", got %v", arg.Value)
 	}
@@ -327,17 +328,17 @@ type GameGateway struct {
 	if err != nil {
 		t.Fatalf("Multiple SubscribeMessage parse failed: %v", err)
 	}
-	
+
 	gateway, ok := file.Declarations[0].(*core.WebSocketGatewayDeclaration)
 	if !ok {
 		t.Fatalf("Expected WebSocketGatewayDeclaration, got %T", file.Declarations[0])
 	}
-	
+
 	// Check that we have three methods
 	if len(gateway.Methods) != 3 {
 		t.Fatalf("Expected 3 methods, got %d", len(gateway.Methods))
 	}
-	
+
 	expectedMethods := []struct {
 		name    string
 		message string
@@ -346,28 +347,28 @@ type GameGateway struct {
 		{"handleLeaveGame", "leave_game"},
 		{"handleGameAction", "game_action"},
 	}
-	
+
 	for i, expected := range expectedMethods {
 		method := gateway.Methods[i]
 		if method.Name != expected.name {
 			t.Errorf("Expected method name \"%s\", got \"%s\"", expected.name, method.Name)
 		}
-		
+
 		if len(method.Decorators) != 1 {
 			t.Errorf("Expected 1 decorator on method %s, got %d", method.Name, len(method.Decorators))
 			continue
 		}
-		
+
 		decorator := method.Decorators[0]
 		if decorator.Name != "SubscribeMessage" {
 			t.Errorf("Expected decorator \"SubscribeMessage\" on method %s, got \"%s\"", method.Name, decorator.Name)
 		}
-		
+
 		if len(decorator.Args) != 1 {
 			t.Errorf("Expected 1 argument on decorator for method %s, got %d", method.Name, len(decorator.Args))
 			continue
 		}
-		
+
 		arg := decorator.Args[0]
 		if argValue, ok := arg.Value.(string); !ok || argValue != expected.message {
 			t.Errorf("Expected argument \"%s\" on method %s, got %v", expected.message, method.Name, arg.Value)
@@ -391,37 +392,37 @@ type MultiEventGateway struct {
 	if err != nil {
 		t.Fatalf("SubscribeMessage with arrays parse failed: %v", err)
 	}
-	
+
 	gateway, ok := file.Declarations[0].(*core.WebSocketGatewayDeclaration)
 	if !ok {
 		t.Fatalf("Expected WebSocketGatewayDeclaration, got %T", file.Declarations[0])
 	}
-	
+
 	// Check that we have one method
 	if len(gateway.Methods) != 1 {
 		t.Fatalf("Expected 1 method, got %d", len(gateway.Methods))
 	}
-	
+
 	method := gateway.Methods[0]
 	if method.Name != "handleRoomEvents" {
 		t.Errorf("Expected method name \"handleRoomEvents\", got \"%s\"", method.Name)
 	}
-	
+
 	// Check decorator
 	if len(method.Decorators) != 1 {
 		t.Fatalf("Expected 1 decorator, got %d", len(method.Decorators))
 	}
-	
+
 	decorator := method.Decorators[0]
 	if decorator.Name != "SubscribeMessage" {
 		t.Errorf("Expected decorator \"SubscribeMessage\", got \"%s\"", decorator.Name)
 	}
-	
+
 	// Check decorator argument is array
 	if len(decorator.Args) != 1 {
 		t.Fatalf("Expected 1 decorator argument, got %d", len(decorator.Args))
 	}
-	
+
 	arg := decorator.Args[0]
 	if argArray, ok := arg.Value.([]interface{}); !ok {
 		t.Errorf("Expected array argument, got %T", arg.Value)
@@ -467,17 +468,17 @@ type MixedGateway struct {
 	if err != nil {
 		t.Fatalf("Mixed methods parse failed: %v", err)
 	}
-	
+
 	gateway, ok := file.Declarations[0].(*core.WebSocketGatewayDeclaration)
 	if !ok {
 		t.Fatalf("Expected WebSocketGatewayDeclaration, got %T", file.Declarations[0])
 	}
-	
+
 	// Check that we have three methods
 	if len(gateway.Methods) != 3 {
 		t.Fatalf("Expected 3 methods, got %d", len(gateway.Methods))
 	}
-	
+
 	// First method should have SubscribeMessage decorator
 	method1 := gateway.Methods[0]
 	if method1.Name != "handleUserMessage" {
@@ -486,7 +487,7 @@ type MixedGateway struct {
 	if len(method1.Decorators) != 1 {
 		t.Errorf("Expected 1 decorator on first method, got %d", len(method1.Decorators))
 	}
-	
+
 	// Second method should have no decorators
 	method2 := gateway.Methods[1]
 	if method2.Name != "helperMethod" {
@@ -495,7 +496,7 @@ type MixedGateway struct {
 	if len(method2.Decorators) != 0 {
 		t.Errorf("Expected 0 decorators on helper method, got %d", len(method2.Decorators))
 	}
-	
+
 	// Third method should have SubscribeMessage decorator
 	method3 := gateway.Methods[2]
 	if method3.Name != "handleAdminAction" {
@@ -522,26 +523,26 @@ func HandleConnection(
 	if err != nil {
 		t.Fatalf("OnGatewayConnection parse failed: %v", err)
 	}
-	
+
 	if file == nil || len(file.Declarations) != 1 {
 		t.Fatalf("Expected 1 declaration, got %d", len(file.Declarations))
 	}
-	
+
 	wsFunc, ok := file.Declarations[0].(*core.WebSocketFunctionDeclaration)
 	if !ok {
 		t.Fatalf("Expected WebSocketFunctionDeclaration, got %T", file.Declarations[0])
 	}
-	
+
 	// Check function name
 	if wsFunc.Name != "HandleConnection" {
 		t.Errorf("Expected function name \"HandleConnection\", got \"%s\"", wsFunc.Name)
 	}
-	
+
 	// Check that the function has the OnGatewayConnection decorator
 	if len(wsFunc.Decorators) == 0 {
 		t.Fatalf("Expected decorators on function, got none")
 	}
-	
+
 	found := false
 	for _, decorator := range wsFunc.Decorators {
 		if decorator.Name == "OnGatewayConnection" {
@@ -556,12 +557,12 @@ func HandleConnection(
 	if !found {
 		t.Error("Expected to find OnGatewayConnection decorator")
 	}
-	
+
 	// Check parameters
 	if len(wsFunc.Params) != 2 {
 		t.Fatalf("Expected 2 parameters, got %d", len(wsFunc.Params))
 	}
-	
+
 	// First parameter should have ConnectedSocket decorator
 	param1 := wsFunc.Params[0]
 	if len(param1.Decorators) == 0 {
@@ -578,7 +579,7 @@ func HandleConnection(
 			t.Error("Expected ConnectedSocket decorator on first parameter")
 		}
 	}
-	
+
 	// Second parameter should have Headers decorator
 	param2 := wsFunc.Params[1]
 	if len(param2.Decorators) == 0 {
@@ -613,21 +614,21 @@ func HandleDisconnect(
 	if err != nil {
 		t.Fatalf("OnGatewayDisconnect parse failed: %v", err)
 	}
-	
+
 	if file == nil || len(file.Declarations) != 1 {
 		t.Fatalf("Expected 1 declaration, got %d", len(file.Declarations))
 	}
-	
+
 	wsFunc, ok := file.Declarations[0].(*core.WebSocketFunctionDeclaration)
 	if !ok {
 		t.Fatalf("Expected WebSocketFunctionDeclaration, got %T", file.Declarations[0])
 	}
-	
+
 	// Check function name
 	if wsFunc.Name != "HandleDisconnect" {
 		t.Errorf("Expected function name \"HandleDisconnect\", got \"%s\"", wsFunc.Name)
 	}
-	
+
 	// Check OnGatewayDisconnect decorator
 	found := false
 	for _, decorator := range wsFunc.Decorators {
@@ -654,21 +655,21 @@ func HandleInit() {
 	if err != nil {
 		t.Fatalf("OnGatewayInit parse failed: %v", err)
 	}
-	
+
 	if file == nil || len(file.Declarations) != 1 {
 		t.Fatalf("Expected 1 declaration, got %d", len(file.Declarations))
 	}
-	
+
 	wsFunc, ok := file.Declarations[0].(*core.WebSocketFunctionDeclaration)
 	if !ok {
 		t.Fatalf("Expected WebSocketFunctionDeclaration, got %T", file.Declarations[0])
 	}
-	
+
 	// Check function name
 	if wsFunc.Name != "HandleInit" {
 		t.Errorf("Expected function name \"HandleInit\", got \"%s\"", wsFunc.Name)
 	}
-	
+
 	// Check OnGatewayInit decorator
 	found := false
 	for _, decorator := range wsFunc.Decorators {
@@ -680,7 +681,7 @@ func HandleInit() {
 	if !found {
 		t.Error("Expected to find OnGatewayInit decorator")
 	}
-	
+
 	// OnGatewayInit typically has no parameters
 	if len(wsFunc.Params) != 0 {
 		t.Errorf("Expected no parameters for OnGatewayInit, got %d", len(wsFunc.Params))
@@ -723,11 +724,11 @@ func HandleTestMessage(
 	if err != nil {
 		t.Fatalf("Multiple WebSocket functions parse failed: %v", err)
 	}
-	
+
 	if file == nil || len(file.Declarations) != 4 {
 		t.Fatalf("Expected 4 declarations, got %d", len(file.Declarations))
 	}
-	
+
 	expectedFunctions := []struct {
 		name      string
 		decorator string
@@ -737,18 +738,18 @@ func HandleTestMessage(
 		{"HandleDisconnect", "OnGatewayDisconnect"},
 		{"HandleTestMessage", "SubscribeMessage"},
 	}
-	
+
 	for i, expected := range expectedFunctions {
 		wsFunc, ok := file.Declarations[i].(*core.WebSocketFunctionDeclaration)
 		if !ok {
 			t.Errorf("Expected declaration %d to be WebSocketFunctionDeclaration, got %T", i, file.Declarations[i])
 			continue
 		}
-		
+
 		if wsFunc.Name != expected.name {
 			t.Errorf("Expected function name \"%s\", got \"%s\"", expected.name, wsFunc.Name)
 		}
-		
+
 		found := false
 		for _, decorator := range wsFunc.Decorators {
 			if decorator.Name == expected.decorator {
@@ -777,19 +778,18 @@ func HandleConnectionWithReturn(
 	if err != nil {
 		t.Fatalf("WebSocket function with return type parse failed: %v", err)
 	}
-	
+
 	if file == nil || len(file.Declarations) != 1 {
 		t.Fatalf("Expected 1 declaration, got %d", len(file.Declarations))
 	}
-	
+
 	wsFunc, ok := file.Declarations[0].(*core.WebSocketFunctionDeclaration)
 	if !ok {
 		t.Fatalf("Expected WebSocketFunctionDeclaration, got %T", file.Declarations[0])
 	}
-	
+
 	// Check return type
 	if wsFunc.ReturnType != "error" {
 		t.Errorf("Expected return type \"error\", got \"%s\"", wsFunc.ReturnType)
 	}
 }
-

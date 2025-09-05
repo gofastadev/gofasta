@@ -1,0 +1,540 @@
+// Advanced Actor Features Example
+// This demonstrates hot-swapping behavior, state management, and actor hierarchy
+package actor
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"time"
+)
+
+// Trading bot actor that demonstrates hot-swapping behavior based on market conditions
+@Actor(mailboxSize: 1000, poolSize: 10, 
+	hotSwap: true, 
+	behaviorStack: true, 
+	defaultBehavior: "conservative",
+	supervised: true)
+func TradingBotActor(ctx context.Context) {
+	fmt.Println("TradingBotActor started with hot-swap capability")
+	
+	// Actor state management
+	currentBehavior := "conservative"
+	behaviorStack := []string{}
+	
+	for {
+		select {
+		case <-ctx.Done():
+			fmt.Println("TradingBotActor shutting down - saving state")
+			return
+		default:
+			// Process trading decisions based on current behavior
+			decision := makeTradeDecision(currentBehavior)
+			processTradeDecision(decision, currentBehavior)
+			
+			// Check if behavior swap is needed
+			if shouldSwapBehavior() {
+				newBehavior := determineNewBehavior()
+				behaviorStack = append(behaviorStack, currentBehavior)
+				currentBehavior = newBehavior
+				fmt.Printf("Swapped behavior: %s -> %s\n", behaviorStack[len(behaviorStack)-1], currentBehavior)
+			}
+			
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
+}
+
+// Portfolio manager actor with persistent state management
+@Actor(mailboxSize: 800, poolSize: 5,
+	stateManagement: true,
+	statePersistence: true,
+	stateRecovery: true,
+	snapshotting: true,
+	supervised: true)
+func PortfolioManagerActor(ctx context.Context) {
+	fmt.Println("PortfolioManagerActor started with state persistence")
+	
+	// Portfolio state that needs to be persisted
+	portfolio := map[string]interface{}{
+		"cash":    100000.0,
+		"stocks":  make(map[string]int),
+		"history": []string{},
+	}
+	
+	// Recover state from last snapshot
+	portfolio = recoverPortfolioState(portfolio)
+	
+	snapshotTicker := time.NewTicker(10 * time.Second)
+	defer snapshotTicker.Stop()
+	
+	for {
+		select {
+		case <-ctx.Done():
+			// Save final state before shutdown
+			savePortfolioState(portfolio)
+			fmt.Println("PortfolioManagerActor shutting down - state saved")
+			return
+		case <-snapshotTicker.C:
+			// Periodic state snapshots
+			takePortfolioSnapshot(portfolio)
+			fmt.Println("Portfolio state snapshot taken")
+		default:
+			// Process portfolio updates
+			update := receivePortfolioUpdate()
+			if update != nil {
+				portfolio = applyPortfolioUpdate(portfolio, update)
+			}
+			time.Sleep(50 * time.Millisecond)
+		}
+	}
+}
+
+// Manager actor that spawns and manages child worker actors (hierarchy)
+@Actor(mailboxSize: 500, poolSize: 3,
+	hierarchy: true,
+	canSpawn: true,
+	maxChildren: 10,
+	supervised: true)
+func TaskManagerActor(ctx context.Context) {
+	fmt.Println("TaskManagerActor started - can spawn child actors")
+	
+	childActors := make(map[string]interface{})
+	childCounter := 0
+	
+	for {
+		select {
+		case <-ctx.Done():
+			// Terminate all child actors gracefully
+			terminateChildActors(childActors)
+			fmt.Println("TaskManagerActor shutting down - all children terminated")
+			return
+		default:
+			// Check if we need to spawn new workers
+			if shouldSpawnWorker(len(childActors)) {
+				childCounter++
+				childName := fmt.Sprintf("worker_%d", childCounter)
+				
+				// Spawn child worker actor
+				childRef := spawnChildActor(childName, "TaskWorkerActor")
+				if childRef != nil {
+					childActors[childName] = childRef
+					fmt.Printf("Spawned child actor: %s (total: %d)\n", childName, len(childActors))
+				}
+			}
+			
+			// Monitor and manage child actors
+			manageChildActors(childActors)
+			time.Sleep(200 * time.Millisecond)
+		}
+	}
+}
+
+// Worker actor spawned by manager (child in hierarchy)
+@Actor(mailboxSize: 300, poolSize: 15,
+	hierarchy: true,
+	parent: "TaskManagerActor",
+	supervised: true)
+func TaskWorkerActor(ctx context.Context) {
+	fmt.Println("TaskWorkerActor started as child actor")
+	
+	for {
+		select {
+		case <-ctx.Done():
+			fmt.Println("TaskWorkerActor shutting down")
+			return
+		default:
+			// Process assigned tasks
+			task := receiveTask()
+			if task != nil {
+				processTask(task)
+			}
+			time.Sleep(50 * time.Millisecond)
+		}
+	}
+}
+
+// Resource manager actor with automatic cleanup
+@Actor(mailboxSize: 400, poolSize: 8,
+	resourceManagement: true,
+	autoCleanup: true,
+	cleanupTimeout: "10s",
+	resourceTracking: true,
+	supervised: true)
+func ResourceManagerActor(ctx context.Context) {
+	fmt.Println("ResourceManagerActor started with resource tracking")
+	
+	// Track allocated resources
+	allocatedResources := make(map[string]interface{})
+	
+	defer func() {
+		// Ensure cleanup on any exit
+		cleanupAllResources(allocatedResources)
+	}()
+	
+	for {
+		select {
+		case <-ctx.Done():
+			fmt.Println("ResourceManagerActor shutting down - cleaning up resources")
+			return
+		default:
+			// Handle resource allocation/deallocation requests
+			request := receiveResourceRequest()
+			if request != nil {
+				allocatedResources = handleResourceRequest(request, allocatedResources)
+			}
+			
+			// Periodic resource cleanup
+			if time.Now().Unix()%30 == 0 {
+				cleanupExpiredResources(allocatedResources)
+			}
+			
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
+}
+
+// Data processor actor with backpressure handling
+@Actor(mailboxSize: 200, poolSize: 12, // Small mailbox to trigger backpressure
+	backpressure: true,
+	backpressureStrategy: "dropOldest",
+	overflowPolicy: "reject",
+	supervised: true)
+func DataProcessorActor(ctx context.Context) {
+	fmt.Println("DataProcessorActor started with backpressure handling")
+	
+	processedCount := 0
+	droppedCount := 0
+	
+	for {
+		select {
+		case <-ctx.Done():
+			fmt.Printf("DataProcessorActor shutting down - processed: %d, dropped: %d\n", 
+				processedCount, droppedCount)
+			return
+		default:
+			// Simulate high-throughput data processing
+			data := receiveDataForProcessing()
+			if data != nil {
+				if processData(data) {
+					processedCount++
+				} else {
+					// Backpressure triggered - data dropped
+					droppedCount++
+					fmt.Printf("Backpressure triggered - dropping data (dropped: %d)\n", droppedCount)
+				}
+			}
+			
+			// Very fast processing to trigger backpressure
+			time.Sleep(1 * time.Millisecond)
+		}
+	}
+}
+
+// Behavior swap and state management functions
+func makeTradeDecision(behavior string) map[string]interface{} {
+	strategies := map[string][]string{
+		"conservative": {"hold", "small_buy", "dividend_focus"},
+		"aggressive":   {"large_buy", "margin_trade", "options"},
+		"defensive":    {"sell", "cash_position", "bonds"},
+		"momentum":     {"trend_follow", "breakout_buy", "scalp"},
+	}
+	
+	actions := strategies[behavior]
+	if actions == nil {
+		actions = strategies["conservative"]
+	}
+	
+	action := actions[time.Now().Unix()%int64(len(actions))]
+	
+	return map[string]interface{}{
+		"action":   action,
+		"behavior": behavior,
+		"amount":   (time.Now().Unix() % 1000) + 100,
+	}
+}
+
+func processTradeDecision(decision map[string]interface{}, behavior string) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("Trade processing failed: %v", r)
+		}
+	}()
+	
+	action := decision["action"].(string)
+	amount := decision["amount"].(int64)
+	
+	fmt.Printf("Executing %s trade: %s ($%d)\n", behavior, action, amount)
+	
+	// Simulate trading failures
+	if time.Now().Unix()%80 == 0 {
+		panic("Trading API connection lost")
+	}
+}
+
+func shouldSwapBehavior() bool {
+	// Simulate market condition changes requiring behavior swap
+	return time.Now().Unix()%20 == 0
+}
+
+func determineNewBehavior() string {
+	behaviors := []string{"conservative", "aggressive", "defensive", "momentum"}
+	return behaviors[time.Now().Unix()%int64(len(behaviors))]
+}
+
+func recoverPortfolioState(defaultState map[string]interface{}) map[string]interface{} {
+	// Simulate state recovery from persistent storage
+	fmt.Println("Recovering portfolio state from snapshot...")
+	
+	// In real implementation, this would load from database/file
+	recovered := map[string]interface{}{
+		"cash":   95000.0, // Recovered value
+		"stocks": map[string]int{"AAPL": 10, "GOOGL": 5},
+		"history": []string{"recovered_from_snapshot"},
+	}
+	
+	fmt.Printf("State recovered: $%.2f cash, %d stock positions\n", 
+		recovered["cash"].(float64), len(recovered["stocks"].(map[string]int)))
+	
+	return recovered
+}
+
+func savePortfolioState(portfolio map[string]interface{}) {
+	fmt.Printf("Saving portfolio state: $%.2f cash\n", portfolio["cash"].(float64))
+	// Simulate saving to persistent storage
+}
+
+func takePortfolioSnapshot(portfolio map[string]interface{}) {
+	// Simulate taking state snapshot
+	fmt.Printf("Snapshot: $%.2f cash, %d positions\n", 
+		portfolio["cash"].(float64), 
+		len(portfolio["stocks"].(map[string]int)))
+}
+
+func receivePortfolioUpdate() map[string]interface{} {
+	if time.Now().UnixNano()%1000000 < 300000 { // 30% chance
+		updateTypes := []string{"buy_stock", "sell_stock", "dividend", "expense"}
+		updateType := updateTypes[time.Now().Unix()%int64(len(updateTypes))]
+		
+		return map[string]interface{}{
+			"type":   updateType,
+			"symbol": "AAPL",
+			"amount": (time.Now().Unix() % 50) + 10,
+		}
+	}
+	return nil
+}
+
+func applyPortfolioUpdate(portfolio map[string]interface{}, update map[string]interface{}) map[string]interface{} {
+	updateType := update["type"].(string)
+	amount := update["amount"].(int64)
+	
+	switch updateType {
+	case "buy_stock":
+		cash := portfolio["cash"].(float64)
+		portfolio["cash"] = cash - float64(amount*100) // $100 per share
+		fmt.Printf("Portfolio update: bought stock for $%d\n", amount*100)
+	case "sell_stock":
+		cash := portfolio["cash"].(float64)
+		portfolio["cash"] = cash + float64(amount*100)
+		fmt.Printf("Portfolio update: sold stock for $%d\n", amount*100)
+	case "dividend":
+		cash := portfolio["cash"].(float64)
+		portfolio["cash"] = cash + float64(amount)
+		fmt.Printf("Portfolio update: received $%d dividend\n", amount)
+	}
+	
+	return portfolio
+}
+
+// Actor hierarchy management functions
+func shouldSpawnWorker(currentWorkers int) bool {
+	// Spawn workers based on workload
+	maxWorkers := 5
+	return currentWorkers < maxWorkers && time.Now().Unix()%15 == 0
+}
+
+func spawnChildActor(name, actorType string) interface{} {
+	fmt.Printf("Spawning child actor %s of type %s\n", name, actorType)
+	
+	// Simulate child actor spawning
+	childRef := map[string]interface{}{
+		"name":      name,
+		"type":      actorType,
+		"spawnedAt": time.Now(),
+	}
+	
+	return childRef
+}
+
+func manageChildActors(children map[string]interface{}) {
+	// Monitor child actor health and workload
+	if len(children) > 0 && time.Now().Unix()%30 == 0 {
+		fmt.Printf("Managing %d child actors\n", len(children))
+	}
+}
+
+func terminateChildActors(children map[string]interface{}) {
+	for name := range children {
+		fmt.Printf("Terminating child actor: %s\n", name)
+	}
+}
+
+func receiveTask() map[string]interface{} {
+	if time.Now().UnixNano()%1000000 < 400000 { // 40% chance
+		tasks := []string{"data_process", "file_convert", "api_call", "database_update"}
+		task := tasks[time.Now().Unix()%int64(len(tasks))]
+		
+		return map[string]interface{}{
+			"type":     task,
+			"priority": (time.Now().Unix() % 5) + 1,
+			"data":     fmt.Sprintf("task_data_%d", time.Now().Unix()),
+		}
+	}
+	return nil
+}
+
+func processTask(task map[string]interface{}) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("Task processing failed: %v", r)
+		}
+	}()
+	
+	taskType := task["type"].(string)
+	priority := task["priority"].(int64)
+	
+	fmt.Printf("Processing task: %s (priority: %d)\n", taskType, priority)
+	
+	// Simulate task processing time based on priority
+	processingTime := time.Duration(6-priority) * 10 * time.Millisecond
+	time.Sleep(processingTime)
+	
+	// Simulate task failures
+	if time.Now().Unix()%60 == 0 {
+		panic("Task processing resource exhausted")
+	}
+}
+
+// Resource management functions
+func receiveResourceRequest() map[string]interface{} {
+	if time.Now().UnixNano()%1000000 < 250000 { // 25% chance
+		operations := []string{"allocate", "deallocate", "query"}
+		resources := []string{"database", "file", "network", "memory"}
+		
+		return map[string]interface{}{
+			"operation": operations[time.Now().Unix()%int64(len(operations))],
+			"resource":  resources[time.Now().Unix()%int64(len(resources))],
+			"size":      (time.Now().Unix() % 100) + 10,
+		}
+	}
+	return nil
+}
+
+func handleResourceRequest(request map[string]interface{}, allocated map[string]interface{}) map[string]interface{} {
+	operation := request["operation"].(string)
+	resource := request["resource"].(string)
+	size := request["size"].(int64)
+	
+	switch operation {
+	case "allocate":
+		allocated[resource] = map[string]interface{}{
+			"size":        size,
+			"allocatedAt": time.Now(),
+		}
+		fmt.Printf("Allocated %s resource (size: %d)\n", resource, size)
+	case "deallocate":
+		delete(allocated, resource)
+		fmt.Printf("Deallocated %s resource\n", resource)
+	case "query":
+		if _, exists := allocated[resource]; exists {
+			fmt.Printf("Resource %s is allocated\n", resource)
+		}
+	}
+	
+	return allocated
+}
+
+func cleanupAllResources(resources map[string]interface{}) {
+	fmt.Printf("Cleaning up %d allocated resources\n", len(resources))
+	for resource := range resources {
+		fmt.Printf("Releasing resource: %s\n", resource)
+	}
+}
+
+func cleanupExpiredResources(resources map[string]interface{}) {
+	// Clean up resources older than 60 seconds
+	expiredCount := 0
+	for name, info := range resources {
+		if resource, ok := info.(map[string]interface{}); ok {
+			if allocatedAt, ok := resource["allocatedAt"].(time.Time); ok {
+				if time.Since(allocatedAt) > 60*time.Second {
+					delete(resources, name)
+					expiredCount++
+				}
+			}
+		}
+	}
+	
+	if expiredCount > 0 {
+		fmt.Printf("Cleaned up %d expired resources\n", expiredCount)
+	}
+}
+
+// Backpressure handling functions
+func receiveDataForProcessing() map[string]interface{} {
+	// High frequency data generation to trigger backpressure
+	if time.Now().UnixNano()%1000000 < 900000 { // 90% chance - high load
+		return map[string]interface{}{
+			"id":        time.Now().UnixNano(),
+			"data":      fmt.Sprintf("data_chunk_%d", time.Now().UnixNano()),
+			"timestamp": time.Now(),
+		}
+	}
+	return nil
+}
+
+func processData(data map[string]interface{}) bool {
+	// Simulate processing that may fail due to backpressure
+	
+	// Simulate mailbox full condition
+	if time.Now().Unix()%10 < 3 { // 30% chance of backpressure
+		return false
+	}
+	
+	// Successful processing
+	if time.Now().Unix()%20 == 0 {
+		fmt.Printf("Processed data chunk: %v\n", data["id"])
+	}
+	return true
+}
+
+func main() {
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
+	
+	fmt.Println("Starting Advanced Actor Features Example")
+	fmt.Println("Demonstrating hot-swapping, state management, hierarchy, and resource cleanup")
+	
+	// Start actors with advanced features
+	go TradingBotActor(ctx)          // Hot-swapping behavior
+	go PortfolioManagerActor(ctx)    // State persistence
+	go TaskManagerActor(ctx)         // Actor hierarchy (parent)
+	go ResourceManagerActor(ctx)     // Resource management
+	go DataProcessorActor(ctx)       // Backpressure handling
+	
+	// Additional worker actors (children will be spawned by TaskManager)
+	go TaskWorkerActor(ctx)
+	go TaskWorkerActor(ctx)
+	
+	fmt.Println("\nAdvanced actor features running:")
+	fmt.Println("- Hot-swapping: TradingBot changes behavior based on market")
+	fmt.Println("- State persistence: Portfolio maintains state across restarts")
+	fmt.Println("- Actor hierarchy: TaskManager spawns and manages workers")
+	fmt.Println("- Resource cleanup: Automatic resource management")
+	fmt.Println("- Backpressure: DataProcessor drops messages when overloaded")
+	
+	<-ctx.Done()
+	fmt.Println("\nAdvanced Actor Features Example completed")
+	fmt.Println("Demonstrated: behavior swapping, state persistence, hierarchy, cleanup")
+}

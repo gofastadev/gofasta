@@ -100,7 +100,7 @@ echo "=========================================="
 
 # Step 1: Always rebuild transpiler to ensure latest enhancements
 print_step "Rebuilding Gofasta transpiler with latest enhancements..."
-TRANSPILER_PATH="../../tools/transpiler/gofasta"
+TRANSPILER_PATH="../../transpiler/gofasta"
 
 # Remove existing binary to force rebuild
 rm -f "$TRANSPILER_PATH"
@@ -108,7 +108,7 @@ rm -f "$TRANSPILER_PATH"
 print_step "Building transpiler with enhanced @Query decorator support..."
 
 # Navigate to transpiler directory and build
-cd ../../tools/transpiler
+cd ../../transpiler
 if ! go build -o gofasta ./cmd; then
     print_error "Failed to build transpiler"
     exit 1

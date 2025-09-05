@@ -1,4 +1,4 @@
-// WebSocket validation tests for GoFasta transpiler
+// WebSocket validation tests for Gofasta transpiler
 package parsing
 
 import (
@@ -157,7 +157,7 @@ func HandleTest(@ConnectedSocket() client **WebSocketClient) {}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := ParseGofaFile(tt.code)
-			
+
 			if tt.expectError {
 				if err == nil {
 					t.Errorf("Expected error for %s, but got none. %s", tt.name, tt.description)
@@ -333,7 +333,7 @@ func HandleTest(@MessageAck() ack **AckCallback) {}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := ParseGofaFile(tt.code)
-			
+
 			if tt.expectError {
 				if err == nil {
 					t.Errorf("Expected error for %s, but got none. %s", tt.name, tt.description)
@@ -514,7 +514,7 @@ func HandleTest(@Rooms() rooms interface{}) {}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := ParseGofaFile(tt.code)
-			
+
 			if tt.expectError {
 				if err == nil {
 					t.Errorf("Expected error for %s, but got none. %s", tt.name, tt.description)
@@ -733,7 +733,7 @@ func HandleTest(@Namespace() namespace []byte) {}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := ParseGofaFile(tt.code)
-			
+
 			if tt.expectError {
 				if err == nil {
 					t.Errorf("Expected error for %s, but got none. %s", tt.name, tt.description)

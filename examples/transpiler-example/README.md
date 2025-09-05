@@ -75,10 +75,10 @@ go build -o gofasta ./cmd/gofasta-transpiler
 cd examples/transpiler-example
 
 # Transpile all .gofa files to .go files
-../../tools/transpiler/gofasta transpile -verbose
+../../transpiler/gofasta transpile -verbose
 
 # Or use force flag to overwrite existing files
-../../tools/transpiler/gofasta transpile -verbose -force
+../../transpiler/gofasta transpile -verbose -force
 ```
 
 ### Step 3: Run the Example
@@ -1649,7 +1649,7 @@ func HealthCheck() {}  // Simple endpoint doesn't need all pipes
 
 ### Controller Example (`user.controller.gofa` → `user.controller.go`)
 
-**Before (GoFasta):**
+**Before (Gofasta):**
 ```go
 @Controller("/api/v1/users")
 @UseGuards("auth")
@@ -1686,7 +1686,7 @@ func (c *UserController) GetUser(ctx *httpPackage.RequestContext, id string) {
 
 ### Service Example (`user.service.gofa` → `user.service.go`)
 
-**Before (GoFasta):**
+**Before (Gofasta):**
 ```go
 @Injectable()
 type UserService struct {
@@ -1721,7 +1721,7 @@ func (s *UserService) GetUserById(id string) *User {
 
 ## 🎓 Key Learning Points
 
-1. **Declarative Syntax**: GoFasta uses decorators to declare routes and dependencies
+1. **Declarative Syntax**: Gofasta uses decorators to declare routes and dependencies
 2. **Code Generation**: The transpiler generates boilerplate Go code automatically
 3. **Dependency Injection**: `inject:""` tags enable automatic DI setup
 4. **Route Generation**: Method decorators become HTTP route registrations
@@ -1733,23 +1733,23 @@ func (s *UserService) GetUserById(id string) *User {
 
 ```bash
 # Transpile with custom output directory
-../../tools/transpiler/gofasta transpile -output ./generated
+../../transpiler/gofasta transpile -output ./generated
 
 # Preserve directory structure
-../../tools/transpiler/gofasta transpile -preserve=true
+../../transpiler/gofasta transpile -preserve=true
 
 # Use custom number of workers
-../../tools/transpiler/gofasta transpile -workers 4
+../../transpiler/gofasta transpile -workers 4
 
 # Dry run (see what would be transpiled)
-../../tools/transpiler/gofasta transpile -dry-run
+../../transpiler/gofasta transpile -dry-run
 ```
 
 ### Watch Mode for Development
 
 ```bash
 # Automatically transpile when .gofa files change
-../../tools/transpiler/gofasta watch -verbose
+../../transpiler/gofasta watch -verbose
 ```
 
 ## 🔧 Customizing the Example
@@ -1757,7 +1757,7 @@ func (s *UserService) GetUserById(id string) *User {
 ### Adding New Routes
 
 1. Add methods to `user.controller.gofa` with appropriate decorators
-2. Run transpiler: `../../tools/transpiler/gofasta transpile -force`
+2. Run transpiler: `../../transpiler/gofasta transpile -force`
 3. Restart the server: `go run .`
 
 ### Adding New Services

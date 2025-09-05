@@ -5,10 +5,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/healtronlabs/gofasta/tools/transpiler/core"
-	"github.com/healtronlabs/gofasta/tools/transpiler/parsing"
-	"github.com/healtronlabs/gofasta/tools/transpiler/codegen"
-	"github.com/healtronlabs/gofasta/tools/transpiler/cli"
+	"github.com/healtronlabs/gofasta/transpiler/cli"
+	"github.com/healtronlabs/gofasta/transpiler/codegen"
+	"github.com/healtronlabs/gofasta/transpiler/core"
+	"github.com/healtronlabs/gofasta/transpiler/parsing"
 )
 
 // Re-export commonly used types for backward compatibility

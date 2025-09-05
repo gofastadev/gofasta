@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	
-	"github.com/healtronlabs/gofasta/tools/transpiler/core"
+
+	"github.com/healtronlabs/gofasta/transpiler/core"
 )
 
 // addValidationImportsIfNeeded adds validation imports if needed
@@ -62,13 +62,13 @@ func (g *CodeGenerator) hasValidationDecorators(file *GofaFile) bool {
 // findDTOStructsWithValidation finds structs that need validation
 func (g *CodeGenerator) findDTOStructsWithValidation(file *GofaFile) map[string]*ValidationStructInfo {
 	structs := make(map[string]*ValidationStructInfo)
-	
+
 	for _, decl := range file.Declarations {
 		if service, ok := decl.(*ServiceDeclaration); ok {
 			// Check if this service has validation decorators on its fields
 			hasValidationDecorators := false
 			var validationFields []*ValidationFieldInfo
-			
+
 			for _, field := range service.Fields {
 				validators := g.parseValidationDecoratorsFromField(field)
 				if len(validators) > 0 {
@@ -80,7 +80,7 @@ func (g *CodeGenerator) findDTOStructsWithValidation(file *GofaFile) map[string]
 					})
 				}
 			}
-			
+
 			// If this service has validation decorators, add it to structs map
 			if hasValidationDecorators {
 				structs[service.Name] = &ValidationStructInfo{
@@ -90,7 +90,7 @@ func (g *CodeGenerator) findDTOStructsWithValidation(file *GofaFile) map[string]
 			}
 		}
 	}
-	
+
 	return structs
 }
 
@@ -138,7 +138,7 @@ func (g *CodeGenerator) generateValidationHelperFunctions() {
 	g.unindent()
 	g.writeLine("}")
 	g.writeLine("")
-	
+
 	// Add specific validation helper functions
 	g.generateEmailValidationHelper()
 	g.generateURLValidationHelper()
@@ -180,12 +180,12 @@ func (g *CodeGenerator) generateDTOValidationFunction(dto *ValidationStructInfo)
 // generateFieldValidation generates validation for a field
 func (g *CodeGenerator) generateFieldValidation(field *ValidationFieldInfo) {
 	g.writeLine(fmt.Sprintf("// Validate field: %s", field.Name))
-	
+
 	// Check if field has IsOptional or ValidateIf decorator
 	hasOptional := false
 	var validateIfCondition string
 	var nonConditionalRules []ValidationRule
-	
+
 	for _, rule := range field.Validators {
 		if rule.Type == "IsOptional" {
 			hasOptional = true
@@ -197,7 +197,7 @@ func (g *CodeGenerator) generateFieldValidation(field *ValidationFieldInfo) {
 			nonConditionalRules = append(nonConditionalRules, rule)
 		}
 	}
-	
+
 	// Handle ValidateIf conditional validation
 	if validateIfCondition != "" {
 		g.writeLine("// ValidateIf validation")
@@ -229,7 +229,7 @@ func (g *CodeGenerator) generateFieldValidation(field *ValidationFieldInfo) {
 			g.generateValidationRule(field, rule)
 		}
 	}
-	
+
 	g.writeLine("")
 }
 
@@ -659,7 +659,6 @@ func (g *CodeGenerator) parseValidationRuleFromDecorator(decorator *DecoratorNod
 		Code:    g.getValidationCode(decorator.Name),
 	}
 }
-
 
 // parseValidationDecorators parses validation decorators from struct tags
 func (g *CodeGenerator) parseValidationDecorators(tag string) []ValidationRule {
@@ -1293,7 +1292,7 @@ func (g *CodeGenerator) generateCreditCardValidationHelper() {
 	g.writeLine("if str, ok := value.(string); ok {")
 	g.indent()
 	g.writeLine("// Remove spaces and validate basic format")
-	g.writeLine("ccNumber := strings.ReplaceAll(str, \" \", \"\")") 
+	g.writeLine("ccNumber := strings.ReplaceAll(str, \" \", \"\")")
 	g.writeLine("ccRegex := `^[0-9]{13,19}$`")
 	g.writeLine("if matched, _ := regexp.MatchString(ccRegex, ccNumber); !matched {")
 	g.indent()
@@ -1353,7 +1352,7 @@ func (g *CodeGenerator) generateISBNValidationHelper() {
 	g.unindent()
 	g.writeLine("}")
 	g.writeLine("")
-	
+
 	// Add the helper functions for ISBN10 and ISBN13
 	g.writeLine("// isISBN10 validates ISBN-10")
 	g.writeLine("func isISBN10(isbn string) bool {")
@@ -1392,7 +1391,7 @@ func (g *CodeGenerator) generateISBNValidationHelper() {
 	g.unindent()
 	g.writeLine("}")
 	g.writeLine("")
-	
+
 	g.writeLine("// isISBN13 validates ISBN-13")
 	g.writeLine("func isISBN13(isbn string) bool {")
 	g.indent()

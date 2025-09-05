@@ -7,15 +7,15 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/healtronlabs/gofasta/tools/transpiler/core"
+	"github.com/healtronlabs/gofasta/transpiler/core"
 )
 
 // Parser represents the parser state
 type Parser struct {
-	lexer      *Lexer
-	currToken  Token
-	peekToken  Token
-	errors     []string
+	lexer     *Lexer
+	currToken Token
+	peekToken Token
+	errors    []string
 }
 
 // NewParser creates a new parser instance
@@ -24,11 +24,11 @@ func NewParser(lexer *Lexer) *Parser {
 		lexer:  lexer,
 		errors: []string{},
 	}
-	
+
 	// Read two tokens, so currToken and peekToken are both set
 	p.nextToken()
 	p.nextToken()
-	
+
 	return p
 }
 
@@ -44,9 +44,9 @@ func (p *Parser) expectToken(tokenType TokenType) bool {
 		p.nextToken()
 		return true
 	}
-	
-	p.addError(fmt.Sprintf("expected %s, got %s at line %d, column %d", 
-		tokenTypeNames[tokenType], tokenTypeNames[p.currToken.Type], 
+
+	p.addError(fmt.Sprintf("expected %s, got %s at line %d, column %d",
+		tokenTypeNames[tokenType], tokenTypeNames[p.currToken.Type],
 		p.currToken.Line, p.currToken.Column))
 	return false
 }
@@ -69,10 +69,10 @@ func (p *Parser) ParseFile() (*core.GofaFile, error) {
 		Decorators:   []*core.DecoratorNode{},
 		Comments:     []*ast.CommentGroup{},
 	}
-	
+
 	// Skip comments at the beginning
 	p.skipComments()
-	
+
 	// Parse package declaration
 	if p.currToken.Type == PACKAGE {
 		p.nextToken() // consume 'package'
@@ -83,7 +83,7 @@ func (p *Parser) ParseFile() (*core.GofaFile, error) {
 			p.addError("expected package name")
 		}
 	}
-	
+
 	// Parse imports
 	for p.currToken.Type == IMPORT {
 		importSpec := p.parseImport()
@@ -91,11 +91,11 @@ func (p *Parser) ParseFile() (*core.GofaFile, error) {
 			file.Imports = append(file.Imports, importSpec)
 		}
 	}
-	
+
 	// Parse file-level decorators and declarations
 	for p.currToken.Type != EOF {
 		p.skipComments()
-		
+
 		if p.currToken.Type == DECORATOR {
 			// Collect all consecutive decorators
 			var decorators []*core.DecoratorNode
@@ -109,7 +109,7 @@ func (p *Parser) ParseFile() (*core.GofaFile, error) {
 					break
 				}
 			}
-			
+
 			// After parsing all decorators, check if current token is a declaration
 			if p.currToken.Type == TYPE || p.currToken.Type == FUNC {
 				if p.currToken.Type == FUNC {
@@ -151,17 +151,17 @@ func (p *Parser) ParseFile() (*core.GofaFile, error) {
 						}
 					}
 				}
-				
+
 				// Parse the declaration and attach all decorators
 				decl := p.parseDeclarationWithDecorators(decorators)
 				if decl != nil {
 					for _, decorator := range decorators {
 						p.attachDecoratorToDeclaration(decorator, decl)
 					}
-					
+
 					// Validate WebSocket declarations after decorators are attached
 					p.postProcessWebSocketValidation(decl)
-					
+
 					file.Declarations = append(file.Declarations, decl)
 				}
 			} else {
@@ -189,16 +189,16 @@ func (p *Parser) ParseFile() (*core.GofaFile, error) {
 			p.nextToken()
 		}
 	}
-	
+
 	if len(p.errors) > 0 {
 		return nil, fmt.Errorf("parsing errors: %s", strings.Join(p.errors, "; "))
 	}
-	
+
 	// Validate that the file has meaningful content
 	if file.Package == nil && len(file.Declarations) == 0 && len(file.Imports) == 0 {
 		return nil, fmt.Errorf("empty .gofa file: file must contain at least a package declaration, imports, or declarations")
 	}
-	
+
 	return file, nil
 }
 
@@ -207,9 +207,9 @@ func (p *Parser) parseImport() *ast.ImportSpec {
 	if !p.expectToken(IMPORT) {
 		return nil
 	}
-	
+
 	importSpec := &ast.ImportSpec{}
-	
+
 	if p.currToken.Type == STRING {
 		importSpec.Path = &ast.BasicLit{
 			Kind:  token.STRING,
@@ -220,7 +220,7 @@ func (p *Parser) parseImport() *ast.ImportSpec {
 		p.addError("expected import path")
 		return nil
 	}
-	
+
 	return importSpec
 }
 
@@ -254,44 +254,44 @@ func (p *Parser) parseTypeDeclarationWithDecorators(decorators []*core.Decorator
 	if !p.expectToken(TYPE) {
 		return nil
 	}
-	
+
 	if p.currToken.Type != IDENT {
 		p.addError("expected type name")
 		return nil
 	}
-	
+
 	typeName := p.currToken.Literal
 	p.nextToken()
-	
+
 	if !p.expectToken(STRUCT) {
 		return nil
 	}
-	
+
 	if !p.expectToken(LBRACE) {
 		return nil
 	}
-	
+
 	// Check for explicit decorator types first
 	if p.hasWebSocketGatewayDecorator(decorators) {
 		return p.parseWebSocketGatewayDeclaration(typeName, decorators)
 	}
-	
+
 	if p.hasTestSuiteDecorator(decorators) {
 		return p.parseTestSuiteDeclaration(typeName)
 	}
-	
+
 	if p.hasFactoryDecorator(decorators) {
 		return p.parseFactoryDeclaration(typeName, decorators)
 	}
-	
+
 	if p.hasMockDecorator(decorators) {
 		return p.parseMockDeclaration(typeName, decorators)
 	}
-	
+
 	if p.hasTestModuleDecorator(decorators) {
 		return p.parseTestModuleDeclaration(typeName, decorators)
 	}
-	
+
 	// Determine declaration type based on naming convention
 	if strings.HasSuffix(typeName, "Controller") {
 		return p.parseControllerDeclaration(typeName)
@@ -302,7 +302,7 @@ func (p *Parser) parseTypeDeclarationWithDecorators(decorators []*core.Decorator
 	} else if strings.HasSuffix(typeName, "Tests") || strings.HasSuffix(typeName, "TestSuite") {
 		return p.parseTestSuiteDeclaration(typeName)
 	}
-	
+
 	// Default to service declaration
 	return p.parseServiceDeclaration(typeName)
 }
@@ -393,7 +393,7 @@ func (p *Parser) parseControllerDeclaration(name string) *core.ControllerDeclara
 		Fields:     []*core.FieldNode{},
 		Methods:    []*core.MethodNode{},
 	}
-	
+
 	// Parse fields
 	for p.currToken.Type != RBRACE && p.currToken.Type != EOF {
 		if p.currToken.Type == DECORATOR {
@@ -408,7 +408,7 @@ func (p *Parser) parseControllerDeclaration(name string) *core.ControllerDeclara
 					break
 				}
 			}
-			
+
 			// Parse the field after decorators
 			if p.currToken.Type == IDENT {
 				field := p.parseField()
@@ -433,11 +433,11 @@ func (p *Parser) parseControllerDeclaration(name string) *core.ControllerDeclara
 			p.nextToken()
 		}
 	}
-	
+
 	if !p.expectToken(RBRACE) {
 		return nil
 	}
-	
+
 	// Parse standalone functions following the struct as methods
 	for p.currToken.Type == FUNC {
 		method := p.parseMethod()
@@ -447,7 +447,7 @@ func (p *Parser) parseControllerDeclaration(name string) *core.ControllerDeclara
 			break
 		}
 	}
-	
+
 	return controller
 }
 
@@ -460,7 +460,7 @@ func (p *Parser) parseServiceDeclaration(name string) *core.ServiceDeclaration {
 		Fields:     []*core.FieldNode{},
 		Methods:    []*core.MethodNode{},
 	}
-	
+
 	// Parse fields
 	for p.currToken.Type != RBRACE && p.currToken.Type != EOF {
 		if p.currToken.Type == DECORATOR {
@@ -474,7 +474,7 @@ func (p *Parser) parseServiceDeclaration(name string) *core.ServiceDeclaration {
 					break
 				}
 			}
-			
+
 			if p.currToken.Type == IDENT {
 				field := p.parseField()
 				if field != nil {
@@ -498,11 +498,11 @@ func (p *Parser) parseServiceDeclaration(name string) *core.ServiceDeclaration {
 			p.nextToken()
 		}
 	}
-	
+
 	if !p.expectToken(RBRACE) {
 		return nil
 	}
-	
+
 	// Parse standalone functions following the struct as methods
 	for p.currToken.Type == FUNC {
 		method := p.parseMethod()
@@ -512,7 +512,7 @@ func (p *Parser) parseServiceDeclaration(name string) *core.ServiceDeclaration {
 			break
 		}
 	}
-	
+
 	return service
 }
 
@@ -523,16 +523,16 @@ func (p *Parser) parseModuleDeclaration(name string) *core.ModuleDeclaration {
 		Position:   p.currToken.Position,
 		Decorators: []*core.DecoratorNode{},
 	}
-	
+
 	// Skip to closing brace
 	for p.currToken.Type != RBRACE && p.currToken.Type != EOF {
 		p.nextToken()
 	}
-	
+
 	if !p.expectToken(RBRACE) {
 		return nil
 	}
-	
+
 	return module
 }
 
@@ -545,7 +545,7 @@ func (p *Parser) parseTestSuiteDeclaration(name string) *core.TestSuiteDeclarati
 		Fields:     []*core.FieldNode{},
 		Methods:    []*core.MethodNode{},
 	}
-	
+
 	// Parse fields
 	for p.currToken.Type != RBRACE && p.currToken.Type != EOF {
 		if p.currToken.Type == DECORATOR {
@@ -559,7 +559,7 @@ func (p *Parser) parseTestSuiteDeclaration(name string) *core.TestSuiteDeclarati
 					break
 				}
 			}
-			
+
 			if p.currToken.Type == IDENT {
 				field := p.parseField()
 				if field != nil {
@@ -583,11 +583,11 @@ func (p *Parser) parseTestSuiteDeclaration(name string) *core.TestSuiteDeclarati
 			p.nextToken()
 		}
 	}
-	
+
 	if !p.expectToken(RBRACE) {
 		return nil
 	}
-	
+
 	// Parse standalone functions following the struct as methods
 	for p.currToken.Type == FUNC {
 		method := p.parseMethod()
@@ -597,7 +597,7 @@ func (p *Parser) parseTestSuiteDeclaration(name string) *core.TestSuiteDeclarati
 			break
 		}
 	}
-	
+
 	return testSuite
 }
 
@@ -616,7 +616,7 @@ func (p *Parser) parseFactoryDeclaration(name string, decorators []*core.Decorat
 		Fields:     []*core.FieldNode{},
 		Methods:    []*core.MethodNode{},
 	}
-	
+
 	// Parse fields
 	for p.currToken.Type != RBRACE && p.currToken.Type != EOF {
 		if p.currToken.Type == DECORATOR {
@@ -630,7 +630,7 @@ func (p *Parser) parseFactoryDeclaration(name string, decorators []*core.Decorat
 					break
 				}
 			}
-			
+
 			if p.currToken.Type == IDENT {
 				field := p.parseField()
 				if field != nil {
@@ -654,18 +654,18 @@ func (p *Parser) parseFactoryDeclaration(name string, decorators []*core.Decorat
 			p.nextToken()
 		}
 	}
-	
+
 	if !p.expectToken(RBRACE) {
 		return nil
 	}
-	
+
 	for p.currToken.Type == FUNC {
 		method := p.parseMethod()
 		if method != nil {
 			factory.Methods = append(factory.Methods, method)
 		}
 	}
-	
+
 	return factory
 }
 
@@ -684,7 +684,7 @@ func (p *Parser) parseMockDeclaration(name string, decorators []*core.DecoratorN
 		Fields:     []*core.FieldNode{},
 		Methods:    []*core.MethodNode{},
 	}
-	
+
 	// Parse fields
 	for p.currToken.Type != RBRACE && p.currToken.Type != EOF {
 		if p.currToken.Type == DECORATOR {
@@ -698,7 +698,7 @@ func (p *Parser) parseMockDeclaration(name string, decorators []*core.DecoratorN
 					break
 				}
 			}
-			
+
 			if p.currToken.Type == IDENT {
 				field := p.parseField()
 				if field != nil {
@@ -722,18 +722,18 @@ func (p *Parser) parseMockDeclaration(name string, decorators []*core.DecoratorN
 			p.nextToken()
 		}
 	}
-	
+
 	if !p.expectToken(RBRACE) {
 		return nil
 	}
-	
+
 	for p.currToken.Type == FUNC {
 		method := p.parseMethod()
 		if method != nil {
 			mock.Methods = append(mock.Methods, method)
 		}
 	}
-	
+
 	return mock
 }
 
@@ -748,7 +748,7 @@ func (p *Parser) parseTestModuleDeclaration(name string, decorators []*core.Deco
 		Fields:     []*core.FieldNode{},
 		Methods:    []*core.MethodNode{},
 	}
-	
+
 	// Extract providers and imports from @TestModule() decorator arguments
 	for _, decorator := range decorators {
 		if decorator.Name == "TestModule" {
@@ -776,7 +776,7 @@ func (p *Parser) parseTestModuleDeclaration(name string, decorators []*core.Deco
 			}
 		}
 	}
-	
+
 	// Parse fields
 	for p.currToken.Type != RBRACE && p.currToken.Type != EOF {
 		if p.currToken.Type == DECORATOR {
@@ -787,7 +787,7 @@ func (p *Parser) parseTestModuleDeclaration(name string, decorators []*core.Deco
 					fieldDecorators = append(fieldDecorators, decorator)
 				}
 			}
-			
+
 			field := p.parseField()
 			if field != nil {
 				field.Decorators = fieldDecorators
@@ -805,18 +805,18 @@ func (p *Parser) parseTestModuleDeclaration(name string, decorators []*core.Deco
 			}
 		}
 	}
-	
+
 	if !p.expectToken(RBRACE) {
 		return nil
 	}
-	
+
 	for p.currToken.Type == FUNC {
 		method := p.parseMethod()
 		if method != nil {
 			testModule.Methods = append(testModule.Methods, method)
 		}
 	}
-	
+
 	return testModule
 }
 
@@ -825,24 +825,24 @@ func (p *Parser) parseField() *core.FieldNode {
 	if p.currToken.Type != IDENT {
 		return nil
 	}
-	
+
 	field := &core.FieldNode{
 		Name:       p.currToken.Literal,
 		Position:   p.currToken.Position,
 		Decorators: []*core.DecoratorNode{},
 	}
 	p.nextToken()
-	
+
 	// Parse type
 	fieldType := p.parseType()
 	field.Type = fieldType
-	
+
 	// Parse struct tag if present
 	if p.currToken.Type == STRING {
 		field.Tag = p.currToken.Literal
 		p.nextToken()
 	}
-	
+
 	return field
 }
 
@@ -851,27 +851,27 @@ func (p *Parser) parseMethod() *core.MethodNode {
 	if !p.expectToken(FUNC) {
 		return nil
 	}
-	
+
 	// Check if this has a receiver (method) or is a standalone function
 	if p.currToken.Type == LPAREN {
 		p.nextToken()
-		
+
 		// Skip receiver type
 		for p.currToken.Type != RPAREN && p.currToken.Type != EOF {
 			p.nextToken()
 		}
-		
+
 		if !p.expectToken(RPAREN) {
 			return nil
 		}
 	}
-	
+
 	// Parse function name
 	if p.currToken.Type != IDENT {
 		p.addError("expected function name")
 		return nil
 	}
-	
+
 	method := &core.MethodNode{
 		Name:       p.currToken.Literal,
 		Position:   p.currToken.Position,
@@ -879,7 +879,7 @@ func (p *Parser) parseMethod() *core.MethodNode {
 		Decorators: []*core.DecoratorNode{},
 	}
 	p.nextToken()
-	
+
 	// Parse parameters
 	if p.currToken.Type == LPAREN {
 		p.nextToken()
@@ -888,7 +888,7 @@ func (p *Parser) parseMethod() *core.MethodNode {
 			if param != nil {
 				method.Params = append(method.Params, param)
 			}
-			
+
 			if p.currToken.Type == COMMA {
 				p.nextToken()
 			} else if p.currToken.Type != RPAREN {
@@ -900,7 +900,7 @@ func (p *Parser) parseMethod() *core.MethodNode {
 			return nil
 		}
 	}
-	
+
 	// Parse return type if present
 	if p.currToken.Type != LBRACE && p.currToken.Type != EOF {
 		if p.currToken.Type == LPAREN {
@@ -928,12 +928,12 @@ func (p *Parser) parseMethod() *core.MethodNode {
 			method.ReturnType = p.parseType()
 		}
 	}
-	
+
 	// Parse method body
 	if p.currToken.Type == LBRACE {
 		p.parseBlockStatement()
 	}
-	
+
 	return method
 }
 
@@ -943,7 +943,7 @@ func (p *Parser) parseParameter() *core.ParameterNode {
 		Position:   p.currToken.Position,
 		Decorators: []*core.DecoratorNode{},
 	}
-	
+
 	// Parse decorators first
 	for p.currToken.Type == DECORATOR {
 		decorator := p.parseDecorator()
@@ -953,30 +953,30 @@ func (p *Parser) parseParameter() *core.ParameterNode {
 			break
 		}
 	}
-	
+
 	// Parse parameter name
 	if p.currToken.Type != IDENT {
 		return nil
 	}
-	
+
 	param.Name = p.currToken.Literal
 	p.nextToken()
-	
+
 	param.Type = p.parseType()
-	
+
 	return param
 }
 
 // parseType parses a type expression
 func (p *Parser) parseType() string {
 	var typeStr strings.Builder
-	
+
 	// Handle multiple pointer types
 	for p.currToken.Type == MULTIPLY {
 		typeStr.WriteString("*")
 		p.nextToken()
 	}
-	
+
 	// Handle slice types
 	for p.currToken.Type == LBRACKET {
 		typeStr.WriteString("[")
@@ -986,7 +986,7 @@ func (p *Parser) parseType() string {
 			p.nextToken()
 		}
 	}
-	
+
 	// Handle channel types
 	if p.currToken.Type == GO_CHAN {
 		typeStr.WriteString("chan")
@@ -1003,7 +1003,7 @@ func (p *Parser) parseType() string {
 		typeStr.WriteString(p.parseType())
 		return typeStr.String()
 	}
-	
+
 	// Handle map types
 	if p.currToken.Type == GO_MAP {
 		typeStr.WriteString("map[")
@@ -1021,12 +1021,12 @@ func (p *Parser) parseType() string {
 		typeStr.WriteString(valueType)
 		return typeStr.String()
 	}
-	
+
 	// Handle function types
 	if p.currToken.Type == FUNC {
 		typeStr.WriteString("func")
 		p.nextToken()
-		
+
 		if p.currToken.Type == LPAREN {
 			typeStr.WriteString("(")
 			p.nextToken()
@@ -1047,17 +1047,17 @@ func (p *Parser) parseType() string {
 				p.nextToken()
 			}
 		}
-		
-		if p.currToken.Type != EOF && p.currToken.Type != RBRACE && 
-		   p.currToken.Type != COMMA && p.currToken.Type != STRING {
+
+		if p.currToken.Type != EOF && p.currToken.Type != RBRACE &&
+			p.currToken.Type != COMMA && p.currToken.Type != STRING {
 			typeStr.WriteString(" ")
 			returnType := p.parseType()
 			typeStr.WriteString(returnType)
 		}
-		
+
 		return typeStr.String()
 	}
-	
+
 	// Handle interface{} specifically
 	if p.currToken.Type == INTERFACE {
 		typeStr.WriteString("interface{}")
@@ -1070,26 +1070,26 @@ func (p *Parser) parseType() string {
 		}
 		return typeStr.String()
 	}
-	
+
 	// Handle struct types
 	if p.currToken.Type == STRUCT {
 		typeStr.WriteString("struct")
 		p.nextToken()
-		
+
 		if p.currToken.Type == LBRACE {
 			typeStr.WriteString(" {")
 			p.nextToken()
-			
+
 			for p.currToken.Type != RBRACE && p.currToken.Type != EOF {
 				if p.currToken.Type == IDENT {
 					typeStr.WriteString("\n\t\t")
 					typeStr.WriteString(p.currToken.Literal)
 					p.nextToken()
-					
+
 					typeStr.WriteString(" ")
 					fieldType := p.parseType()
 					typeStr.WriteString(fieldType)
-					
+
 					if p.currToken.Type == STRING {
 						typeStr.WriteString(" ")
 						typeStr.WriteString(p.currToken.Literal)
@@ -1099,7 +1099,7 @@ func (p *Parser) parseType() string {
 					p.nextToken()
 				}
 			}
-			
+
 			if p.currToken.Type == RBRACE {
 				typeStr.WriteString("\n\t}")
 				p.nextToken()
@@ -1107,13 +1107,13 @@ func (p *Parser) parseType() string {
 		}
 		return typeStr.String()
 	}
-	
+
 	// Base type
 	if p.currToken.Type == IDENT || isGoType(p.currToken.Type) {
 		typeStr.WriteString(p.currToken.Literal)
 		p.nextToken()
 	}
-	
+
 	return typeStr.String()
 }
 
@@ -1122,19 +1122,19 @@ func (p *Parser) parseDecorator() *core.DecoratorNode {
 	if !p.expectToken(DECORATOR) {
 		return nil
 	}
-	
+
 	if p.currToken.Type != IDENT {
 		p.addError("expected decorator name")
 		return nil
 	}
-	
+
 	decorator := &core.DecoratorNode{
 		Name:     p.currToken.Literal,
 		Position: p.currToken.Position,
 		Args:     []core.DecoratorArg{},
 	}
 	p.nextToken()
-	
+
 	// Parse decorator arguments
 	if p.currToken.Type == LPAREN {
 		p.nextToken()
@@ -1145,7 +1145,7 @@ func (p *Parser) parseDecorator() *core.DecoratorNode {
 			} else {
 				p.nextToken()
 			}
-			
+
 			if p.currToken.Type == COMMA {
 				p.nextToken()
 			} else if p.currToken.Type != RPAREN {
@@ -1157,7 +1157,7 @@ func (p *Parser) parseDecorator() *core.DecoratorNode {
 			return nil
 		}
 	}
-	
+
 	return decorator
 }
 
@@ -1166,7 +1166,7 @@ func (p *Parser) parseDecoratorArg() *core.DecoratorArg {
 	arg := &core.DecoratorArg{
 		Position: p.currToken.Position,
 	}
-	
+
 	switch p.currToken.Type {
 	case STRING:
 		arg.Value = p.currToken.Literal
@@ -1270,7 +1270,7 @@ func (p *Parser) parseDecoratorArg() *core.DecoratorArg {
 	case LBRACE:
 		objectValue := make(map[string]interface{})
 		p.nextToken()
-		
+
 		for p.currToken.Type != RBRACE && p.currToken.Type != EOF {
 			if p.currToken.Type != IDENT {
 				p.nextToken()
@@ -1278,13 +1278,13 @@ func (p *Parser) parseDecoratorArg() *core.DecoratorArg {
 			}
 			key := p.currToken.Literal
 			p.nextToken()
-			
+
 			if p.currToken.Type != COLON {
 				p.nextToken()
 				continue
 			}
 			p.nextToken()
-			
+
 			switch p.currToken.Type {
 			case STRING:
 				objectValue[key] = p.currToken.Literal
@@ -1323,7 +1323,7 @@ func (p *Parser) parseDecoratorArg() *core.DecoratorArg {
 				// Handle nested objects
 				nestedObject := make(map[string]interface{})
 				p.nextToken()
-				
+
 				for p.currToken.Type != RBRACE && p.currToken.Type != EOF {
 					if p.currToken.Type != IDENT {
 						p.nextToken()
@@ -1331,13 +1331,13 @@ func (p *Parser) parseDecoratorArg() *core.DecoratorArg {
 					}
 					nestedKey := p.currToken.Literal
 					p.nextToken()
-					
+
 					if p.currToken.Type != COLON {
 						p.nextToken()
 						continue
 					}
 					p.nextToken()
-					
+
 					// Parse nested object values
 					switch p.currToken.Type {
 					case STRING:
@@ -1355,12 +1355,12 @@ func (p *Parser) parseDecoratorArg() *core.DecoratorArg {
 						nestedObject[nestedKey] = p.currToken.Literal
 						p.nextToken()
 					}
-					
+
 					if p.currToken.Type == COMMA {
 						p.nextToken()
 					}
 				}
-				
+
 				if p.currToken.Type == RBRACE {
 					p.nextToken()
 				}
@@ -1369,23 +1369,23 @@ func (p *Parser) parseDecoratorArg() *core.DecoratorArg {
 				objectValue[key] = p.currToken.Literal
 				p.nextToken()
 			}
-			
+
 			if p.currToken.Type == COMMA {
 				p.nextToken()
 			}
 		}
-		
+
 		if p.currToken.Type == RBRACE {
 			p.nextToken()
 		}
 		arg.Value = objectValue
 	default:
-		p.addError(fmt.Sprintf("unexpected decorator argument type %d at line %d", 
+		p.addError(fmt.Sprintf("unexpected decorator argument type %d at line %d",
 			int(p.currToken.Type), p.currToken.Line))
 		p.nextToken()
 		return nil
 	}
-	
+
 	return arg
 }
 
@@ -1394,14 +1394,14 @@ func (p *Parser) parseFunctionDeclaration() core.GofaDeclaration {
 	if !p.expectToken(FUNC) {
 		return nil
 	}
-	
+
 	if p.currToken.Type == IDENT {
 		p.nextToken()
 	} else {
 		p.addError("expected function name after 'func'")
 		return nil
 	}
-	
+
 	// Skip parameter list
 	if p.currToken.Type == LPAREN {
 		p.nextToken()
@@ -1415,17 +1415,17 @@ func (p *Parser) parseFunctionDeclaration() core.GofaDeclaration {
 			return nil
 		}
 	}
-	
+
 	// Skip return type
 	for p.currToken.Type != LBRACE && p.currToken.Type != EOF {
 		p.nextToken()
 	}
-	
+
 	// Skip function body
 	if p.currToken.Type == LBRACE {
 		p.parseBlockStatement()
 	}
-	
+
 	return nil
 }
 
@@ -1434,7 +1434,7 @@ func (p *Parser) parseBlockStatement() {
 	if !p.expectToken(LBRACE) {
 		return
 	}
-	
+
 	depth := 1
 	for depth > 0 && p.currToken.Type != EOF {
 		if p.currToken.Type == LBRACE {
@@ -1456,7 +1456,7 @@ func (p *Parser) parseWebSocketGatewayDeclaration(name string, decorators []*cor
 		Methods:    []*core.MethodNode{},
 		Config:     make(map[string]interface{}),
 	}
-	
+
 	// Extract configuration from WebSocketGateway decorator
 	for _, decorator := range decorators {
 		if decorator.Name == "WebSocketGateway" {
@@ -1526,7 +1526,7 @@ func (p *Parser) parseWebSocketGatewayDeclaration(name string, decorators []*cor
 			}
 		}
 	}
-	
+
 	// Parse fields and methods (same as other declarations)
 	for p.currToken.Type != RBRACE && p.currToken.Type != EOF {
 		if p.currToken.Type == DECORATOR {
@@ -1575,11 +1575,11 @@ func (p *Parser) parseWebSocketGatewayDeclaration(name string, decorators []*cor
 			p.nextToken()
 		}
 	}
-	
+
 	if !p.expectToken(RBRACE) {
 		return nil
 	}
-	
+
 	return gateway
 }
 
@@ -1588,12 +1588,12 @@ func (p *Parser) parseWebSocketFunctionDeclaration(decorators []*core.DecoratorN
 	if !p.expectToken(FUNC) {
 		return nil
 	}
-	
+
 	if p.currToken.Type != IDENT {
 		p.addError("expected function name after 'func'")
 		return nil
 	}
-	
+
 	wsFunc := &core.WebSocketFunctionDeclaration{
 		Name:       p.currToken.Literal,
 		Position:   p.currToken.Position,
@@ -1601,12 +1601,12 @@ func (p *Parser) parseWebSocketFunctionDeclaration(decorators []*core.DecoratorN
 		Params:     []*core.ParameterNode{},
 	}
 	p.nextToken()
-	
+
 	// Add decorators to the function
 	for _, decorator := range decorators {
 		wsFunc.Decorators = append(wsFunc.Decorators, decorator)
 	}
-	
+
 	// Parse parameters
 	if p.currToken.Type == LPAREN {
 		p.nextToken()
@@ -1615,7 +1615,7 @@ func (p *Parser) parseWebSocketFunctionDeclaration(decorators []*core.DecoratorN
 			if param != nil {
 				wsFunc.Params = append(wsFunc.Params, param)
 			}
-			
+
 			if p.currToken.Type == COMMA {
 				p.nextToken()
 			} else if p.currToken.Type != RPAREN {
@@ -1627,7 +1627,7 @@ func (p *Parser) parseWebSocketFunctionDeclaration(decorators []*core.DecoratorN
 			return nil
 		}
 	}
-	
+
 	// Parse return type if present
 	if p.currToken.Type != LBRACE && p.currToken.Type != EOF {
 		if p.currToken.Type == LPAREN {
@@ -1643,12 +1643,12 @@ func (p *Parser) parseWebSocketFunctionDeclaration(decorators []*core.DecoratorN
 			wsFunc.ReturnType = p.parseType()
 		}
 	}
-	
+
 	// Parse function body
 	if p.currToken.Type == LBRACE {
 		p.parseBlockStatement()
 	}
-	
+
 	return wsFunc
 }
 
@@ -1660,7 +1660,7 @@ func (p *Parser) validateWebSocketFunction(wsFunc *core.WebSocketFunctionDeclara
 
 	for _, decorator := range wsFunc.Decorators {
 		decoratorType := core.GetDecoratorType(decorator.Name)
-		
+
 		// Allow WebSocket-specific decorators and middleware decorators
 		if core.IsWebSocketDecorator(decoratorType) {
 			switch decoratorType {
@@ -1703,11 +1703,11 @@ func (p *Parser) validateOnGatewayConnectionDecorator(decorator *core.DecoratorN
 
 	// Validate function signature - should accept connection-related parameters
 	validParamTypes := map[string]bool{
-		"*WebSocketClient":         true,
-		"map[string]string":        true, // headers
-		"string":                   true, // ip, client id, etc.
-		"*RequestContext":          true,
-		"*Session":                 true,
+		"*WebSocketClient":  true,
+		"map[string]string": true, // headers
+		"string":            true, // ip, client id, etc.
+		"*RequestContext":   true,
+		"*Session":          true,
 	}
 
 	for _, param := range wsFunc.Params {
@@ -1732,9 +1732,9 @@ func (p *Parser) validateOnGatewayDisconnectDecorator(decorator *core.DecoratorN
 	// Validate function signature - should accept disconnection-related parameters
 	validParamTypes := map[string]bool{
 		"*WebSocketClient": true,
-		"string":          true, // reason, client id, etc.
-		"[]string":        true, // rooms
-		"*RequestContext": true,
+		"string":           true, // reason, client id, etc.
+		"[]string":         true, // rooms
+		"*RequestContext":  true,
 	}
 
 	for _, param := range wsFunc.Params {
@@ -1804,16 +1804,16 @@ func (p *Parser) validateSubscribeMessageDecorator(decorator *core.DecoratorNode
 	validParamTypes := map[string]bool{
 		"*WebSocketClient":  true,
 		"*AckCallback":      true,
-		"string":           true, // event name, raw message, etc.
-		"interface{}":      true, // generic data
+		"string":            true, // event name, raw message, etc.
+		"interface{}":       true, // generic data
 		"map[string]string": true, // headers
-		"*Session":         true,
-		"*User":            true,
-		"[]string":         true, // rooms, user lists, etc.
-		"[]interface{}":    true, // generic arrays
-		"int":              true, // room count, user count, etc.
-		"bool":             true, // flags
-		"float64":          true, // numeric data
+		"*Session":          true,
+		"*User":             true,
+		"[]string":          true, // rooms, user lists, etc.
+		"[]interface{}":     true, // generic arrays
+		"int":               true, // room count, user count, etc.
+		"bool":              true, // flags
+		"float64":           true, // numeric data
 	}
 
 	hasMessageData := false
@@ -1821,7 +1821,7 @@ func (p *Parser) validateSubscribeMessageDecorator(decorator *core.DecoratorNode
 		if !p.isValidWebSocketParamTypeWithDecorators(param, validParamTypes) {
 			p.addError(fmt.Sprintf("invalid parameter type '%s' for @SubscribeMessage function '%s'. Expected: *WebSocketClient, *AckCallback, string, interface{}, map[string]string, *Session, *User, slices, or custom data types", param.Type, wsFunc.Name))
 		}
-		
+
 		// Check for message data parameter (usually custom structs starting with *)
 		if strings.HasPrefix(param.Type, "*") && param.Type != "*WebSocketClient" && param.Type != "*AckCallback" && param.Type != "*Session" && param.Type != "*User" {
 			hasMessageData = true
@@ -1899,24 +1899,24 @@ func (p *Parser) validateWebSocketGatewayDecorator(decorator *core.DecoratorNode
 // validateWebSocketGatewayConfig validates WebSocket gateway configuration
 func (p *Parser) validateWebSocketGatewayConfig(config map[string]interface{}, argIndex int) {
 	validConfigKeys := map[string]bool{
-		"port":         true,
-		"namespace":    true,
-		"cors":         true,
-		"transports":   true,
-		"path":         true,
-		"pingTimeout":  true,
-		"pingInterval": true,
-		"maxBufferSize": true,
-		"allowEIO3":    true,
-		"serveClient":  true,
-		"compression":  true,
-		"cookie":       true,
-		"allowRequest": true,
-		"allowUpgrades": true,
-		"upgradeTimeout": true,
+		"port":              true,
+		"namespace":         true,
+		"cors":              true,
+		"transports":        true,
+		"path":              true,
+		"pingTimeout":       true,
+		"pingInterval":      true,
+		"maxBufferSize":     true,
+		"allowEIO3":         true,
+		"serveClient":       true,
+		"compression":       true,
+		"cookie":            true,
+		"allowRequest":      true,
+		"allowUpgrades":     true,
+		"upgradeTimeout":    true,
 		"maxHttpBufferSize": true,
-		"connectTimeout": true,
-		"heartbeatTimeout": true,
+		"connectTimeout":    true,
+		"heartbeatTimeout":  true,
 		"heartbeatInterval": true,
 	}
 
@@ -2007,7 +2007,7 @@ func (p *Parser) validateWebSocketGatewayMethod(method *core.MethodNode, gateway
 	// Check for WebSocket-specific decorators on methods
 	for _, decorator := range method.Decorators {
 		decoratorType := core.GetDecoratorType(decorator.Name)
-		
+
 		if core.IsWebSocketDecorator(decoratorType) {
 			switch decoratorType {
 			case core.SubscribeMessageDecorator:
@@ -2072,27 +2072,27 @@ func (p *Parser) isValidWebSocketParamType(paramType string, validParamTypes map
 	if validParamTypes[paramType] {
 		return true
 	}
-	
+
 	// Allow custom pointer types (structs, interfaces)
 	if strings.HasPrefix(paramType, "*") {
 		return true
 	}
-	
+
 	// Allow slice types []Type
 	if strings.HasPrefix(paramType, "[]") {
 		return true
 	}
-	
+
 	// Allow map types map[K]V
 	if strings.HasPrefix(paramType, "map[") {
 		return true
 	}
-	
+
 	// Allow chan types
 	if strings.HasPrefix(paramType, "chan ") {
 		return true
 	}
-	
+
 	return false
 }
 
@@ -2144,7 +2144,7 @@ func (p *Parser) isValidWebSocketParamTypeWithDecorators(param *core.ParameterNo
 			return false
 		}
 	}
-	
+
 	// Fall back to regular type validation
 	return p.isValidWebSocketParamType(param.Type, validParamTypes)
 }
@@ -2154,16 +2154,16 @@ func (p *Parser) validateSubscribeMessageParameters(params []*core.ParameterNode
 	validParamTypes := map[string]bool{
 		"*WebSocketClient":  true,
 		"*AckCallback":      true,
-		"string":           true,
-		"interface{}":      true,
+		"string":            true,
+		"interface{}":       true,
 		"map[string]string": true,
-		"*Session":         true,
-		"*User":            true,
-		"[]string":         true,
-		"[]interface{}":    true,
-		"int":              true,
-		"bool":             true,
-		"float64":          true,
+		"*Session":          true,
+		"*User":             true,
+		"[]string":          true,
+		"[]interface{}":     true,
+		"int":               true,
+		"bool":              true,
+		"float64":           true,
 	}
 
 	for _, param := range params {
@@ -2220,7 +2220,7 @@ func (p *Parser) attachDecoratorToDeclaration(decorator *core.DecoratorNode, dec
 	if decl == nil || decorator == nil {
 		return // Safety check to prevent nil pointer dereference
 	}
-	
+
 	switch d := decl.(type) {
 	case *core.ControllerDeclaration:
 		if d != nil {
@@ -2253,7 +2253,7 @@ func (p *Parser) attachDecoratorToDeclaration(decorator *core.DecoratorNode, dec
 func (p *Parser) skipToNextDeclaration() {
 	prevTokenType := p.currToken.Type
 	p.nextToken()
-	
+
 	for p.currToken.Type != TYPE && p.currToken.Type != FUNC && p.currToken.Type != EOF && p.currToken.Type != DECORATOR {
 		if p.currToken.Type == prevTokenType {
 			p.nextToken()

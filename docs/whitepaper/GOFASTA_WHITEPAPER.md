@@ -450,7 +450,7 @@ golang.org/x/tools/go/analysis   // Static analysis
 
 #### 4.2.2 Decorator-Only Parsing Strategy
 
-**Philosophy: Go + Decorators = GoFasta**
+**Philosophy: Go + Decorators = Gofasta**
 ```go
 // Valid Go code + Gofasta decorators
 @Controller("/api/users")

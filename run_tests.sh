@@ -14,7 +14,7 @@ set -e
 INTEGRATION_ONLY=false
 if [[ "$1" == "--integration" ]] || [[ "$1" == "-i" ]]; then
     INTEGRATION_ONLY=true
-    echo "🧪 Running GoFasta Integration Tests Only"
+    echo "🧪 Running Gofasta Integration Tests Only"
     echo "========================================="
 else
     echo "🧪 Running Gofasta Project Global Test Suite"
@@ -202,8 +202,8 @@ else
     print_section "🔧 Core Infrastructure Tests"
 
     # New transpiler tests (Phase 1.1a implementation)
-    print_section "🚀 GoFasta v2.0 Transpiler Tests (Phase 1.1a)"
-    run_module_tests "./tools/transpiler/core" "transpiler-v2-parser" "Phase 1.1a: Parallel Parser"
+    print_section "🚀 Gofasta v2.0 Transpiler Tests (Phase 1.1a)"
+    run_module_tests "./transpiler/core" "transpiler-v2-parser" "Phase 1.1a: Parallel Parser"
 
     # Integration tests for transpiler
     print_section "🧪 Transpiler Integration Tests"
@@ -306,7 +306,7 @@ VET_ISSUES=""
 vet_failed=false
 
 # Check transpiler modules
-if ! go vet ./tools/transpiler/... 2>/dev/null; then
+if ! go vet ./transpiler/... 2>/dev/null; then
     vet_failed=true
 fi
 
@@ -669,7 +669,7 @@ CODE QUALITY:
 - Go Vet Analysis: $VET_ISSUES
 
 TEST CATEGORIES:
-- ✅ GoFasta v2.0 Transpiler Core: tools/transpiler/core (Phase 1.1 components)
+- ✅ Gofasta v2.0 Transpiler Core: tools/transpiler/core (Phase 1.1 components)
 - ✅ Transpiler Integration Tests: tests/integration (real-world scenarios)
 - ✅ Framework Package Tests: packages/* (core, http, auth, validation, etc.)
 - ✅ Framework Plugin Tests: plugins/* (cors, metrics, rate-limit, etc.)
@@ -725,7 +725,7 @@ KEY ACHIEVEMENTS:
   - $PERFORMANCE_FILES_PER_SEC+ files/second parsing performance
   - $TRANSPILER_CORE_COVERAGE overall test coverage
   - Complete integration testing and examples
-✅ GoFasta Framework Infrastructure:
+✅ Gofasta Framework Infrastructure:
   - Core application lifecycle management
   - Dependency injection container
   - Module system with decorators
@@ -750,7 +750,7 @@ GENERATED FILES:
 
 USEFUL COMMANDS:
 - ./run_tests.sh                           # Run complete global test suite
-- go test ./tools/transpiler/core -v       # Run Phase 1.1a parser tests
+- go test ./transpiler/core -v       # Run Phase 1.1a parser tests
 - go test ./tests/integration -v           # Run transpiler integration tests
 - go test ./packages/...                   # Run framework package tests
 - go test ./plugins/...                    # Run framework plugin tests
@@ -758,8 +758,8 @@ USEFUL COMMANDS:
 - go tool cover -html=coverage_combined.out # View combined coverage report
 
 TRANSPILER SPECIFIC:
-- go run ./tools/transpiler/examples/basic/parser_example.go  # Run parser demo
-- go test ./tools/transpiler/core -bench=.                    # Run parser benchmarks
+- go run ./transpiler/examples/basic/parser_example.go  # Run parser demo
+- go test ./transpiler/core -bench=.                    # Run parser benchmarks
 - go test ./tests/integration -run TestLargeProjectPerformance # Test performance
 
 PROJECT STRUCTURE TESTED:
@@ -823,7 +823,7 @@ if [ "$OVERALL_RESULT" = "PASSED" ]; then
         echo "✅ Performance: $PERFORMANCE_FILES_PER_SEC+ files/sec parsing speed"
         echo "✅ Coverage: $TRANSPILER_CORE_COVERAGE test coverage across all Phase 1.1 components"
         echo "✅ Integration tests: Real-world scenarios validated"
-        echo "✅ GoFasta framework: Core infrastructure stable"
+        echo "✅ Gofasta framework: Core infrastructure stable"
         echo "✅ Ready for Phase 2: Fault tolerance decorators implementation"
     fi
 else

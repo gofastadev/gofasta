@@ -1,0 +1,146 @@
+// Basic Supervisor Example
+// This demonstrates the @Supervisor decorator with OneForOne strategy
+package supervisor
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"time"
+)
+
+// Basic supervisor that manages worker actors with OneForOne restart strategy
+@Supervisor("OneForOne", maxRetries: 3, retryInterval: "1s", escalate: true)
+func WorkerSupervisor(ctx context.Context) {
+	fmt.Println("WorkerSupervisor started with OneForOne strategy")
+	
+	// Start worker actors under supervision
+	workers := []string{"worker1", "worker2", "worker3"}
+	
+	for _, workerName := range workers {
+		go func(name string) {
+			defer func() {
+				if r := recover(); r != nil {
+					log.Printf("Worker %s crashed: %v", name, r)
+					// Supervisor will restart this worker according to OneForOne strategy
+				}
+			}()
+			
+			// Simulate worker processing
+			for {
+				select {
+				case <-ctx.Done():
+					log.Printf("Worker %s stopping", name)
+					return
+				default:
+					// Simulate work and potential failure
+					if time.Now().Unix()%10 == 0 {
+						panic(fmt.Sprintf("Simulated failure in %s", name))
+					}
+					time.Sleep(100 * time.Millisecond)
+				}
+			}
+		}(workerName)
+	}
+	
+	// Keep supervisor running
+	<-ctx.Done()
+	fmt.Println("WorkerSupervisor shutting down")
+}
+
+// HTTP request handler under supervision
+@Supervisor("OneForOne", maxRetries: 5, retryInterval: "500ms")
+func APIHandlerSupervisor(ctx context.Context) {
+	fmt.Println("API Handler Supervisor started")
+	
+	// This supervisor manages HTTP handlers
+	go handleUserRequests(ctx)
+	go handlePaymentRequests(ctx)
+	go handleNotificationRequests(ctx)
+	
+	<-ctx.Done()
+}
+
+func handleUserRequests(ctx context.Context) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("User handler crashed: %v", r)
+		}
+	}()
+	
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			// Simulate user request processing
+			time.Sleep(50 * time.Millisecond)
+			
+			// Simulate occasional failures
+			if time.Now().Unix()%15 == 0 {
+				panic("Database connection lost")
+			}
+		}
+	}
+}
+
+func handlePaymentRequests(ctx context.Context) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("Payment handler crashed: %v", r)
+		}
+	}()
+	
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			// Simulate payment processing
+			time.Sleep(200 * time.Millisecond)
+			
+			// Simulate payment gateway failures
+			if time.Now().Unix()%20 == 0 {
+				panic("Payment gateway timeout")
+			}
+		}
+	}
+}
+
+func handleNotificationRequests(ctx context.Context) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("Notification handler crashed: %v", r)
+		}
+	}()
+	
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			// Simulate notification sending
+			time.Sleep(75 * time.Millisecond)
+			
+			// Simulate email service failures
+			if time.Now().Unix()%12 == 0 {
+				panic("Email service unavailable")
+			}
+		}
+	}
+}
+
+func main() {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	
+	fmt.Println("Starting Basic Supervisor Example")
+	
+	// Start supervisors
+	go WorkerSupervisor(ctx)
+	go APIHandlerSupervisor(ctx)
+	
+	// Wait for completion
+	<-ctx.Done()
+	fmt.Println("Example completed")
+}

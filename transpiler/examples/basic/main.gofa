@@ -1,0 +1,19 @@
+package main
+
+import "fmt"
+
+@Controller("/api/hello")
+func HelloController() {
+	fmt.Println("Hello from Gofasta!")
+}
+
+@Get("/")
+func HelloWorld() string {
+	return "Hello, World!"
+}
+
+func main() {
+	HelloController()
+	result := HelloWorld()
+	fmt.Println(result)
+}

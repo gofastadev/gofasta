@@ -3,8 +3,8 @@ package main
 import (
 	"testing"
 
-	"github.com/healtronlabs/gofasta/tools/transpiler"
-	"github.com/healtronlabs/gofasta/tools/transpiler/cli"
+	"github.com/healtronlabs/gofasta/transpiler"
+	"github.com/healtronlabs/gofasta/transpiler/cli"
 )
 
 // Test ParallelTranspilerAdapter with actual transpiler

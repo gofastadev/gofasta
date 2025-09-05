@@ -1,0 +1,338 @@
+// ActorRef Messaging Example
+// This demonstrates @ActorRef decorator for fast actor-to-actor communication
+package actorref
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"time"
+)
+
+// Message types for actor communication
+type ChatMessage struct {
+	From    string
+	To      string
+	Content string
+	Type    string
+}
+
+type BroadcastMessage struct {
+	From    string
+	Content string
+	RoomID  string
+}
+
+// Chat server actor that manages multiple chat rooms
+@Actor(mailboxSize: 2000, poolSize: 15, supervised: true)
+func ChatServerActor(ctx context.Context) {
+	fmt.Println("ChatServerActor started - managing chat rooms")
+	
+	for {
+		select {
+		case <-ctx.Done():
+			fmt.Println("ChatServerActor shutting down")
+			return
+		default:
+			// Process chat server messages
+			message := receiveChatServerMessage()
+			if message != nil {
+				processChatServerMessage(message)
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+	}
+}
+
+// Chat room actors that handle individual rooms
+@Actor(mailboxSize: 1000, poolSize: 10, supervised: true)
+func ChatRoomActor(ctx context.Context) {
+	fmt.Println("ChatRoomActor started - handling chat room")
+	
+	for {
+		select {
+		case <-ctx.Done():
+			fmt.Println("ChatRoomActor shutting down")
+			return
+		default:
+			// Process room messages
+			message := receiveChatRoomMessage()
+			if message != nil {
+				processChatRoomMessage(message)
+			}
+			time.Sleep(5 * time.Millisecond)
+		}
+	}
+}
+
+// User session actors that represent connected users
+@Actor(mailboxSize: 500, poolSize: 20, supervised: true)
+func UserSessionActor(ctx context.Context) {
+	fmt.Println("UserSessionActor started - handling user session")
+	
+	for {
+		select {
+		case <-ctx.Done():
+			fmt.Println("UserSessionActor shutting down")
+			return
+		default:
+			// Process user messages
+			message := receiveUserMessage()
+			if message != nil {
+				processUserMessage(message)
+			}
+			time.Sleep(2 * time.Millisecond)
+		}
+	}
+}
+
+// ActorRef for fast lookup of chat server
+@ActorRef("/system/chatServer", fastLookup: true, cacheEnabled: true, timeoutMs: 1000)
+var ChatServerRef interface{}
+
+// ActorRef for room management with hash-based lookup
+@ActorRef("/rooms/general", fastLookup: true, lookupTable: "hashmap")
+var GeneralRoomRef interface{}
+
+@ActorRef("/rooms/tech", fastLookup: true, lookupTable: "hashmap")
+var TechRoomRef interface{}
+
+@ActorRef("/rooms/random", fastLookup: true, lookupTable: "hashmap")
+var RandomRoomRef interface{}
+
+// ActorRefs for user sessions with fast lookup tables
+@ActorRef("/users/alice", fastLookup: true, cacheEnabled: true)
+var AliceRef interface{}
+
+@ActorRef("/users/bob", fastLookup: true, cacheEnabled: true)
+var BobRef interface{}
+
+@ActorRef("/users/charlie", fastLookup: true, cacheEnabled: true)
+var CharlieRef interface{}
+
+// Message processing functions
+func processChatServerMessage(message interface{}) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("ChatServer message processing failed: %v", r)
+		}
+	}()
+	
+	switch msg := message.(type) {
+	case *ChatMessage:
+		// Route message to appropriate room using ActorRef
+		roomRef := getRoomRef(extractRoomFromMessage(msg))
+		if roomRef != nil {
+			sendToActorRef(roomRef, msg)
+		}
+		fmt.Printf("ChatServer routing message from %s to room\n", msg.From)
+		
+	case *BroadcastMessage:
+		// Broadcast to all rooms using ActorRefs
+		roomRefs := []interface{}{GeneralRoomRef, TechRoomRef, RandomRoomRef}
+		for _, roomRef := range roomRefs {
+			sendToActorRef(roomRef, msg)
+		}
+		fmt.Printf("ChatServer broadcasting message from %s\n", msg.From)
+	}
+	
+	// Simulate message routing failures
+	if time.Now().Unix()%50 == 0 {
+		panic("Message routing service unavailable")
+	}
+}
+
+func processChatRoomMessage(message interface{}) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("ChatRoom message processing failed: %v", r)
+		}
+	}()
+	
+	switch msg := message.(type) {
+	case *ChatMessage:
+		// Deliver message to target user using ActorRef fast lookup
+		userRef := getUserRef(msg.To)
+		if userRef != nil {
+			sendToActorRef(userRef, msg)
+		}
+		fmt.Printf("ChatRoom delivering message to %s\n", msg.To)
+		
+	case *BroadcastMessage:
+		// Broadcast to all users in room using ActorRef batch send
+		userRefs := []interface{}{AliceRef, BobRef, CharlieRef}
+		batchSendToActorRefs(userRefs, msg)
+		fmt.Printf("ChatRoom broadcasting to %d users\n", len(userRefs))
+	}
+	
+	// Simulate room processing failures
+	if time.Now().Unix()%80 == 0 {
+		panic("Chat room database connection lost")
+	}
+}
+
+func processUserMessage(message interface{}) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("UserSession message processing failed: %v", r)
+		}
+	}()
+	
+	switch msg := message.(type) {
+	case *ChatMessage:
+		fmt.Printf("User received message: %s -> %s: %s\n", msg.From, msg.To, msg.Content)
+		
+		// Send reply using ActorRef to original sender
+		if msg.Type == "question" {
+			reply := &ChatMessage{
+				From:    msg.To,
+				To:      msg.From,
+				Content: "Thanks for your message!",
+				Type:    "reply",
+			}
+			
+			senderRef := getUserRef(msg.From)
+			if senderRef != nil {
+				sendToActorRef(senderRef, reply)
+			}
+		}
+		
+	case *BroadcastMessage:
+		fmt.Printf("User received broadcast in %s: %s says %s\n", 
+			msg.RoomID, msg.From, msg.Content)
+	}
+	
+	// Simulate user session failures
+	if time.Now().Unix()%100 == 0 {
+		panic("User session websocket connection lost")
+	}
+}
+
+// ActorRef utility functions
+func getRoomRef(roomName string) interface{} {
+	// Fast lookup using ActorRef system
+	switch roomName {
+	case "general":
+		return GeneralRoomRef
+	case "tech":
+		return TechRoomRef
+	case "random":
+		return RandomRoomRef
+	default:
+		// Dynamic room lookup (would use ActorRef lookup in real system)
+		fmt.Printf("Looking up dynamic room: %s\n", roomName)
+		return nil
+	}
+}
+
+func getUserRef(username string) interface{} {
+	// Fast lookup using ActorRef hash table
+	switch username {
+	case "alice":
+		return AliceRef
+	case "bob":
+		return BobRef
+	case "charlie":
+		return CharlieRef
+	default:
+		// Dynamic user lookup (would use ActorRef fast lookup in real system)
+		fmt.Printf("Looking up dynamic user: %s\n", username)
+		return nil
+	}
+}
+
+func sendToActorRef(actorRef interface{}, message interface{}) {
+	// Simulate ActorRef message sending with fast lookup
+	fmt.Printf("Sending message via ActorRef (fast lookup)\n")
+	
+	// Simulate very fast ActorRef sending (< 100μs as per performance tests)
+	time.Sleep(50 * time.Microsecond)
+}
+
+func batchSendToActorRefs(actorRefs []interface{}, message interface{}) {
+	// Batch sending using ActorRef system for performance
+	fmt.Printf("Batch sending to %d ActorRefs\n", len(actorRefs))
+	
+	for _, ref := range actorRefs {
+		sendToActorRef(ref, message)
+	}
+}
+
+// Message generation functions
+func receiveChatServerMessage() interface{} {
+	if time.Now().UnixNano()%1000000 < 200000 { // 20% chance
+		users := []string{"alice", "bob", "charlie"}
+		rooms := []string{"general", "tech", "random"}
+		
+		if time.Now().Unix()%3 == 0 {
+			// Broadcast message
+			return &BroadcastMessage{
+				From:    users[time.Now().Unix()%int64(len(users))],
+				Content: "Hello everyone!",
+				RoomID:  rooms[time.Now().Unix()%int64(len(rooms))],
+			}
+		} else {
+			// Direct message
+			fromUser := users[time.Now().Unix()%int64(len(users))]
+			toUser := users[(time.Now().Unix()+1)%int64(len(users))]
+			
+			return &ChatMessage{
+				From:    fromUser,
+				To:      toUser,
+				Content: "How are you doing?",
+				Type:    "question",
+			}
+		}
+	}
+	return nil
+}
+
+func receiveChatRoomMessage() interface{} {
+	if time.Now().UnixNano()%1000000 < 300000 { // 30% chance
+		return receiveChatServerMessage() // Reuse message generation
+	}
+	return nil
+}
+
+func receiveUserMessage() interface{} {
+	if time.Now().UnixNano()%1000000 < 400000 { // 40% chance
+		return receiveChatServerMessage() // Reuse message generation
+	}
+	return nil
+}
+
+func extractRoomFromMessage(msg *ChatMessage) string {
+	// Extract room from message context (simplified)
+	rooms := []string{"general", "tech", "random"}
+	return rooms[time.Now().Unix()%int64(len(rooms))]
+}
+
+func main() {
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+	defer cancel()
+	
+	fmt.Println("Starting ActorRef Messaging Example")
+	fmt.Println("Demonstrating fast actor-to-actor communication using ActorRefs")
+	
+	// Start chat system actors
+	go ChatServerActor(ctx)
+	
+	// Start room actors
+	go ChatRoomActor(ctx)
+	go ChatRoomActor(ctx) // Multiple room instances
+	go ChatRoomActor(ctx)
+	
+	// Start user session actors
+	go UserSessionActor(ctx) // Alice
+	go UserSessionActor(ctx) // Bob  
+	go UserSessionActor(ctx) // Charlie
+	
+	fmt.Println("\nChat system running with ActorRef-based messaging...")
+	fmt.Println("- Fast lookup tables for room and user references")
+	fmt.Println("- < 100μs ActorRef message routing")
+	fmt.Println("- Batch sending for broadcast messages")
+	
+	<-ctx.Done()
+	fmt.Println("\nActorRef Messaging Example completed")
+	fmt.Println("ActorRef performance: Fast lookups, efficient message routing")
+}

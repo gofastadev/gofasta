@@ -5,8 +5,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/healtronlabs/gofasta/tools/transpiler"
-	"github.com/healtronlabs/gofasta/tools/transpiler/cli"
+	"github.com/healtronlabs/gofasta/transpiler"
+	"github.com/healtronlabs/gofasta/transpiler/cli"
 )
 
 func main() {
@@ -52,7 +52,7 @@ func main() {
 	}
 }
 
-// BatchTranspilerAdapter adapts the existing batch transpiler  
+// BatchTranspilerAdapter adapts the existing batch transpiler
 type BatchTranspilerAdapter struct {
 	opts cli.TranspileOptions
 }
@@ -66,7 +66,7 @@ func (b *BatchTranspilerAdapter) TranspileProject(inputDir string) error {
 		PreserveStruct: b.opts.PreserveStruct,
 		Verbose:        b.opts.Verbose,
 	}
-	
+
 	batchTranspiler := transpiler.NewBatchTranspiler(transpilerOpts)
 	return batchTranspiler.TranspileProject(inputDir)
 }
