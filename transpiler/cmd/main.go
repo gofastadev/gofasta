@@ -911,11 +911,75 @@ func (cli *CLI) removeDecoratorLines(sourceCode string) string {
 			continue
 		}
 		
+		// Remove inline parameter decorators like @Param("id") and @Body()
+		cleanedLine := cli.removeInlineDecorators(line)
+		
 		// Only add lines that are not part of decorators
-		cleanedLines = append(cleanedLines, line)
+		cleanedLines = append(cleanedLines, cleanedLine)
 	}
 	
 	return strings.Join(cleanedLines, "\n")
+}
+
+// removeInlineDecorators removes inline decorators like @Param("id") from function parameters
+func (cli *CLI) removeInlineDecorators(line string) string {
+	// Pattern matches: @DecoratorName(optional_params) followed by space and parameter
+	// Examples: @Param("id") id string, @Body() user User
+	
+	result := line
+	
+	// Simple approach: find @word( patterns and remove them
+	for {
+		atIndex := strings.Index(result, "@")
+		if atIndex == -1 {
+			break // No more @ characters
+		}
+		
+		// Find the decorator name (word characters after @)
+		nameStart := atIndex + 1
+		nameEnd := nameStart
+		for nameEnd < len(result) && (isLetterOrDigit(result[nameEnd]) || result[nameEnd] == '_') {
+			nameEnd++
+		}
+		
+		if nameEnd > nameStart && nameEnd < len(result) && result[nameEnd] == '(' {
+			// Found @Name( pattern, now find the matching closing parenthesis
+			parenDepth := 1
+			pos := nameEnd + 1
+			for pos < len(result) && parenDepth > 0 {
+				if result[pos] == '(' {
+					parenDepth++
+				} else if result[pos] == ')' {
+					parenDepth--
+				}
+				pos++
+			}
+			
+			if parenDepth == 0 {
+				// Found complete @Name(...) pattern
+				// Remove it including any trailing whitespace
+				endPos := pos
+				for endPos < len(result) && (result[endPos] == ' ' || result[endPos] == '\t') {
+					endPos++
+				}
+				
+				// Remove the decorator
+				result = result[:atIndex] + result[endPos:]
+				continue
+			}
+		}
+		
+		// If we get here, we found @ but couldn't match a complete decorator
+		// Skip this @ and continue looking
+		result = result[:atIndex] + result[atIndex+1:]
+	}
+	
+	return result
+}
+
+// isLetterOrDigit checks if a character is a letter or digit
+func isLetterOrDigit(ch byte) bool {
+	return (ch >= 'a' && ch <= 'z') || (ch >= 'A' && ch <= 'Z') || (ch >= '0' && ch <= '9')
 }
 
 // buildDynamicImports dynamically builds imports based on used decorators and source code analysis
