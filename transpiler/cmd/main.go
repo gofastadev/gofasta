@@ -366,13 +366,13 @@ func (cli *CLI) transformGofaToGo(sourceCode string, decorators []core.Decorator
 	
 	// Step 1: Parse source to AST using core.Parser (decorators already extracted, will be cleaned inside parseSourceToAST)
 	parser := core.NewParallelParser(nil)
-	parseResult, err := cli.parseSourceToAST(sourceCode, parser, inputFile)
+	parseResult, localFileSet, err := cli.parseSourceToAST(sourceCode, parser, inputFile)
 	if err != nil {
 		return "", err // Error already handled by parseSourceToAST with sophisticated error handler
 	}
 	
 	// Step 2: Build generation context from AST and decorators
-	generationContext, err := cli.buildGenerationContext(parseResult, decorators, sourceCode)
+	generationContext, err := cli.buildGenerationContext(parseResult, decorators, sourceCode, localFileSet)
 	if err != nil {
 		return "", err // Error already handled by buildGenerationContext with sophisticated error handler
 	}
@@ -395,7 +395,9 @@ func (cli *CLI) transformGofaToGo(sourceCode string, decorators []core.Decorator
 }
 
 // parseSourceToAST parses source code to AST using core.Parser
-func (cli *CLI) parseSourceToAST(sourceCode string, parser *core.ParallelParser, originalFile string) (*core.ParseResult, error) {
+func (cli *CLI) parseSourceToAST(sourceCode string, parser *core.ParallelParser, originalFile string) (*core.ParseResult, *token.FileSet, error) {
+	// Create a new FileSet for each file to avoid position conflicts between files
+	localFileSet := token.NewFileSet()
 	// CRITICAL: Remove decorators from source before AST parsing since Go parser doesn't understand @Decorator
 	// This needs to be done AFTER decorator extraction but BEFORE AST parsing
 	cleanedSource := cli.removeDecoratorLines(sourceCode)
@@ -424,7 +426,7 @@ func (cli *CLI) parseSourceToAST(sourceCode string, parser *core.ParallelParser,
 						Line:   i + 1,
 						Column: atIndex + 1,
 					}
-					return nil, cli.errorHandler.ReportError("E001", 
+					return nil, nil, cli.errorHandler.ReportError("E001", 
 						fmt.Sprintf("Decorator syntax error: '@' character found in line %d at column %d. Make sure all decorators use proper syntax: @DecoratorName(param: value)", i+1, atIndex+1), 
 						location)
 				}
@@ -436,7 +438,7 @@ func (cli *CLI) parseSourceToAST(sourceCode string, parser *core.ParallelParser,
 	tmpFile, err := os.CreateTemp("", "gofa_parse_*.go")
 	if err != nil {
 		location := &core.ErrorLocation{File: originalFile}
-		return nil, cli.errorHandler.ReportError("E004", 
+		return nil, nil, cli.errorHandler.ReportError("E004", 
 			fmt.Sprintf("Internal error: Failed to create temporary file for parsing '%s': %v", originalFile, err), 
 			location)
 	}
@@ -444,7 +446,7 @@ func (cli *CLI) parseSourceToAST(sourceCode string, parser *core.ParallelParser,
 	
 	if _, err := tmpFile.WriteString(cleanedSource); err != nil {
 		location := &core.ErrorLocation{File: originalFile}
-		return nil, cli.errorHandler.ReportError("E004", 
+		return nil, nil, cli.errorHandler.ReportError("E004", 
 			fmt.Sprintf("Internal error: Failed to write cleaned source for '%s': %v", originalFile, err), 
 			location)
 	}
@@ -456,26 +458,26 @@ func (cli *CLI) parseSourceToAST(sourceCode string, parser *core.ParallelParser,
 	if err != nil {
 		// Create meaningful error with original file path
 		location := &core.ErrorLocation{File: originalFile}
-		return nil, cli.errorHandler.ReportError("E001", 
+		return nil, nil, cli.errorHandler.ReportError("E001", 
 			fmt.Sprintf("Go syntax error in '%s': %v", originalFile, err), 
 			location)
 	}
 	
 	if len(results) == 0 {
 		location := &core.ErrorLocation{File: originalFile}
-		return nil, cli.errorHandler.ReportError("E001", 
+		return nil, nil, cli.errorHandler.ReportError("E001", 
 			fmt.Sprintf("No parse results for '%s' - file appears to be empty after decorator removal", originalFile), 
 			location)
 	}
 	
 	if results[0].Error != nil {
 		location := cli.extractLocationFromError(results[0].Error.Error(), originalFile)
-		return nil, cli.errorHandler.ReportError("E001", 
+		return nil, nil, cli.errorHandler.ReportError("E001", 
 			fmt.Sprintf("Go syntax error in '%s': %v", originalFile, results[0].Error), 
 			location)
 	}
 	
-	return results[0], nil
+	return results[0], localFileSet, nil
 }
 
 // extractLocationFromError extracts line and column information from Go parser error messages
@@ -500,7 +502,7 @@ func (cli *CLI) extractLocationFromError(errorMsg string, originalFile string) *
 }
 
 // buildGenerationContext builds generation context from AST and decorators
-func (cli *CLI) buildGenerationContext(parseResult *core.ParseResult, decorators []core.Decorator, sourceCode string) (*core.GenerationContext, error) {
+func (cli *CLI) buildGenerationContext(parseResult *core.ParseResult, decorators []core.Decorator, sourceCode string, fileSet *token.FileSet) (*core.GenerationContext, error) {
 	// Extract package name from AST
 	packageName := "main"
 	if parseResult.File.Name != nil {
@@ -508,10 +510,10 @@ func (cli *CLI) buildGenerationContext(parseResult *core.ParseResult, decorators
 	}
 	
 	// Build decorator map for efficient lookup
-	decoratorMap := cli.buildDecoratorMap(parseResult.File, decorators)
+	decoratorMap := cli.buildDecoratorMap(parseResult.File, decorators, fileSet)
 	
 	// Extract functions from AST with decorator information (use cleaned source for proper line mapping)
-	functions := cli.extractFunctionsFromAST(parseResult.File, decoratorMap, cli.removeDecoratorLines(sourceCode))
+	functions := cli.extractFunctionsFromAST(parseResult.File, decoratorMap, cli.removeDecoratorLines(sourceCode), fileSet)
 	
 	// Extract struct types from AST
 	types := cli.extractTypesFromAST(parseResult.File)
@@ -535,7 +537,7 @@ func (cli *CLI) buildGenerationContext(parseResult *core.ParseResult, decorators
 }
 
 // buildDecoratorMap dynamically maps decorators to their target functions
-func (cli *CLI) buildDecoratorMap(file *ast.File, decorators []core.Decorator) map[string][]core.Decorator {
+func (cli *CLI) buildDecoratorMap(file *ast.File, decorators []core.Decorator, fileSet *token.FileSet) map[string][]core.Decorator {
 	decoratorMap := make(map[string][]core.Decorator)
 	
 	// Walk AST to find functions and match with decorators by line numbers
@@ -543,7 +545,7 @@ func (cli *CLI) buildDecoratorMap(file *ast.File, decorators []core.Decorator) m
 		if funcDecl, ok := n.(*ast.FuncDecl); ok {
 			if funcDecl.Name != nil {
 				funcName := funcDecl.Name.Name
-				funcLine := cli.fileSet.Position(funcDecl.Pos()).Line
+				funcLine := fileSet.Position(funcDecl.Pos()).Line
 				
 				// Find decorators that belong to this function (preceding lines)
 				var funcDecorators []core.Decorator
@@ -565,7 +567,7 @@ func (cli *CLI) buildDecoratorMap(file *ast.File, decorators []core.Decorator) m
 }
 
 // extractFunctionsFromAST extracts functions from AST with decorator information
-func (cli *CLI) extractFunctionsFromAST(file *ast.File, decoratorMap map[string][]core.Decorator, sourceCode string) []core.FunctionDefinition {
+func (cli *CLI) extractFunctionsFromAST(file *ast.File, decoratorMap map[string][]core.Decorator, sourceCode string, fileSet *token.FileSet) []core.FunctionDefinition {
 	var functions []core.FunctionDefinition
 	sourceLines := strings.Split(sourceCode, "\n")
 	
@@ -576,7 +578,7 @@ func (cli *CLI) extractFunctionsFromAST(file *ast.File, decoratorMap map[string]
 				funcName := funcDecl.Name.Name
 				
 				// Extract the original function body from source code
-				originalBody := cli.extractOriginalFunctionBody(funcDecl, sourceLines)
+				originalBody := cli.extractOriginalFunctionBody(funcDecl, sourceLines, fileSet)
 				
 				function := core.FunctionDefinition{
 					Name:       funcName,
@@ -669,14 +671,14 @@ func (cli *CLI) extractVariablesFromAST(file *ast.File) []core.VariableDefinitio
 }
 
 // extractOriginalFunctionBody extracts the original function body from source code with proper formatting
-func (cli *CLI) extractOriginalFunctionBody(funcDecl *ast.FuncDecl, sourceLines []string) string {
+func (cli *CLI) extractOriginalFunctionBody(funcDecl *ast.FuncDecl, sourceLines []string, fileSet *token.FileSet) string {
 	if funcDecl.Body == nil {
 		return "\t// No function body found\n"
 	}
 	
 	// Method 1: Try to format the entire function body as a block
 	var bodyBuf bytes.Buffer
-	err := format.Node(&bodyBuf, cli.fileSet, funcDecl.Body)
+	err := format.Node(&bodyBuf, fileSet, funcDecl.Body)
 	if err == nil && bodyBuf.String() != "" {
 		// Remove the outer braces and properly indent
 		bodyStr := bodyBuf.String()
@@ -706,7 +708,7 @@ func (cli *CLI) extractOriginalFunctionBody(funcDecl *ast.FuncDecl, sourceLines 
 	
 	for _, stmt := range funcDecl.Body.List {
 		var stmtBuf bytes.Buffer
-		stmtErr := format.Node(&stmtBuf, cli.fileSet, stmt)
+		stmtErr := format.Node(&stmtBuf, fileSet, stmt)
 		if stmtErr == nil && stmtBuf.String() != "" {
 			stmtStr := stmtBuf.String()
 			// Preserve original formatting but ensure consistent indentation
@@ -827,7 +829,7 @@ func (cli *CLI) extractTypeString(expr ast.Expr) string {
 	var buf bytes.Buffer
 	
 	// Use go/format to convert AST type back to proper Go source code
-	err := format.Node(&buf, cli.fileSet, expr)
+	err := format.Node(&buf, token.NewFileSet(), expr)
 	if err == nil && buf.String() != "" {
 		return buf.String()
 	}
