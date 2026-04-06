@@ -17,6 +17,7 @@ type AppConfig struct {
 	Database DatabaseConfig `koanf:"database"`
 	GraphQL  GraphQLConfig  `koanf:"graphql"`
 	Log      LogConfig      `koanf:"log"`
+	Email    EmailConfig    `koanf:"email"`
 }
 
 // ServerConfig holds HTTP server settings.
@@ -49,6 +50,35 @@ type GraphQLConfig struct {
 type LogConfig struct {
 	Level  string `koanf:"level"`
 	Format string `koanf:"format"`
+}
+
+// EmailConfig holds email provider settings.
+type EmailConfig struct {
+	Provider    string         `koanf:"provider"`
+	FromName    string         `koanf:"from_name"`
+	FromAddress string         `koanf:"from_address"`
+	SMTP        SMTPConfig     `koanf:"smtp"`
+	SendGrid    SendGridConfig `koanf:"sendgrid"`
+	Brevo       BrevoConfig    `koanf:"brevo"`
+}
+
+// SMTPConfig holds SMTP server settings.
+type SMTPConfig struct {
+	Host     string `koanf:"host"`
+	Port     int    `koanf:"port"`
+	Username string `koanf:"username"`
+	Password string `koanf:"password"`
+	UseTLS   bool   `koanf:"use_tls"`
+}
+
+// SendGridConfig holds SendGrid API settings.
+type SendGridConfig struct {
+	APIKey string `koanf:"api_key"`
+}
+
+// BrevoConfig holds Brevo (Sendinblue) API settings.
+type BrevoConfig struct {
+	APIKey string `koanf:"api_key"`
 }
 
 // LoadConfig loads configuration from config.yaml (if present), then overlays
@@ -121,5 +151,20 @@ func applyDefaults(cfg *AppConfig) {
 	}
 	if cfg.Log.Format == "" {
 		cfg.Log.Format = "text"
+	}
+	if cfg.Email.Provider == "" {
+		cfg.Email.Provider = "smtp"
+	}
+	if cfg.Email.FromName == "" {
+		cfg.Email.FromName = "Gofasta App"
+	}
+	if cfg.Email.FromAddress == "" {
+		cfg.Email.FromAddress = "noreply@example.com"
+	}
+	if cfg.Email.SMTP.Host == "" {
+		cfg.Email.SMTP.Host = "localhost"
+	}
+	if cfg.Email.SMTP.Port == 0 {
+		cfg.Email.SMTP.Port = 587
 	}
 }

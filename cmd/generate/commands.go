@@ -33,6 +33,7 @@ func init() {
 	Cmd.AddCommand(routeCmd)
 	Cmd.AddCommand(resolverCmd)
 	Cmd.AddCommand(providerCmd)
+	Cmd.AddCommand(emailTemplateCmd)
 
 	// Register --graphql flag on commands that support it
 	for _, cmd := range []*cobra.Command{scaffoldCmd, serviceCmd, controllerCmd} {
@@ -318,6 +319,17 @@ var resolverCmd = &cobra.Command{
 	Args:  cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return RunSteps(buildFromArgs(args), resolverSteps())
+	},
+}
+
+var emailTemplateCmd = &cobra.Command{
+	Use:     "email-template [name]",
+	Short:   "Generate an HTML email template in templates/emails/",
+	Aliases: []string{"email"},
+	Args:    cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		d := buildFromArgs(args)
+		return RunSteps(d, []Step{{"email template", GenEmailTemplate}})
 	},
 }
 

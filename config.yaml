@@ -19,3 +19,16 @@ graphql:
 log:
   level: info
   format: text
+
+email:
+  provider: smtp        # smtp, sendgrid, or brevo
+  from_name: Gofasta App
+  from_address: noreply@example.com
+  smtp:
+    host: localhost
+    port: 587
+    use_tls: true
+  # sendgrid:
+  #   api_key: SG.your-api-key
+  # brevo:
+  #   api_key: xkeysib-your-api-key

@@ -15,6 +15,7 @@ import (
 	"github.com/healtronlabs/gofasta/app/validators"
 	"github.com/healtronlabs/gofasta/configs"
 	"github.com/healtronlabs/gofasta/pkg/logger"
+	"github.com/healtronlabs/gofasta/pkg/mailer"
 )
 
 // Injectors from wire.go:
@@ -30,6 +31,12 @@ func InitializeServiceContainer() (*ServiceContainer, error) {
 	logConfig := providers.ProvideLogConfig(appConfig)
 	slogLogger := logger.NewLogger(logConfig)
 	appValidator := validators.NewAppValidator(db)
+	emailConfig := providers.ProvideEmailConfig(appConfig)
+	templateRenderer := providers.ProvideTemplateRenderer(appConfig)
+	emailSender, err := mailer.NewEmailSender(emailConfig, templateRenderer, slogLogger)
+	if err != nil {
+		return nil, err
+	}
 	userRepository := repositories.NewUserRepository(db)
 	userService := services.NewUserService(userRepository, appValidator)
 	userController := controllers.NewUserControllerInstance(userService)
@@ -39,6 +46,7 @@ func InitializeServiceContainer() (*ServiceContainer, error) {
 		DB:             db,
 		Logger:         slogLogger,
 		Validator:      appValidator,
+		EmailSender:    emailSender,
 		UserRepo:       userRepository,
 		UserService:    userService,
 		UserController: userController,

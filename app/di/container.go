@@ -4,6 +4,7 @@ import (
 	"log/slog"
 
 	"github.com/healtronlabs/gofasta/app/graphql/resolvers"
+	"github.com/healtronlabs/gofasta/pkg/mailer"
 	repoInterfaces "github.com/healtronlabs/gofasta/app/repositories/interfaces"
 	"github.com/healtronlabs/gofasta/app/rest/controllers"
 	svcInterfaces "github.com/healtronlabs/gofasta/app/services/interfaces"
@@ -18,6 +19,7 @@ type ServiceContainer struct {
 	DB             *gorm.DB
 	Logger         *slog.Logger
 	Validator      *validators.AppValidator
+	EmailSender    mailer.EmailSender
 	UserRepo       repoInterfaces.UserRepositoryInterface
 	UserService    svcInterfaces.UserServiceInterface
 	UserController *controllers.UserController
