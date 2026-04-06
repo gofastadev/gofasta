@@ -18,7 +18,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /app ./app/main
 
 # Install migrate CLI for the runner stage
 RUN go install -tags 'postgres mysql sqlite3 sqlserver clickhouse' \
-    github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+    github.com/golang-migrate/migrate/v4/cmd/migrate@v4.18.1
 
 # ── Stage 2: Run ──
 FROM alpine:3.20

@@ -7,7 +7,7 @@ RUN apk add --no-cache git curl bash
 
 # Install migrate CLI with all database drivers
 RUN go install -tags 'postgres mysql sqlite3 sqlserver clickhouse' \
-    github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+    github.com/golang-migrate/migrate/v4/cmd/migrate@v4.18.1
 
 WORKDIR /gofasta
 
