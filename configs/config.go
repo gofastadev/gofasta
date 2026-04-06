@@ -36,7 +36,9 @@ type ServerConfig struct {
 }
 
 // DatabaseConfig holds database connection settings.
+// Supported drivers: postgres, mysql, sqlite, sqlserver, clickhouse
 type DatabaseConfig struct {
+	Driver   string        `koanf:"driver"`
 	Host     string        `koanf:"host"`
 	Port     string        `koanf:"port"`
 	User     string        `koanf:"user"`
@@ -129,6 +131,9 @@ func applyDefaults(cfg *AppConfig) {
 	}
 	if len(cfg.Server.AllowedOrigins) == 0 {
 		cfg.Server.AllowedOrigins = []string{"*"}
+	}
+	if cfg.Database.Driver == "" {
+		cfg.Database.Driver = "postgres"
 	}
 	if cfg.Database.Host == "" {
 		cfg.Database.Host = "localhost"

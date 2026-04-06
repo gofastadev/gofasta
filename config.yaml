@@ -5,12 +5,17 @@ server:
     - "*"
 
 database:
+  driver: postgres     # postgres, mysql, sqlite, sqlserver, clickhouse
   host: localhost
   port: "5432"
   sslmode: disable
   max_idle: 10
   max_open: 100
   max_life: 1h
+  # For sqlite: driver: sqlite, name: gofasta.db
+  # For mysql: driver: mysql, port: "3306"
+  # For sqlserver: driver: sqlserver, port: "1433"
+  # For clickhouse: driver: clickhouse, port: "9000"
 
 graphql:
   playground_route: /graphql-playground
@@ -32,3 +37,11 @@ email:
   #   api_key: SG.your-api-key
   # brevo:
   #   api_key: xkeysib-your-api-key
+
+jobs:
+  - name: example
+    schedule: "0 0 */6 * * *"    # every 6 hours (6-field cron with seconds)
+    enabled: false                # set to true to activate
+  # - name: cleanup-tokens
+  #   schedule: "0 0 0 * * *"    # daily at midnight
+  #   enabled: true
