@@ -22,6 +22,7 @@ type ScaffoldData struct {
 	Fields            []Field
 	MigrationNum      string
 	IncludeController bool
+	IncludeGraphQL    bool
 }
 
 // Step is a single unit of work in a generator pipeline.

@@ -33,11 +33,17 @@ func init() {
 	Cmd.AddCommand(routeCmd)
 	Cmd.AddCommand(resolverCmd)
 	Cmd.AddCommand(providerCmd)
+
+	// Register --graphql flag on commands that support it
+	for _, cmd := range []*cobra.Command{scaffoldCmd, serviceCmd, controllerCmd} {
+		cmd.Flags().Bool("graphql", false, "Also generate GraphQL schema and wire resolver")
+		cmd.Flags().Bool("gql", false, "Shorthand for --graphql")
+	}
 }
 
-// --- Composable step chain builders ---
+// --- Step chain builders ---
 // Pattern: generate ALL files first, then patch, then run tools.
-// writeTemplate skips existing files, so composition is idempotent.
+// Steps are built dynamically based on ScaffoldData flags.
 
 func modelSteps() []Step {
 	return []Step{
@@ -60,61 +66,47 @@ func migrationSteps() []Step {
 
 func repositorySteps() []Step {
 	return []Step{
+		{"model", GenModel},
+		{"migration", GenMigration},
+		{"repository interface", GenRepoInterface},
+		{"repository", GenRepo},
+	}
+}
+
+func serviceSteps(d ScaffoldData) []Step {
+	steps := []Step{
 		// Files
 		{"model", GenModel},
 		{"migration", GenMigration},
 		{"repository interface", GenRepoInterface},
 		{"repository", GenRepo},
-	}
-}
-
-func serviceSteps() []Step {
-	return []Step{
-		// Files (all generated before any patching)
-		{"model", GenModel},
-		{"migration", GenMigration},
-		{"repository interface", GenRepoInterface},
-		{"repository", GenRepo},
 		{"service interface", GenSvcInterface},
 		{"service", GenSvc},
 		{"DTOs", GenDTOs},
 		{"Wire provider", GenWireProvider},
-		// Patch
-		{"auto-wire: container", PatchContainer},
-		{"auto-wire: wire.go", PatchWireFile},
-		{"auto-wire: resolver", PatchResolver},
-		// Regenerate
-		{"regenerate Wire", RunWire},
 	}
+	if d.IncludeGraphQL {
+		steps = append(steps, Step{"GraphQL schema", GenGraphQL})
+	}
+	// Patch
+	steps = append(steps,
+		Step{"auto-wire: container", PatchContainer},
+		Step{"auto-wire: wire.go", PatchWireFile},
+	)
+	if d.IncludeGraphQL {
+		steps = append(steps, Step{"auto-wire: resolver", PatchResolver})
+	}
+	// Regenerate
+	steps = append(steps, Step{"regenerate Wire", RunWire})
+	if d.IncludeGraphQL {
+		steps = append(steps, Step{"regenerate gqlgen", RunGqlgen})
+	}
+	return steps
 }
 
-func controllerSteps() []Step {
-	return []Step{
-		// Files (ALL files before any patching)
-		{"model", GenModel},
-		{"migration", GenMigration},
-		{"repository interface", GenRepoInterface},
-		{"repository", GenRepo},
-		{"service interface", GenSvcInterface},
-		{"service", GenSvc},
-		{"DTOs", GenDTOs},
-		{"Wire provider", GenWireProvider},
-		{"controller", GenController},
-		{"routes", GenRoutes},
-		// Patch
-		{"auto-wire: container", PatchContainer},
-		{"auto-wire: wire.go", PatchWireFile},
-		{"auto-wire: resolver", PatchResolver},
-		{"auto-wire: route config", PatchRouteConfig},
-		{"auto-wire: serve.go", PatchServeFile},
-		// Regenerate
-		{"regenerate Wire", RunWire},
-	}
-}
-
-func scaffoldSteps() []Step {
-	return []Step{
-		// Files (ALL files before any patching)
+func controllerSteps(d ScaffoldData) []Step {
+	steps := []Step{
+		// Files
 		{"model", GenModel},
 		{"migration", GenMigration},
 		{"repository interface", GenRepoInterface},
@@ -125,17 +117,65 @@ func scaffoldSteps() []Step {
 		{"Wire provider", GenWireProvider},
 		{"controller", GenController},
 		{"routes", GenRoutes},
-		{"GraphQL schema", GenGraphQL},
-		// Patch
-		{"auto-wire: container", PatchContainer},
-		{"auto-wire: wire.go", PatchWireFile},
-		{"auto-wire: resolver", PatchResolver},
-		{"auto-wire: route config", PatchRouteConfig},
-		{"auto-wire: serve.go", PatchServeFile},
-		// Regenerate
-		{"regenerate Wire", RunWire},
-		{"regenerate gqlgen", RunGqlgen},
 	}
+	if d.IncludeGraphQL {
+		steps = append(steps, Step{"GraphQL schema", GenGraphQL})
+	}
+	// Patch
+	steps = append(steps,
+		Step{"auto-wire: container", PatchContainer},
+		Step{"auto-wire: wire.go", PatchWireFile},
+	)
+	if d.IncludeGraphQL {
+		steps = append(steps, Step{"auto-wire: resolver", PatchResolver})
+	}
+	steps = append(steps,
+		Step{"auto-wire: route config", PatchRouteConfig},
+		Step{"auto-wire: serve.go", PatchServeFile},
+	)
+	// Regenerate
+	steps = append(steps, Step{"regenerate Wire", RunWire})
+	if d.IncludeGraphQL {
+		steps = append(steps, Step{"regenerate gqlgen", RunGqlgen})
+	}
+	return steps
+}
+
+func scaffoldSteps(d ScaffoldData) []Step {
+	steps := []Step{
+		// Files
+		{"model", GenModel},
+		{"migration", GenMigration},
+		{"repository interface", GenRepoInterface},
+		{"repository", GenRepo},
+		{"service interface", GenSvcInterface},
+		{"service", GenSvc},
+		{"DTOs", GenDTOs},
+		{"Wire provider", GenWireProvider},
+		{"controller", GenController},
+		{"routes", GenRoutes},
+	}
+	if d.IncludeGraphQL {
+		steps = append(steps, Step{"GraphQL schema", GenGraphQL})
+	}
+	// Patch
+	steps = append(steps,
+		Step{"auto-wire: container", PatchContainer},
+		Step{"auto-wire: wire.go", PatchWireFile},
+	)
+	if d.IncludeGraphQL {
+		steps = append(steps, Step{"auto-wire: resolver", PatchResolver})
+	}
+	steps = append(steps,
+		Step{"auto-wire: route config", PatchRouteConfig},
+		Step{"auto-wire: serve.go", PatchServeFile},
+	)
+	// Regenerate
+	steps = append(steps, Step{"regenerate Wire", RunWire})
+	if d.IncludeGraphQL {
+		steps = append(steps, Step{"regenerate gqlgen", RunGqlgen})
+	}
+	return steps
 }
 
 func routeSteps() []Step {
@@ -155,27 +195,34 @@ func providerSteps() []Step {
 		{"Wire provider", GenWireProvider},
 		{"auto-wire: container", PatchContainer},
 		{"auto-wire: wire.go", PatchWireFile},
-		// Wire not run here — run `gofasta wire` after all dependent files exist
 	}
 }
 
-// --- Helper to build data from CLI args ---
+// --- Helpers ---
 
 func buildFromArgs(args []string) ScaffoldData {
 	return BuildScaffoldData(args[0], ParseFields(args[1:]))
+}
+
+func hasGraphQLFlag(cmd *cobra.Command) bool {
+	gql, _ := cmd.Flags().GetBool("graphql")
+	gqlShort, _ := cmd.Flags().GetBool("gql")
+	return gql || gqlShort
 }
 
 // --- Cobra command definitions ---
 
 var scaffoldCmd = &cobra.Command{
 	Use:   "scaffold [Name] [field:type ...]",
-	Short: "Generate a full resource with auto-wiring (model, repo, service, controller, routes, DTOs, GraphQL, migration, DI)",
+	Short: "Generate a full REST resource with auto-wiring. Use --graphql for GraphQL support.",
 	Long: `Generate all files for a new resource domain and auto-wire them into the framework.
 No manual wiring needed — the developer only writes business logic.
 
+By default generates REST API resources. Add --graphql to also generate GraphQL schema and resolver.
+
 Examples:
-  gofasta generate scaffold Product name:string price:float description:text
-  gofasta g s BlogPost title:string body:text published:bool
+  gofasta g s Product name:string price:float          (REST only)
+  gofasta g s Product name:string price:float --graphql (REST + GraphQL)
 
 Supported field types: string, text, int, float, bool, uuid, time`,
 	Aliases: []string{"s"},
@@ -183,7 +230,8 @@ Supported field types: string, text, int, float, bool, uuid, time`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		d := buildFromArgs(args)
 		d.IncludeController = true
-		if err := RunSteps(d, scaffoldSteps()); err != nil {
+		d.IncludeGraphQL = hasGraphQLFlag(cmd)
+		if err := RunSteps(d, scaffoldSteps(d)); err != nil {
 			return err
 		}
 		fmt.Printf("\nScaffold complete for %s. All files generated and wired.\n", d.Name)
@@ -214,23 +262,26 @@ var repositoryCmd = &cobra.Command{
 
 var serviceCmd = &cobra.Command{
 	Use:     "service [Name] [field:type ...]",
-	Short:   "Generate model + repo + service + DTOs + Wire provider, fully auto-wired",
+	Short:   "Generate model + repo + service + DTOs + Wire provider, auto-wired. Use --graphql for resolver.",
 	Aliases: []string{"svc"},
 	Args:    cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return RunSteps(buildFromArgs(args), serviceSteps())
+		d := buildFromArgs(args)
+		d.IncludeGraphQL = hasGraphQLFlag(cmd)
+		return RunSteps(d, serviceSteps(d))
 	},
 }
 
 var controllerCmd = &cobra.Command{
 	Use:     "controller [Name] [field:type ...]",
-	Short:   "Generate everything up to controller + routes, fully auto-wired",
+	Short:   "Generate everything up to controller + routes, auto-wired. Use --graphql for GraphQL.",
 	Aliases: []string{"ctrl"},
 	Args:    cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		d := buildFromArgs(args)
 		d.IncludeController = true
-		return RunSteps(d, controllerSteps())
+		d.IncludeGraphQL = hasGraphQLFlag(cmd)
+		return RunSteps(d, controllerSteps(d))
 	},
 }
 
@@ -263,7 +314,7 @@ var routeCmd = &cobra.Command{
 
 var resolverCmd = &cobra.Command{
 	Use:   "resolver [Name]",
-	Short: "Patch GraphQL resolver to add service dependency (assumes service interface exists)",
+	Short: "Patch GraphQL resolver to add service dependency",
 	Args:  cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return RunSteps(buildFromArgs(args), resolverSteps())
@@ -272,7 +323,7 @@ var resolverCmd = &cobra.Command{
 
 var providerCmd = &cobra.Command{
 	Use:   "provider [Name]",
-	Short: "Generate Wire provider + auto-wire container and wire.go + regenerate Wire",
+	Short: "Generate Wire provider + auto-wire container and wire.go",
 	Args:  cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return RunSteps(buildFromArgs(args), providerSteps())
