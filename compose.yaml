@@ -6,7 +6,7 @@ services:
   app:
     build:
       context: .
-      dockerfile: deployments/dev/app/dockerfile
+      dockerfile: deployments/docker/dev.dockerfile
     container_name: gofasta_app
     ports:
       - "${PORT:-8080}:${PORT:-8080}"
