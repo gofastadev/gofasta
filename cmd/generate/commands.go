@@ -34,6 +34,7 @@ func init() {
 	Cmd.AddCommand(resolverCmd)
 	Cmd.AddCommand(providerCmd)
 	Cmd.AddCommand(emailTemplateCmd)
+	Cmd.AddCommand(jobCmd)
 
 	// Register --graphql flag on commands that support it
 	for _, cmd := range []*cobra.Command{scaffoldCmd, serviceCmd, controllerCmd} {
@@ -319,6 +320,31 @@ var resolverCmd = &cobra.Command{
 	Args:  cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return RunSteps(buildFromArgs(args), resolverSteps())
+	},
+}
+
+var jobCmd = &cobra.Command{
+	Use:   "job [name] [schedule]",
+	Short: "Generate a cron job, register it in the scheduler, and add schedule to config",
+	Long: `Generate a new cron job file and auto-wire it into the scheduler.
+
+Examples:
+  gofasta g job cleanup-tokens "0 0 0 * * *"     (daily at midnight)
+  gofasta g job send-reports "0 0 9 * * 1"        (every Monday at 9am)
+  gofasta g job sync-data                          (defaults to every hour)
+
+Schedule uses 6-field cron (with seconds): second minute hour day month weekday`,
+	Args: cobra.MinimumNArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		d := buildFromArgs(args)
+		if len(args) >= 2 {
+			d.Schedule = args[1]
+		}
+		return RunSteps(d, []Step{
+			{"job file", GenJob},
+			{"job registry", PatchJobRegistry},
+			{"job config", PatchJobConfig},
+		})
 	},
 }
 

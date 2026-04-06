@@ -18,6 +18,14 @@ type AppConfig struct {
 	GraphQL  GraphQLConfig  `koanf:"graphql"`
 	Log      LogConfig      `koanf:"log"`
 	Email    EmailConfig    `koanf:"email"`
+	Jobs     []JobConfig    `koanf:"jobs"`
+}
+
+// JobConfig defines a single cron job schedule.
+type JobConfig struct {
+	Name     string `koanf:"name"`
+	Schedule string `koanf:"schedule"`
+	Enabled  bool   `koanf:"enabled"`
 }
 
 // ServerConfig holds HTTP server settings.

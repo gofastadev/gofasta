@@ -23,6 +23,7 @@ type ScaffoldData struct {
 	MigrationNum      string
 	IncludeController bool
 	IncludeGraphQL    bool
+	Schedule          string // cron expression for job generator
 }
 
 // Step is a single unit of work in a generator pipeline.
