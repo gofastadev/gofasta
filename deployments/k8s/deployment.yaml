@@ -1,0 +1,60 @@
+# Gofasta Kubernetes Deployment
+# Works with: AWS EKS, GCP GKE, Azure AKS, any k8s cluster.
+#
+# Deploy:
+#   kubectl apply -f deployments/k8s/
+#
+# Customize:
+#   - Replace IMAGE with your registry image (e.g. 123456.dkr.ecr.us-east-1.amazonaws.com/myapp:latest)
+#   - Create the secret: kubectl create secret generic gofasta-secrets --from-env-file=.env
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gofasta
+  labels:
+    app: gofasta
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: gofasta
+  template:
+    metadata:
+      labels:
+        app: gofasta
+    spec:
+      containers:
+        - name: gofasta
+          image: IMAGE:TAG    # Replace with your container registry image
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - secretRef:
+                name: gofasta-secrets
+          env:
+            - name: GOFASTA_DATABASE_HOST
+              value: gofasta-db     # Points to the DB service below
+            - name: GOFASTA_DATABASE_PORT
+              value: "5432"
+            - name: GOFASTA_LOG_FORMAT
+              value: json
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5

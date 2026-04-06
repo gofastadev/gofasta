@@ -1,7 +1,7 @@
 package validators
 
 import (
-	"log"
+	"log/slog"
 	"reflect"
 	"regexp"
 
@@ -20,7 +20,7 @@ func isRecordExistByEmailForConflict(db *gorm.DB) validator.Func {
 		var count int64
 		err := db.Table(tableName).Where("email = ?", email).Count(&count).Error
 		if err != nil {
-			log.Printf("Error querying the database: %v\n", err)
+			slog.Error("error querying the database", "error", err)
 			return false
 		}
 		return count == 0
@@ -36,7 +36,7 @@ func doesRecordExistByEmailForVerification(db *gorm.DB) validator.Func {
 		var count int64
 		err := db.Table(tableName).Where("email = ? AND deleted_at IS NULL", email).Count(&count).Error
 		if err != nil {
-			log.Printf("Error querying the database: %v\n", err)
+			slog.Error("error querying the database", "error", err)
 			return false
 		}
 		return count > 0
@@ -53,7 +53,7 @@ func isRecordExistByPhoneNumberForConflict(db *gorm.DB) validator.Func {
 		var count int64
 		err := db.Table(tableName).Where("phone_number = ?", phoneNumber).Count(&count).Error
 		if err != nil {
-			log.Printf("Error querying the database: %v\n", err)
+			slog.Error("error querying the database", "error", err)
 			return false
 		}
 		return count == 0
@@ -70,7 +70,7 @@ func isRecordExistByPhoneNumberForVerification(db *gorm.DB) validator.Func {
 		var count int64
 		err := db.Table(tableName).Where("phone_number = ?", phoneNumber).Count(&count).Error
 		if err != nil {
-			log.Printf("Error querying the database: %v\n", err)
+			slog.Error("error querying the database", "error", err)
 			return false
 		}
 		return count > 0

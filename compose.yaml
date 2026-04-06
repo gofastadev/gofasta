@@ -1,0 +1,54 @@
+# Gofasta Development Environment
+# Usage: docker compose up
+# That's it. No .env needed for basic startup.
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: deployments/docker/dev.dockerfile
+    container_name: gofasta_app
+    ports:
+      - "${PORT:-8080}:${PORT:-8080}"
+    volumes:
+      - .:/gofasta
+      - go_modules:/go/pkg/mod
+      - go_build_cache:/root/.cache/go-build
+    environment:
+      - PORT=${PORT:-8080}
+      - GOFASTA_DATABASE_DRIVER=${GOFASTA_DATABASE_DRIVER:-postgres}
+      - GOFASTA_DATABASE_HOST=db
+      - GOFASTA_DATABASE_PORT=5432
+      - GOFASTA_DATABASE_USER=${GOFASTA_DATABASE_USER:-gofasta}
+      - GOFASTA_DATABASE_PASSWORD=${GOFASTA_DATABASE_PASSWORD:-gofasta}
+      - GOFASTA_DATABASE_NAME=${GOFASTA_DATABASE_NAME:-gofasta_dev}
+      - GOFASTA_DATABASE_SSLMODE=disable
+      - GOFASTA_LOG_LEVEL=${GOFASTA_LOG_LEVEL:-debug}
+      - GOFASTA_LOG_FORMAT=${GOFASTA_LOG_FORMAT:-text}
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    container_name: gofasta_db
+    ports:
+      - "${DB_HOST_PORT:-5433}:5432"
+    environment:
+      POSTGRES_USER: ${GOFASTA_DATABASE_USER:-gofasta}
+      POSTGRES_PASSWORD: ${GOFASTA_DATABASE_PASSWORD:-gofasta}
+      POSTGRES_DB: ${GOFASTA_DATABASE_NAME:-gofasta_dev}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${GOFASTA_DATABASE_USER:-gofasta}"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  db_data:
+  go_modules:
+  go_build_cache:

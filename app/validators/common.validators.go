@@ -1,7 +1,7 @@
 package validators
 
 import (
-	"log"
+	"log/slog"
 	"net/url"
 	"reflect"
 
@@ -26,7 +26,7 @@ func isRecordExistByName(db *gorm.DB) validator.Func {
 		var count int64
 		err := db.Table(tableName).Where("name = ?", name).Count(&count).Error
 		if err != nil {
-			log.Printf("Error querying the database: %v\n", err)
+			slog.Error("error querying the database", "error", err)
 			return false
 		}
 		return count == 0
@@ -43,7 +43,7 @@ func isRecordExistById(db *gorm.DB) validator.Func {
 		var count int64
 		err := db.Table(tableName).Where("id = ? AND deleted_at IS NULL", id).Count(&count).Error
 		if err != nil {
-			log.Printf("Error querying the database: %v\n", err)
+			slog.Error("error querying the database", "error", err)
 			return false
 		}
 		return count > 0
@@ -60,7 +60,7 @@ func isRecordDeletable(db *gorm.DB) validator.Func {
 		var count int64
 		err := db.Table(tableName).Where("id = ? AND is_deletable = ?", id, true).Count(&count).Error
 		if err != nil {
-			log.Printf("Error querying the database: %v\n", err)
+			slog.Error("error querying the database", "error", err)
 			return false
 		}
 		return count == 1

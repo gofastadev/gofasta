@@ -1,0 +1,27 @@
+# Gofasta Development Dockerfile
+# Used by compose.yaml — mounts source code, runs air for hot reload.
+
+FROM golang:1.25-alpine
+
+RUN apk add --no-cache git curl bash
+
+# Install migrate CLI with all database drivers
+RUN go install -tags 'postgres mysql sqlite3 sqlserver clickhouse' \
+    github.com/golang-migrate/migrate/v4/cmd/migrate@v4.18.1
+
+WORKDIR /gofasta
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+EXPOSE ${PORT:-8080}
+
+CMD ["sh", "-c", "\
+    echo '==> Running migrations...' && \
+    migrate -database \"${GOFASTA_DATABASE_DRIVER:-postgres}://${GOFASTA_DATABASE_USER}:${GOFASTA_DATABASE_PASSWORD}@${GOFASTA_DATABASE_HOST}:${GOFASTA_DATABASE_PORT}/${GOFASTA_DATABASE_NAME}?sslmode=${GOFASTA_DATABASE_SSLMODE:-disable}\" -path db/migrations up 2>&1 || echo '==> Migrations: nothing to apply' && \
+    echo '==> Starting dev server with hot reload...' && \
+    echo '    REST:       http://localhost:'${PORT:-8080} && \
+    echo '    GraphQL:    http://localhost:'${PORT:-8080}'/graphql' && \
+    echo '    Playground: http://localhost:'${PORT:-8080}'/graphql-playground' && \
+    go tool air \
+"]

@@ -1,11 +1,16 @@
 package resolvers
 
-import "github.com/healtronlabs/gofasta/app/services"
+import svcInterfaces "github.com/healtronlabs/gofasta/app/services/interfaces"
 
 // This file will not be regenerated automatically.
 //
 // It serves as dependency injection for your app, add any dependencies you require here.
 
 type Resolver struct {
-	UserService *services.UserService
+	UserService svcInterfaces.UserServiceInterface
+}
+
+// NewResolver creates a new Resolver with the provided service dependencies.
+func NewResolver(userService svcInterfaces.UserServiceInterface) *Resolver {
+	return &Resolver{UserService: userService}
 }
