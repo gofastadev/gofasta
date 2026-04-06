@@ -39,6 +39,15 @@ func newBaseValidator(db *gorm.DB) (*validator.Validate, ut.Translator, error) {
 	return validate, trans, nil
 }
 
+// RegisterCommonValidators registers the framework's common validators on an existing validator instance.
+func RegisterCommonValidators(validate *validator.Validate, db *gorm.DB) {
+	validate.RegisterValidation("uuid4_valid", isUUIDv4Valid)
+	validate.RegisterValidation("is_record_deletable", isRecordDeletable(db))
+	validate.RegisterValidation("is_record_exist_by_name_for_conflict", isRecordExistByName(db))
+	validate.RegisterValidation("does_record_exist_by_id_for_verification", isRecordExistById(db))
+	validate.RegisterValidation("is_valid_url", isValidURL)
+}
+
 // RegisterTranslation is a helper for projects to register custom validation messages.
 func RegisterTranslation(v *validator.Validate, trans ut.Translator, tag string, message string) {
 	v.RegisterTranslation(tag, trans, func(ut ut.Translator) error {
