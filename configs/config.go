@@ -13,12 +13,18 @@ import (
 
 // AppConfig holds the complete application configuration.
 type AppConfig struct {
-	Server   ServerConfig   `koanf:"server"`
-	Database DatabaseConfig `koanf:"database"`
-	GraphQL  GraphQLConfig  `koanf:"graphql"`
-	Log      LogConfig      `koanf:"log"`
-	Email    EmailConfig    `koanf:"email"`
-	Jobs     []JobConfig    `koanf:"jobs"`
+	Server    ServerConfig    `koanf:"server"`
+	Database  DatabaseConfig  `koanf:"database"`
+	GraphQL   GraphQLConfig   `koanf:"graphql"`
+	Log       LogConfig       `koanf:"log"`
+	Email     EmailConfig     `koanf:"email"`
+	Jobs      []JobConfig     `koanf:"jobs"`
+	Auth      AuthConfig      `koanf:"auth"`
+	RateLimit RateLimitConfig `koanf:"rate_limit"`
+	Cache     CacheConfig     `koanf:"cache"`
+	Security  SecurityConfig  `koanf:"security"`
+	Storage   StorageConfig   `koanf:"storage"`
+	Queue     QueueConfig     `koanf:"queue"`
 }
 
 // JobConfig defines a single cron job schedule.
@@ -89,6 +95,85 @@ type SendGridConfig struct {
 // BrevoConfig holds Brevo (Sendinblue) API settings.
 type BrevoConfig struct {
 	APIKey string `koanf:"api_key"`
+}
+
+// AuthConfig holds JWT and RBAC settings.
+type AuthConfig struct {
+	JWTSecret         string        `koanf:"jwt_secret"`
+	AccessTokenExpiry time.Duration `koanf:"access_token_expiry"`
+	RefreshTokenExpiry time.Duration `koanf:"refresh_token_expiry"`
+	RBACModelPath     string        `koanf:"rbac_model"`
+	RBACPolicyPath    string        `koanf:"rbac_policy"`
+}
+
+// RateLimitConfig holds rate limiting settings.
+type RateLimitConfig struct {
+	Enabled bool   `koanf:"enabled"`
+	Rate    string `koanf:"rate"`
+	Store   string `koanf:"store"`
+}
+
+// CacheConfig holds caching settings.
+type CacheConfig struct {
+	Driver string      `koanf:"driver"`
+	Redis  RedisConfig `koanf:"redis"`
+}
+
+// RedisConfig holds Redis connection settings.
+type RedisConfig struct {
+	Host     string `koanf:"host"`
+	Port     string `koanf:"port"`
+	Password string `koanf:"password"`
+	DB       int    `koanf:"db"`
+}
+
+// SecurityConfig holds security header settings.
+type SecurityConfig struct {
+	HSTS                  bool   `koanf:"hsts"`
+	HSTSMaxAge            int    `koanf:"hsts_max_age"`
+	FrameDeny             bool   `koanf:"frame_deny"`
+	ContentTypeNosniff    bool   `koanf:"content_type_nosniff"`
+	BrowserXSSFilter      bool   `koanf:"browser_xss_filter"`
+	ContentSecurityPolicy string `koanf:"content_security_policy"`
+	ReferrerPolicy        string `koanf:"referrer_policy"`
+}
+
+// StorageConfig holds file storage settings.
+type StorageConfig struct {
+	Driver string             `koanf:"driver"`
+	Local  LocalStorageConfig `koanf:"local"`
+	S3     S3Config           `koanf:"s3"`
+}
+
+// LocalStorageConfig holds local filesystem storage settings.
+type LocalStorageConfig struct {
+	Path string `koanf:"path"`
+}
+
+// S3Config holds S3-compatible storage settings.
+type S3Config struct {
+	Endpoint  string `koanf:"endpoint"`
+	Bucket    string `koanf:"bucket"`
+	AccessKey string `koanf:"access_key"`
+	SecretKey string `koanf:"secret_key"`
+	Region    string `koanf:"region"`
+	UseSSL    bool   `koanf:"use_ssl"`
+}
+
+// QueueConfig holds async task queue settings.
+type QueueConfig struct {
+	Enabled     bool            `koanf:"enabled"`
+	Concurrency int             `koanf:"concurrency"`
+	Queues      map[string]int  `koanf:"queues"`
+	Redis       QueueRedisConfig `koanf:"redis"`
+}
+
+// QueueRedisConfig holds Redis settings for the task queue.
+type QueueRedisConfig struct {
+	Host     string `koanf:"host"`
+	Port     string `koanf:"port"`
+	Password string `koanf:"password"`
+	DB       int    `koanf:"db"`
 }
 
 // LoadConfig loads configuration from config.yaml (if present), then overlays
@@ -179,5 +264,65 @@ func applyDefaults(cfg *AppConfig) {
 	}
 	if cfg.Email.SMTP.Port == 0 {
 		cfg.Email.SMTP.Port = 587
+	}
+	// Auth defaults
+	if cfg.Auth.JWTSecret == "" {
+		cfg.Auth.JWTSecret = "change-me-in-production"
+	}
+	if cfg.Auth.AccessTokenExpiry == 0 {
+		cfg.Auth.AccessTokenExpiry = 15 * time.Minute
+	}
+	if cfg.Auth.RefreshTokenExpiry == 0 {
+		cfg.Auth.RefreshTokenExpiry = 168 * time.Hour
+	}
+	if cfg.Auth.RBACModelPath == "" {
+		cfg.Auth.RBACModelPath = "configs/rbac_model.conf"
+	}
+	if cfg.Auth.RBACPolicyPath == "" {
+		cfg.Auth.RBACPolicyPath = "configs/rbac_policy.csv"
+	}
+	// Rate limit defaults
+	if cfg.RateLimit.Rate == "" {
+		cfg.RateLimit.Rate = "100-S"
+	}
+	if cfg.RateLimit.Store == "" {
+		cfg.RateLimit.Store = "memory"
+	}
+	// Cache defaults
+	if cfg.Cache.Driver == "" {
+		cfg.Cache.Driver = "memory"
+	}
+	if cfg.Cache.Redis.Host == "" {
+		cfg.Cache.Redis.Host = "localhost"
+	}
+	if cfg.Cache.Redis.Port == "" {
+		cfg.Cache.Redis.Port = "6379"
+	}
+	// Security defaults
+	if cfg.Security.HSTSMaxAge == 0 {
+		cfg.Security.HSTSMaxAge = 31536000
+	}
+	if cfg.Security.ReferrerPolicy == "" {
+		cfg.Security.ReferrerPolicy = "strict-origin-when-cross-origin"
+	}
+	// Storage defaults
+	if cfg.Storage.Driver == "" {
+		cfg.Storage.Driver = "local"
+	}
+	if cfg.Storage.Local.Path == "" {
+		cfg.Storage.Local.Path = "./uploads"
+	}
+	// Queue defaults
+	if cfg.Queue.Concurrency == 0 {
+		cfg.Queue.Concurrency = 10
+	}
+	if cfg.Queue.Redis.Host == "" {
+		cfg.Queue.Redis.Host = "localhost"
+	}
+	if cfg.Queue.Redis.Port == "" {
+		cfg.Queue.Redis.Port = "6379"
+	}
+	if cfg.Queue.Redis.DB == 0 {
+		cfg.Queue.Redis.DB = 1
 	}
 }

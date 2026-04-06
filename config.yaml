@@ -38,10 +38,58 @@ email:
   # brevo:
   #   api_key: xkeysib-your-api-key
 
+auth:
+  jwt_secret: "change-me-in-production"
+  access_token_expiry: 15m
+  refresh_token_expiry: 168h
+  rbac_model: configs/rbac_model.conf
+  rbac_policy: configs/rbac_policy.csv
+
+rate_limit:
+  enabled: false
+  rate: "100-S"           # 100 requests per second
+  store: memory           # memory or redis
+
+cache:
+  driver: memory          # memory or redis
+  # redis:
+  #   host: localhost
+  #   port: "6379"
+  #   password: ""
+  #   db: 0
+
+security:
+  hsts: true
+  hsts_max_age: 31536000
+  frame_deny: true
+  content_type_nosniff: true
+  browser_xss_filter: true
+  referrer_policy: "strict-origin-when-cross-origin"
+
+storage:
+  driver: local           # local or s3
+  local:
+    path: ./uploads
+  # s3:
+  #   endpoint: s3.amazonaws.com
+  #   bucket: my-bucket
+  #   access_key: ""
+  #   secret_key: ""
+  #   region: us-east-1
+  #   use_ssl: true
+
+queue:
+  enabled: false
+  concurrency: 10
+  queues:
+    default: 1
+  # redis:
+  #   host: localhost
+  #   port: "6379"
+  #   password: ""
+  #   db: 1
+
 jobs:
   - name: example
-    schedule: "0 0 */6 * * *"    # every 6 hours (6-field cron with seconds)
-    enabled: false                # set to true to activate
-  # - name: cleanup-tokens
-  #   schedule: "0 0 0 * * *"    # daily at midnight
-  #   enabled: true
+    schedule: "0 0 */6 * * *"
+    enabled: false

@@ -18,6 +18,8 @@ func InitApiRoutes(config *RouteConfig) *mux.Router {
 	// Health check at root level
 	if config.HealthController != nil {
 		r.HandleFunc("/health", httputil.Handle(config.HealthController.Check)).Methods("GET")
+		r.HandleFunc("/health/live", httputil.Handle(config.HealthController.Live)).Methods("GET")
+		r.HandleFunc("/health/ready", httputil.Handle(config.HealthController.Ready)).Methods("GET")
 	}
 
 	// API v1 routes

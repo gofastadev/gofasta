@@ -12,10 +12,12 @@ import (
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/healtronlabs/gofasta/app"
 	"github.com/healtronlabs/gofasta/app/di"
+	"github.com/healtronlabs/gofasta/app/jobs"
 	"github.com/healtronlabs/gofasta/app/rest/controllers"
 	"github.com/healtronlabs/gofasta/app/rest/routes"
 	apperrors "github.com/healtronlabs/gofasta/pkg/errors"
 	"github.com/healtronlabs/gofasta/pkg/middleware"
+	"github.com/healtronlabs/gofasta/pkg/scheduler"
 	"github.com/spf13/cobra"
 )
 
@@ -49,7 +51,7 @@ func startServer() error {
 	graphqlHandler.SetErrorPresenter(apperrors.GraphQLErrorPresenter)
 
 	// Build REST router
-	healthController := controllers.NewHealthController(container.DB)
+	healthController := controllers.NewHealthController(container.DB, container.CacheService)
 	apiRouter := routes.InitApiRoutes(&routes.RouteConfig{
 		UserController:   container.UserController,
 		HealthController: healthController,
@@ -60,18 +62,34 @@ func startServer() error {
 	mux.Handle(cfg.GraphQL.GeneralRoute, graphqlHandler)
 	mux.Handle("/", apiRouter)
 
-	// Apply middleware chain
-	rootHandler := middleware.Chain(
-		mux,
+	// Build middleware chain
+	middlewares := []middleware.Middleware{
 		middleware.RequestID(),
 		middleware.RequestLogging(logger),
 		middleware.Recovery(logger),
 		middleware.CORS(cfg.Server.AllowedOrigins),
-	)
+		middleware.SecurityHeaders(cfg.Security),
+	}
+	if cfg.RateLimit.Enabled {
+		middlewares = append(middlewares, middleware.RateLimit(cfg.RateLimit))
+	}
+	rootHandler := middleware.Chain(mux, middlewares...)
 
 	srv := &http.Server{
 		Addr:    ":" + cfg.Server.Port,
 		Handler: rootHandler,
+	}
+
+	// Start cron job scheduler
+	sched := startScheduler(container, logger)
+
+	// Start async task queue (if enabled)
+	if container.QueueService != nil {
+		go func() {
+			if err := container.QueueService.Start(); err != nil {
+				slog.Error("queue server error", "error", err)
+			}
+		}()
 	}
 
 	// Graceful shutdown
@@ -89,6 +107,14 @@ func startServer() error {
 	<-ctx.Done()
 	slog.Info("shutting down gracefully")
 
+	// Stop scheduler
+	sched.Stop()
+
+	// Stop queue
+	if container.QueueService != nil {
+		container.QueueService.Shutdown()
+	}
+
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.Server.ShutdownTimeout)
 	defer cancel()
 
@@ -103,4 +129,30 @@ func startServer() error {
 
 	slog.Info("server stopped")
 	return nil
+}
+
+// startScheduler creates a scheduler, registers all configured jobs, and starts it.
+func startScheduler(container *di.ServiceContainer, logger *slog.Logger) *scheduler.Scheduler {
+	sched := scheduler.New(logger)
+
+	registry := map[string]scheduler.Job{
+		"example": jobs.NewExampleJob(logger),
+	}
+
+	for _, jobCfg := range container.Config.Jobs {
+		if !jobCfg.Enabled {
+			continue
+		}
+		job, ok := registry[jobCfg.Name]
+		if !ok {
+			slog.Warn("unknown job in config, skipping", "job", jobCfg.Name)
+			continue
+		}
+		if err := sched.Register(jobCfg.Schedule, job); err != nil {
+			slog.Error("failed to register job", "job", jobCfg.Name, "error", err)
+		}
+	}
+
+	sched.Start()
+	return sched
 }

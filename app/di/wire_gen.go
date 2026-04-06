@@ -14,8 +14,12 @@ import (
 	"github.com/healtronlabs/gofasta/app/services"
 	"github.com/healtronlabs/gofasta/app/validators"
 	"github.com/healtronlabs/gofasta/configs"
+	"github.com/healtronlabs/gofasta/pkg/auth"
+	"github.com/healtronlabs/gofasta/pkg/cache"
 	"github.com/healtronlabs/gofasta/pkg/logger"
 	"github.com/healtronlabs/gofasta/pkg/mailer"
+	"github.com/healtronlabs/gofasta/pkg/queue"
+	"github.com/healtronlabs/gofasta/pkg/storage"
 )
 
 // Injectors from wire.go:
@@ -37,6 +41,27 @@ func InitializeServiceContainer() (*ServiceContainer, error) {
 	if err != nil {
 		return nil, err
 	}
+	cacheConfig := providers.ProvideCacheConfig(appConfig)
+	cacheService, err := cache.NewCacheService(cacheConfig, slogLogger)
+	if err != nil {
+		return nil, err
+	}
+	authConfig := providers.ProvideAuthConfig(appConfig)
+	jwtService := auth.NewJWTService(authConfig)
+	rbacService, err := auth.NewRBACService(authConfig)
+	if err != nil {
+		return nil, err
+	}
+	storageConfig := providers.ProvideStorageConfig(appConfig)
+	storageService, err := storage.NewStorageService(storageConfig, slogLogger)
+	if err != nil {
+		return nil, err
+	}
+	queueConfig := providers.ProvideQueueConfig(appConfig)
+	queueService, err := queue.NewQueueService(queueConfig, slogLogger)
+	if err != nil {
+		return nil, err
+	}
 	userRepository := repositories.NewUserRepository(db)
 	userService := services.NewUserService(userRepository, appValidator)
 	userController := controllers.NewUserControllerInstance(userService)
@@ -47,6 +72,11 @@ func InitializeServiceContainer() (*ServiceContainer, error) {
 		Logger:         slogLogger,
 		Validator:      appValidator,
 		EmailSender:    emailSender,
+		CacheService:   cacheService,
+		JWTService:     jwtService,
+		RBACService:    rbacService,
+		StorageService: storageService,
+		QueueService:   queueService,
 		UserRepo:       userRepository,
 		UserService:    userService,
 		UserController: userController,
