@@ -12,8 +12,8 @@ database:
   max_idle: 10
   max_open: 100
   max_life: 1h
-  # For sqlite: driver: sqlite, name: gofasta.db
-  # For mysql: driver: mysql, port: "3306"
+  # For sqlite: driver: postgres, name: gofasta.db
+  # For mysql: driver: postgres, port: "3306"
   # For sqlserver: driver: sqlserver, port: "1433"
   # For clickhouse: driver: clickhouse, port: "9000"
 

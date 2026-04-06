@@ -8,7 +8,13 @@ type Field struct {
 	GoType    string // Go type: string
 	GormType  string // GORM tag: gorm:"not null"
 	GQLType   string // GraphQL type: String
-	SQLType   string // SQL type: VARCHAR(255) NOT NULL
+	SQLType   string // SQL type (generic): VARCHAR(255) NOT NULL
+	// Per-driver SQL types (populated by field parser based on DBDriver)
+	SQLTypePostgres   string
+	SQLTypeMySQL      string
+	SQLTypeSQLite     string
+	SQLTypeSQLServer  string
+	SQLTypeClickHouse string
 }
 
 // ScaffoldData holds all computed names and fields for template rendering.
@@ -24,6 +30,7 @@ type ScaffoldData struct {
 	IncludeController bool
 	IncludeGraphQL    bool
 	Schedule          string // cron expression for job generator
+	DBDriver          string // database driver from config (postgres, mysql, sqlite, sqlserver, clickhouse)
 }
 
 // Step is a single unit of work in a generator pipeline.

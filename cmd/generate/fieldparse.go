@@ -15,24 +15,89 @@ func ParseFields(args []string) []Field {
 			JSONName:  toCamelCase(parts[0]),
 			SnakeName: toSnakeCase(parts[0]),
 		}
+
 		switch strings.ToLower(parts[1]) {
 		case "string":
-			f.GoType, f.GormType, f.GQLType, f.SQLType = "string", `gorm:"not null"`, "String", "VARCHAR(255) NOT NULL"
+			f.GoType = "string"
+			f.GormType = `gorm:"not null"`
+			f.GQLType = "String"
+			f.SQLTypePostgres = "VARCHAR(255) NOT NULL"
+			f.SQLTypeMySQL = "VARCHAR(255) NOT NULL"
+			f.SQLTypeSQLite = "TEXT NOT NULL"
+			f.SQLTypeSQLServer = "NVARCHAR(255) NOT NULL"
+			f.SQLTypeClickHouse = "String"
+
 		case "text":
-			f.GoType, f.GormType, f.GQLType, f.SQLType = "string", `gorm:"type:text;not null"`, "String", "TEXT NOT NULL"
+			f.GoType = "string"
+			f.GormType = `gorm:"type:text;not null"`
+			f.GQLType = "String"
+			f.SQLTypePostgres = "TEXT NOT NULL"
+			f.SQLTypeMySQL = "TEXT NOT NULL"
+			f.SQLTypeSQLite = "TEXT NOT NULL"
+			f.SQLTypeSQLServer = "NVARCHAR(MAX) NOT NULL"
+			f.SQLTypeClickHouse = "String"
+
 		case "int":
-			f.GoType, f.GormType, f.GQLType, f.SQLType = "int", `gorm:"not null"`, "Int", "INTEGER NOT NULL"
+			f.GoType = "int"
+			f.GormType = `gorm:"not null"`
+			f.GQLType = "Int"
+			f.SQLTypePostgres = "INTEGER NOT NULL"
+			f.SQLTypeMySQL = "INT NOT NULL"
+			f.SQLTypeSQLite = "INTEGER NOT NULL"
+			f.SQLTypeSQLServer = "INT NOT NULL"
+			f.SQLTypeClickHouse = "Int32"
+
 		case "float":
-			f.GoType, f.GormType, f.GQLType, f.SQLType = "float64", `gorm:"not null"`, "Float", "DECIMAL(10,2) NOT NULL"
+			f.GoType = "float64"
+			f.GormType = `gorm:"not null"`
+			f.GQLType = "Float"
+			f.SQLTypePostgres = "DECIMAL(10,2) NOT NULL"
+			f.SQLTypeMySQL = "DECIMAL(10,2) NOT NULL"
+			f.SQLTypeSQLite = "REAL NOT NULL"
+			f.SQLTypeSQLServer = "DECIMAL(10,2) NOT NULL"
+			f.SQLTypeClickHouse = "Float64"
+
 		case "bool":
-			f.GoType, f.GormType, f.GQLType, f.SQLType = "bool", `gorm:"not null;default:false"`, "Boolean", "BOOLEAN NOT NULL DEFAULT false"
+			f.GoType = "bool"
+			f.GormType = `gorm:"not null;default:false"`
+			f.GQLType = "Boolean"
+			f.SQLTypePostgres = "BOOLEAN NOT NULL DEFAULT false"
+			f.SQLTypeMySQL = "TINYINT(1) NOT NULL DEFAULT 0"
+			f.SQLTypeSQLite = "INTEGER NOT NULL DEFAULT 0"
+			f.SQLTypeSQLServer = "BIT NOT NULL DEFAULT 0"
+			f.SQLTypeClickHouse = "Bool"
+
 		case "uuid":
-			f.GoType, f.GormType, f.GQLType, f.SQLType = "uuid.UUID", `gorm:"type:uuid;not null"`, "ID", "UUID NOT NULL"
+			f.GoType = "uuid.UUID"
+			f.GormType = `gorm:"type:uuid;not null"`
+			f.GQLType = "ID"
+			f.SQLTypePostgres = "UUID NOT NULL"
+			f.SQLTypeMySQL = "CHAR(36) NOT NULL"
+			f.SQLTypeSQLite = "TEXT NOT NULL"
+			f.SQLTypeSQLServer = "UNIQUEIDENTIFIER NOT NULL"
+			f.SQLTypeClickHouse = "UUID"
+
 		case "time", "datetime":
-			f.GoType, f.GormType, f.GQLType, f.SQLType = "time.Time", `gorm:"type:timestamp;not null"`, "DateTime", "TIMESTAMP NOT NULL DEFAULT now()"
+			f.GoType = "time.Time"
+			f.GormType = `gorm:"type:timestamp;not null"`
+			f.GQLType = "DateTime"
+			f.SQLTypePostgres = "TIMESTAMP NOT NULL DEFAULT now()"
+			f.SQLTypeMySQL = "DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"
+			f.SQLTypeSQLite = "DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP"
+			f.SQLTypeSQLServer = "DATETIME2 NOT NULL DEFAULT GETDATE()"
+			f.SQLTypeClickHouse = "DateTime"
+
 		default:
-			f.GoType, f.GormType, f.GQLType, f.SQLType = "string", `gorm:"not null"`, "String", "VARCHAR(255) NOT NULL"
+			f.GoType = "string"
+			f.GormType = `gorm:"not null"`
+			f.GQLType = "String"
+			f.SQLTypePostgres = "VARCHAR(255) NOT NULL"
+			f.SQLTypeMySQL = "VARCHAR(255) NOT NULL"
+			f.SQLTypeSQLite = "TEXT NOT NULL"
+			f.SQLTypeSQLServer = "NVARCHAR(255) NOT NULL"
+			f.SQLTypeClickHouse = "String"
 		}
+
 		fields = append(fields, f)
 	}
 	return fields
