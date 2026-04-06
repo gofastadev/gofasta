@@ -1,7 +1,22 @@
-FROM golang:1.25-alpine as gofasta_api_build_dev
+FROM golang:1.25-alpine
 
-RUN go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@v4.16.2
+# Install system dependencies
+RUN apk add --no-cache git curl bash
+
+# Install golang-migrate CLI
+RUN go install -tags 'postgres mysql sqlite3 sqlserver clickhouse' \
+    github.com/golang-migrate/migrate/v4/cmd/migrate@latest
 
 WORKDIR /gofasta
 
-EXPOSE $PORT
+# Cache Go modules (re-downloaded only when go.mod/go.sum change)
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy entrypoint
+COPY deployments/dev/app/dev_entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+EXPOSE ${PORT:-8080}
+
+ENTRYPOINT ["/entrypoint.sh"]
