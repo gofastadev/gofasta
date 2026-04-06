@@ -6,7 +6,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
-	"github.com/healtronlabs/gofasta/app/models"
+	"github.com/gofastadev/gofasta/app/models"
 )
 
 type {{.Name}}RepositoryInterface interface {

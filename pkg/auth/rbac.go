@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/casbin/casbin/v2"
-	"github.com/healtronlabs/gofasta/configs"
+	"github.com/gofastadev/gofasta/configs"
 )
 
 // RBACService wraps Casbin for role-based access control.

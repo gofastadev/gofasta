@@ -6,10 +6,10 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/healtronlabs/gofasta/app/dtos"
-	"github.com/healtronlabs/gofasta/app/models"
-	"github.com/healtronlabs/gofasta/app/services"
-	"github.com/healtronlabs/gofasta/testutil/mocks"
+	"github.com/gofastadev/gofasta/app/dtos"
+	"github.com/gofastadev/gofasta/app/models"
+	"github.com/gofastadev/gofasta/app/services"
+	"github.com/gofastadev/gofasta/testutil/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )

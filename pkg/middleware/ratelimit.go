@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/healtronlabs/gofasta/configs"
+	"github.com/gofastadev/gofasta/configs"
 	"github.com/ulule/limiter/v3"
 	mw "github.com/ulule/limiter/v3/drivers/middleware/stdlib"
 	"github.com/ulule/limiter/v3/drivers/store/memory"

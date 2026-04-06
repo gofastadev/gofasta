@@ -6,11 +6,11 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/schema"
-	"github.com/healtronlabs/gofasta/app/dtos"
-	svcInterfaces "github.com/healtronlabs/gofasta/app/services/interfaces"
-	"github.com/healtronlabs/gofasta/app/utils"
-	apperrors "github.com/healtronlabs/gofasta/pkg/errors"
-	"github.com/healtronlabs/gofasta/pkg/httputil"
+	"github.com/gofastadev/gofasta/app/dtos"
+	svcInterfaces "github.com/gofastadev/gofasta/app/services/interfaces"
+	"github.com/gofastadev/gofasta/app/utils"
+	apperrors "github.com/gofastadev/gofasta/pkg/errors"
+	"github.com/gofastadev/gofasta/pkg/httputil"
 )
 
 var decoder = schema.NewDecoder()

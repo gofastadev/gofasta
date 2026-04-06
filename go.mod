@@ -1,4 +1,4 @@
-module github.com/healtronlabs/gofasta
+module github.com/gofastadev/gofasta
 
 go 1.25.8
 

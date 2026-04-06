@@ -3,7 +3,7 @@ package interfaces
 import (
 	"context"
 
-	"github.com/healtronlabs/gofasta/app/dtos"
+	"github.com/gofastadev/gofasta/app/dtos"
 )
 
 // UserServiceInterface defines the contract for user business logic.

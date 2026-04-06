@@ -107,7 +107,7 @@ const jobTemplate = `package jobs
 import (
 	"log/slog"
 
-	"github.com/healtronlabs/gofasta/pkg/scheduler"
+	"github.com/gofastadev/gofasta/pkg/scheduler"
 	"gorm.io/gorm"
 )
 

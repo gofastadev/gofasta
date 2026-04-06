@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/healtronlabs/gofasta/configs"
+	"github.com/gofastadev/gofasta/configs"
 )
 
 // JWTService handles token generation and validation.

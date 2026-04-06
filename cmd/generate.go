@@ -1,6 +1,6 @@
 package cmd
 
-import "github.com/healtronlabs/gofasta/cmd/generate"
+import "github.com/gofastadev/gofasta/cmd/generate"
 
 func init() {
 	rootCmd.AddCommand(generate.Cmd)

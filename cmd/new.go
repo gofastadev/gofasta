@@ -313,7 +313,7 @@ volumes:
 
 	// Step 5: Install gofasta as dependency
 	fmt.Println("\n📦 Installing gofasta framework...")
-	if err := runCmdIn("go", "get", "github.com/healtronlabs/gofasta@latest"); err != nil {
+	if err := runCmdIn("go", "get", "github.com/gofastadev/gofasta@latest"); err != nil {
 		fmt.Println("   ⚠ Could not install gofasta (you may need to add it manually)")
 	}
 

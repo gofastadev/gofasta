@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/healtronlabs/gofasta/pkg/cache"
-	"github.com/healtronlabs/gofasta/pkg/httputil"
+	"github.com/gofastadev/gofasta/pkg/cache"
+	"github.com/gofastadev/gofasta/pkg/httputil"
 	"gorm.io/gorm"
 )
 

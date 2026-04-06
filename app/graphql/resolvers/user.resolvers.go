@@ -8,7 +8,7 @@ package resolvers
 import (
 	"context"
 
-	"github.com/healtronlabs/gofasta/app/dtos"
+	"github.com/gofastadev/gofasta/app/dtos"
 )
 
 // CreateUser is the resolver for the createUser field.

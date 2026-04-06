@@ -5,12 +5,12 @@ import (
 	"log/slog"
 	"math"
 
-	"github.com/healtronlabs/gofasta/app/dtos"
-	"github.com/healtronlabs/gofasta/app/models"
-	repoInterfaces "github.com/healtronlabs/gofasta/app/repositories/interfaces"
-	svcInterfaces "github.com/healtronlabs/gofasta/app/services/interfaces"
-	"github.com/healtronlabs/gofasta/app/utils"
-	"github.com/healtronlabs/gofasta/app/validators"
+	"github.com/gofastadev/gofasta/app/dtos"
+	"github.com/gofastadev/gofasta/app/models"
+	repoInterfaces "github.com/gofastadev/gofasta/app/repositories/interfaces"
+	svcInterfaces "github.com/gofastadev/gofasta/app/services/interfaces"
+	"github.com/gofastadev/gofasta/app/utils"
+	"github.com/gofastadev/gofasta/app/validators"
 )
 
 // Compile-time check that UserService implements UserServiceInterface.

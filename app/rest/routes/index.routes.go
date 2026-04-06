@@ -4,9 +4,9 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/healtronlabs/gofasta/app/rest/controllers"
-	"github.com/healtronlabs/gofasta/pkg/httputil"
-	"github.com/healtronlabs/gofasta/pkg/websocket"
+	"github.com/gofastadev/gofasta/app/rest/controllers"
+	"github.com/gofastadev/gofasta/pkg/httputil"
+	"github.com/gofastadev/gofasta/pkg/websocket"
 )
 
 // RouteConfig holds all controllers needed for route registration.

@@ -5,7 +5,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/healtronlabs/gofasta/configs"
+	"github.com/gofastadev/gofasta/configs"
 )
 
 // NewLogger creates a structured logger based on the provided config.

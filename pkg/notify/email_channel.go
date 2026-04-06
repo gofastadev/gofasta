@@ -3,7 +3,7 @@ package notify
 import (
 	"context"
 
-	"github.com/healtronlabs/gofasta/pkg/mailer"
+	"github.com/gofastadev/gofasta/pkg/mailer"
 )
 
 // EmailChannel sends notifications via email using the existing mailer.

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/healtronlabs/gofasta/configs"
+	"github.com/gofastadev/gofasta/configs"
 )
 
 // NewCacheService creates the appropriate cache backend from config.

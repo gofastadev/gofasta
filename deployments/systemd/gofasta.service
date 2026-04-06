@@ -14,7 +14,7 @@
 
 [Unit]
 Description=Gofasta Application Server
-Documentation=https://github.com/healtronlabs/gofasta
+Documentation=https://github.com/gofastadev/gofasta
 After=network.target postgresql.service mysql.service
 Wants=network.target
 

@@ -4,7 +4,7 @@ package di
 
 import (
 	"github.com/google/wire"
-	"github.com/healtronlabs/gofasta/app/di/providers"
+	"github.com/gofastadev/gofasta/app/di/providers"
 )
 
 // InitializeServiceContainer builds the full dependency graph at compile time.

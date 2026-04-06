@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/healtronlabs/gofasta/app/models"
-	repoInterfaces "github.com/healtronlabs/gofasta/app/repositories/interfaces"
+	"github.com/gofastadev/gofasta/app/models"
+	repoInterfaces "github.com/gofastadev/gofasta/app/repositories/interfaces"
 	"gorm.io/gorm"
 )
 

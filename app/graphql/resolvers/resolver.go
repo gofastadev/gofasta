@@ -1,6 +1,6 @@
 package resolvers
 
-import svcInterfaces "github.com/healtronlabs/gofasta/app/services/interfaces"
+import svcInterfaces "github.com/gofastadev/gofasta/app/services/interfaces"
 
 // This file will not be regenerated automatically.
 //

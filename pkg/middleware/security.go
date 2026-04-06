@@ -3,7 +3,7 @@ package middleware
 import (
 	"net/http"
 
-	"github.com/healtronlabs/gofasta/configs"
+	"github.com/gofastadev/gofasta/configs"
 	"github.com/unrolled/secure"
 )
 

@@ -13,7 +13,7 @@ import (
 	"net/textproto"
 	"strings"
 
-	"github.com/healtronlabs/gofasta/configs"
+	"github.com/gofastadev/gofasta/configs"
 )
 
 // SMTPSender sends emails via SMTP with optional STARTTLS.
