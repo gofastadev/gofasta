@@ -11,7 +11,6 @@ import (
 	svcInterfaces "github.com/healtronlabs/gofasta/app/services/interfaces"
 	"github.com/healtronlabs/gofasta/app/utils"
 	"github.com/healtronlabs/gofasta/app/validators"
-	"gorm.io/gorm"
 )
 
 // Compile-time check that UserService implements UserServiceInterface.
@@ -20,14 +19,12 @@ var _ svcInterfaces.UserServiceInterface = (*UserService)(nil)
 type UserService struct {
 	UserRepo  repoInterfaces.UserRepositoryInterface
 	Validator *validators.AppValidator
-	DB        *gorm.DB // kept temporarily for validator backward compat, removed after Phase 2.3
 }
 
-func NewUserService(db *gorm.DB, userRepo repoInterfaces.UserRepositoryInterface, appValidator *validators.AppValidator) *UserService {
+func NewUserService(userRepo repoInterfaces.UserRepositoryInterface, appValidator *validators.AppValidator) *UserService {
 	return &UserService{
 		UserRepo:  userRepo,
 		Validator: appValidator,
-		DB:        db,
 	}
 }
 

@@ -16,11 +16,9 @@ import (
 
 func newTestService() (*services.UserService, *mocks.MockUserRepository) {
 	mockRepo := new(mocks.MockUserRepository)
-	// Pass nil for db and validator in tests (validator is tested separately)
 	svc := &services.UserService{
 		UserRepo:  mockRepo,
-		Validator: nil, // skip validation in service unit tests
-		DB:        nil,
+		Validator: nil,
 	}
 	return svc, mockRepo
 }

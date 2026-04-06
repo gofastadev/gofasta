@@ -31,7 +31,7 @@ func InitializeServiceContainer() (*ServiceContainer, error) {
 	slogLogger := logger.NewLogger(logConfig)
 	appValidator := validators.NewAppValidator(db)
 	userRepository := repositories.NewUserRepository(db)
-	userService := services.NewUserService(db, userRepository, appValidator)
+	userService := services.NewUserService(userRepository, appValidator)
 	userController := controllers.NewUserControllerInstance(userService)
 	resolver := resolvers.NewResolver(userService)
 	serviceContainer := &ServiceContainer{

@@ -52,7 +52,7 @@ type LogConfig struct {
 }
 
 // LoadConfig loads configuration from config.yaml (if present), then overlays
-// environment variables. It also supports legacy env var names for backward compatibility.
+// environment variables prefixed with GOFASTA_ (e.g., GOFASTA_DATABASE_HOST).
 func LoadConfig() (*AppConfig, error) {
 	k := koanf.New(".")
 
@@ -71,26 +71,6 @@ func LoadConfig() (*AppConfig, error) {
 		)
 	}), nil); err != nil {
 		return nil, err
-	}
-
-	// Backward compatibility: read legacy env vars and apply as fallbacks
-	legacyMappings := map[string]string{
-		"DB_HOST":                     "database.host",
-		"DB_USER":                     "database.user",
-		"DB_PASSWORD":                 "database.password",
-		"DB_NAME":                     "database.name",
-		"DB_CONTAINER_PORT":           "database.port",
-		"PORT":                        "server.port",
-		"GRAPHQL_PLAYGROUND_ROUTE":    "graphql.playground_route",
-		"GRAPHQL_GENERAL_ROUTE":       "graphql.general_route",
-	}
-	for envKey, koanfKey := range legacyMappings {
-		if val := os.Getenv(envKey); val != "" {
-			// Only set if not already provided by GOFASTA_ prefix or config file
-			if !k.Exists(koanfKey) {
-				k.Set(koanfKey, val)
-			}
-		}
 	}
 
 	cfg := &AppConfig{}

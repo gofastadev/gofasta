@@ -24,8 +24,5 @@ func InitApiRoutes(config *RouteConfig) *mux.Router {
 	api := r.PathPrefix("/api/v1").Subrouter()
 	UserRoutes(api, config.UserController)
 
-	// Keep backward-compatible routes at root level
-	UserRoutes(r, config.UserController)
-
 	return r
 }

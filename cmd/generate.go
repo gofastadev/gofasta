@@ -215,20 +215,17 @@ import (
 
 	repoInterfaces "github.com/healtronlabs/gofasta/app/repositories/interfaces"
 	"github.com/healtronlabs/gofasta/app/validators"
-	"gorm.io/gorm"
 )
 
 type {{.Name}}Service struct {
 	{{.Name}}Repo repoInterfaces.{{.Name}}RepositoryInterface
 	Validator     *validators.AppValidator
-	DB            *gorm.DB
 }
 
-func New{{.Name}}Service(db *gorm.DB, repo repoInterfaces.{{.Name}}RepositoryInterface, validator *validators.AppValidator) *{{.Name}}Service {
+func New{{.Name}}Service(repo repoInterfaces.{{.Name}}RepositoryInterface, validator *validators.AppValidator) *{{.Name}}Service {
 	return &{{.Name}}Service{
 		{{.Name}}Repo: repo,
 		Validator:     validator,
-		DB:            db,
 	}
 }
 
