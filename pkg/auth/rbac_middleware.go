@@ -3,8 +3,8 @@ package auth
 import (
 	"net/http"
 
-	"github.com/healtronlabs/gofasta/pkg/httputil"
-	"github.com/healtronlabs/gofasta/pkg/middleware"
+	"github.com/gofastadev/gofasta/pkg/httputil"
+	"github.com/gofastadev/gofasta/pkg/middleware"
 )
 
 // RequireRole creates a middleware that checks if the authenticated user has one of the allowed roles.

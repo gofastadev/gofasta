@@ -13,7 +13,7 @@
 //	@description				Enter "Bearer {token}"
 package main
 
-import "github.com/healtronlabs/gofasta/cmd"
+import "github.com/gofastadev/gofasta/cmd"
 
 func main() {
 	cmd.Execute()

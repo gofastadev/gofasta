@@ -7,19 +7,19 @@
 package di
 
 import (
-	"github.com/healtronlabs/gofasta/app/di/providers"
-	"github.com/healtronlabs/gofasta/app/graphql/resolvers"
-	"github.com/healtronlabs/gofasta/app/repositories"
-	"github.com/healtronlabs/gofasta/app/rest/controllers"
-	"github.com/healtronlabs/gofasta/app/services"
-	"github.com/healtronlabs/gofasta/app/validators"
-	"github.com/healtronlabs/gofasta/configs"
-	"github.com/healtronlabs/gofasta/pkg/auth"
-	"github.com/healtronlabs/gofasta/pkg/cache"
-	"github.com/healtronlabs/gofasta/pkg/logger"
-	"github.com/healtronlabs/gofasta/pkg/mailer"
-	"github.com/healtronlabs/gofasta/pkg/queue"
-	"github.com/healtronlabs/gofasta/pkg/storage"
+	"github.com/gofastadev/gofasta/app/di/providers"
+	"github.com/gofastadev/gofasta/app/graphql/resolvers"
+	"github.com/gofastadev/gofasta/app/repositories"
+	"github.com/gofastadev/gofasta/app/rest/controllers"
+	"github.com/gofastadev/gofasta/app/services"
+	"github.com/gofastadev/gofasta/app/validators"
+	"github.com/gofastadev/gofasta/configs"
+	"github.com/gofastadev/gofasta/pkg/auth"
+	"github.com/gofastadev/gofasta/pkg/cache"
+	"github.com/gofastadev/gofasta/pkg/logger"
+	"github.com/gofastadev/gofasta/pkg/mailer"
+	"github.com/gofastadev/gofasta/pkg/queue"
+	"github.com/gofastadev/gofasta/pkg/storage"
 )
 
 // Injectors from wire.go:

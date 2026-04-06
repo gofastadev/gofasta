@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/healtronlabs/gofasta/configs"
+	"github.com/gofastadev/gofasta/configs"
 	"github.com/hibiken/asynq"
 )
 

@@ -3,7 +3,7 @@ package queue
 import (
 	"log/slog"
 
-	"github.com/healtronlabs/gofasta/configs"
+	"github.com/gofastadev/gofasta/configs"
 )
 
 // NewQueueService creates the task queue from config. Returns nil if disabled.

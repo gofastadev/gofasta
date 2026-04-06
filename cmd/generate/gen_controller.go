@@ -3,7 +3,7 @@ package generate
 import (
 	"fmt"
 
-	"github.com/healtronlabs/gofasta/cmd/generate/templates"
+	"github.com/gofastadev/gofasta/cmd/generate/templates"
 )
 
 func GenController(d ScaffoldData) error {

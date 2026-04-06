@@ -4,8 +4,8 @@ var Routes = `package routes
 
 import (
 	"github.com/gorilla/mux"
-	"github.com/healtronlabs/gofasta/app/rest/controllers"
-	"github.com/healtronlabs/gofasta/pkg/httputil"
+	"github.com/gofastadev/gofasta/app/rest/controllers"
+	"github.com/gofastadev/gofasta/pkg/httputil"
 )
 
 func {{.Name}}Routes(r *mux.Router, c *controllers.{{.Name}}Controller) {

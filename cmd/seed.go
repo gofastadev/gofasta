@@ -5,9 +5,9 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/healtronlabs/gofasta/configs"
-	"github.com/healtronlabs/gofasta/db/seeds"
-	"github.com/healtronlabs/gofasta/pkg/logger"
+	"github.com/gofastadev/gofasta/configs"
+	"github.com/gofastadev/gofasta/db/seeds"
+	"github.com/gofastadev/gofasta/pkg/logger"
 	"github.com/spf13/cobra"
 )
 

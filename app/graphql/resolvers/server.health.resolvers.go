@@ -8,7 +8,7 @@ package resolvers
 import (
 	"context"
 
-	"github.com/healtronlabs/gofasta/app"
+	"github.com/gofastadev/gofasta/app"
 )
 
 // MutationHealth is the resolver for the mutationHealth field.

@@ -9,10 +9,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	"github.com/healtronlabs/gofasta/app/dtos"
-	"github.com/healtronlabs/gofasta/app/rest/controllers"
-	"github.com/healtronlabs/gofasta/pkg/httputil"
-	"github.com/healtronlabs/gofasta/testutil/mocks"
+	"github.com/gofastadev/gofasta/app/dtos"
+	"github.com/gofastadev/gofasta/app/rest/controllers"
+	"github.com/gofastadev/gofasta/pkg/httputil"
+	"github.com/gofastadev/gofasta/testutil/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )

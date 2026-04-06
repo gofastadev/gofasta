@@ -3,7 +3,7 @@ package jobs
 import (
 	"log/slog"
 
-	"github.com/healtronlabs/gofasta/pkg/scheduler"
+	"github.com/gofastadev/gofasta/pkg/scheduler"
 )
 
 // Compile-time check that ExampleJob implements scheduler.Job.

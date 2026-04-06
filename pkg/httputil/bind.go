@@ -7,7 +7,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/schema"
-	apperrors "github.com/healtronlabs/gofasta/pkg/errors"
+	apperrors "github.com/gofastadev/gofasta/pkg/errors"
 )
 
 var (

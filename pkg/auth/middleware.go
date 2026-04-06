@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/healtronlabs/gofasta/pkg/httputil"
-	"github.com/healtronlabs/gofasta/pkg/middleware"
+	"github.com/gofastadev/gofasta/pkg/httputil"
+	"github.com/gofastadev/gofasta/pkg/middleware"
 )
 
 // JWTAuth creates a middleware that validates JWT Bearer tokens.

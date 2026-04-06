@@ -5,7 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	apperrors "github.com/healtronlabs/gofasta/pkg/errors"
+	apperrors "github.com/gofastadev/gofasta/pkg/errors"
 )
 
 // AppHandler is an http.HandlerFunc that returns an error.

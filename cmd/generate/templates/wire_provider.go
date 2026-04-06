@@ -4,13 +4,13 @@ var WireProvider = `package providers
 
 import (
 	"github.com/google/wire"
-	"github.com/healtronlabs/gofasta/app/repositories"
-	repoInterfaces "github.com/healtronlabs/gofasta/app/repositories/interfaces"
+	"github.com/gofastadev/gofasta/app/repositories"
+	repoInterfaces "github.com/gofastadev/gofasta/app/repositories/interfaces"
 {{- if .IncludeController}}
-	"github.com/healtronlabs/gofasta/app/rest/controllers"
+	"github.com/gofastadev/gofasta/app/rest/controllers"
 {{- end}}
-	"github.com/healtronlabs/gofasta/app/services"
-	svcInterfaces "github.com/healtronlabs/gofasta/app/services/interfaces"
+	"github.com/gofastadev/gofasta/app/services"
+	svcInterfaces "github.com/gofastadev/gofasta/app/services/interfaces"
 )
 
 var {{.Name}}Set = wire.NewSet(

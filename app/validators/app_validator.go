@@ -3,8 +3,8 @@ package validators
 import (
 	ut "github.com/go-playground/universal-translator"
 	"github.com/go-playground/validator/v10"
-	"github.com/healtronlabs/gofasta/app/dtos"
-	"github.com/healtronlabs/gofasta/app/utils"
+	"github.com/gofastadev/gofasta/app/dtos"
+	"github.com/gofastadev/gofasta/app/utils"
 	"gorm.io/gorm"
 )
 
