@@ -1,0 +1,21 @@
+server:
+  port: "8080"
+  shutdown_timeout: 15s
+  allowed_origins:
+    - "*"
+
+database:
+  host: localhost
+  port: "5432"
+  sslmode: disable
+  max_idle: 10
+  max_open: 100
+  max_life: 1h
+
+graphql:
+  playground_route: /graphql-playground
+  general_route: /graphql
+
+log:
+  level: info
+  format: text

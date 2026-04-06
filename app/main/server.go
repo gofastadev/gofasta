@@ -1,35 +1,60 @@
 package main
 
 import (
-	"log"
+	"context"
+	"log/slog"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/99designs/gqlgen/graphql/playground"
+	"github.com/healtronlabs/gofasta/configs"
+	"github.com/healtronlabs/gofasta/pkg/logger"
 )
 
 func serve() {
-	port := os.Getenv("PORT")
-	playgroundRoute := os.Getenv("GRAPHQL_PLAYGROUND_ROUTE")
-	graphqlGeneralRoute := os.Getenv("GRAPHQL_GENERAL_ROUTE")
-	if port == "" {
-		port = "8080"
-	}
-	if playgroundRoute == "" {
-		playgroundRoute = "/graphql-playground"
-	}
-	if graphqlGeneralRoute == "" {
-		graphqlGeneralRoute = "/graphql"
+	cfg, err := configs.LoadConfig()
+	if err != nil {
+		slog.Error("failed to load config", "error", err)
+		os.Exit(1)
 	}
 
-	// Initialize routes
-	graphqlResolver, apiRouter := setupAndInitializeDb()
+	logger.NewLogger(&cfg.Log)
 
-	// Combine routes
-	http.Handle(playgroundRoute, playground.Handler("GraphQL playground", graphqlGeneralRoute))
-	http.Handle(graphqlGeneralRoute, graphqlResolver)
-	http.Handle("/", apiRouter)
+	graphqlResolver, apiRouter := setupAndInitializeDb(cfg)
 
-	log.Printf("connect to http://localhost:%s%s for GraphQL playground", port, playgroundRoute)
-	log.Fatal(http.ListenAndServe(":"+port, nil))
+	mux := http.NewServeMux()
+	mux.Handle(cfg.GraphQL.PlaygroundRoute, playground.Handler("GraphQL playground", cfg.GraphQL.GeneralRoute))
+	mux.Handle(cfg.GraphQL.GeneralRoute, graphqlResolver)
+	mux.Handle("/", apiRouter)
+
+	srv := &http.Server{
+		Addr:    ":" + cfg.Server.Port,
+		Handler: mux,
+	}
+
+	// Graceful shutdown
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	go func() {
+		slog.Info("server starting", "port", cfg.Server.Port, "playground", cfg.GraphQL.PlaygroundRoute)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			slog.Error("server error", "error", err)
+			os.Exit(1)
+		}
+	}()
+
+	<-ctx.Done()
+	slog.Info("shutting down gracefully")
+
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.Server.ShutdownTimeout)
+	defer cancel()
+
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		slog.Error("server forced to shutdown", "error", err)
+	}
+
+	slog.Info("server stopped")
 }

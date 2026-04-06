@@ -2,45 +2,39 @@ package configs
 
 import (
 	"fmt"
-	"log"
-	"os"
-	"time"
+	"log/slog"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
-	func SetupDB() *gorm.DB {
-			dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=UTC",
-			os.Getenv("DB_HOST"),
-			os.Getenv("DB_USER"),
-			os.Getenv("DB_PASSWORD"),
-			os.Getenv("DB_NAME"),
-			os.Getenv("DB_CONTAINER_PORT"),
-		)
-	
+func SetupDB(cfg *DatabaseConfig) *gorm.DB {
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s TimeZone=UTC",
+		cfg.Host,
+		cfg.User,
+		cfg.Password,
+		cfg.Name,
+		cfg.Port,
+		cfg.SSLMode,
+	)
+
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
-	} else {
-		log.Println("======= Successfully connected to the db =======")
+		slog.Error("failed to connect to database", "error", err)
+		panic(fmt.Sprintf("failed to connect to database: %v", err))
 	}
+	slog.Info("successfully connected to the database")
 
 	sqlDB, err := db.DB()
 	if err != nil {
-		log.Fatalf("Failed to get database instance: %v", err)
-	} else {
-		log.Println("======= Successfully got the db instance =======")
+		slog.Error("failed to get database instance", "error", err)
+		panic(fmt.Sprintf("failed to get database instance: %v", err))
 	}
+	slog.Info("successfully got the database instance")
 
-	// SetMaxIdleConns sets the maximum number of connections in the idle connection pool.
-	sqlDB.SetMaxIdleConns(10)
-
-	// SetMaxOpenConns sets the maximum number of open connections to the database.
-	sqlDB.SetMaxOpenConns(100)
-
-	// SetConnMaxLifetime sets the maximum amount of time a connection may be reused.
-	sqlDB.SetConnMaxLifetime(time.Hour)
+	sqlDB.SetMaxIdleConns(cfg.MaxIdle)
+	sqlDB.SetMaxOpenConns(cfg.MaxOpen)
+	sqlDB.SetConnMaxLifetime(cfg.MaxLife)
 
 	return db
 }
