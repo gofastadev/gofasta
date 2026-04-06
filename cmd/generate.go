@@ -13,21 +13,21 @@ import (
 )
 
 var generateCmd = &cobra.Command{
-	Use:   "generate",
-	Short: "Generate boilerplate code",
+	Use:     "generate",
+	Short:   "Generate boilerplate code",
 	Aliases: []string{"g"},
 }
 
 var scaffoldCmd = &cobra.Command{
 	Use:   "scaffold [Name] [field:type ...]",
-	Short: "Generate a full resource (model, repository, service, controller, routes, DTOs, GraphQL schema, migration, Wire provider)",
-	Long: `Generate all files for a new resource domain. Like Rails scaffolding, this creates
-everything you need so you can focus on business logic.
+	Short: "Generate a full resource with auto-wiring (model, repo, service, controller, routes, DTOs, GraphQL, migration, DI)",
+	Long: `Generate all files for a new resource domain and auto-wire them into the framework.
+No manual wiring needed — the developer only writes business logic.
 
 Examples:
   gofasta generate scaffold Product name:string price:float description:text
-  gofasta g scaffold BlogPost title:string body:text published:bool
-  gofasta g scaffold Order totalAmount:float status:string
+  gofasta g s BlogPost title:string body:text published:bool
+  gofasta g s Order totalAmount:float status:string
 
 Supported field types: string, text, int, float, bool, uuid, time`,
 	Aliases: []string{"s"},
@@ -40,39 +40,65 @@ Supported field types: string, text, int, float, bool, uuid, time`,
 }
 
 var generateModelCmd = &cobra.Command{
-	Use:   "model [Name] [field:type ...]",
-	Short: "Generate a new model",
-	Args:  cobra.MinimumNArgs(1),
+	Use:  "model [Name] [field:type ...]",
+	Short: "Generate a new model with migration",
+	Args: cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		fields := parseFields(args[1:])
-		return generateSingleFile("model", args[0], fields)
+		d := buildScaffoldData(args[0], fields)
+		return runSteps(d, []step{
+			{"model", genModel},
+			{"migration", genMigration},
+		})
 	},
 }
 
 var generateServiceCmd = &cobra.Command{
 	Use:   "service [Name]",
-	Short: "Generate a new service with interface",
+	Short: "Generate service + interface + repository + interface + DTOs + Wire provider, auto-wired",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return generateSingleFile("service", args[0], nil)
+		d := buildScaffoldData(args[0], nil)
+		return runSteps(d, []step{
+			{"repository interface", genRepoInterface},
+			{"repository", genRepo},
+			{"service interface", genSvcInterface},
+			{"service", genSvc},
+			{"DTOs", genDTOs},
+			{"Wire provider set", genWireProvider},
+			{"auto-wire: container", patchContainer},
+			{"auto-wire: wire.go", patchWireFile},
+			{"auto-wire: resolver", patchResolver},
+			{"regenerate Wire", runWire},
+		})
 	},
 }
 
 var generateRepositoryCmd = &cobra.Command{
 	Use:   "repository [Name]",
-	Short: "Generate a new repository with interface",
+	Short: "Generate repository + interface",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return generateSingleFile("repository", args[0], nil)
+		d := buildScaffoldData(args[0], nil)
+		return runSteps(d, []step{
+			{"repository interface", genRepoInterface},
+			{"repository", genRepo},
+		})
 	},
 }
 
 var generateControllerCmd = &cobra.Command{
 	Use:   "controller [Name]",
-	Short: "Generate a new REST controller",
+	Short: "Generate controller + routes, auto-wired",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return generateSingleFile("controller", args[0], nil)
+		d := buildScaffoldData(args[0], nil)
+		return runSteps(d, []step{
+			{"controller", genController},
+			{"routes", genRoutes},
+			{"auto-wire: route config", patchRouteConfig},
+			{"auto-wire: serve.go", patchServeFile},
+		})
 	},
 }
 
@@ -80,11 +106,7 @@ var wireCmd = &cobra.Command{
 	Use:   "wire",
 	Short: "Run Wire to regenerate dependency injection code",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		fmt.Println("Running Wire...")
-		wireExec := exec.Command("go", "tool", "wire", "./app/di/")
-		wireExec.Stdout = os.Stdout
-		wireExec.Stderr = os.Stderr
-		return wireExec.Run()
+		return runWire(scaffoldData{})
 	},
 }
 
@@ -98,27 +120,42 @@ func init() {
 	rootCmd.AddCommand(wireCmd)
 }
 
+// --- Step runner ---
+
+type step struct {
+	label string
+	fn    func(scaffoldData) error
+}
+
+func runSteps(d scaffoldData, steps []step) error {
+	for _, s := range steps {
+		if err := s.fn(d); err != nil {
+			return fmt.Errorf("failed at %s: %w", s.label, err)
+		}
+	}
+	return nil
+}
+
 // --- Field parsing ---
 
 type Field struct {
-	Name       string // PascalCase: ProductName
-	JSONName   string // camelCase: productName
-	SnakeName  string // snake_case: product_name
-	GoType     string // Go type: string
-	GormType   string // GORM column type: VARCHAR(255)
-	GQLType    string // GraphQL type: String
-	SQLType    string // SQL type: VARCHAR(255)
-	IsNullable bool
+	Name      string
+	JSONName  string
+	SnakeName string
+	GoType    string
+	GormType  string
+	GQLType   string
+	SQLType   string
 }
 
 type scaffoldData struct {
-	Name       string // PascalCase: Product
-	LowerName  string // camelCase: product
-	SnakeName  string // snake_case: product
-	PluralName string // PascalCase plural: Products
-	PluralSnake string // snake_case plural: products
-	PluralLower string // camelCase plural: products
-	Fields     []Field
+	Name         string
+	LowerName    string
+	SnakeName    string
+	PluralName   string
+	PluralSnake  string
+	PluralLower  string
+	Fields       []Field
 	MigrationNum string
 }
 
@@ -129,58 +166,29 @@ func parseFields(args []string) []Field {
 		if len(parts) != 2 {
 			continue
 		}
-		fieldName := parts[0]
-		fieldType := parts[1]
-
 		f := Field{
-			Name:      toPascalCase(fieldName),
-			JSONName:  toCamelCase(fieldName),
-			SnakeName: toSnakeCase(fieldName),
+			Name:      toPascalCase(parts[0]),
+			JSONName:  toCamelCase(parts[0]),
+			SnakeName: toSnakeCase(parts[0]),
 		}
-
-		switch strings.ToLower(fieldType) {
+		switch strings.ToLower(parts[1]) {
 		case "string":
-			f.GoType = "string"
-			f.GormType = `gorm:"not null"`
-			f.GQLType = "String"
-			f.SQLType = "VARCHAR(255) NOT NULL"
+			f.GoType, f.GormType, f.GQLType, f.SQLType = "string", `gorm:"not null"`, "String", "VARCHAR(255) NOT NULL"
 		case "text":
-			f.GoType = "string"
-			f.GormType = `gorm:"type:text;not null"`
-			f.GQLType = "String"
-			f.SQLType = "TEXT NOT NULL"
+			f.GoType, f.GormType, f.GQLType, f.SQLType = "string", `gorm:"type:text;not null"`, "String", "TEXT NOT NULL"
 		case "int":
-			f.GoType = "int"
-			f.GormType = `gorm:"not null"`
-			f.GQLType = "Int"
-			f.SQLType = "INTEGER NOT NULL"
+			f.GoType, f.GormType, f.GQLType, f.SQLType = "int", `gorm:"not null"`, "Int", "INTEGER NOT NULL"
 		case "float":
-			f.GoType = "float64"
-			f.GormType = `gorm:"not null"`
-			f.GQLType = "Float"
-			f.SQLType = "DECIMAL(10,2) NOT NULL"
+			f.GoType, f.GormType, f.GQLType, f.SQLType = "float64", `gorm:"not null"`, "Float", "DECIMAL(10,2) NOT NULL"
 		case "bool":
-			f.GoType = "bool"
-			f.GormType = `gorm:"not null;default:false"`
-			f.GQLType = "Boolean"
-			f.SQLType = "BOOLEAN NOT NULL DEFAULT false"
+			f.GoType, f.GormType, f.GQLType, f.SQLType = "bool", `gorm:"not null;default:false"`, "Boolean", "BOOLEAN NOT NULL DEFAULT false"
 		case "uuid":
-			f.GoType = "uuid.UUID"
-			f.GormType = `gorm:"type:uuid;not null"`
-			f.GQLType = "ID"
-			f.SQLType = "UUID NOT NULL"
+			f.GoType, f.GormType, f.GQLType, f.SQLType = "uuid.UUID", `gorm:"type:uuid;not null"`, "ID", "UUID NOT NULL"
 		case "time", "datetime":
-			f.GoType = "time.Time"
-			f.GormType = `gorm:"type:timestamp;not null"`
-			f.GQLType = "DateTime"
-			f.SQLType = "TIMESTAMP NOT NULL DEFAULT now()"
+			f.GoType, f.GormType, f.GQLType, f.SQLType = "time.Time", `gorm:"type:timestamp;not null"`, "DateTime", "TIMESTAMP NOT NULL DEFAULT now()"
 		default:
-			f.GoType = "string"
-			f.GormType = `gorm:"not null"`
-			f.GQLType = "String"
-			f.SQLType = "VARCHAR(255) NOT NULL"
+			f.GoType, f.GormType, f.GQLType, f.SQLType = "string", `gorm:"not null"`, "String", "VARCHAR(255) NOT NULL"
 		}
-
 		fields = append(fields, f)
 	}
 	return fields
@@ -201,16 +209,12 @@ func pluralize(s string) string {
 }
 
 func nextMigrationNumber() string {
-	entries, err := os.ReadDir("db/migrations")
-	if err != nil {
-		return "000006"
-	}
+	entries, _ := os.ReadDir("db/migrations")
 	max := 0
 	for _, e := range entries {
-		name := e.Name()
-		if len(name) >= 6 {
+		if len(e.Name()) >= 6 {
 			var num int
-			fmt.Sscanf(name[:6], "%d", &num)
+			fmt.Sscanf(e.Name()[:6], "%d", &num)
 			if num > max {
 				max = num
 			}
@@ -219,15 +223,26 @@ func nextMigrationNumber() string {
 	return fmt.Sprintf("%06d", max+1)
 }
 
+func buildScaffoldData(name string, fields []Field) scaffoldData {
+	pascal := toPascalCase(name)
+	plural := pluralize(pascal)
+	return scaffoldData{
+		Name:         pascal,
+		LowerName:    toCamelCase(name),
+		SnakeName:    toSnakeCase(name),
+		PluralName:   plural,
+		PluralSnake:  toSnakeCase(plural),
+		PluralLower:  toCamelCase(plural),
+		Fields:       fields,
+		MigrationNum: nextMigrationNumber(),
+	}
+}
+
 // --- Scaffold orchestrator ---
 
 func runScaffold(name string, fields []Field) error {
-	data := buildScaffoldData(name, fields)
-
-	steps := []struct {
-		label string
-		fn    func(scaffoldData) error
-	}{
+	d := buildScaffoldData(name, fields)
+	err := runSteps(d, []step{
 		{"model", genModel},
 		{"repository interface", genRepoInterface},
 		{"repository", genRepo},
@@ -239,64 +254,194 @@ func runScaffold(name string, fields []Field) error {
 		{"GraphQL schema", genGraphQL},
 		{"Wire provider set", genWireProvider},
 		{"migration", genMigration},
+		// Auto-wire into framework
+		{"auto-wire: container", patchContainer},
+		{"auto-wire: wire.go", patchWireFile},
+		{"auto-wire: resolver", patchResolver},
+		{"auto-wire: route config", patchRouteConfig},
+		{"auto-wire: serve.go", patchServeFile},
+		// Regenerate
+		{"regenerate Wire", runWire},
+		{"regenerate gqlgen", runGqlgen},
+	})
+	if err != nil {
+		return err
 	}
-
-	for _, step := range steps {
-		if err := step.fn(data); err != nil {
-			return fmt.Errorf("failed to generate %s: %w", step.label, err)
-		}
-	}
-
-	fmt.Println("\n--- Scaffold complete ---")
-	fmt.Println("\nNext steps:")
-	fmt.Printf("  1. Add %sController to RouteConfig in app/rest/routes/index.routes.go\n", data.Name)
-	fmt.Printf("  2. Add %sSet to wire.Build in app/di/wire.go\n", data.Name)
-	fmt.Printf("  3. Add %s fields to ServiceContainer in app/di/container.go\n", data.Name)
-	fmt.Printf("  4. Run: gofasta wire\n")
-	fmt.Printf("  5. Run: gofasta generate wire  (or go tool wire ./app/di/)\n")
-	fmt.Printf("  6. Run: go tool gqlgen generate\n")
-	fmt.Printf("  7. Run: gofasta migrate up\n")
-	fmt.Printf("  8. Implement your business logic in app/services/%s.service.go\n", data.SnakeName)
+	fmt.Printf("\nScaffold complete for %s. All files generated and wired.\n", d.Name)
+	fmt.Printf("Run migrations: gofasta migrate up\n")
+	fmt.Printf("Write business logic: app/services/%s.service.go\n", d.SnakeName)
 	return nil
 }
 
-func buildScaffoldData(name string, fields []Field) scaffoldData {
-	pascal := toPascalCase(name)
-	snake := toSnakeCase(name)
-	lower := toCamelCase(name)
-	plural := pluralize(pascal)
-	return scaffoldData{
-		Name:         pascal,
-		LowerName:    lower,
-		SnakeName:    snake,
-		PluralName:   plural,
-		PluralSnake:  toSnakeCase(plural),
-		PluralLower:  toCamelCase(plural),
-		Fields:       fields,
-		MigrationNum: nextMigrationNumber(),
+// --- Auto-wiring: patch existing files ---
+
+func patchContainer(d scaffoldData) error {
+	path := "app/di/container.go"
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return err
 	}
+	s := string(content)
+
+	// Check if already wired
+	if strings.Contains(s, d.Name+"Controller") {
+		fmt.Printf("  skip (already wired): %s\n", path)
+		return nil
+	}
+
+	// Add import for controller
+	repoImport := fmt.Sprintf("\trepoInterfaces \"github.com/healtronlabs/gofasta/app/repositories/interfaces\"")
+	if !strings.Contains(s, "repoInterfaces") {
+		s = strings.Replace(s, "\t\"github.com/healtronlabs/gofasta/app/rest/controllers\"", repoImport+"\n\t\"github.com/healtronlabs/gofasta/app/rest/controllers\"", 1)
+	}
+
+	// Add fields before Resolver line
+	fields := fmt.Sprintf("\t%sRepo       repoInterfaces.%sRepositoryInterface\n\t%sService    svcInterfaces.%sServiceInterface\n\t%sController *controllers.%sController\n",
+		d.Name, d.Name, d.Name, d.Name, d.Name, d.Name)
+
+	s = strings.Replace(s, "\tResolver       *resolvers.Resolver", fields+"\tResolver       *resolvers.Resolver", 1)
+
+	fmt.Printf("  patch: %s\n", path)
+	return os.WriteFile(path, []byte(s), 0644)
 }
 
-func generateSingleFile(kind, name string, fields []Field) error {
-	data := buildScaffoldData(name, fields)
-	switch kind {
-	case "model":
-		return genModel(data)
-	case "service":
-		if err := genSvcInterface(data); err != nil {
-			return err
-		}
-		return genSvc(data)
-	case "repository":
-		if err := genRepoInterface(data); err != nil {
-			return err
-		}
-		return genRepo(data)
-	case "controller":
-		return genController(data)
-	default:
-		return fmt.Errorf("unknown generator: %s", kind)
+func patchWireFile(d scaffoldData) error {
+	path := "app/di/wire.go"
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return err
 	}
+	s := string(content)
+
+	providerRef := fmt.Sprintf("providers.%sSet", d.Name)
+	if strings.Contains(s, providerRef) {
+		fmt.Printf("  skip (already wired): %s\n", path)
+		return nil
+	}
+
+	// Add provider set before GraphQLSet
+	s = strings.Replace(s, "\t\tproviders.GraphQLSet,", fmt.Sprintf("\t\t%s,\n\t\tproviders.GraphQLSet,", providerRef), 1)
+
+	fmt.Printf("  patch: %s\n", path)
+	return os.WriteFile(path, []byte(s), 0644)
+}
+
+func patchResolver(d scaffoldData) error {
+	path := "app/graphql/resolvers/resolver.go"
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	s := string(content)
+
+	fieldName := d.Name + "Service"
+	if strings.Contains(s, fieldName) {
+		fmt.Printf("  skip (already wired): %s\n", path)
+		return nil
+	}
+
+	// Add field to Resolver struct (before closing brace)
+	fieldLine := fmt.Sprintf("\t%s svcInterfaces.%sServiceInterface\n", fieldName, d.Name)
+	s = strings.Replace(s, "}\n\n// NewResolver", fieldLine+"}\n\n// NewResolver", 1)
+
+	// Update NewResolver signature — add parameter
+	paramName := d.LowerName + "Service"
+	// Find current params and add new one
+	oldSig := "func NewResolver("
+	sigStart := strings.Index(s, oldSig)
+	if sigStart == -1 {
+		return fmt.Errorf("could not find NewResolver signature")
+	}
+	sigEnd := strings.Index(s[sigStart:], ")")
+	currentParams := s[sigStart+len(oldSig) : sigStart+sigEnd]
+
+	newParam := fmt.Sprintf("%s svcInterfaces.%sServiceInterface", paramName, d.Name)
+	newParams := currentParams + ", " + newParam
+	s = s[:sigStart+len(oldSig)] + newParams + s[sigStart+sigEnd:]
+
+	// Add field assignment in constructor body
+	oldAssign := "return &Resolver{"
+	retIdx := strings.Index(s, oldAssign)
+	if retIdx == -1 {
+		return fmt.Errorf("could not find Resolver constructor body")
+	}
+	closingBrace := strings.Index(s[retIdx:], "}")
+	beforeClose := s[:retIdx+closingBrace]
+	afterClose := s[retIdx+closingBrace:]
+	s = beforeClose + ", " + fieldName + ": " + paramName + afterClose
+
+	fmt.Printf("  patch: %s\n", path)
+	return os.WriteFile(path, []byte(s), 0644)
+}
+
+func patchRouteConfig(d scaffoldData) error {
+	path := "app/rest/routes/index.routes.go"
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	s := string(content)
+
+	controllerField := d.Name + "Controller"
+	if strings.Contains(s, controllerField) {
+		fmt.Printf("  skip (already wired): %s\n", path)
+		return nil
+	}
+
+	// Add field to RouteConfig
+	s = strings.Replace(s,
+		"\tHealthController *controllers.HealthController",
+		fmt.Sprintf("\t%s *controllers.%sController\n\tHealthController *controllers.HealthController", controllerField, d.Name),
+		1)
+
+	// Add route registration before return
+	routeCall := fmt.Sprintf("\t%sRoutes(api, config.%s)\n", d.Name, controllerField)
+	s = strings.Replace(s, "\n\treturn r", routeCall+"\n\treturn r", 1)
+
+	fmt.Printf("  patch: %s\n", path)
+	return os.WriteFile(path, []byte(s), 0644)
+}
+
+func patchServeFile(d scaffoldData) error {
+	path := "cmd/serve.go"
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	s := string(content)
+
+	controllerField := d.Name + "Controller"
+	if strings.Contains(s, controllerField) {
+		fmt.Printf("  skip (already wired): %s\n", path)
+		return nil
+	}
+
+	// Add to RouteConfig
+	s = strings.Replace(s,
+		"HealthController: healthController,",
+		fmt.Sprintf("%s:   container.%s,\n\t\tHealthController: healthController,", controllerField, controllerField),
+		1)
+
+	fmt.Printf("  patch: %s\n", path)
+	return os.WriteFile(path, []byte(s), 0644)
+}
+
+// --- Run external tools ---
+
+func runWire(d scaffoldData) error {
+	fmt.Println("  running: go tool wire ./app/di/")
+	cmd := exec.Command("go", "tool", "wire", "./app/di/")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+func runGqlgen(d scaffoldData) error {
+	fmt.Println("  running: go tool gqlgen generate")
+	cmd := exec.Command("go", "tool", "gqlgen", "generate")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
 }
 
 // --- File writer helper ---
@@ -306,13 +451,13 @@ func writeTemplate(path, name, tmpl string, data scaffoldData) error {
 		fmt.Printf("  skip (exists): %s\n", path)
 		return nil
 	}
-	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
 		return err
 	}
-
 	funcMap := template.FuncMap{
 		"timestamp": func() string { return time.Now().Format(time.RFC3339) },
+		"lbrace":    func() string { return "{" },
+		"rbrace":    func() string { return "}" },
 	}
 	t, err := template.New(name).Funcs(funcMap).Parse(tmpl)
 	if err != nil {
@@ -370,10 +515,7 @@ func toSnakeCase(s string) string {
 // ============================================================================
 
 func genModel(d scaffoldData) error {
-	return writeTemplate(
-		fmt.Sprintf("app/models/%s.model.go", d.SnakeName),
-		"model", tplModel, d,
-	)
+	return writeTemplate(fmt.Sprintf("app/models/%s.model.go", d.SnakeName), "model", tplModel, d)
 }
 
 var tplModel = `package models
@@ -388,10 +530,7 @@ type {{.Name}} struct {
 `
 
 func genRepoInterface(d scaffoldData) error {
-	return writeTemplate(
-		fmt.Sprintf("app/repositories/interfaces/%s_repository.go", d.SnakeName),
-		"repo_iface", tplRepoInterface, d,
-	)
+	return writeTemplate(fmt.Sprintf("app/repositories/interfaces/%s_repository.go", d.SnakeName), "repo_iface", tplRepoInterface, d)
 }
 
 var tplRepoInterface = `package interfaces
@@ -403,7 +542,6 @@ import (
 	"github.com/healtronlabs/gofasta/app/models"
 )
 
-// {{.Name}}RepositoryInterface defines the contract for {{.LowerName}} data access.
 type {{.Name}}RepositoryInterface interface {
 	FindAll(ctx context.Context, page, limit int, sort string) ([]*models.{{.Name}}, int64, error)
 	FindByID(ctx context.Context, id uuid.UUID) (*models.{{.Name}}, error)
@@ -415,10 +553,7 @@ type {{.Name}}RepositoryInterface interface {
 `
 
 func genRepo(d scaffoldData) error {
-	return writeTemplate(
-		fmt.Sprintf("app/repositories/%s.repository.go", d.SnakeName),
-		"repo", tplRepo, d,
-	)
+	return writeTemplate(fmt.Sprintf("app/repositories/%s.repository.go", d.SnakeName), "repo", tplRepo, d)
 }
 
 var tplRepo = `package repositories
@@ -489,10 +624,7 @@ func (r *{{.Name}}Repository) SoftDelete(ctx context.Context, id uuid.UUID) erro
 `
 
 func genSvcInterface(d scaffoldData) error {
-	return writeTemplate(
-		fmt.Sprintf("app/services/interfaces/%s_service.go", d.SnakeName),
-		"svc_iface", tplSvcInterface, d,
-	)
+	return writeTemplate(fmt.Sprintf("app/services/interfaces/%s_service.go", d.SnakeName), "svc_iface", tplSvcInterface, d)
 }
 
 var tplSvcInterface = `package interfaces
@@ -503,7 +635,6 @@ import (
 	"github.com/healtronlabs/gofasta/app/dtos"
 )
 
-// {{.Name}}ServiceInterface defines the contract for {{.LowerName}} business logic.
 type {{.Name}}ServiceInterface interface {
 	FindAll(ctx context.Context, filters dtos.{{.Name}}FiltersDto) (*dtos.T{{.PluralName}}ResponseDto, error)
 	FindByID(ctx context.Context, input dtos.TFind{{.Name}}ByIDDto) (*dtos.T{{.Name}}ResponseDto, error)
@@ -514,10 +645,7 @@ type {{.Name}}ServiceInterface interface {
 `
 
 func genSvc(d scaffoldData) error {
-	return writeTemplate(
-		fmt.Sprintf("app/services/%s.service.go", d.SnakeName),
-		"svc", tplSvc, d,
-	)
+	return writeTemplate(fmt.Sprintf("app/services/%s.service.go", d.SnakeName), "svc", tplSvc, d)
 }
 
 var tplSvc = `package services
@@ -552,16 +680,15 @@ func (s *{{.Name}}Service) FindAll(ctx context.Context, filters dtos.{{.Name}}Fi
 	paginator := utils.PreparePaginating{PageFilters: filters.Pagination, Sorting: filters.Sorting}
 	page := paginator.GetPage()
 	limit := paginator.GetLimit()
-	sort := paginator.GetSort()
 
-	entities, totalCount, err := s.{{.Name}}Repo.FindAll(ctx, page, limit, sort)
+	entities, totalCount, err := s.{{.Name}}Repo.FindAll(ctx, page, limit, paginator.GetSort())
 	if err != nil {
 		return nil, err
 	}
 
 	var items []*dtos.{{.Name}}
 	for _, e := range entities {
-		items = append(items, cast{{.Name}}ModelToDto(e))
+		items = append(items, cast{{.Name}}ToDto(e))
 	}
 
 	totalRecords := int(totalCount)
@@ -569,10 +696,8 @@ func (s *{{.Name}}Service) FindAll(ctx context.Context, filters dtos.{{.Name}}Fi
 	return &dtos.T{{.PluralName}}ResponseDto{
 		Data: items,
 		Pagination: &dtos.TPaginationObjectDto{
-			TotalRecords:   &totalRecords,
-			CurrentPage:    &page,
-			RecordsPerPage: &limit,
-			TotalPages:     &totalPages,
+			TotalRecords: &totalRecords, CurrentPage: &page,
+			RecordsPerPage: &limit, TotalPages: &totalPages,
 		},
 	}, nil
 }
@@ -585,7 +710,7 @@ func (s *{{.Name}}Service) FindByID(ctx context.Context, input dtos.TFind{{.Name
 	if err != nil {
 		return nil, err
 	}
-	return &dtos.T{{.Name}}ResponseDto{Data: cast{{.Name}}ModelToDto(entity)}, nil
+	return &dtos.T{{.Name}}ResponseDto{Data: cast{{.Name}}ToDto(entity)}, nil
 }
 
 func (s *{{.Name}}Service) Create(ctx context.Context, input dtos.TCreate{{.Name}}Dto) (*dtos.T{{.Name}}ResponseDto, error) {
@@ -593,12 +718,12 @@ func (s *{{.Name}}Service) Create(ctx context.Context, input dtos.TCreate{{.Name
 		return &dtos.T{{.Name}}ResponseDto{Errors: errs}, nil
 	}
 	entity := &models.{{.Name}}{
-		// TODO: Map input fields to model
+		// TODO: Map input fields to model fields
 	}
 	if err := s.{{.Name}}Repo.Create(ctx, entity); err != nil {
 		return nil, err
 	}
-	return &dtos.T{{.Name}}ResponseDto{Data: cast{{.Name}}ModelToDto(entity)}, nil
+	return &dtos.T{{.Name}}ResponseDto{Data: cast{{.Name}}ToDto(entity)}, nil
 }
 
 func (s *{{.Name}}Service) Update(ctx context.Context, input dtos.TUpdate{{.Name}}Dto) (*dtos.T{{.Name}}ResponseDto, error) {
@@ -607,7 +732,7 @@ func (s *{{.Name}}Service) Update(ctx context.Context, input dtos.TUpdate{{.Name
 	}
 	if found, _ := s.{{.Name}}Repo.FindByIDAndRecordVersion(ctx, input.ID, input.RecordVersion); found == nil {
 		fieldName := "recordVersion"
-		return &dtos.T{{.Name}}ResponseDto{Errors: []*dtos.TCommonAPIErrorDto{{"{"}}FieldName: &fieldName, Message: "The record version you passed is not matching"{{"}"}}}, nil
+		return &dtos.T{{.Name}}ResponseDto{Errors: []*dtos.TCommonAPIErrorDto{{lbrace}}{{lbrace}}FieldName: &fieldName, Message: "The record version you passed is not matching"{{rbrace}}{{rbrace}}}, nil
 	}
 	fields := utils.ConvertStructToMap(input)
 	if err := s.{{.Name}}Repo.Update(ctx, input.ID, fields); err != nil {
@@ -617,7 +742,7 @@ func (s *{{.Name}}Service) Update(ctx context.Context, input dtos.TUpdate{{.Name
 	if err != nil {
 		return nil, err
 	}
-	return &dtos.T{{.Name}}ResponseDto{Data: cast{{.Name}}ModelToDto(updated)}, nil
+	return &dtos.T{{.Name}}ResponseDto{Data: cast{{.Name}}ToDto(updated)}, nil
 }
 
 func (s *{{.Name}}Service) Archive(ctx context.Context, input dtos.TArchive{{.Name}}Dto) (*dtos.TCommonResponseDto, error) {
@@ -632,25 +757,19 @@ func (s *{{.Name}}Service) Archive(ctx context.Context, input dtos.TArchive{{.Na
 	return &dtos.TCommonResponseDto{Status: status, Message: &message}, nil
 }
 
-func cast{{.Name}}ModelToDto(e *models.{{.Name}}) *dtos.{{.Name}} {
+func cast{{.Name}}ToDto(e *models.{{.Name}}) *dtos.{{.Name}} {
 	return &dtos.{{.Name}}{
-		ID:            e.ID,
-		RecordVersion: e.RecordVersion,
-		CreatedAt:     e.CreatedAt,
-		UpdatedAt:     e.UpdatedAt,
-		IsActive:      e.IsActive,
-		IsDeletable:   e.IsDeletable,
-		DeletedAt:     &e.DeletedAt,
-		// TODO: Map model fields to DTO
+		ID: e.ID, RecordVersion: e.RecordVersion,
+		CreatedAt: e.CreatedAt, UpdatedAt: e.UpdatedAt,
+		IsActive: e.IsActive, IsDeletable: e.IsDeletable,
+		DeletedAt: &e.DeletedAt,
+		// TODO: Map remaining model fields to DTO fields
 	}
 }
 `
 
 func genController(d scaffoldData) error {
-	return writeTemplate(
-		fmt.Sprintf("app/rest/controllers/%s.controller.go", d.SnakeName),
-		"controller", tplController, d,
-	)
+	return writeTemplate(fmt.Sprintf("app/rest/controllers/%s.controller.go", d.SnakeName), "controller", tplController, d)
 }
 
 var tplController = `package controllers
@@ -742,10 +861,7 @@ func (c *{{.Name}}Controller) Archive(w http.ResponseWriter, r *http.Request) er
 `
 
 func genRoutes(d scaffoldData) error {
-	return writeTemplate(
-		fmt.Sprintf("app/rest/routes/%s.routes.go", d.SnakeName),
-		"routes", tplRoutes, d,
-	)
+	return writeTemplate(fmt.Sprintf("app/rest/routes/%s.routes.go", d.SnakeName), "routes", tplRoutes, d)
 }
 
 var tplRoutes = `package routes
@@ -766,10 +882,7 @@ func {{.Name}}Routes(r *mux.Router, c *controllers.{{.Name}}Controller) {
 `
 
 func genDTOs(d scaffoldData) error {
-	return writeTemplate(
-		fmt.Sprintf("app/dtos/%s.dtos.go", d.SnakeName),
-		"dtos", tplDTOs, d,
-	)
+	return writeTemplate(fmt.Sprintf("app/dtos/%s.dtos.go", d.SnakeName), "dtos", tplDTOs, d)
 }
 
 var tplDTOs = `package dtos
@@ -779,8 +892,6 @@ import (
 
 	"github.com/google/uuid"
 )
-
-// --- Response DTO (output) ---
 
 type {{.Name}} struct {
 	ID            uuid.UUID  ` + "`" + `json:"id"` + "`" + `
@@ -801,11 +912,9 @@ type T{{.Name}}ResponseDto struct {
 }
 
 type T{{.PluralName}}ResponseDto struct {
-	Data       []*{{.Name}}            ` + "`" + `json:"data"` + "`" + `
-	Pagination *TPaginationObjectDto   ` + "`" + `json:"pagination"` + "`" + `
+	Data       []*{{.Name}}          ` + "`" + `json:"data"` + "`" + `
+	Pagination *TPaginationObjectDto ` + "`" + `json:"pagination"` + "`" + `
 }
-
-// --- Input DTOs ---
 
 type TCreate{{.Name}}Dto struct {
 {{- range .Fields}}
@@ -836,15 +945,10 @@ type {{.Name}}FiltersDto struct {
 `
 
 func genGraphQL(d scaffoldData) error {
-	return writeTemplate(
-		fmt.Sprintf("app/graphql/schema/%s.gql", d.SnakeName),
-		"graphql", tplGraphQL, d,
-	)
+	return writeTemplate(fmt.Sprintf("app/graphql/schema/%s.gql", d.SnakeName), "graphql", tplGraphQL, d)
 }
 
-var tplGraphQL = `# {{.Name}} GraphQL schema
-
-type {{.Name}} {
+var tplGraphQL = `type {{.Name}} {
   id: ID!
   recordVersion: Int!
   createdAt: DateTime!
@@ -907,10 +1011,7 @@ input {{.Name}}FiltersInput {
 `
 
 func genWireProvider(d scaffoldData) error {
-	return writeTemplate(
-		fmt.Sprintf("app/di/providers/%s.go", d.SnakeName),
-		"wire_provider", tplWireProvider, d,
-	)
+	return writeTemplate(fmt.Sprintf("app/di/providers/%s.go", d.SnakeName), "wire_provider", tplWireProvider, d)
 }
 
 var tplWireProvider = `package providers
@@ -924,7 +1025,6 @@ import (
 	svcInterfaces "github.com/healtronlabs/gofasta/app/services/interfaces"
 )
 
-// {{.Name}}Set provides {{.LowerName}} domain: repository, service, controller.
 var {{.Name}}Set = wire.NewSet(
 	repositories.New{{.Name}}Repository,
 	wire.Bind(new(repoInterfaces.{{.Name}}RepositoryInterface), new(*repositories.{{.Name}}Repository)),
@@ -935,16 +1035,15 @@ var {{.Name}}Set = wire.NewSet(
 `
 
 func genMigration(d scaffoldData) error {
-	upPath := fmt.Sprintf("db/migrations/%s_create_%s.up.sql", d.MigrationNum, d.PluralSnake)
-	downPath := fmt.Sprintf("db/migrations/%s_create_%s.down.sql", d.MigrationNum, d.PluralSnake)
-
-	if err := writeTemplate(upPath, "migration_up", tplMigrationUp, d); err != nil {
+	up := fmt.Sprintf("db/migrations/%s_create_%s.up.sql", d.MigrationNum, d.PluralSnake)
+	down := fmt.Sprintf("db/migrations/%s_create_%s.down.sql", d.MigrationNum, d.PluralSnake)
+	if err := writeTemplate(up, "mig_up", tplMigUp, d); err != nil {
 		return err
 	}
-	return writeTemplate(downPath, "migration_down", tplMigrationDown, d)
+	return writeTemplate(down, "mig_down", tplMigDown, d)
 }
 
-var tplMigrationUp = `CREATE TABLE IF NOT EXISTS {{.PluralSnake}} (
+var tplMigUp = `CREATE TABLE IF NOT EXISTS {{.PluralSnake}} (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 {{- range .Fields}}
     {{.SnakeName}} {{.SQLType}},
@@ -966,7 +1065,7 @@ CREATE TRIGGER increment_{{.PluralSnake}}_record_version
     FOR EACH ROW EXECUTE FUNCTION increment_record_version();
 `
 
-var tplMigrationDown = `DROP TRIGGER IF EXISTS increment_{{.PluralSnake}}_record_version ON {{.PluralSnake}};
+var tplMigDown = `DROP TRIGGER IF EXISTS increment_{{.PluralSnake}}_record_version ON {{.PluralSnake}};
 DROP TRIGGER IF EXISTS update_{{.PluralSnake}}_updated_at ON {{.PluralSnake}};
 DROP TABLE IF EXISTS {{.PluralSnake}};
 `
