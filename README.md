@@ -1,245 +1,154 @@
-# Gofasta Repo
-## Motivation
-In the evolving landscape of web development, GraphQL has emerged as a powerful alternative to REST APIs, offering more flexibility and efficiency in querying data. However, many existing Golang packages and templates are primarily focused on REST APIs, with limited support for integrating GraphQL functionalities, especially when using gqlgen.
+# Gofasta
 
-Recognizing this gap, the gofasta project was created to streamline the development of GraphQL APIs in Golang. Our goal is to provide a robust, full-featured template that simplifies the setup and configuration of a GraphQL server, enabling developers to focus on building and optimizing their applications rather than wrestling with boilerplate code.
+Gofasta is a Go library that provides production-ready building blocks for backend services. It handles the infrastructure plumbing — authentication, caching, database setup, email, logging, middleware, and more — so you can focus on writing business logic.
 
-This template includes pre-configured packages and best practices tailored specifically for GraphQL development. Once the server is up and running, the API will be accessible at the /graphql endpoint, providing a solid foundation for building scalable and efficient GraphQL services.
+This repo is the **library** that your project imports. To create a new project, use the [Gofasta CLI](https://github.com/gofastadev/cli).
 
-By leveraging this template, developers can accelerate their project setup, maintain high code quality, and integrate GraphQL seamlessly into their Golang applications.
+## Quick Start
 
-## Folder structure
-```go
-├── app
-│   ├── cmd
-│   │   ├── db-init.go
-│   │   ├── main.go
-│   │   └── server.go
-│   ├── dtos
-│   │   ├── common.dtos.go
-│   │   ├── generated-types.dtos.go
-│   │   └── user.dtos.go
-│   ├── graphql
-│   │   ├── resolvers
-│   │   │   │   ├── resolver.go
-│   │   │   │   ├── server.health.resolvers.go
-│   │   │   │   └── user.resolvers.go
-│   │   ├── schema
-│   │   │   ├── common.gql
-│   │   │   │   ├── server.health.gql
-│   │   │   │   └── user.gql
-│   ├── models
-│   │   ├── base.model.go
-│   │   └── user.model.go
-│   ├── rest
-│   │   ├── controllers
-│   │   │   ├── controller.go
-│   │   │   └── user.controller.go
-│   │   ├── routes
-│   │   │   ├── index.routes.go
-│   │   │   └── user.routes.go
-│   ├── services
-│   │   └── user.service.go
-│   ├── utils
-│   │   ├── build-search-query.go
-│   │   ├── convert-struct-to-map.go
-│   │   ├── paginator.go
-│   │   ├── random-password.go
-│   │   ├── string.go
-│   │   └── validator.go
-│   ├── validators
-│   │   ├── common.validators.go
-│   │   ├── custom-messages.validators.go
-│   │   ├── register.validators.go
-│   │   ├── user.validators.go
-│   │   ├── validate-input.go
-│   │   ├── validator.utils.go
-│   │   └── generated.go
-├── configs
-│   └── database.go
-├── db
-│   ├── migrations
-│   │   ├── 000001_create_citext_extension.down.sql
-│   │   ├── 000001_create_citext_extension.up.sql
-│   │   ├── 000002_create_function_to_update_updated_at_column.down.sql
-│   │   ├── 000002_create_function_to_update_updated_at_column.up.sql
-│   │   ├── 000003_create_function_to_avoid_duplicate_records.down.sql
-│   │   ├── 000003_create_function_to_avoid_duplicate_records.up.sql
-│   │   ├── 000004_increment_record_version.down.sql
-│   │   ├── 000004_increment_record_version.up.sql
-│   │   ├── 000005_create_users.down.sql
-│   │   └── 000005_create_users.up.sql
-├── deployments
-│   ├── dev
-│   │   ├── app
-│   │   │   ├── dev_entrypoint.sh
-│   │   │   ├── dockerfile
-│   │   │   └── wait-for-it.sh
-│   │   ├── db
-│   │   │   └── dockerfile
-│   ├── production
-│   │   ├── app
-│   │   │   ├── compose-production.yml
-│   │   │   ├── deploy-production.sh
-│   │   │   ├── dockerfile
-│   │   │   ├── gofasta-production-process.sh
-│   │   │   ├── production_entrypoint.sh
-│   │   │   └── wait-for-it.sh
-│   │   ├── db
-│   │   │   ├── compose-production.yml
-│   │   │   ├── dockerfile
-│   │   │   └── gofasta-production-postgresql-db-process.sh
-│   │   ├── server
-│   │   │   ├── proxy-reverse-config
-│   │   │   │   ├── gofasta-qa.ironji.com.conf
-│   │   │   │   ├── .gitkeep
-│   │   │   │   └── .gitkeep
-│   ├── qa
-│   │   ├── app
-│   │   │   ├── compose-qa.yml
-│   │   │   ├── deploy-qa.sh
-│   │   │   ├── dockerfile
-│   │   │   ├── gofasta-qa-process.sh
-│   │   │   ├── qa_entrypoint.sh
-│   │   │   └── wait-for-it.sh
-│   │   ├── db
-│   │   │   ├── compose-qa.yml
-│   │   │   ├── dockerfile
-│   │   │   └── gofasta-qa-postgresql-db-process.sh
-│   │   ├── server
-│   │   │   ├── proxy-reverse-config
-│   │   │   │   ├── gofasta-qa.ironji.com.conf
-│   │   │   │   ├── .gitkeep
-│   │   │   │   └── .gitkeep
-├── scripts
-│   ├── connect-to-api.sh
-│   ├── connect-to-db.sh
-│   ├── generate-migration.sh
-│   ├── migrate-down.sh
-│   └── migrate-up.sh
-├── tmp
-│   ├── build-errors.log
-├── .air.toml
-├── .env
-├── .env.sample
-├── .gitignore
-├── compose-dev.yml
-├── go.mod
-├── go.sum
-├── gqlgen.yml
-├── README.md
-├── start.sh
-└── tools.go
+```bash
+# Install the CLI tool
+go install github.com/gofastadev/cli/cmd/gofasta@latest
+
+# Create a new project
+gofasta new myapp
+cd myapp
+
+# Start developing
+make dev
 ```
 
-### Directory and File Descriptions
+Your project's `go.mod` will contain:
 
- `app/`
+```
+require github.com/gofastadev/gofasta v0.1.0
+```
 
-Contains the core application code.
+You then import packages like this in your code:
 
-- ``: Contains the entry point files for the application.
+```go
+import (
+    "github.com/gofastadev/gofasta/pkg/config"
+    "github.com/gofastadev/gofasta/pkg/middleware"
+    "github.com/gofastadev/gofasta/pkg/errors"
+)
+```
 
-  - `db-init.go`: Initialization script for the database.
-  - `main.go`: Main entry point of the application.
-  - `server.go`: Server configuration and startup code.
+## What's in the Box
 
-- ``: GraphQL schema and data transfer objects (DTOs).
+Every package lives under `pkg/`. Here's what each one does:
 
-  - ``:
-    - `common.dtos.go`: Common data transfer objects.
-    - `generated-types.dtos.go`: Auto-generated types for GraphQL.
-    - `user.dtos.go`: User-related data transfer objects.
-  - `common.gql`: Common GraphQL schema.
-  - `server.health.gql`: Server health check schema.
-  - `user.gql`: User-related GraphQL schema.
+### Core Infrastructure
 
-- ``: Database models.
+| Package | What it does |
+|---------|-------------|
+| `pkg/config` | Loads configuration from `config.yaml` and environment variables. Provides `LoadConfig()` to get an `AppConfig` struct with all settings, and `SetupDB()` to create a database connection. Supports Postgres, MySQL, SQLite, SQL Server, and ClickHouse. |
+| `pkg/logger` | Creates a structured logger using Go's `slog` package. Configurable output format (text or JSON) and log level. |
+| `pkg/errors` | Defines application error types (`NotFound`, `BadRequest`, `Conflict`, `Internal`, etc.) and maps them to HTTP status codes. Also provides a GraphQL error presenter that formats errors for GraphQL responses. |
+| `pkg/models` | Provides `BaseModelImpl` — a struct you embed in your domain models to get standard fields: `ID` (UUID), `CreatedAt`, `UpdatedAt`, `DeletedAt`, `RecordVersion`, `IsActive`, `IsDeletable`. Includes a GORM `BeforeCreate` hook that auto-generates UUIDs and timestamps. |
+| `pkg/types` | Common DTO (Data Transfer Object) types used across projects: `TPaginationInputDto`, `TSortingInputDto`, `TPaginationObjectDto`, `TCommonAPIErrorDto`, `TCommonResponseDto`, and the `SortOrientation` enum. |
 
-  - `base.model.go`: Base model definitions.
-  - `user.model.go`: User model definitions.
+### HTTP & API
 
-- ``: GraphQL resolvers.
+| Package | What it does |
+|---------|-------------|
+| `pkg/httputil` | Three helpers for HTTP handlers: `Bind()` parses and validates request bodies, `Handle()` wraps handler functions that return errors into standard `http.Handler`, and `OK()`/`Created()`/`JSON()` write JSON responses. |
+| `pkg/middleware` | A collection of HTTP middleware: request logging, panic recovery, CORS, security headers (HSTS, CSP, X-Frame-Options), rate limiting, request ID generation, and content-type validation. Compose them with `middleware.Chain()`. |
+| `pkg/health` | A health check controller with three endpoints: `/health` (basic liveness), `/health/live` (process alive), `/health/ready` (checks database and cache connectivity). |
 
-  - `resolver.go`: Main resolver file.
-  - `server.health.resolvers.go`: Resolvers for server health checks.
-  - `user.resolvers.go`: User-related resolvers.
+### Authentication & Security
 
-- ``: Service layer for business logic.
+| Package | What it does |
+|---------|-------------|
+| `pkg/auth` | JWT token management (generate, validate, refresh) and RBAC (Role-Based Access Control) using Casbin. Includes middleware for extracting JWT from requests and enforcing role-based permissions. |
+| `pkg/encryption` | AES-256-GCM encryption and decryption for sensitive data at rest. |
+| `pkg/session` | Server-side session management wrapping gorilla/sessions. Supports cookie-based and filesystem-based session stores. |
 
-  - `user.service.go`: User-related business logic.
+### Data & Storage
 
-- ``: Utility functions and helpers.
+| Package | What it does |
+|---------|-------------|
+| `pkg/cache` | A caching interface with two implementations: in-memory and Redis. Methods: `Get`, `Set`, `Delete`, `Flush`, `Ping`. |
+| `pkg/storage` | File storage abstraction with two backends: local filesystem and S3-compatible storage (AWS S3, MinIO, etc.). Methods: `Upload`, `Download`, `Delete`, `URL`. |
+| `pkg/seeds` | A seeder registry for populating databases with test/development data. Call `Register()` to add seed functions and `RunAll()` to execute them. |
 
-  - `build-search-query.go`: Functions for building search queries.
-  - `convert-struct-to-map.go`: Functions for converting structs to maps.
-  - `paginator.go`: Pagination utility.
-  - `random-password.go`: Random password generator.
-  - `string.go`: String manipulation utilities.
-  - `validator.go`: Validation utilities.
+### Communication
 
-- ``: Auto-generated code, created by `gqlgen` by running:
+| Package | What it does |
+|---------|-------------|
+| `pkg/mailer` | Email sending with three providers: SMTP, SendGrid, and Brevo (Sendinblue). Includes a template renderer that processes Go HTML templates for email bodies. |
+| `pkg/notify` | A notification system that sends messages through multiple channels: email, SMS (Twilio), Slack, and database (stores notifications in a table). |
+| `pkg/websocket` | WebSocket support with a hub that manages connections, rooms, and message broadcasting. |
 
-  ```sh
-  go run github.com/99designs/gqlgen generate
-  ```
+### Background Processing
 
-  Run this command whenever modifying any `.gql` files in `graphql/`.
+| Package | What it does |
+|---------|-------------|
+| `pkg/scheduler` | Cron job scheduling using robfig/cron. Register jobs with cron expressions (6-field format with seconds). |
+| `pkg/queue` | Async task queue backed by Redis using hibiken/asynq. Enqueue tasks for background processing with configurable concurrency. |
+| `pkg/resilience` | Retry policies with exponential backoff using failsafe-go. Wrap unreliable operations with automatic retry logic. |
 
-#### `configs/`
+### Validation & i18n
 
-Configuration files.
+| Package | What it does |
+|---------|-------------|
+| `pkg/validators` | Input validation framework wrapping go-playground/validator. Provides `AppValidator` with `ValidateStruct()` that returns structured error DTOs. Includes common validators: UUID validation, record existence checks, URL validation, and record deletability checks. Projects register their own custom validators on top. |
+| `pkg/i18n` | Internationalization using go-i18n. Loads translation files from a `locales/` directory and translates messages based on the request's language. |
 
-- `database.go`: Database configuration.
+### Observability
 
-#### `db/`
+| Package | What it does |
+|---------|-------------|
+| `pkg/observability` | Prometheus metrics (request count, duration, in-flight requests) exposed at `/metrics`, and distributed tracing with OpenTelemetry. Both available as HTTP middleware. |
+| `pkg/featureflag` | Feature flag management using go-feature-flag. Evaluate flags for gradual rollouts and A/B testing. |
 
-Database-related files.
+### Testing
 
-- ``: Database migration files.
-  - `000001_create_function_to_update_updated_at_column.down.sql`: Down migration for updating `updated_at` column function.
-  - `000001_create_function_to_update_updated_at_column.up.sql`: Up migration for updating `updated_at` column function.
-  - `000002_create_users.down.sql`: Down migration for creating users table.
-  - `000002_create_users.up.sql`: Up migration for creating users table.
+| Package | What it does |
+|---------|-------------|
+| `pkg/testutil/testdb` | Spins up a PostgreSQL container using testcontainers-go for integration tests. Call `SetupTestDB(t)` in your test and get a real `*gorm.DB` — the container is automatically cleaned up when the test finishes. |
 
-#### `deployments/`
+## Architecture
 
-Deployment-related files.
+This library follows a convention: every package is self-contained and exposes a clear interface. Your project imports only what it needs.
 
-- ``: Development environment configurations.
-  - ``:
-    - `dev_entrypoint.sh`: Development entry point script.
-    - `dockerfile`: Dockerfile for the app.
-    - `wait-for-it.sh`: Script to wait for dependencies to be ready.
-  - ``:
-    - `dockerfile`: Dockerfile for the database.
-- ``: Production environment configurations.
-- ``: QA environment configurations.
+```
+Your Project (myapp/)
+    │
+    ├── imports pkg/config      → loads config.yaml
+    ├── imports pkg/middleware   → wraps your HTTP server
+    ├── imports pkg/auth        → JWT + RBAC
+    ├── imports pkg/models      → base model for your domain entities
+    ├── imports pkg/errors      → structured error handling
+    └── ... any other pkg/ you need
+```
 
-#### `scripts/`
+The library never imports your project code — the dependency flows one way.
 
-Helper scripts for common tasks.
+## Database Support
 
-- `connect-to-api.sh`: Script to connect to the API container.
-- `connect-to-db.sh`: Script to connect to the database container.
-- `generate-migration.sh`: Script to generate database migrations.
-- `migrate-down.sh`: Script to migrate the database down.
-- `migrate-up.sh`: Script to migrate the database up.
+The `pkg/config` package supports five database drivers through GORM:
 
-#### `tmp/`
+| Driver | Config value | Notes |
+|--------|-------------|-------|
+| PostgreSQL | `postgres` | Default. Full feature support including CITEXT. |
+| MySQL | `mysql` | UTF-8, timezone-aware. |
+| SQLite | `sqlite` | File-based or `:memory:`. No connection pooling. |
+| SQL Server | `sqlserver` | Microsoft SQL Server. |
+| ClickHouse | `clickhouse` | Column-oriented, for analytics workloads. |
 
-Temporary files.
+Set the driver in `config.yaml`:
 
-### Root Files
+```yaml
+database:
+  driver: postgres
+  host: localhost
+  port: "5432"
+  user: myapp
+  password: myapp
+  name: myapp_dev
+```
 
-- `.air.toml`: Air configuration for live reloading.
-- `.env`: Environment variables.
-- `.gitignore`: Git ignore file.
-- `compose-dev.yml`: Docker Compose file for development.
-- `go.mod`: Go modules file.
-- `go.sum`: Go modules checksum file.
-- `gqlgen.yml`: gqlgen configuration file.
-- `README.md`: Project readme file.
-- `start.sh`: Script to start the application.
-- `tools.go`: Tools for the project.
+## License
 
+MIT
