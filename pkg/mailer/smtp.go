@@ -13,19 +13,19 @@ import (
 	"net/textproto"
 	"strings"
 
-	"github.com/gofastadev/gofasta/configs"
+	"github.com/gofastadev/gofasta/pkg/config"
 )
 
 // SMTPSender sends emails via SMTP with optional STARTTLS.
 type SMTPSender struct {
-	cfg      configs.SMTPConfig
+	cfg      config.SMTPConfig
 	from     string
 	fromName string
 	renderer *TemplateRenderer
 	logger   *slog.Logger
 }
 
-func NewSMTPSender(cfg configs.SMTPConfig, fromName, fromAddress string, renderer *TemplateRenderer, logger *slog.Logger) *SMTPSender {
+func NewSMTPSender(cfg config.SMTPConfig, fromName, fromAddress string, renderer *TemplateRenderer, logger *slog.Logger) *SMTPSender {
 	return &SMTPSender{
 		cfg:      cfg,
 		from:     fromAddress,

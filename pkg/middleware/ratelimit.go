@@ -4,14 +4,14 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gofastadev/gofasta/configs"
+	"github.com/gofastadev/gofasta/pkg/config"
 	"github.com/ulule/limiter/v3"
 	mw "github.com/ulule/limiter/v3/drivers/middleware/stdlib"
 	"github.com/ulule/limiter/v3/drivers/store/memory"
 )
 
 // RateLimit creates a rate limiting middleware from config.
-func RateLimit(cfg configs.RateLimitConfig) Middleware {
+func RateLimit(cfg config.RateLimitConfig) Middleware {
 	rate, err := limiter.NewRateFromFormatted(cfg.Rate)
 	if err != nil {
 		// Fallback: 100 requests per second

@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/gofastadev/gofasta/configs"
+	"github.com/gofastadev/gofasta/pkg/config"
 	"github.com/hibiken/asynq"
 )
 
@@ -15,7 +15,7 @@ type AsynqQueue struct {
 	mux    *asynq.ServeMux
 }
 
-func NewAsynqQueue(cfg *configs.QueueConfig) (*AsynqQueue, error) {
+func NewAsynqQueue(cfg *config.QueueConfig) (*AsynqQueue, error) {
 	redisOpt := asynq.RedisClientOpt{
 		Addr:     fmt.Sprintf("%s:%s", cfg.Redis.Host, cfg.Redis.Port),
 		Password: cfg.Redis.Password,

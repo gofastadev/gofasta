@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/gofastadev/gofasta/configs"
+	"github.com/gofastadev/gofasta/pkg/config"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
@@ -16,7 +16,7 @@ type S3Storage struct {
 	bucket string
 }
 
-func NewS3Storage(cfg configs.S3Config) (*S3Storage, error) {
+func NewS3Storage(cfg config.S3Config) (*S3Storage, error) {
 	client, err := minio.New(cfg.Endpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(cfg.AccessKey, cfg.SecretKey, ""),
 		Secure: cfg.UseSSL,

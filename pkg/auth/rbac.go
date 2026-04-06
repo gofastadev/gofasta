@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/casbin/casbin/v2"
-	"github.com/gofastadev/gofasta/configs"
+	"github.com/gofastadev/gofasta/pkg/config"
 )
 
 // RBACService wraps Casbin for role-based access control.
@@ -12,7 +12,7 @@ type RBACService struct {
 	enforcer *casbin.Enforcer
 }
 
-func NewRBACService(cfg *configs.AuthConfig) (*RBACService, error) {
+func NewRBACService(cfg *config.AuthConfig) (*RBACService, error) {
 	enforcer, err := casbin.NewEnforcer(cfg.RBACModelPath, cfg.RBACPolicyPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize RBAC: %w", err)

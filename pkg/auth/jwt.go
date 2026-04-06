@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/gofastadev/gofasta/configs"
+	"github.com/gofastadev/gofasta/pkg/config"
 )
 
 // JWTService handles token generation and validation.
@@ -15,7 +15,7 @@ type JWTService struct {
 	refreshExpiry time.Duration
 }
 
-func NewJWTService(cfg *configs.AuthConfig) *JWTService {
+func NewJWTService(cfg *config.AuthConfig) *JWTService {
 	return &JWTService{
 		secret:        []byte(cfg.JWTSecret),
 		accessExpiry:  cfg.AccessTokenExpiry,

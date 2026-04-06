@@ -1,0 +1,50 @@
+// Package models provides the base model types for gofasta applications.
+package models
+
+import (
+	"time"
+
+	"github.com/google/uuid"
+	"gorm.io/gorm"
+)
+
+type BaseModel interface {
+	gorm.Model
+	GetID() uuid.UUID
+	GetCreatedAt() time.Time
+	GetUpdatedAt() time.Time
+	GetDeletedAt() time.Time
+	GetIsActive() bool
+	GetIsDeletable() bool
+	GetRecordVersion() int
+}
+
+// BaseModelImpl is a concrete implementation of BaseModel.
+// Embed this in your domain models to get standard fields.
+type BaseModelImpl struct {
+	ID            uuid.UUID `gorm:"type:uuid;primary_key;"`
+	CreatedAt     time.Time `gorm:"type:timestamp;not null;"`
+	UpdatedAt     time.Time `gorm:"type:timestamp;not null;"`
+	DeletedAt     time.Time `gorm:"type:timestamp;"`
+	RecordVersion int       `gorm:"type:int;not null;default:1"`
+	IsActive      bool      `gorm:"type:bool;not null;default:true"`
+	IsDeletable   bool      `gorm:"type:bool;not null;default:true"`
+}
+
+func (b BaseModelImpl) GetID() uuid.UUID        { return b.ID }
+func (b BaseModelImpl) GetCreatedAt() time.Time { return b.CreatedAt }
+func (b BaseModelImpl) GetUpdatedAt() time.Time { return b.UpdatedAt }
+func (b BaseModelImpl) GetIsActive() bool       { return b.IsActive }
+func (b BaseModelImpl) GetIsDeletable() bool    { return b.IsDeletable }
+func (b BaseModelImpl) GetRecordVersion() int   { return b.RecordVersion }
+func (b BaseModelImpl) GetDeletedAt() time.Time { return b.DeletedAt }
+
+func (base *BaseModelImpl) BeforeCreate(txt *gorm.DB) error {
+	base.ID = uuid.New()
+	base.CreatedAt = time.Now()
+	base.UpdatedAt = time.Now()
+	base.IsActive = true
+	base.IsDeletable = true
+	base.RecordVersion = 1
+	return nil
+}

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/gofastadev/gofasta/configs"
+	"github.com/gofastadev/gofasta/pkg/config"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -14,7 +14,7 @@ type RedisCache struct {
 	client *redis.Client
 }
 
-func NewRedisCache(cfg configs.RedisConfig) (*RedisCache, error) {
+func NewRedisCache(cfg config.RedisConfig) (*RedisCache, error) {
 	client := redis.NewClient(&redis.Options{
 		Addr:     fmt.Sprintf("%s:%s", cfg.Host, cfg.Port),
 		Password: cfg.Password,

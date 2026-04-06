@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/gofastadev/gofasta/configs"
+	"github.com/gofastadev/gofasta/pkg/config"
 )
 
 // NewStorageService creates the appropriate storage backend from config.
-func NewStorageService(cfg *configs.StorageConfig, logger *slog.Logger) (StorageService, error) {
+func NewStorageService(cfg *config.StorageConfig, logger *slog.Logger) (StorageService, error) {
 	switch cfg.Driver {
 	case "s3":
 		logger.Info("initializing S3 storage", "endpoint", cfg.S3.Endpoint, "bucket", cfg.S3.Bucket)
