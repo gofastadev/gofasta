@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/gofastadev/gofasta/configs"
+	"github.com/gofastadev/gofasta/pkg/config"
 )
 
 // NewCacheService creates the appropriate cache backend from config.
-func NewCacheService(cfg *configs.CacheConfig, logger *slog.Logger) (CacheService, error) {
+func NewCacheService(cfg *config.CacheConfig, logger *slog.Logger) (CacheService, error) {
 	switch cfg.Driver {
 	case "redis":
 		logger.Info("initializing Redis cache", "host", cfg.Redis.Host, "port", cfg.Redis.Port)

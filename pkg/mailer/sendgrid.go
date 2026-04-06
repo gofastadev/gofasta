@@ -5,20 +5,20 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/gofastadev/gofasta/configs"
+	"github.com/gofastadev/gofasta/pkg/config"
 	"github.com/sendgrid/sendgrid-go"
 	"github.com/sendgrid/sendgrid-go/helpers/mail"
 )
 
 // SendGridSender sends emails via the SendGrid HTTP API.
 type SendGridSender struct {
-	cfg      configs.SendGridConfig
+	cfg      config.SendGridConfig
 	from     *mail.Email
 	renderer *TemplateRenderer
 	logger   *slog.Logger
 }
 
-func NewSendGridSender(cfg configs.SendGridConfig, fromName, fromAddress string, renderer *TemplateRenderer, logger *slog.Logger) *SendGridSender {
+func NewSendGridSender(cfg config.SendGridConfig, fromName, fromAddress string, renderer *TemplateRenderer, logger *slog.Logger) *SendGridSender {
 	return &SendGridSender{
 		cfg:      cfg,
 		from:     mail.NewEmail(fromName, fromAddress),

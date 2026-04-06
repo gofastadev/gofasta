@@ -5,11 +5,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/gofastadev/gofasta/configs"
+	"github.com/gofastadev/gofasta/pkg/config"
 )
 
 // NewLogger creates a structured logger based on the provided config.
-func NewLogger(cfg *configs.LogConfig) *slog.Logger {
+func NewLogger(cfg *config.LogConfig) *slog.Logger {
 	level := parseLevel(cfg.Level)
 	opts := &slog.HandlerOptions{Level: level}
 

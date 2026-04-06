@@ -3,11 +3,11 @@ package queue
 import (
 	"log/slog"
 
-	"github.com/gofastadev/gofasta/configs"
+	"github.com/gofastadev/gofasta/pkg/config"
 )
 
 // NewQueueService creates the task queue from config. Returns nil if disabled.
-func NewQueueService(cfg *configs.QueueConfig, logger *slog.Logger) (QueueService, error) {
+func NewQueueService(cfg *config.QueueConfig, logger *slog.Logger) (QueueService, error) {
 	if !cfg.Enabled {
 		logger.Info("task queue disabled")
 		return nil, nil

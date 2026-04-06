@@ -9,14 +9,14 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/gofastadev/gofasta/configs"
+	"github.com/gofastadev/gofasta/pkg/config"
 )
 
 const brevoAPIURL = "https://api.brevo.com/v3/smtp/email"
 
 // BrevoSender sends emails via the Brevo (Sendinblue) HTTP API.
 type BrevoSender struct {
-	cfg      configs.BrevoConfig
+	cfg      config.BrevoConfig
 	from     brevoContact
 	renderer *TemplateRenderer
 	logger   *slog.Logger
@@ -38,7 +38,7 @@ type brevoRequest struct {
 	HTMLContent string         `json:"htmlContent"`
 }
 
-func NewBrevoSender(cfg configs.BrevoConfig, fromName, fromAddress string, renderer *TemplateRenderer, logger *slog.Logger) *BrevoSender {
+func NewBrevoSender(cfg config.BrevoConfig, fromName, fromAddress string, renderer *TemplateRenderer, logger *slog.Logger) *BrevoSender {
 	return &BrevoSender{
 		cfg:      cfg,
 		from:     brevoContact{Name: fromName, Email: fromAddress},

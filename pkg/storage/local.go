@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/gofastadev/gofasta/configs"
+	"github.com/gofastadev/gofasta/pkg/config"
 )
 
 // LocalStorage stores files on the local filesystem.
@@ -14,7 +14,7 @@ type LocalStorage struct {
 	basePath string
 }
 
-func NewLocalStorage(cfg configs.LocalStorageConfig) *LocalStorage {
+func NewLocalStorage(cfg config.LocalStorageConfig) *LocalStorage {
 	os.MkdirAll(cfg.Path, 0755)
 	return &LocalStorage{basePath: cfg.Path}
 }
