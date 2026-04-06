@@ -155,7 +155,7 @@ func providerSteps() []Step {
 		{"Wire provider", GenWireProvider},
 		{"auto-wire: container", PatchContainer},
 		{"auto-wire: wire.go", PatchWireFile},
-		{"regenerate Wire", RunWire},
+		// Wire not run here — run `gofasta wire` after all dependent files exist
 	}
 }
 
@@ -182,6 +182,7 @@ Supported field types: string, text, int, float, bool, uuid, time`,
 	Args:    cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		d := buildFromArgs(args)
+		d.IncludeController = true
 		if err := RunSteps(d, scaffoldSteps()); err != nil {
 			return err
 		}
@@ -227,7 +228,9 @@ var controllerCmd = &cobra.Command{
 	Aliases: []string{"ctrl"},
 	Args:    cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return RunSteps(buildFromArgs(args), controllerSteps())
+		d := buildFromArgs(args)
+		d.IncludeController = true
+		return RunSteps(d, controllerSteps())
 	},
 }
 

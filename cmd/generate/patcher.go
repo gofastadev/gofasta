@@ -15,7 +15,7 @@ func PatchContainer(d ScaffoldData) error {
 	}
 	s := string(content)
 
-	if strings.Contains(s, d.Name+"Controller") {
+	if strings.Contains(s, d.Name+"Service ") {
 		fmt.Printf("  skip (already wired): %s\n", path)
 		return nil
 	}
@@ -25,8 +25,11 @@ func PatchContainer(d ScaffoldData) error {
 		s = strings.Replace(s, "\t\"github.com/healtronlabs/gofasta/app/rest/controllers\"", repoImport+"\n\t\"github.com/healtronlabs/gofasta/app/rest/controllers\"", 1)
 	}
 
-	fields := fmt.Sprintf("\t%sRepo       repoInterfaces.%sRepositoryInterface\n\t%sService    svcInterfaces.%sServiceInterface\n\t%sController *controllers.%sController\n",
-		d.Name, d.Name, d.Name, d.Name, d.Name, d.Name)
+	fields := fmt.Sprintf("\t%sRepo       repoInterfaces.%sRepositoryInterface\n\t%sService    svcInterfaces.%sServiceInterface\n",
+		d.Name, d.Name, d.Name, d.Name)
+	if d.IncludeController {
+		fields += fmt.Sprintf("\t%sController *controllers.%sController\n", d.Name, d.Name)
+	}
 	s = strings.Replace(s, "\tResolver       *resolvers.Resolver", fields+"\tResolver       *resolvers.Resolver", 1)
 
 	fmt.Printf("  patch: %s\n", path)

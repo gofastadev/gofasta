@@ -19,8 +19,9 @@ type ScaffoldData struct {
 	PluralName   string  // PascalCase plural: Products
 	PluralSnake  string  // snake_case plural: products
 	PluralLower  string  // camelCase plural: products
-	Fields       []Field
-	MigrationNum string
+	Fields            []Field
+	MigrationNum      string
+	IncludeController bool
 }
 
 // Step is a single unit of work in a generator pipeline.
