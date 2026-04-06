@@ -30,6 +30,15 @@ func NewUserControllerInstance(userService svcInterfaces.UserServiceInterface) *
 }
 
 // ListUsers handles GET /users requests.
+//
+//	@Summary		List users
+//	@Description	Get all users with optional filtering, pagination, and sorting
+//	@Tags			users
+//	@Produce		json
+//	@Param			sortByField	query		string	true	"Field to sort by"
+//	@Success		200			{object}	dtos.TUsersResponseDto
+//	@Failure		400			{object}	map[string]string
+//	@Router			/users [get]
 func (uc *UserController) ListUsers(w http.ResponseWriter, r *http.Request) error {
 	if err := r.ParseForm(); err != nil {
 		return apperrors.NewBadRequest("failed to parse query parameters", nil)
@@ -67,6 +76,16 @@ func (uc *UserController) ListUsers(w http.ResponseWriter, r *http.Request) erro
 }
 
 // CreateUser handles POST /users requests.
+//
+//	@Summary		Create a user
+//	@Description	Create a new user account
+//	@Tags			users
+//	@Accept			json
+//	@Produce		json
+//	@Param			user	body		dtos.TCreateUserDto	true	"User data"
+//	@Success		201		{object}	dtos.TUserResponseDto
+//	@Failure		400		{object}	map[string]string
+//	@Router			/users [post]
 func (uc *UserController) CreateUser(w http.ResponseWriter, r *http.Request) error {
 	var user dtos.TCreateUserDto
 	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
@@ -81,6 +100,17 @@ func (uc *UserController) CreateUser(w http.ResponseWriter, r *http.Request) err
 }
 
 // UpdateUser handles PUT /users/{id} requests.
+//
+//	@Summary		Update a user
+//	@Description	Update user fields by ID
+//	@Tags			users
+//	@Accept			json
+//	@Produce		json
+//	@Param			id		path		string						true	"User ID"
+//	@Param			user	body		dtos.TUserFieldsForUpdateDto	true	"Fields to update"
+//	@Success		200		{object}	dtos.TUserResponseDto
+//	@Failure		400		{object}	map[string]string
+//	@Router			/users/{id} [put]
 func (uc *UserController) UpdateUser(w http.ResponseWriter, r *http.Request) error {
 	userId, err := utils.ParseIdStringIsValidUUID(mux.Vars(r)["id"])
 	if err != nil {
@@ -101,6 +131,15 @@ func (uc *UserController) UpdateUser(w http.ResponseWriter, r *http.Request) err
 }
 
 // GetUser handles GET /users/{id} requests.
+//
+//	@Summary		Get a user
+//	@Description	Get a single user by ID
+//	@Tags			users
+//	@Produce		json
+//	@Param			id	path		string	true	"User ID"
+//	@Success		200	{object}	dtos.TUserResponseDto
+//	@Failure		400	{object}	map[string]string
+//	@Router			/users/{id} [get]
 func (uc *UserController) GetUser(w http.ResponseWriter, r *http.Request) error {
 	userId, err := utils.ParseIdStringIsValidUUID(mux.Vars(r)["id"])
 	if err != nil {
@@ -115,6 +154,15 @@ func (uc *UserController) GetUser(w http.ResponseWriter, r *http.Request) error 
 }
 
 // ArchiveUser handles DELETE /users/{id} requests.
+//
+//	@Summary		Archive a user
+//	@Description	Soft-delete a user by ID
+//	@Tags			users
+//	@Produce		json
+//	@Param			id	path		string	true	"User ID"
+//	@Success		200	{object}	dtos.TCommonResponseDto
+//	@Failure		400	{object}	map[string]string
+//	@Router			/users/{id} [delete]
 func (uc *UserController) ArchiveUser(w http.ResponseWriter, r *http.Request) error {
 	userId, err := utils.ParseIdStringIsValidUUID(mux.Vars(r)["id"])
 	if err != nil {

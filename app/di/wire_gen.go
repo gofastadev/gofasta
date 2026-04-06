@@ -62,6 +62,11 @@ func InitializeServiceContainer() (*ServiceContainer, error) {
 	if err != nil {
 		return nil, err
 	}
+	hub := providers.ProvideWebSocketHub(slogLogger)
+	notifier := providers.ProvideNotifier(slogLogger, emailSender, db)
+	i18nService := providers.ProvideI18nService(appConfig)
+	encrypter := providers.ProvideEncrypter(appConfig)
+	store := providers.ProvideSessionStore(appConfig)
 	userRepository := repositories.NewUserRepository(db)
 	userService := services.NewUserService(userRepository, appValidator)
 	userController := controllers.NewUserControllerInstance(userService)
@@ -77,6 +82,11 @@ func InitializeServiceContainer() (*ServiceContainer, error) {
 		RBACService:    rbacService,
 		StorageService: storageService,
 		QueueService:   queueService,
+		WebSocketHub:   hub,
+		Notifier:       notifier,
+		I18nService:    i18nService,
+		Encrypter:      encrypter,
+		SessionStore:   store,
 		UserRepo:       userRepository,
 		UserService:    userService,
 		UserController: userController,

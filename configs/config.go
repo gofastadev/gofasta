@@ -23,8 +23,14 @@ type AppConfig struct {
 	RateLimit RateLimitConfig `koanf:"rate_limit"`
 	Cache     CacheConfig     `koanf:"cache"`
 	Security  SecurityConfig  `koanf:"security"`
-	Storage   StorageConfig   `koanf:"storage"`
-	Queue     QueueConfig     `koanf:"queue"`
+	Storage       StorageConfig       `koanf:"storage"`
+	Queue         QueueConfig         `koanf:"queue"`
+	WebSocket     WebSocketConfig     `koanf:"websocket"`
+	I18n          I18nConfig          `koanf:"i18n"`
+	FeatureFlag   FeatureFlagConfig   `koanf:"feature_flag"`
+	Encryption    EncryptionConfig    `koanf:"encryption"`
+	Session       SessionConfig       `koanf:"session"`
+	Observability ObservabilityConfig `koanf:"observability"`
 }
 
 // JobConfig defines a single cron job schedule.
@@ -176,6 +182,44 @@ type QueueRedisConfig struct {
 	DB       int    `koanf:"db"`
 }
 
+// WebSocketConfig holds WebSocket settings.
+type WebSocketConfig struct {
+	Enabled bool `koanf:"enabled"`
+}
+
+// I18nConfig holds internationalization settings.
+type I18nConfig struct {
+	DefaultLanguage string `koanf:"default_language"`
+	LocalesDir      string `koanf:"locales_dir"`
+}
+
+// FeatureFlagConfig holds feature flag settings.
+type FeatureFlagConfig struct {
+	Enabled    bool   `koanf:"enabled"`
+	ConfigPath string `koanf:"config_path"`
+}
+
+// EncryptionConfig holds data encryption settings.
+type EncryptionConfig struct {
+	Key string `koanf:"key"`
+}
+
+// SessionConfig holds session management settings.
+type SessionConfig struct {
+	Driver         string `koanf:"driver"`
+	Secret         string `koanf:"secret"`
+	SessionName    string `koanf:"session_name"`
+	FilesystemPath string `koanf:"filesystem_path"`
+}
+
+// ObservabilityConfig holds metrics and tracing settings.
+type ObservabilityConfig struct {
+	MetricsEnabled bool   `koanf:"metrics_enabled"`
+	TracingEnabled bool   `koanf:"tracing_enabled"`
+	MetricsPath    string `koanf:"metrics_path"`
+	ServiceName    string `koanf:"service_name"`
+}
+
 // LoadConfig loads configuration from config.yaml (if present), then overlays
 // environment variables prefixed with GOFASTA_ (e.g., GOFASTA_DATABASE_HOST).
 func LoadConfig() (*AppConfig, error) {
@@ -324,5 +368,36 @@ func applyDefaults(cfg *AppConfig) {
 	}
 	if cfg.Queue.Redis.DB == 0 {
 		cfg.Queue.Redis.DB = 1
+	}
+	// I18n defaults
+	if cfg.I18n.DefaultLanguage == "" {
+		cfg.I18n.DefaultLanguage = "en"
+	}
+	if cfg.I18n.LocalesDir == "" {
+		cfg.I18n.LocalesDir = "locales"
+	}
+	// Feature flag defaults
+	if cfg.FeatureFlag.ConfigPath == "" {
+		cfg.FeatureFlag.ConfigPath = "configs/features.yaml"
+	}
+	// Session defaults
+	if cfg.Session.Driver == "" {
+		cfg.Session.Driver = "cookie"
+	}
+	if cfg.Session.Secret == "" {
+		cfg.Session.Secret = "change-me-in-production-32bytes!"
+	}
+	if cfg.Session.SessionName == "" {
+		cfg.Session.SessionName = "gofasta_session"
+	}
+	if cfg.Session.FilesystemPath == "" {
+		cfg.Session.FilesystemPath = "./sessions"
+	}
+	// Observability defaults
+	if cfg.Observability.MetricsPath == "" {
+		cfg.Observability.MetricsPath = "/metrics"
+	}
+	if cfg.Observability.ServiceName == "" {
+		cfg.Observability.ServiceName = "gofasta"
 	}
 }

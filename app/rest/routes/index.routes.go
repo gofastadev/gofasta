@@ -1,25 +1,36 @@
 package routes
 
 import (
+	"net/http"
+
 	"github.com/gorilla/mux"
 	"github.com/healtronlabs/gofasta/app/rest/controllers"
 	"github.com/healtronlabs/gofasta/pkg/httputil"
+	"github.com/healtronlabs/gofasta/pkg/websocket"
 )
 
 // RouteConfig holds all controllers needed for route registration.
 type RouteConfig struct {
 	UserController   *controllers.UserController
 	HealthController *controllers.HealthController
+	WebSocketHub     *websocket.Hub
 }
 
 func InitApiRoutes(config *RouteConfig) *mux.Router {
 	r := mux.NewRouter()
 
-	// Health check at root level
+	// Health checks
 	if config.HealthController != nil {
 		r.HandleFunc("/health", httputil.Handle(config.HealthController.Check)).Methods("GET")
 		r.HandleFunc("/health/live", httputil.Handle(config.HealthController.Live)).Methods("GET")
 		r.HandleFunc("/health/ready", httputil.Handle(config.HealthController.Ready)).Methods("GET")
+	}
+
+	// WebSocket endpoint
+	if config.WebSocketHub != nil {
+		r.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
+			websocket.ServeWS(config.WebSocketHub, w, r)
+		})
 	}
 
 	// API v1 routes

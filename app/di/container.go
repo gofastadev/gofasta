@@ -6,14 +6,19 @@ import (
 	"github.com/healtronlabs/gofasta/app/graphql/resolvers"
 	"github.com/healtronlabs/gofasta/pkg/auth"
 	"github.com/healtronlabs/gofasta/pkg/cache"
+	"github.com/healtronlabs/gofasta/pkg/encryption"
+	"github.com/healtronlabs/gofasta/pkg/i18n"
 	"github.com/healtronlabs/gofasta/pkg/mailer"
+	"github.com/healtronlabs/gofasta/pkg/notify"
 	repoInterfaces "github.com/healtronlabs/gofasta/app/repositories/interfaces"
 	"github.com/healtronlabs/gofasta/app/rest/controllers"
 	svcInterfaces "github.com/healtronlabs/gofasta/app/services/interfaces"
 	"github.com/healtronlabs/gofasta/app/validators"
 	"github.com/healtronlabs/gofasta/configs"
 	"github.com/healtronlabs/gofasta/pkg/queue"
+	"github.com/healtronlabs/gofasta/pkg/session"
 	"github.com/healtronlabs/gofasta/pkg/storage"
+	"github.com/healtronlabs/gofasta/pkg/websocket"
 	"gorm.io/gorm"
 )
 
@@ -29,6 +34,11 @@ type ServiceContainer struct {
 	RBACService    *auth.RBACService
 	StorageService storage.StorageService
 	QueueService   queue.QueueService
+	WebSocketHub   *websocket.Hub
+	Notifier       *notify.Notifier
+	I18nService    *i18n.I18nService
+	Encrypter      *encryption.Encrypter
+	SessionStore   *session.Store
 	UserRepo       repoInterfaces.UserRepositoryInterface
 	UserService    svcInterfaces.UserServiceInterface
 	UserController *controllers.UserController

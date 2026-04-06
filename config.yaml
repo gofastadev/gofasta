@@ -89,6 +89,32 @@ queue:
   #   password: ""
   #   db: 1
 
+websocket:
+  enabled: true
+
+i18n:
+  default_language: en
+  locales_dir: locales
+
+feature_flag:
+  enabled: false
+  config_path: configs/features.yaml
+
+encryption:
+  key: ""                 # Set a 32-byte key to enable (e.g. "12345678901234567890123456789012")
+
+session:
+  driver: cookie          # cookie or filesystem
+  secret: "change-me-in-production-32bytes!"
+  session_name: gofasta_session
+  # filesystem_path: ./sessions
+
+observability:
+  metrics_enabled: true
+  tracing_enabled: false
+  metrics_path: /metrics
+  service_name: gofasta
+
 jobs:
   - name: example
     schedule: "0 0 */6 * * *"

@@ -17,6 +17,7 @@ import (
 	"github.com/healtronlabs/gofasta/app/rest/routes"
 	apperrors "github.com/healtronlabs/gofasta/pkg/errors"
 	"github.com/healtronlabs/gofasta/pkg/middleware"
+	"github.com/healtronlabs/gofasta/pkg/observability"
 	"github.com/healtronlabs/gofasta/pkg/scheduler"
 	"github.com/spf13/cobra"
 )
@@ -44,6 +45,15 @@ func startServer() error {
 	cfg := container.Config
 	logger := container.Logger
 
+	// Initialize tracing (if enabled)
+	if cfg.Observability.TracingEnabled {
+		shutdown := observability.InitTracer(cfg.Observability.ServiceName)
+		defer shutdown()
+	}
+
+	// Start WebSocket hub
+	go container.WebSocketHub.Run()
+
 	// Build GraphQL handler
 	graphqlHandler := handler.NewDefaultServer(app.NewExecutableSchema(app.Config{
 		Resolvers: container.Resolver,
@@ -55,12 +65,18 @@ func startServer() error {
 	apiRouter := routes.InitApiRoutes(&routes.RouteConfig{
 		UserController:   container.UserController,
 		HealthController: healthController,
+		WebSocketHub:     container.WebSocketHub,
 	})
 
 	mux := http.NewServeMux()
 	mux.Handle(cfg.GraphQL.PlaygroundRoute, playground.Handler("GraphQL playground", cfg.GraphQL.GeneralRoute))
 	mux.Handle(cfg.GraphQL.GeneralRoute, graphqlHandler)
 	mux.Handle("/", apiRouter)
+
+	// Prometheus metrics endpoint
+	if cfg.Observability.MetricsEnabled {
+		mux.Handle(cfg.Observability.MetricsPath, observability.MetricsHandler())
+	}
 
 	// Build middleware chain
 	middlewares := []middleware.Middleware{
@@ -72,6 +88,12 @@ func startServer() error {
 	}
 	if cfg.RateLimit.Enabled {
 		middlewares = append(middlewares, middleware.RateLimit(cfg.RateLimit))
+	}
+	if cfg.Observability.MetricsEnabled {
+		middlewares = append(middlewares, middleware.Middleware(observability.MetricsMiddleware))
+	}
+	if cfg.Observability.TracingEnabled {
+		middlewares = append(middlewares, middleware.Middleware(observability.TracingMiddleware(cfg.Observability.ServiceName)))
 	}
 	rootHandler := middleware.Chain(mux, middlewares...)
 
@@ -107,10 +129,8 @@ func startServer() error {
 	<-ctx.Done()
 	slog.Info("shutting down gracefully")
 
-	// Stop scheduler
 	sched.Stop()
 
-	// Stop queue
 	if container.QueueService != nil {
 		container.QueueService.Shutdown()
 	}
@@ -122,7 +142,6 @@ func startServer() error {
 		slog.Error("server forced to shutdown", "error", err)
 	}
 
-	// Cleanup database connection
 	if sqlDB, err := container.DB.DB(); err == nil {
 		sqlDB.Close()
 	}
@@ -131,14 +150,11 @@ func startServer() error {
 	return nil
 }
 
-// startScheduler creates a scheduler, registers all configured jobs, and starts it.
 func startScheduler(container *di.ServiceContainer, logger *slog.Logger) *scheduler.Scheduler {
 	sched := scheduler.New(logger)
-
 	registry := map[string]scheduler.Job{
 		"example": jobs.NewExampleJob(logger),
 	}
-
 	for _, jobCfg := range container.Config.Jobs {
 		if !jobCfg.Enabled {
 			continue
@@ -152,7 +168,6 @@ func startScheduler(container *di.ServiceContainer, logger *slog.Logger) *schedu
 			slog.Error("failed to register job", "job", jobCfg.Name, "error", err)
 		}
 	}
-
 	sched.Start()
 	return sched
 }

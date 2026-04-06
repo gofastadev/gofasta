@@ -35,6 +35,7 @@ func init() {
 	Cmd.AddCommand(providerCmd)
 	Cmd.AddCommand(emailTemplateCmd)
 	Cmd.AddCommand(jobCmd)
+	Cmd.AddCommand(taskCmd)
 
 	// Register --graphql flag on commands that support it
 	for _, cmd := range []*cobra.Command{scaffoldCmd, serviceCmd, controllerCmd} {
@@ -356,6 +357,21 @@ var emailTemplateCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		d := buildFromArgs(args)
 		return RunSteps(d, []Step{{"email template", GenEmailTemplate}})
+	},
+}
+
+var taskCmd = &cobra.Command{
+	Use:   "task [name]",
+	Short: "Generate an async task handler for the queue system",
+	Long: `Generate a new async task file in app/tasks/ with an asynq handler.
+
+Examples:
+  gofasta g task send-welcome-email
+  gofasta g task process-payment
+  gofasta g task resize-image`,
+	Args: cobra.ExactArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return RunSteps(buildFromArgs(args), []Step{{"task handler", GenTask}})
 	},
 }
 
