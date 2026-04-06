@@ -3,6 +3,7 @@
 package dtos
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"strconv"
@@ -83,7 +84,7 @@ func (e SortOrientation) String() string {
 	return string(e)
 }
 
-func (e *SortOrientation) UnmarshalGQL(v interface{}) error {
+func (e *SortOrientation) UnmarshalGQL(v any) error {
 	str, ok := v.(string)
 	if !ok {
 		return fmt.Errorf("enums must be strings")
@@ -98,4 +99,18 @@ func (e *SortOrientation) UnmarshalGQL(v interface{}) error {
 
 func (e SortOrientation) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *SortOrientation) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e SortOrientation) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
 }
