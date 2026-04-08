@@ -18,7 +18,7 @@ Thank you for your interest in contributing to Gofasta! This document explains h
    cd gofasta
    ```
 
-2. **Verify Go version** (1.25 or later required):
+2. **Verify Go version** (1.25.8 or later required):
 
    ```bash
    go version
