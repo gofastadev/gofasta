@@ -32,8 +32,9 @@ jobs:
       - name: Build
         run: go build ./...
 
-      - name: Upload coverage
-        uses: actions/upload-artifact@v4
+      - name: Upload coverage to Coveralls
+        uses: coverallsapp/github-action@v2
         with:
-          name: coverage
-          path: coverage.out
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          file: coverage.out
+          format: golang
