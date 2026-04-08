@@ -1,5 +1,7 @@
 # Gofasta
 
+[![CI](https://github.com/gofastadev/gofasta/actions/workflows/ci.yml/badge.svg)](https://github.com/gofastadev/gofasta/actions/workflows/ci.yml) [![Coverage Status](https://coveralls.io/repos/github/gofastadev/gofasta/badge.svg?branch=main)](https://coveralls.io/github/gofastadev/gofasta?branch=main) [![Go Reference](https://pkg.go.dev/badge/github.com/gofastadev/gofasta.svg)](https://pkg.go.dev/github.com/gofastadev/gofasta) [![Go Report Card](https://goreportcard.com/badge/github.com/gofastadev/gofasta)](https://goreportcard.com/report/github.com/gofastadev/gofasta) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT) [![Go Version](https://img.shields.io/github/go-mod/go-version/gofastadev/gofasta)](https://github.com/gofastadev/gofasta/blob/main/go.mod) [![Release](https://img.shields.io/github/v/release/gofastadev/gofasta)](https://github.com/gofastadev/gofasta/releases)
+
 Gofasta is a Go library that provides production-ready building blocks for backend services. It handles the infrastructure plumbing — authentication, caching, database setup, email, logging, middleware, and more — so you can focus on writing business logic.
 
 This repo is the **library** that your project imports. To create a new project, use the [Gofasta CLI](https://github.com/gofastadev/cli).
