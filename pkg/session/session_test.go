@@ -141,6 +141,70 @@ func TestStore_Destroy(t *testing.T) {
 	assert.True(t, found, "session cookie should be present in response")
 }
 
+func TestStore_SetValue_ErrorOnBadSession(t *testing.T) {
+	// Use a store with one secret, then send a cookie encoded with a different secret
+	s1 := NewCookieStore("secret-key-32-bytes-long-aaaaaa", testSessionName)
+	s2 := NewCookieStore("different-secret-32-bytes-bbbbb!", testSessionName)
+
+	// Set a value with s1
+	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	w := httptest.NewRecorder()
+	_ = s1.SetValue(r, w, "key", "value")
+
+	// Try to SetValue with s2 (different secret) - Get returns error
+	r2 := httptest.NewRequest(http.MethodGet, "/", nil)
+	for _, c := range w.Result().Cookies() {
+		r2.AddCookie(c)
+	}
+	w2 := httptest.NewRecorder()
+	err := s2.SetValue(r2, w2, "key", "newvalue")
+	assert.Error(t, err)
+}
+
+func TestStore_GetValue_ErrorOnBadSession(t *testing.T) {
+	s1 := NewCookieStore("secret-key-32-bytes-long-aaaaaa", testSessionName)
+	s2 := NewCookieStore("different-secret-32-bytes-bbbbb!", testSessionName)
+
+	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	w := httptest.NewRecorder()
+	_ = s1.SetValue(r, w, "key", "value")
+
+	r2 := httptest.NewRequest(http.MethodGet, "/", nil)
+	for _, c := range w.Result().Cookies() {
+		r2.AddCookie(c)
+	}
+	val, err := s2.GetValue(r2, "key")
+	assert.Error(t, err)
+	assert.Nil(t, val)
+}
+
+func TestStore_Destroy_ErrorOnBadSession(t *testing.T) {
+	s1 := NewCookieStore("secret-key-32-bytes-long-aaaaaa", testSessionName)
+	s2 := NewCookieStore("different-secret-32-bytes-bbbbb!", testSessionName)
+
+	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	w := httptest.NewRecorder()
+	_ = s1.SetValue(r, w, "key", "value")
+
+	r2 := httptest.NewRequest(http.MethodGet, "/", nil)
+	for _, c := range w.Result().Cookies() {
+		r2.AddCookie(c)
+	}
+	w2 := httptest.NewRecorder()
+	err := s2.Destroy(r2, w2)
+	assert.Error(t, err)
+}
+
+func TestStore_Destroy_NoExistingSession(t *testing.T) {
+	s := NewCookieStore(testSecret, testSessionName)
+	r := httptest.NewRequest(http.MethodGet, "/", nil)
+	w := httptest.NewRecorder()
+
+	// Destroy a session that was never created - should still work
+	err := s.Destroy(r, w)
+	require.NoError(t, err)
+}
+
 func TestStore_FilesystemStore_SetAndGet(t *testing.T) {
 	tmpDir := t.TempDir()
 	s := NewFilesystemStore(tmpDir, testSecret, testSessionName)

@@ -416,3 +416,38 @@ func TestJSON_SliceData(t *testing.T) {
 	json.Unmarshal(rec.Body.Bytes(), &result)
 	assert.Equal(t, data, result)
 }
+
+// ---------- BindQuery decode error ----------
+
+func TestBindQuery_DecodeError(t *testing.T) {
+	// Use a struct with a type that can't be decoded from query string
+	type badQuery struct {
+		Count int `schema:"count" validate:"gte=0"`
+	}
+	req := httptest.NewRequest(http.MethodGet, "/?count=not_a_number", nil)
+
+	_, err := BindQuery[badQuery](req)
+	require.Error(t, err)
+
+	var appErr *apperrors.AppError
+	require.ErrorAs(t, err, &appErr)
+	assert.Equal(t, apperrors.BadRequest, appErr.Type)
+}
+
+// ---------- BindForm decode error ----------
+
+func TestBindForm_DecodeError(t *testing.T) {
+	type badForm struct {
+		Count int `schema:"count" validate:"gte=0"`
+	}
+	body := "count=not_a_number"
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	_, err := BindForm[badForm](req)
+	require.Error(t, err)
+
+	var appErr *apperrors.AppError
+	require.ErrorAs(t, err, &appErr)
+	assert.Equal(t, apperrors.BadRequest, appErr.Type)
+}

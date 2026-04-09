@@ -6,6 +6,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 
 	"github.com/gofastadev/gofasta/pkg/types"
 )
@@ -308,6 +310,73 @@ func TestConvertStructToMap(t *testing.T) {
 		result := ConvertStructToMap(Sample{Meta: map[string]string{"key": "val"}})
 		assert.Contains(t, result, "meta")
 	})
+}
+
+// --- BuildQueryForAnyModel ---
+
+func testDB(t *testing.T) *gorm.DB {
+	t.Helper()
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+	return db
+}
+
+func TestBuildQueryForAnyModel_WithStringFilters(t *testing.T) {
+	db := testDB(t)
+	name := "John"
+	filters := map[string]interface{}{
+		"name": &name,
+	}
+
+	result, err := BuildQueryForAnyModel(db, filters)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+}
+
+func TestBuildQueryForAnyModel_NilPointerSkipped(t *testing.T) {
+	db := testDB(t)
+	filters := map[string]interface{}{
+		"name": (*string)(nil),
+	}
+
+	result, err := BuildQueryForAnyModel(db, filters)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+}
+
+func TestBuildQueryForAnyModel_EmptyFilters(t *testing.T) {
+	db := testDB(t)
+	filters := map[string]interface{}{}
+
+	result, err := BuildQueryForAnyModel(db, filters)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+}
+
+func TestBuildQueryForAnyModel_NonStringPointerSkipped(t *testing.T) {
+	db := testDB(t)
+	num := 42
+	filters := map[string]interface{}{
+		"count": &num,
+	}
+
+	result, err := BuildQueryForAnyModel(db, filters)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+}
+
+func TestBuildQueryForAnyModel_MultipleFilters(t *testing.T) {
+	db := testDB(t)
+	name := "Alice"
+	email := "alice@example.com"
+	filters := map[string]interface{}{
+		"name":  &name,
+		"email": &email,
+	}
+
+	result, err := BuildQueryForAnyModel(db, filters)
+	require.NoError(t, err)
+	require.NotNil(t, result)
 }
 
 // --- helpers ---

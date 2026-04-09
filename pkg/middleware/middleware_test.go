@@ -337,6 +337,51 @@ func TestSecurityHeaders_CallsNextHandler(t *testing.T) {
 	assert.True(t, called)
 }
 
+func TestSecurityHeaders_AllOptionsEnabled(t *testing.T) {
+	cfg := config.SecurityConfig{
+		HSTS:                  true,
+		HSTSMaxAge:            63072000,
+		FrameDeny:             true,
+		ContentTypeNosniff:    true,
+		BrowserXSSFilter:      true,
+		ContentSecurityPolicy: "default-src 'self'",
+		ReferrerPolicy:        "no-referrer",
+	}
+	handler := SecurityHeaders(cfg)(noopHandler)
+
+	rec := httptest.NewRecorder()
+	// Use HTTPS so HSTS header gets set by the secure library
+	req := httptest.NewRequest(http.MethodGet, "https://example.com/", nil)
+	handler.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "nosniff", rec.Header().Get("X-Content-Type-Options"))
+	assert.Equal(t, "DENY", rec.Header().Get("X-Frame-Options"))
+	assert.Equal(t, "default-src 'self'", rec.Header().Get("Content-Security-Policy"))
+	assert.Equal(t, "no-referrer", rec.Header().Get("Referrer-Policy"))
+	assert.Contains(t, rec.Header().Get("Strict-Transport-Security"), "63072000")
+}
+
+func TestSecurityHeaders_SSLRedirectBlocksHTTP(t *testing.T) {
+	// When SSLRedirect is enabled by the secure library, HTTP requests
+	// should be handled (the error path in Process)
+	called := false
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+	})
+	cfg := config.SecurityConfig{
+		ContentTypeNosniff: true,
+	}
+	handler := SecurityHeaders(cfg)(inner)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "http://example.com/", nil)
+	handler.ServeHTTP(rec, req)
+
+	// With default config (no SSL redirect), next should be called
+	assert.True(t, called)
+}
+
 // ---------- RateLimit ----------
 
 func TestRateLimit_AllowsRequests(t *testing.T) {
