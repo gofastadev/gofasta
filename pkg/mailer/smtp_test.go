@@ -758,6 +758,14 @@ func handleSMTPConnCloseAfterData(conn net.Conn) {
 		case cmd == "DATA":
 			fmt.Fprintf(writer, "354 Start mail input\r\n")
 			writer.Flush()
+			// Read a few bytes of the data, then RST the connection.
+			// Setting TCP linger to 0 causes a RST instead of FIN,
+			// which makes the client's Write fail with "broken pipe".
+			buf := make([]byte, 64)
+			conn.Read(buf)
+			if tc, ok := conn.(*net.TCPConn); ok {
+				tc.SetLinger(0)
+			}
 			return
 		default:
 			fmt.Fprintf(writer, "250 OK\r\n")
@@ -774,6 +782,104 @@ func TestSMTPSender_Send_WriteCloseError(t *testing.T) {
 		"Test", "test@example.com",
 		renderer, slog.Default(),
 	)
+
+	// Use a very large body (>TCP buffer size) to ensure Write detects the broken pipe
+	// before the entire message is buffered. The mock reads 64 bytes then RSTs.
+	largeBody := strings.Repeat("X", 256*1024) // 256KB, exceeds typical TCP buffer
+	msg := EmailMessage{
+		To:       []string{"r@example.com"},
+		Subject:  "Test",
+		HTMLBody: largeBody,
+	}
+	err := s.Send(context.Background(), msg)
+	if err == nil {
+		t.Fatal("expected error when server closes after DATA")
+	}
+	// Either "smtp write" or "smtp close" depending on timing
+	if !strings.Contains(err.Error(), "smtp write") && !strings.Contains(err.Error(), "smtp close") {
+		t.Errorf("error = %q, want 'smtp write' or 'smtp close'", err.Error())
+	}
+}
+
+// mockSMTPServerRejectAfterDot creates a server that accepts DATA, reads the full body,
+// but returns a 554 error after the terminating dot. This causes wc.Close() to fail.
+func mockSMTPServerRejectAfterDot(t *testing.T) (string, int) {
+	t.Helper()
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	t.Cleanup(func() { ln.Close() })
+	addr := ln.Addr().(*net.TCPAddr)
+	go func() {
+		for {
+			conn, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			go handleSMTPConnRejectAfterDot(conn)
+		}
+	}()
+	return addr.IP.String(), addr.Port
+}
+
+func handleSMTPConnRejectAfterDot(conn net.Conn) {
+	defer conn.Close()
+	writer := bufio.NewWriter(conn)
+	reader := bufio.NewReader(conn)
+
+	fmt.Fprintf(writer, "220 localhost SMTP mock\r\n")
+	writer.Flush()
+
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			return
+		}
+		cmd := strings.ToUpper(strings.TrimSpace(line))
+		switch {
+		case strings.HasPrefix(cmd, "EHLO"), strings.HasPrefix(cmd, "HELO"):
+			fmt.Fprintf(writer, "250-localhost\r\n250 OK\r\n")
+		case strings.HasPrefix(cmd, "MAIL FROM"):
+			fmt.Fprintf(writer, "250 OK\r\n")
+		case strings.HasPrefix(cmd, "RCPT TO"):
+			fmt.Fprintf(writer, "250 OK\r\n")
+		case cmd == "DATA":
+			fmt.Fprintf(writer, "354 Start mail input\r\n")
+			writer.Flush()
+			// Read the full body until the terminating "."
+			for {
+				dataLine, err := reader.ReadString('\n')
+				if err != nil {
+					return
+				}
+				if strings.TrimSpace(dataLine) == "." {
+					break
+				}
+			}
+			// Reject the message after the dot — this causes wc.Close() to return error
+			fmt.Fprintf(writer, "554 Transaction failed\r\n")
+			writer.Flush()
+			// Read QUIT
+			reader.ReadString('\n')
+			fmt.Fprintf(writer, "221 Bye\r\n")
+			writer.Flush()
+			return
+		default:
+			fmt.Fprintf(writer, "250 OK\r\n")
+		}
+		writer.Flush()
+	}
+}
+
+func TestSMTPSender_Send_CloseError(t *testing.T) {
+	host, port := mockSMTPServerRejectAfterDot(t)
+	renderer := NewTemplateRenderer(t.TempDir(), "App")
+	s := NewSMTPSender(
+		config.SMTPConfig{Host: host, Port: port},
+		"Test", "test@example.com",
+		renderer, slog.Default(),
+	)
 	msg := EmailMessage{
 		To:       []string{"r@example.com"},
 		Subject:  "Test",
@@ -781,9 +887,9 @@ func TestSMTPSender_Send_WriteCloseError(t *testing.T) {
 	}
 	err := s.Send(context.Background(), msg)
 	if err == nil {
-		t.Fatal("expected error when server closes after DATA")
+		t.Fatal("expected error when server rejects after dot")
 	}
-	if !strings.Contains(err.Error(), "smtp write") && !strings.Contains(err.Error(), "smtp close") {
-		t.Errorf("error = %q, want 'smtp write' or 'smtp close'", err.Error())
+	if !strings.Contains(err.Error(), "smtp close") {
+		t.Errorf("error = %q, want 'smtp close'", err.Error())
 	}
 }

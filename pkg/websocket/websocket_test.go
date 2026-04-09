@@ -414,8 +414,11 @@ func TestServeWS_PongHandler(t *testing.T) {
 
 func TestServeWS_WriteMessageError(t *testing.T) {
 	h := newTestHub(t)
+
+	// Use a tiny writeWait so SetWriteDeadline expires immediately,
+	// causing WriteMessage(TextMessage) to fail deterministically.
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ServeWS(h, w, r)
+		ServeWS(h, w, r, WithWriteWait(time.Nanosecond))
 	}))
 	defer server.Close()
 
@@ -424,22 +427,18 @@ func TestServeWS_WriteMessageError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("dial: %v", err)
 	}
+	defer conn.Close()
 	wait()
 
 	if h.ClientCount() != 1 {
 		t.Fatalf("expected 1 client, got %d", h.ClientCount())
 	}
 
-	// Force-close the underlying TCP connection (not the WS close handshake)
-	conn.UnderlyingConn().Close()
-
-	// Small delay for the close to propagate
-	time.Sleep(50 * time.Millisecond)
-
-	// Broadcast a message — hub sends to client.send, writePump tries to write to broken conn
+	// Broadcast a message — hub puts it in client.send, writePump reads it,
+	// sets an already-expired write deadline, then WriteMessage fails.
 	h.Broadcast(Message{Event: "test", Payload: []byte("should fail")})
 
-	// Wait for writePump to detect the error and the hub to unregister
+	// Wait for writePump to detect the error and for readPump to unregister
 	time.Sleep(300 * time.Millisecond)
 
 	if h.ClientCount() != 0 {
@@ -449,8 +448,13 @@ func TestServeWS_WriteMessageError(t *testing.T) {
 
 func TestServeWS_PingError(t *testing.T) {
 	h := newTestHub(t)
+
+	// Short ping period so ticker fires fast, tiny writeWait so the ping write fails.
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ServeWS(h, w, r, WithPingPeriod(50*time.Millisecond))
+		ServeWS(h, w, r,
+			WithPingPeriod(50*time.Millisecond),
+			WithWriteWait(time.Nanosecond),
+		)
 	}))
 	defer server.Close()
 
@@ -459,16 +463,14 @@ func TestServeWS_PingError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("dial: %v", err)
 	}
+	defer conn.Close()
 	wait()
 
 	if h.ClientCount() != 1 {
 		t.Fatalf("expected 1 client, got %d", h.ClientCount())
 	}
 
-	// Force-close the underlying TCP connection so the next ping write fails
-	conn.UnderlyingConn().Close()
-
-	// Wait for the short ping period to fire and fail
+	// Wait for the short ping period to fire — writeWait is 1ns so the ping write fails
 	time.Sleep(300 * time.Millisecond)
 
 	if h.ClientCount() != 0 {

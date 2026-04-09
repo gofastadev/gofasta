@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	writeWait         = 10 * time.Second
+	defaultWriteWait  = 10 * time.Second
 	pongWait          = 60 * time.Second
 	defaultPingPeriod = (pongWait * 9) / 10
 	maxMsgSize        = 8192
@@ -30,6 +30,7 @@ type Client struct {
 	send       chan []byte
 	logger     *slog.Logger
 	pingPeriod time.Duration
+	writeWait  time.Duration
 }
 
 // ClientOption is a function that configures a Client.
@@ -39,6 +40,13 @@ type ClientOption func(*Client)
 func WithPingPeriod(d time.Duration) ClientOption {
 	return func(c *Client) {
 		c.pingPeriod = d
+	}
+}
+
+// WithWriteWait sets a custom write deadline timeout for the client.
+func WithWriteWait(d time.Duration) ClientOption {
+	return func(c *Client) {
+		c.writeWait = d
 	}
 }
 
@@ -56,6 +64,7 @@ func ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request, opts ...ClientOpt
 		send:       make(chan []byte, 256),
 		logger:     hub.logger,
 		pingPeriod: defaultPingPeriod,
+		writeWait:  defaultWriteWait,
 	}
 	for _, opt := range opts {
 		opt(client)
@@ -95,7 +104,7 @@ func (c *Client) writePump() {
 	for {
 		select {
 		case message, ok := <-c.send:
-			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+			c.conn.SetWriteDeadline(time.Now().Add(c.writeWait))
 			if !ok {
 				c.conn.WriteMessage(ws.CloseMessage, []byte{})
 				return
@@ -104,7 +113,7 @@ func (c *Client) writePump() {
 				return
 			}
 		case <-ticker.C:
-			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+			c.conn.SetWriteDeadline(time.Now().Add(c.writeWait))
 			if err := c.conn.WriteMessage(ws.PingMessage, nil); err != nil {
 				return
 			}
