@@ -1,7 +1,9 @@
 package utils
 
 import (
+	"errors"
 	"testing"
+	"testing/iotest"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -224,6 +226,21 @@ func TestGeneratePassword_UsesCharset(t *testing.T) {
 	for _, c := range pwd {
 		assert.Contains(t, CHARSET, string(c), "password contains character not in CHARSET: %c", c)
 	}
+}
+
+func TestGeneratePassword_RandError(t *testing.T) {
+	oldReader := cryptoRandReader
+	cryptoRandReader = iotest.ErrReader(errors.New("entropy failure"))
+	defer func() { cryptoRandReader = oldReader }()
+
+	_, err := GeneratePassword(8)
+	require.Error(t, err)
+}
+
+func TestRandomChar_Success(t *testing.T) {
+	c, err := randomChar()
+	require.NoError(t, err)
+	assert.Contains(t, CHARSET, string(c))
 }
 
 // --- ConvertStructToMap ---

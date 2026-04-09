@@ -151,6 +151,19 @@ func TestS3Storage_Upload_SubdirectoryPath(t *testing.T) {
 	assert.Equal(t, content, string(downloaded))
 }
 
+func TestNewS3Storage_EmptyEndpoint(t *testing.T) {
+	cfg := config.S3Config{
+		Endpoint:  "",
+		Bucket:    "test",
+		AccessKey: "key",
+		SecretKey: "secret",
+	}
+	storage, err := NewS3Storage(cfg)
+	assert.Error(t, err)
+	assert.Nil(t, storage)
+	assert.Contains(t, err.Error(), "s3 connection failed")
+}
+
 func TestNewS3Storage_ConnectionError(t *testing.T) {
 	cfg := config.S3Config{
 		Endpoint:  "invalid.endpoint.that.will.not.resolve.test:9000",

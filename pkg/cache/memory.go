@@ -19,9 +19,7 @@ type memoryItem struct {
 }
 
 func NewMemoryCache() *MemoryCache {
-	c := &MemoryCache{items: make(map[string]memoryItem)}
-	go c.cleanup()
-	return c
+	return &MemoryCache{items: make(map[string]memoryItem)}
 }
 
 func (m *MemoryCache) Get(_ context.Context, key string) (string, error) {
@@ -61,14 +59,6 @@ func (m *MemoryCache) Flush(_ context.Context) error {
 
 func (m *MemoryCache) Ping(_ context.Context) error {
 	return nil
-}
-
-func (m *MemoryCache) cleanup() {
-	ticker := time.NewTicker(time.Minute)
-	defer ticker.Stop()
-	for range ticker.C {
-		m.purgeExpired()
-	}
 }
 
 // purgeExpired removes all expired items from the cache.

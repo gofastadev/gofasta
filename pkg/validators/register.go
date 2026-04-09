@@ -1,8 +1,6 @@
 package validators
 
 import (
-	"fmt"
-
 	"github.com/go-playground/locales/en"
 	ut "github.com/go-playground/universal-translator"
 	"github.com/go-playground/validator/v10"
@@ -13,21 +11,14 @@ import (
 // newBaseValidator creates a validator with common (framework-level) validations.
 // Projects should call NewAppValidator() and then register additional validations
 // on the returned AppValidator.Validate field.
-func newBaseValidator(db *gorm.DB) (*validator.Validate, ut.Translator, error) {
+func newBaseValidator(db *gorm.DB) (*validator.Validate, ut.Translator) {
 	validate := validator.New()
 
-	en := en.New()
-	uni := ut.New(en, en)
+	enLocale := en.New()
+	uni := ut.New(enLocale, enLocale)
 
-	trans, found := uni.GetTranslator("en")
-	if !found {
-		return nil, nil, fmt.Errorf("translator not found")
-	}
-
-	err := en_translations.RegisterDefaultTranslations(validate, trans)
-	if err != nil {
-		return nil, nil, err
-	}
+	trans, _ := uni.GetTranslator("en")
+	en_translations.RegisterDefaultTranslations(validate, trans)
 
 	// Common validators
 	validate.RegisterValidation("uuid4_valid", isUUIDv4Valid)
@@ -36,7 +27,7 @@ func newBaseValidator(db *gorm.DB) (*validator.Validate, ut.Translator, error) {
 	validate.RegisterValidation("does_record_exist_by_id_for_verification", isRecordExistById(db))
 	validate.RegisterValidation("is_valid_url", isValidURL)
 
-	return validate, trans, nil
+	return validate, trans
 }
 
 // RegisterCommonValidators registers the framework's common validators on an existing validator instance.

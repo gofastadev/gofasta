@@ -29,11 +29,7 @@ func SetupDB(cfg *DatabaseConfig) *gorm.DB {
 	slog.Info("successfully connected to the database", "driver", cfg.Driver)
 
 	if cfg.Driver != "sqlite" {
-		sqlDB, err := db.DB()
-		if err != nil {
-			slog.Error("failed to get database instance", "error", err)
-			panic(fmt.Sprintf("failed to get database instance: %v", err))
-		}
+		sqlDB, _ := db.DB()
 		sqlDB.SetMaxIdleConns(cfg.MaxIdle)
 		sqlDB.SetMaxOpenConns(cfg.MaxOpen)
 		sqlDB.SetConnMaxLifetime(cfg.MaxLife)

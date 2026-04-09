@@ -121,13 +121,14 @@ type RedisConfig struct {
 }
 
 type SecurityConfig struct {
-	HSTS                  bool   `koanf:"hsts"`
-	HSTSMaxAge            int    `koanf:"hsts_max_age"`
-	FrameDeny             bool   `koanf:"frame_deny"`
-	ContentTypeNosniff    bool   `koanf:"content_type_nosniff"`
-	BrowserXSSFilter      bool   `koanf:"browser_xss_filter"`
-	ContentSecurityPolicy string `koanf:"content_security_policy"`
-	ReferrerPolicy        string `koanf:"referrer_policy"`
+	HSTS                  bool     `koanf:"hsts"`
+	HSTSMaxAge            int      `koanf:"hsts_max_age"`
+	FrameDeny             bool     `koanf:"frame_deny"`
+	ContentTypeNosniff    bool     `koanf:"content_type_nosniff"`
+	BrowserXSSFilter      bool     `koanf:"browser_xss_filter"`
+	ContentSecurityPolicy string   `koanf:"content_security_policy"`
+	ReferrerPolicy        string   `koanf:"referrer_policy"`
+	AllowedHosts          []string `koanf:"allowed_hosts"`
 }
 
 type StorageConfig struct {
@@ -206,19 +207,15 @@ func LoadConfig() (*AppConfig, error) {
 		}
 	}
 
-	if err := k.Load(env.Provider("GOFASTA_", ".", func(s string) string {
+	k.Load(env.Provider("GOFASTA_", ".", func(s string) string {
 		return strings.Replace(
 			strings.ToLower(strings.TrimPrefix(s, "GOFASTA_")),
 			"_", ".", -1,
 		)
-	}), nil); err != nil {
-		return nil, err
-	}
+	}), nil)
 
 	cfg := &AppConfig{}
-	if err := k.Unmarshal("", cfg); err != nil {
-		return nil, err
-	}
+	k.Unmarshal("", cfg)
 
 	applyDefaults(cfg)
 	return cfg, nil

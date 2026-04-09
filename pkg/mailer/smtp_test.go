@@ -199,6 +199,31 @@ func TestSMTPSender_Send_WithCCAndAttachments(t *testing.T) {
 	}
 }
 
+func TestSMTPSender_Send_AttachmentNoContentType(t *testing.T) {
+	host, port := mockSMTPServer(t)
+	renderer := NewTemplateRenderer(t.TempDir(), "App")
+
+	s := NewSMTPSender(
+		config.SMTPConfig{Host: host, Port: port, UseTLS: false},
+		"Test", "test@example.com",
+		renderer, slog.Default(),
+	)
+
+	msg := EmailMessage{
+		To:       []string{"to@example.com"},
+		Subject:  "With Attachment",
+		HTMLBody: "<p>See attached</p>",
+		Attachments: []Attachment{
+			{Filename: "data.bin", Content: []byte("binary data")},
+		},
+	}
+
+	err := s.Send(context.Background(), msg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 func TestSMTPSender_Send_ConnectionRefused(t *testing.T) {
 	renderer := NewTemplateRenderer(t.TempDir(), "App")
 
@@ -381,6 +406,168 @@ func TestSMTPSender_Send_STARTTLSError(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "smtp starttls") {
 		t.Errorf("error = %q, want it to contain 'smtp starttls'", err.Error())
+	}
+}
+
+// mockSMTPServerWithFailure starts a mock SMTP server that returns a failure
+// response when it receives the specified command prefix.
+func mockSMTPServerWithFailure(t *testing.T, failCmd string, failResp string) (string, int) {
+	t.Helper()
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("failed to listen: %v", err)
+	}
+	t.Cleanup(func() { ln.Close() })
+
+	addr := ln.Addr().(*net.TCPAddr)
+
+	go func() {
+		for {
+			conn, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			go handleSMTPConnWithFailure(conn, failCmd, failResp)
+		}
+	}()
+
+	return addr.IP.String(), addr.Port
+}
+
+func handleSMTPConnWithFailure(conn net.Conn, failCmd, failResp string) {
+	defer conn.Close()
+	writer := bufio.NewWriter(conn)
+	reader := bufio.NewReader(conn)
+
+	fmt.Fprintf(writer, "220 localhost SMTP mock\r\n")
+	writer.Flush()
+
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			return
+		}
+		cmd := strings.ToUpper(strings.TrimSpace(line))
+
+		switch {
+		case strings.HasPrefix(cmd, "EHLO"), strings.HasPrefix(cmd, "HELO"):
+			fmt.Fprintf(writer, "250-localhost\r\n250 OK\r\n")
+		case strings.HasPrefix(cmd, failCmd):
+			fmt.Fprintf(writer, "%s\r\n", failResp)
+			writer.Flush()
+			// Read QUIT if the client sends it
+			for {
+				qLine, err := reader.ReadString('\n')
+				if err != nil {
+					return
+				}
+				qCmd := strings.ToUpper(strings.TrimSpace(qLine))
+				if qCmd == "QUIT" {
+					fmt.Fprintf(writer, "221 Bye\r\n")
+					writer.Flush()
+					return
+				}
+			}
+		case strings.HasPrefix(cmd, "MAIL FROM"):
+			fmt.Fprintf(writer, "250 OK\r\n")
+		case strings.HasPrefix(cmd, "RCPT TO"):
+			fmt.Fprintf(writer, "250 OK\r\n")
+		case cmd == "DATA":
+			fmt.Fprintf(writer, "354 Start mail input\r\n")
+			writer.Flush()
+			for {
+				dataLine, err := reader.ReadString('\n')
+				if err != nil {
+					return
+				}
+				if strings.TrimSpace(dataLine) == "." {
+					break
+				}
+			}
+			fmt.Fprintf(writer, "250 OK\r\n")
+		case cmd == "QUIT":
+			fmt.Fprintf(writer, "221 Bye\r\n")
+			writer.Flush()
+			return
+		default:
+			fmt.Fprintf(writer, "250 OK\r\n")
+		}
+		writer.Flush()
+	}
+}
+
+func TestSMTPSender_Send_MailFromError(t *testing.T) {
+	host, port := mockSMTPServerWithFailure(t, "MAIL FROM", "550 Sender rejected")
+	renderer := NewTemplateRenderer(t.TempDir(), "App")
+
+	s := NewSMTPSender(
+		config.SMTPConfig{Host: host, Port: port, UseTLS: false},
+		"Test", "test@example.com",
+		renderer, slog.Default(),
+	)
+
+	msg := EmailMessage{
+		To:       []string{"recipient@example.com"},
+		Subject:  "Test",
+		HTMLBody: "<p>Hello</p>",
+	}
+
+	err := s.Send(context.Background(), msg)
+	if err == nil {
+		t.Fatal("expected error for MAIL FROM rejection")
+	}
+	if !strings.Contains(err.Error(), "smtp mail") {
+		t.Errorf("error = %q, want it to contain 'smtp mail'", err.Error())
+	}
+}
+
+func TestSMTPSender_Send_RcptToError(t *testing.T) {
+	host, port := mockSMTPServerWithFailure(t, "RCPT TO", "550 Recipient rejected")
+	renderer := NewTemplateRenderer(t.TempDir(), "App")
+
+	s := NewSMTPSender(
+		config.SMTPConfig{Host: host, Port: port, UseTLS: false},
+		"Test", "test@example.com",
+		renderer, slog.Default(),
+	)
+
+	msg := EmailMessage{
+		To:       []string{"recipient@example.com"},
+		Subject:  "Test",
+		HTMLBody: "<p>Hello</p>",
+	}
+
+	err := s.Send(context.Background(), msg)
+	if err == nil {
+		t.Fatal("expected error for RCPT TO rejection")
+	}
+	if !strings.Contains(err.Error(), "smtp rcpt") {
+		t.Errorf("error = %q, want it to contain 'smtp rcpt'", err.Error())
+	}
+}
+
+func TestSMTPSender_Send_DataError(t *testing.T) {
+	host, port := mockSMTPServerWithFailure(t, "DATA", "554 Transaction failed")
+	renderer := NewTemplateRenderer(t.TempDir(), "App")
+
+	s := NewSMTPSender(
+		config.SMTPConfig{Host: host, Port: port, UseTLS: false},
+		"Test", "test@example.com",
+		renderer, slog.Default(),
+	)
+
+	msg := EmailMessage{
+		To:       []string{"recipient@example.com"},
+		Subject:  "Test",
+		HTMLBody: "<p>Hello</p>",
+	}
+
+	err := s.Send(context.Background(), msg)
+	if err == nil {
+		t.Fatal("expected error for DATA rejection")
+	}
+	if !strings.Contains(err.Error(), "smtp data") {
+		t.Errorf("error = %q, want it to contain 'smtp data'", err.Error())
 	}
 }
 

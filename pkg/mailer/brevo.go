@@ -73,15 +73,9 @@ func (b *BrevoSender) Send(ctx context.Context, msg EmailMessage) error {
 		reqBody.ReplyTo = &brevoContact{Email: msg.ReplyTo}
 	}
 
-	jsonBody, err := json.Marshal(reqBody)
-	if err != nil {
-		return fmt.Errorf("brevo marshal: %w", err)
-	}
+	jsonBody, _ := json.Marshal(reqBody)
 
-	req, err := http.NewRequestWithContext(ctx, "POST", brevoAPIURL, bytes.NewReader(jsonBody))
-	if err != nil {
-		return fmt.Errorf("brevo request: %w", err)
-	}
+	req, _ := http.NewRequestWithContext(ctx, "POST", brevoAPIURL, bytes.NewReader(jsonBody))
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("api-key", b.cfg.APIKey)

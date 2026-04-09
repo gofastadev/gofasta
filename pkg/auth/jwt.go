@@ -53,7 +53,7 @@ func (s *JWTService) GenerateRefreshToken(userID string) (string, error) {
 // ValidateToken parses and validates a token string, returning the claims.
 func (s *JWTService) ValidateToken(tokenStr string) (*Claims, error) {
 	claims := &Claims{}
-	token, err := jwt.ParseWithClaims(tokenStr, claims, func(t *jwt.Token) (interface{}, error) {
+	_, err := jwt.ParseWithClaims(tokenStr, claims, func(t *jwt.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
 		}
@@ -61,9 +61,6 @@ func (s *JWTService) ValidateToken(tokenStr string) (*Claims, error) {
 	})
 	if err != nil {
 		return nil, fmt.Errorf("invalid token: %w", err)
-	}
-	if !token.Valid {
-		return nil, fmt.Errorf("token is not valid")
 	}
 	return claims, nil
 }

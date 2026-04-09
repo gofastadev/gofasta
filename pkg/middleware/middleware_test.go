@@ -363,6 +363,43 @@ func TestSecurityHeaders_AllOptionsEnabled(t *testing.T) {
 	assert.Contains(t, rec.Header().Get("Strict-Transport-Security"), "63072000")
 }
 
+func TestSecurityHeaders_AllowedHostsRejectsUnknown(t *testing.T) {
+	called := false
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+	})
+	cfg := config.SecurityConfig{
+		AllowedHosts: []string{"allowed.com"},
+	}
+	handler := SecurityHeaders(cfg)(inner)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Host = "evil.com"
+	handler.ServeHTTP(rec, req)
+
+	assert.False(t, called, "next handler should NOT be called for disallowed host")
+}
+
+func TestSecurityHeaders_AllowedHostsPassesValid(t *testing.T) {
+	called := false
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		w.WriteHeader(http.StatusOK)
+	})
+	cfg := config.SecurityConfig{
+		AllowedHosts: []string{"allowed.com"},
+	}
+	handler := SecurityHeaders(cfg)(inner)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Host = "allowed.com"
+	handler.ServeHTTP(rec, req)
+
+	assert.True(t, called, "next handler should be called for allowed host")
+}
+
 func TestSecurityHeaders_ProcessErrorBlocksNext(t *testing.T) {
 	// The secure library's AllowedHosts option rejects requests from non-allowed hosts,
 	// causing Process to return an error. This exercises the error path (lines 23-25).

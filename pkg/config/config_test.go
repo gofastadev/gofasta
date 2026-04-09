@@ -1,10 +1,17 @@
 package config
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/modules/postgres"
+	"github.com/testcontainers/testcontainers-go/wait"
 )
 
 func TestLoadConfig_Defaults(t *testing.T) {
@@ -222,4 +229,56 @@ func TestSetupDB_UnsupportedDriver(t *testing.T) {
 		Driver: "unsupported",
 	}
 	SetupDB(cfg)
+}
+
+func TestSetupDB_Postgres_PoolConfig(t *testing.T) {
+	if testing.Short() {
+		t.Skip("requires Docker")
+	}
+	ctx := context.Background()
+
+	pgContainer, err := postgres.RunContainer(ctx,
+		testcontainers.WithImage("postgres:16-alpine"),
+		postgres.WithDatabase("testdb"),
+		postgres.WithUsername("testuser"),
+		postgres.WithPassword("testpass"),
+		testcontainers.WithWaitStrategy(
+			wait.ForLog("database system is ready to accept connections").
+				WithOccurrence(2).
+				WithStartupTimeout(30*time.Second),
+		),
+	)
+	require.NoError(t, err)
+	t.Cleanup(func() { pgContainer.Terminate(ctx) })
+
+	host, err := pgContainer.Host(ctx)
+	require.NoError(t, err)
+	port, err := pgContainer.MappedPort(ctx, "5432")
+	require.NoError(t, err)
+
+	cfg := &DatabaseConfig{
+		Driver:   "postgres",
+		Host:     host,
+		Port:     port.Port(),
+		User:     "testuser",
+		Password: "testpass",
+		Name:     "testdb",
+		SSLMode:  "disable",
+		MaxIdle:  5,
+		MaxOpen:  10,
+		MaxLife:  time.Hour,
+	}
+
+	db := SetupDB(cfg)
+	require.NotNil(t, db)
+
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+
+	// Verify pool config was applied (MaxOpenConnections is exposed in Stats)
+	assert.Equal(t, 10, sqlDB.Stats().MaxOpenConnections)
+
+	// Verify the DB works
+	err = sqlDB.Ping()
+	require.NoError(t, err)
 }

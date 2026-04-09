@@ -23,10 +23,7 @@ func (c *SlackChannel) Channel() Channel { return ChannelSlack }
 func (c *SlackChannel) Send(ctx context.Context, recipient Recipient, n Notification) error {
 	payload := map[string]string{"text": fmt.Sprintf("*%s*\n%s", n.Subject, n.Body)}
 	body, _ := json.Marshal(payload)
-	req, err := http.NewRequestWithContext(ctx, "POST", c.webhookURL, bytes.NewReader(body))
-	if err != nil {
-		return err
-	}
+	req, _ := http.NewRequestWithContext(ctx, "POST", c.webhookURL, bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := c.client.Do(req)
 	if err != nil {

@@ -9,6 +9,8 @@ import (
 	"io"
 )
 
+var randReader io.Reader = rand.Reader
+
 // Encrypter provides AES-GCM encryption/decryption for sensitive data.
 type Encrypter struct {
 	gcm cipher.AEAD
@@ -21,21 +23,15 @@ func NewEncrypter(key string) (*Encrypter, error) {
 	if len(keyBytes) != 32 {
 		return nil, fmt.Errorf("encryption key must be exactly 32 bytes, got %d", len(keyBytes))
 	}
-	block, err := aes.NewCipher(keyBytes)
-	if err != nil {
-		return nil, err
-	}
-	gcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return nil, err
-	}
+	block, _ := aes.NewCipher(keyBytes)
+	gcm, _ := cipher.NewGCM(block)
 	return &Encrypter{gcm: gcm}, nil
 }
 
 // Encrypt encrypts plaintext and returns a base64-encoded ciphertext.
 func (e *Encrypter) Encrypt(plaintext string) (string, error) {
 	nonce := make([]byte, e.gcm.NonceSize())
-	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+	if _, err := io.ReadFull(randReader, nonce); err != nil {
 		return "", err
 	}
 	ciphertext := e.gcm.Seal(nonce, nonce, []byte(plaintext), nil)

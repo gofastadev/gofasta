@@ -3,7 +3,6 @@ package validators
 import (
 	"log/slog"
 	"net/url"
-	"reflect"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofastadev/gofasta/pkg/utils"
@@ -18,9 +17,6 @@ func isUUIDv4Valid(fl validator.FieldLevel) bool {
 
 func isRecordExistByName(db *gorm.DB) validator.Func {
 	return func(fl validator.FieldLevel) bool {
-		if fl.Field().Kind() == reflect.Ptr && fl.Field().IsNil() {
-			return true
-		}
 		name := getValue(fl)
 		tableName := fl.Param()
 		var count int64
@@ -35,9 +31,6 @@ func isRecordExistByName(db *gorm.DB) validator.Func {
 
 func isRecordExistById(db *gorm.DB) validator.Func {
 	return func(fl validator.FieldLevel) bool {
-		if fl.Field().Kind() == reflect.Ptr && fl.Field().IsNil() {
-			return true
-		}
 		id := getValue(fl)
 		tableName := fl.Param()
 		var count int64
@@ -52,9 +45,6 @@ func isRecordExistById(db *gorm.DB) validator.Func {
 
 func isRecordDeletable(db *gorm.DB) validator.Func {
 	return func(fl validator.FieldLevel) bool {
-		if fl.Field().Kind() == reflect.Ptr && fl.Field().IsNil() {
-			return true
-		}
 		id := getValue(fl)
 		tableName := fl.Param()
 		var count int64
@@ -68,10 +58,6 @@ func isRecordDeletable(db *gorm.DB) validator.Func {
 }
 
 func isValidURL(fl validator.FieldLevel) bool {
-	if fl.Field().Kind() == reflect.Ptr && fl.Field().IsNil() {
-		return true
-	}
-
 	urlStr := fl.Field().String()
 	parsedURL, err := url.ParseRequestURI(urlStr)
 

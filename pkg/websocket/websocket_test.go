@@ -293,6 +293,125 @@ func TestServeWS_UpgradeError(t *testing.T) {
 	}
 }
 
+func TestHub_Broadcast_FullBuffer(t *testing.T) {
+	h := newTestHub(t)
+
+	// Create a client with a tiny send buffer (size 1)
+	c := &Client{
+		ID:     "slow",
+		hub:    h,
+		send:   make(chan []byte, 1),
+		logger: testLogger,
+	}
+
+	h.register <- c
+	wait()
+
+	// Fill the buffer
+	c.send <- []byte("filler")
+
+	// Broadcast — the default case should fire (channel full), closing send
+	h.Broadcast(Message{Event: "test", Payload: []byte("overflow")})
+	wait()
+
+	// Drain filler if present, then channel should be closed
+	_, ok := <-c.send
+	if ok {
+		_, ok = <-c.send
+	}
+	if ok {
+		t.Error("send channel should be closed after buffer overflow")
+	}
+}
+
+func TestHub_Broadcast_RoomFullBuffer(t *testing.T) {
+	h := newTestHub(t)
+
+	c := &Client{
+		ID:     "slow-room",
+		hub:    h,
+		send:   make(chan []byte, 1),
+		logger: testLogger,
+	}
+
+	h.register <- c
+	wait()
+	h.JoinRoom(c, "room-a")
+
+	// Fill the buffer
+	c.send <- []byte("filler")
+
+	// Broadcast to the room — default case should fire
+	h.Broadcast(Message{Room: "room-a", Event: "test", Payload: []byte("overflow")})
+	wait()
+
+	_, ok := <-c.send
+	if ok {
+		_, ok = <-c.send
+	}
+	if ok {
+		t.Error("send channel should be closed after room buffer overflow")
+	}
+}
+
+func TestServeWS_ClientDisconnect(t *testing.T) {
+	h := newTestHub(t)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ServeWS(h, w, r)
+	}))
+	defer server.Close()
+
+	wsURL := "ws" + strings.TrimPrefix(server.URL, "http")
+	conn, _, err := ws.DefaultDialer.Dial(wsURL, nil)
+	if err != nil {
+		t.Fatalf("dial failed: %v", err)
+	}
+	wait()
+
+	if h.ClientCount() != 1 {
+		t.Errorf("expected 1 client, got %d", h.ClientCount())
+	}
+
+	// Close the client connection — triggers readPump exit → unregister → writePump exit
+	conn.Close()
+
+	// Wait for the hub to process the unregister
+	time.Sleep(200 * time.Millisecond)
+	if h.ClientCount() != 0 {
+		t.Errorf("expected 0 clients after disconnect, got %d", h.ClientCount())
+	}
+}
+
+func TestServeWS_PongHandler(t *testing.T) {
+	h := newTestHub(t)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ServeWS(h, w, r)
+	}))
+	defer server.Close()
+
+	wsURL := "ws" + strings.TrimPrefix(server.URL, "http")
+	conn, _, err := ws.DefaultDialer.Dial(wsURL, nil)
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	defer conn.Close()
+	wait()
+
+	// Send a pong frame to the server — this triggers the server's pong handler
+	// which extends the read deadline
+	err = conn.WriteMessage(ws.PongMessage, []byte(""))
+	if err != nil {
+		t.Fatalf("write pong: %v", err)
+	}
+	wait()
+
+	// If the pong handler works, the read deadline was extended and the client is still connected
+	if h.ClientCount() != 1 {
+		t.Errorf("expected 1 client after pong, got %d", h.ClientCount())
+	}
+}
+
 func TestHub_UnregisterClient_RemovesFromRooms(t *testing.T) {
 	h := newTestHub(t)
 	c := newTestClient("test-1", h)

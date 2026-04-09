@@ -17,19 +17,14 @@ func ConvertStructToMap(obj interface{}) map[string]interface{} {
 	typeOfObj := value.Type()
 	for i := 0; i < value.NumField(); i++ {
 		field := value.Field(i)
-		if !field.IsValid() {
-			continue
-		} else {
-			switch field.Kind() {
-			case reflect.Ptr, reflect.Interface, reflect.Map, reflect.Slice, reflect.Chan, reflect.Func:
-				if field.IsNil() {
-					continue
-				} else {
-					fieldName := typeOfObj.Field(i).Name
-					snakeName := CamelToSnake(fieldName)
-					result[snakeName] = field.Interface()
-				}
+		switch field.Kind() {
+		case reflect.Ptr, reflect.Interface, reflect.Map, reflect.Slice, reflect.Chan, reflect.Func:
+			if field.IsNil() {
+				continue
 			}
+			fieldName := typeOfObj.Field(i).Name
+			snakeName := CamelToSnake(fieldName)
+			result[snakeName] = field.Interface()
 		}
 	}
 	return result

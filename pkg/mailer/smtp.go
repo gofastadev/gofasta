@@ -98,10 +98,11 @@ func (s *SMTPSender) Send(ctx context.Context, msg EmailMessage) error {
 	}
 
 	// Build MIME message
-	boundary := "gofasta-boundary-" + fmt.Sprintf("%d", ctx.Value("requestID"))
-	if boundary == "gofasta-boundary-<nil>" {
-		boundary = "gofasta-boundary-000"
+	reqID := ctx.Value("requestID")
+	if reqID == nil {
+		reqID = "000"
 	}
+	boundary := fmt.Sprintf("gofasta-boundary-%v", reqID)
 
 	var sb strings.Builder
 	sb.WriteString("From: " + fromHeader + "\r\n")

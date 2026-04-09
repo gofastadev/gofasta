@@ -2,8 +2,11 @@ package utils
 
 import (
 	"crypto/rand"
+	"io"
 	"math/big"
 )
+
+var cryptoRandReader io.Reader = rand.Reader
 
 const CHARSET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_=+[]{}|;:,.<>?/~`"
 
@@ -21,7 +24,7 @@ func GeneratePassword(length int) (string, error) {
 
 func randomChar() (byte, error) {
 	max := big.NewInt(int64(len(CHARSET)))
-	n, err := rand.Int(rand.Reader, max)
+	n, err := rand.Int(cryptoRandReader, max)
 	if err != nil {
 		return 0, err
 	}

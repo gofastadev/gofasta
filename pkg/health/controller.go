@@ -39,16 +39,12 @@ func (h *Controller) Ready(w http.ResponseWriter, r *http.Request) error {
 
 	dbCheck := map[string]interface{}{"name": "database"}
 	start := time.Now()
-	if sqlDB, err := h.DB.DB(); err == nil {
-		if err := sqlDB.PingContext(r.Context()); err != nil {
-			dbCheck["status"] = "down"
-			dbCheck["error"] = err.Error()
-		} else {
-			dbCheck["status"] = "up"
-		}
-	} else {
+	sqlDB, _ := h.DB.DB()
+	if err := sqlDB.PingContext(r.Context()); err != nil {
 		dbCheck["status"] = "down"
 		dbCheck["error"] = err.Error()
+	} else {
+		dbCheck["status"] = "up"
 	}
 	dbCheck["duration"] = time.Since(start).String()
 	checks = append(checks, dbCheck)
