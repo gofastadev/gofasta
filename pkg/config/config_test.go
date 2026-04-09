@@ -218,6 +218,23 @@ func TestSetupDB_SQLite(t *testing.T) {
 	}
 }
 
+func TestSetupDB_ConnectionFailure_Panics(t *testing.T) {
+	defer func() {
+		r := recover()
+		if r == nil {
+			t.Fatal("expected panic for unreachable database")
+		}
+	}()
+	SetupDB(&DatabaseConfig{
+		Driver:  "postgres",
+		Host:    "255.255.255.255",
+		Port:    "5432",
+		User:    "nobody",
+		Name:    "nodb",
+		SSLMode: "disable",
+	})
+}
+
 func TestSetupDB_UnsupportedDriver(t *testing.T) {
 	defer func() {
 		if r := recover(); r == nil {

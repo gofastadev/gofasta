@@ -10,10 +10,10 @@ import (
 )
 
 const (
-	writeWait  = 10 * time.Second
-	pongWait   = 60 * time.Second
-	pingPeriod = (pongWait * 9) / 10
-	maxMsgSize = 8192
+	writeWait         = 10 * time.Second
+	pongWait          = 60 * time.Second
+	defaultPingPeriod = (pongWait * 9) / 10
+	maxMsgSize        = 8192
 )
 
 var upgrader = ws.Upgrader{
@@ -24,26 +24,41 @@ var upgrader = ws.Upgrader{
 
 // Client represents a single WebSocket connection.
 type Client struct {
-	ID     string
-	hub    *Hub
-	conn   *ws.Conn
-	send   chan []byte
-	logger *slog.Logger
+	ID         string
+	hub        *Hub
+	conn       *ws.Conn
+	send       chan []byte
+	logger     *slog.Logger
+	pingPeriod time.Duration
+}
+
+// ClientOption is a function that configures a Client.
+type ClientOption func(*Client)
+
+// WithPingPeriod sets a custom ping period for the client.
+func WithPingPeriod(d time.Duration) ClientOption {
+	return func(c *Client) {
+		c.pingPeriod = d
+	}
 }
 
 // ServeWS upgrades an HTTP connection to WebSocket and registers the client with the hub.
-func ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request) {
+func ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request, opts ...ClientOption) {
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		hub.logger.Error("websocket upgrade failed", "error", err)
 		return
 	}
 	client := &Client{
-		ID:     uuid.New().String(),
-		hub:    hub,
-		conn:   conn,
-		send:   make(chan []byte, 256),
-		logger: hub.logger,
+		ID:         uuid.New().String(),
+		hub:        hub,
+		conn:       conn,
+		send:       make(chan []byte, 256),
+		logger:     hub.logger,
+		pingPeriod: defaultPingPeriod,
+	}
+	for _, opt := range opts {
+		opt(client)
 	}
 	hub.register <- client
 
@@ -72,7 +87,7 @@ func (c *Client) readPump() {
 }
 
 func (c *Client) writePump() {
-	ticker := time.NewTicker(pingPeriod)
+	ticker := time.NewTicker(c.pingPeriod)
 	defer func() {
 		ticker.Stop()
 		c.conn.Close()

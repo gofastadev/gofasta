@@ -412,6 +412,70 @@ func TestServeWS_PongHandler(t *testing.T) {
 	}
 }
 
+func TestServeWS_WriteMessageError(t *testing.T) {
+	h := newTestHub(t)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ServeWS(h, w, r)
+	}))
+	defer server.Close()
+
+	wsURL := "ws" + strings.TrimPrefix(server.URL, "http")
+	conn, _, err := ws.DefaultDialer.Dial(wsURL, nil)
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	wait()
+
+	if h.ClientCount() != 1 {
+		t.Fatalf("expected 1 client, got %d", h.ClientCount())
+	}
+
+	// Force-close the underlying TCP connection (not the WS close handshake)
+	conn.UnderlyingConn().Close()
+
+	// Small delay for the close to propagate
+	time.Sleep(50 * time.Millisecond)
+
+	// Broadcast a message — hub sends to client.send, writePump tries to write to broken conn
+	h.Broadcast(Message{Event: "test", Payload: []byte("should fail")})
+
+	// Wait for writePump to detect the error and the hub to unregister
+	time.Sleep(300 * time.Millisecond)
+
+	if h.ClientCount() != 0 {
+		t.Errorf("expected 0 clients after write error, got %d", h.ClientCount())
+	}
+}
+
+func TestServeWS_PingError(t *testing.T) {
+	h := newTestHub(t)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ServeWS(h, w, r, WithPingPeriod(50*time.Millisecond))
+	}))
+	defer server.Close()
+
+	wsURL := "ws" + strings.TrimPrefix(server.URL, "http")
+	conn, _, err := ws.DefaultDialer.Dial(wsURL, nil)
+	if err != nil {
+		t.Fatalf("dial: %v", err)
+	}
+	wait()
+
+	if h.ClientCount() != 1 {
+		t.Fatalf("expected 1 client, got %d", h.ClientCount())
+	}
+
+	// Force-close the underlying TCP connection so the next ping write fails
+	conn.UnderlyingConn().Close()
+
+	// Wait for the short ping period to fire and fail
+	time.Sleep(300 * time.Millisecond)
+
+	if h.ClientCount() != 0 {
+		t.Errorf("expected 0 clients after ping error, got %d", h.ClientCount())
+	}
+}
+
 func TestHub_UnregisterClient_RemovesFromRooms(t *testing.T) {
 	h := newTestHub(t)
 	c := newTestClient("test-1", h)

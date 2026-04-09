@@ -79,11 +79,12 @@ type EmailConfig struct {
 }
 
 type SMTPConfig struct {
-	Host     string `koanf:"host"`
-	Port     int    `koanf:"port"`
-	Username string `koanf:"username"`
-	Password string `koanf:"password"`
-	UseTLS   bool   `koanf:"use_tls"`
+	Host               string `koanf:"host"`
+	Port               int    `koanf:"port"`
+	Username           string `koanf:"username"`
+	Password           string `koanf:"password"`
+	UseTLS             bool   `koanf:"use_tls"`
+	InsecureSkipVerify bool   `koanf:"insecure_skip_verify"`
 }
 
 type SendGridConfig struct {

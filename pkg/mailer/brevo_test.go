@@ -3,6 +3,7 @@ package mailer
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"log/slog"
 	"net/http"
@@ -218,6 +219,33 @@ func TestBrevoSender_Send_TemplateError(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("expected error for nonexistent template")
+	}
+}
+
+func TestBrevoSender_Send_NetworkError(t *testing.T) {
+	renderer := NewTemplateRenderer(t.TempDir(), "App")
+	b := NewBrevoSender(
+		config.BrevoConfig{APIKey: "test-key"},
+		"Sender", "sender@example.com",
+		renderer, slog.Default(),
+	)
+	b.client = &http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			return nil, errors.New("connection refused")
+		}),
+	}
+
+	msg := EmailMessage{
+		To:       []string{"to@example.com"},
+		Subject:  "Test",
+		HTMLBody: "<p>Hello</p>",
+	}
+	err := b.Send(context.Background(), msg)
+	if err == nil {
+		t.Fatal("expected error for network failure")
+	}
+	if !strings.Contains(err.Error(), "brevo send") {
+		t.Errorf("error = %q, want it to contain 'brevo send'", err.Error())
 	}
 }
 

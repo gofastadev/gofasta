@@ -45,7 +45,10 @@ func (s *SMTPSender) Send(ctx context.Context, msg EmailMessage) error {
 
 	var conn net.Conn
 	if s.cfg.UseTLS {
-		tlsConn, err := tls.Dial("tcp", addr, &tls.Config{ServerName: s.cfg.Host})
+		tlsConn, err := tls.Dial("tcp", addr, &tls.Config{
+			ServerName:         s.cfg.Host,
+			InsecureSkipVerify: s.cfg.InsecureSkipVerify,
+		})
 		if err != nil {
 			return fmt.Errorf("smtp tls dial: %w", err)
 		}

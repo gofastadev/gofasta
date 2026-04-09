@@ -3,11 +3,19 @@ package mailer
 import (
 	"bufio"
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/tls"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"fmt"
 	"log/slog"
+	"math/big"
 	"net"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gofastadev/gofasta/pkg/config"
 )
@@ -593,5 +601,189 @@ func TestSMTPSender_Send_WithTemplate(t *testing.T) {
 	err := s.Send(context.Background(), msg)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func generateSelfSignedCert(t *testing.T) tls.Certificate {
+	t.Helper()
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatalf("generate key: %v", err)
+	}
+
+	template := &x509.Certificate{
+		SerialNumber: big.NewInt(1),
+		Subject:      pkix.Name{Organization: []string{"Test"}},
+		NotBefore:    time.Now(),
+		NotAfter:     time.Now().Add(time.Hour),
+		KeyUsage:     x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		IPAddresses:  []net.IP{net.ParseIP("127.0.0.1")},
+	}
+	certDER, err := x509.CreateCertificate(rand.Reader, template, template, &key.PublicKey, key)
+	if err != nil {
+		t.Fatalf("create cert: %v", err)
+	}
+
+	return tls.Certificate{
+		Certificate: [][]byte{certDER},
+		PrivateKey:  key,
+	}
+}
+
+func mockTLSSMTPServer(t *testing.T) (string, int) {
+	t.Helper()
+	cert := generateSelfSignedCert(t)
+	tlsCfg := &tls.Config{Certificates: []tls.Certificate{cert}}
+	ln, err := tls.Listen("tcp", "127.0.0.1:0", tlsCfg)
+	if err != nil {
+		t.Fatalf("tls listen: %v", err)
+	}
+	t.Cleanup(func() { ln.Close() })
+	addr := ln.Addr().(*net.TCPAddr)
+	go func() {
+		for {
+			conn, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			go handleSMTPConn(conn)
+		}
+	}()
+	return addr.IP.String(), addr.Port
+}
+
+func TestSMTPSender_Send_TLSSuccess(t *testing.T) {
+	host, port := mockTLSSMTPServer(t)
+	renderer := NewTemplateRenderer(t.TempDir(), "App")
+	s := NewSMTPSender(
+		config.SMTPConfig{Host: host, Port: port, UseTLS: true, InsecureSkipVerify: true},
+		"Test", "test@example.com",
+		renderer, slog.Default(),
+	)
+	msg := EmailMessage{
+		To:       []string{"r@example.com"},
+		Subject:  "TLS Test",
+		HTMLBody: "<p>Hello TLS</p>",
+	}
+	err := s.Send(context.Background(), msg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func mockSMTPServerNoGreeting(t *testing.T) (string, int) {
+	t.Helper()
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	t.Cleanup(func() { ln.Close() })
+	addr := ln.Addr().(*net.TCPAddr)
+	go func() {
+		for {
+			conn, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			conn.Close()
+		}
+	}()
+	return addr.IP.String(), addr.Port
+}
+
+func TestSMTPSender_Send_NoGreeting(t *testing.T) {
+	host, port := mockSMTPServerNoGreeting(t)
+	renderer := NewTemplateRenderer(t.TempDir(), "App")
+	s := NewSMTPSender(
+		config.SMTPConfig{Host: host, Port: port},
+		"Test", "test@example.com",
+		renderer, slog.Default(),
+	)
+	msg := EmailMessage{
+		To:       []string{"r@example.com"},
+		Subject:  "Test",
+		HTMLBody: "<p>test</p>",
+	}
+	err := s.Send(context.Background(), msg)
+	if err == nil {
+		t.Fatal("expected error when server sends no greeting")
+	}
+	if !strings.Contains(err.Error(), "smtp client") {
+		t.Errorf("error = %q, want it to contain 'smtp client'", err.Error())
+	}
+}
+
+func mockSMTPServerCloseAfterData(t *testing.T) (string, int) {
+	t.Helper()
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	t.Cleanup(func() { ln.Close() })
+	addr := ln.Addr().(*net.TCPAddr)
+	go func() {
+		for {
+			conn, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			go handleSMTPConnCloseAfterData(conn)
+		}
+	}()
+	return addr.IP.String(), addr.Port
+}
+
+func handleSMTPConnCloseAfterData(conn net.Conn) {
+	defer conn.Close()
+	writer := bufio.NewWriter(conn)
+	reader := bufio.NewReader(conn)
+
+	fmt.Fprintf(writer, "220 localhost SMTP mock\r\n")
+	writer.Flush()
+
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			return
+		}
+		cmd := strings.ToUpper(strings.TrimSpace(line))
+		switch {
+		case strings.HasPrefix(cmd, "EHLO"), strings.HasPrefix(cmd, "HELO"):
+			fmt.Fprintf(writer, "250-localhost\r\n250 OK\r\n")
+		case strings.HasPrefix(cmd, "MAIL FROM"):
+			fmt.Fprintf(writer, "250 OK\r\n")
+		case strings.HasPrefix(cmd, "RCPT TO"):
+			fmt.Fprintf(writer, "250 OK\r\n")
+		case cmd == "DATA":
+			fmt.Fprintf(writer, "354 Start mail input\r\n")
+			writer.Flush()
+			return
+		default:
+			fmt.Fprintf(writer, "250 OK\r\n")
+		}
+		writer.Flush()
+	}
+}
+
+func TestSMTPSender_Send_WriteCloseError(t *testing.T) {
+	host, port := mockSMTPServerCloseAfterData(t)
+	renderer := NewTemplateRenderer(t.TempDir(), "App")
+	s := NewSMTPSender(
+		config.SMTPConfig{Host: host, Port: port},
+		"Test", "test@example.com",
+		renderer, slog.Default(),
+	)
+	msg := EmailMessage{
+		To:       []string{"r@example.com"},
+		Subject:  "Test",
+		HTMLBody: "<p>test</p>",
+	}
+	err := s.Send(context.Background(), msg)
+	if err == nil {
+		t.Fatal("expected error when server closes after DATA")
+	}
+	if !strings.Contains(err.Error(), "smtp write") && !strings.Contains(err.Error(), "smtp close") {
+		t.Errorf("error = %q, want 'smtp write' or 'smtp close'", err.Error())
 	}
 }
