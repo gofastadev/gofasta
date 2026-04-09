@@ -2,9 +2,14 @@ package websocket
 
 import (
 	"log/slog"
+	"net/http"
+	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 	"time"
+
+	ws "github.com/gorilla/websocket"
 )
 
 var testLogger = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelError}))
@@ -196,5 +201,107 @@ func TestHub_ClientCount(t *testing.T) {
 
 	if h.ClientCount() != 2 {
 		t.Errorf("expected 2, got %d", h.ClientCount())
+	}
+}
+
+func TestServeWS(t *testing.T) {
+	h := newTestHub(t)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ServeWS(h, w, r)
+	}))
+	defer server.Close()
+
+	// Connect via WebSocket
+	wsURL := "ws" + strings.TrimPrefix(server.URL, "http")
+	conn, _, err := ws.DefaultDialer.Dial(wsURL, nil)
+	if err != nil {
+		t.Fatalf("dial failed: %v", err)
+	}
+	defer conn.Close()
+
+	wait()
+
+	if h.ClientCount() != 1 {
+		t.Errorf("expected 1 client after WS connect, got %d", h.ClientCount())
+	}
+}
+
+func TestServeWS_ReadWrite(t *testing.T) {
+	h := newTestHub(t)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ServeWS(h, w, r)
+	}))
+	defer server.Close()
+
+	wsURL := "ws" + strings.TrimPrefix(server.URL, "http")
+
+	// Connect client 1
+	conn1, _, err := ws.DefaultDialer.Dial(wsURL, nil)
+	if err != nil {
+		t.Fatalf("dial c1 failed: %v", err)
+	}
+	defer conn1.Close()
+
+	// Connect client 2
+	conn2, _, err := ws.DefaultDialer.Dial(wsURL, nil)
+	if err != nil {
+		t.Fatalf("dial c2 failed: %v", err)
+	}
+	defer conn2.Close()
+
+	wait()
+
+	// Client 1 sends a message, which readPump broadcasts to all
+	err = conn1.WriteMessage(ws.TextMessage, []byte("hello from c1"))
+	if err != nil {
+		t.Fatalf("write failed: %v", err)
+	}
+
+	// Client 2 should receive the broadcast
+	conn2.SetReadDeadline(time.Now().Add(2 * time.Second))
+	_, msg, err := conn2.ReadMessage()
+	if err != nil {
+		t.Fatalf("read from c2 failed: %v", err)
+	}
+	if string(msg) != "hello from c1" {
+		t.Errorf("expected 'hello from c1', got %q", string(msg))
+	}
+
+	// Client 1 should also receive its own broadcast
+	conn1.SetReadDeadline(time.Now().Add(2 * time.Second))
+	_, msg, err = conn1.ReadMessage()
+	if err != nil {
+		t.Fatalf("read from c1 failed: %v", err)
+	}
+	if string(msg) != "hello from c1" {
+		t.Errorf("expected 'hello from c1', got %q", string(msg))
+	}
+}
+
+func TestHub_UnregisterClient_RemovesFromRooms(t *testing.T) {
+	h := newTestHub(t)
+	c := newTestClient("test-1", h)
+
+	h.register <- c
+	wait()
+
+	h.JoinRoom(c, "room-a")
+	h.JoinRoom(c, "room-b")
+
+	h.unregister <- c
+	wait()
+
+	h.mu.RLock()
+	_, aExists := h.rooms["room-a"]
+	_, bExists := h.rooms["room-b"]
+	h.mu.RUnlock()
+
+	if aExists {
+		t.Error("expected room-a to be removed")
+	}
+	if bExists {
+		t.Error("expected room-b to be removed")
 	}
 }

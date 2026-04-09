@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"testing"
 
+	"github.com/alicebob/miniredis/v2"
 	"github.com/gofastadev/gofasta/pkg/config"
 	"github.com/hibiken/asynq"
 )
@@ -85,4 +86,49 @@ func TestAsynqQueue_RegisterHandler(t *testing.T) {
 		return nil
 	})
 	q.RegisterHandler("test:task", handler)
+}
+
+func TestAsynqQueue_Enqueue(t *testing.T) {
+	mr := miniredis.RunT(t)
+
+	cfg := &config.QueueConfig{
+		Enabled:     true,
+		Concurrency: 1,
+		Redis: config.QueueRedisConfig{
+			Host: mr.Host(),
+			Port: mr.Port(),
+		},
+	}
+	q, err := NewAsynqQueue(cfg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	info, err := q.Enqueue(context.Background(), "test:email", []byte(`{"to":"test@example.com"}`))
+	if err != nil {
+		t.Fatalf("enqueue failed: %v", err)
+	}
+	if info == nil {
+		t.Fatal("expected non-nil task info")
+	}
+}
+
+func TestAsynqQueue_Shutdown(t *testing.T) {
+	mr := miniredis.RunT(t)
+
+	cfg := &config.QueueConfig{
+		Enabled:     true,
+		Concurrency: 1,
+		Redis: config.QueueRedisConfig{
+			Host: mr.Host(),
+			Port: mr.Port(),
+		},
+	}
+	q, err := NewAsynqQueue(cfg)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	// Shutdown should not panic
+	q.Shutdown()
 }
