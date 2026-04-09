@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/gofastadev/gofasta/pkg/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -354,6 +355,24 @@ func TestClaimsKey_Value(t *testing.T) {
 }
 
 // ---------- Token round-trip ----------
+
+func TestValidateToken_UnexpectedSigningMethod(t *testing.T) {
+	svc := testJWTService()
+	// Create a token signed with the "none" method (non-HMAC)
+	token := jwt.NewWithClaims(jwt.SigningMethodNone, &Claims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
+		},
+		UserID: "user-1",
+		Role:   "admin",
+	})
+	tokenStr, err := token.SignedString(jwt.UnsafeAllowNoneSignatureType)
+	require.NoError(t, err)
+
+	_, err = svc.ValidateToken(tokenStr)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "invalid token")
+}
 
 func TestTokenRoundTrip(t *testing.T) {
 	svc := testJWTService()

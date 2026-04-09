@@ -93,6 +93,20 @@ func TestLangFromRequest(t *testing.T) {
 	}
 }
 
+func TestLangFromRequest_EmptyLangAfterParsing(t *testing.T) {
+	dir := setupLocaleDir(t)
+	svc := NewI18nService(dir, "en")
+
+	req, _ := http.NewRequest("GET", "/", nil)
+	// ";q=0.8" has no language tag before the semicolon, so splitting produces ""
+	req.Header.Set("Accept-Language", ";q=0.8")
+
+	got := svc.LangFromRequest(req)
+	if got != "en" {
+		t.Errorf("LangFromRequest() = %q, want %q (default fallback)", got, "en")
+	}
+}
+
 func TestCreateDefaultLocaleFile(t *testing.T) {
 	dir := t.TempDir()
 	localesDir := filepath.Join(dir, "locales")

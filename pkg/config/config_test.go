@@ -145,6 +145,21 @@ func TestApplyDefaults(t *testing.T) {
 	}
 }
 
+func TestLoadConfig_InvalidYAML(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Chdir(tmpDir)
+
+	// Write invalid YAML content
+	if err := os.WriteFile(filepath.Join(tmpDir, "config.yaml"), []byte("{{invalid yaml content"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := LoadConfig()
+	if err == nil {
+		t.Fatal("expected error for invalid YAML, got nil")
+	}
+}
+
 func TestBuildDialector_AllDrivers(t *testing.T) {
 	tests := []struct {
 		driver  string

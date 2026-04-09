@@ -504,3 +504,63 @@ func TestGetValue_NilPointer(t *testing.T) {
 		t.Log("validator skipped nil pointer field as expected")
 	}
 }
+
+func TestIsRecordExistByName_DBError(t *testing.T) {
+	db := setupTestDB(t)
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	sqlDB.Close() // close connection to force DB error
+
+	av := NewAppValidator(db)
+	type Input struct {
+		Name string `validate:"is_record_exist_by_name_for_conflict=test_records"`
+	}
+	errs := av.ValidateStruct(Input{Name: "test"})
+	assert.NotEmpty(t, errs)
+}
+
+func TestIsRecordExistById_DBError(t *testing.T) {
+	db := setupTestDB(t)
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	sqlDB.Close()
+
+	av := NewAppValidator(db)
+	type Input struct {
+		ID string `validate:"does_record_exist_by_id_for_verification=test_records"`
+	}
+	errs := av.ValidateStruct(Input{ID: "some-id"})
+	assert.NotEmpty(t, errs)
+}
+
+func TestIsRecordDeletable_DBError(t *testing.T) {
+	db := setupTestDB(t)
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	sqlDB.Close()
+
+	av := NewAppValidator(db)
+	type Input struct {
+		ID string `validate:"is_record_deletable=test_records"`
+	}
+	errs := av.ValidateStruct(Input{ID: "some-id"})
+	assert.NotEmpty(t, errs)
+}
+
+func TestGetValue_NonPointerUUID(t *testing.T) {
+	v := validator.New()
+	var captured string
+
+	v.RegisterValidation("test_getValue_uuid", func(fl validator.FieldLevel) bool {
+		captured = getValue(fl)
+		return true
+	})
+
+	expectedUUID := uuid.MustParse("550e8400-e29b-41d4-a716-446655440000")
+	type Input struct {
+		Value uuid.UUID `validate:"test_getValue_uuid"`
+	}
+	err := v.Struct(Input{Value: expectedUUID})
+	require.NoError(t, err)
+	assert.Equal(t, "550e8400-e29b-41d4-a716-446655440000", captured)
+}

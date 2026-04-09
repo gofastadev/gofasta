@@ -67,13 +67,18 @@ func (m *MemoryCache) cleanup() {
 	ticker := time.NewTicker(time.Minute)
 	defer ticker.Stop()
 	for range ticker.C {
-		m.mu.Lock()
-		now := time.Now()
-		for k, v := range m.items {
-			if !v.expiresAt.IsZero() && now.After(v.expiresAt) {
-				delete(m.items, k)
-			}
+		m.purgeExpired()
+	}
+}
+
+// purgeExpired removes all expired items from the cache.
+func (m *MemoryCache) purgeExpired() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	now := time.Now()
+	for k, v := range m.items {
+		if !v.expiresAt.IsZero() && now.After(v.expiresAt) {
+			delete(m.items, k)
 		}
-		m.mu.Unlock()
 	}
 }

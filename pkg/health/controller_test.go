@@ -145,6 +145,40 @@ func TestReady_CacheDown(t *testing.T) {
 	}
 }
 
+func TestReady_DBDown(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	if err != nil {
+		t.Fatalf("failed to open sqlite: %v", err)
+	}
+
+	// Close the underlying connection to simulate DB down
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatalf("failed to get sql.DB: %v", err)
+	}
+	sqlDB.Close()
+
+	c := NewController(db, nil)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/health/ready", nil)
+
+	err = c.Ready(rec, req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if rec.Code != http.StatusServiceUnavailable {
+		t.Errorf("expected 503, got %d", rec.Code)
+	}
+
+	var body map[string]interface{}
+	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
+		t.Fatalf("failed to decode body: %v", err)
+	}
+	if body["status"] != "down" {
+		t.Errorf("expected overall status 'down', got %v", body["status"])
+	}
+}
+
 func TestReady_NilCache(t *testing.T) {
 	db := newTestDB(t)
 	c := NewController(db, nil)

@@ -7,9 +7,15 @@ import (
 	api "github.com/twilio/twilio-go/rest/api/v2010"
 )
 
+// twilioMessageCreator is a narrow interface satisfied by the real Twilio API
+// client, enabling lightweight test doubles without heavyweight SDK mocks.
+type twilioMessageCreator interface {
+	CreateMessage(params *api.CreateMessageParams) (*api.ApiV2010Message, error)
+}
+
 // SMSChannel sends notifications via Twilio SMS.
 type SMSChannel struct {
-	client   *twilio.RestClient
+	api        twilioMessageCreator
 	fromNumber string
 }
 
@@ -18,7 +24,7 @@ func NewSMSChannel(accountSID, authToken, fromNumber string) *SMSChannel {
 		Username: accountSID,
 		Password: authToken,
 	})
-	return &SMSChannel{client: client, fromNumber: fromNumber}
+	return &SMSChannel{api: client.Api, fromNumber: fromNumber}
 }
 
 func (c *SMSChannel) Channel() Channel { return ChannelSMS }
@@ -28,6 +34,6 @@ func (c *SMSChannel) Send(ctx context.Context, recipient Recipient, n Notificati
 	params.SetTo(recipient.Phone)
 	params.SetFrom(c.fromNumber)
 	params.SetBody(n.Subject + ": " + n.Body)
-	_, err := c.client.Api.CreateMessage(params)
+	_, err := c.api.CreateMessage(params)
 	return err
 }

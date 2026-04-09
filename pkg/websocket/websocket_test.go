@@ -280,6 +280,19 @@ func TestServeWS_ReadWrite(t *testing.T) {
 	}
 }
 
+func TestServeWS_UpgradeError(t *testing.T) {
+	h := newTestHub(t)
+	rec := httptest.NewRecorder()
+	// Send a plain HTTP request (not a WebSocket upgrade) — upgrade should fail gracefully
+	req := httptest.NewRequest(http.MethodGet, "/ws", nil)
+	ServeWS(h, rec, req)
+	wait()
+
+	if h.ClientCount() != 0 {
+		t.Errorf("expected 0 clients after failed upgrade, got %d", h.ClientCount())
+	}
+}
+
 func TestHub_UnregisterClient_RemovesFromRooms(t *testing.T) {
 	h := newTestHub(t)
 	c := newTestClient("test-1", h)

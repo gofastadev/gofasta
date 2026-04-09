@@ -178,6 +178,48 @@ func TestMemoryCache_ConcurrentAccess(t *testing.T) {
 	// If we reach here without a race condition panic, the test passes
 }
 
+func TestMemoryCache_PurgeExpired(t *testing.T) {
+	ctx := context.Background()
+	c := NewMemoryCache()
+
+	// Set items with very short TTL
+	err := c.Set(ctx, "expire1", "val1", 50*time.Millisecond)
+	require.NoError(t, err)
+	err = c.Set(ctx, "expire2", "val2", 50*time.Millisecond)
+	require.NoError(t, err)
+	// Set an item with no expiration
+	err = c.Set(ctx, "persist", "val3", 0)
+	require.NoError(t, err)
+
+	// Wait for items to expire
+	time.Sleep(100 * time.Millisecond)
+
+	// Call purgeExpired directly to cover the cleanup logic
+	c.purgeExpired()
+
+	// Expired items should be removed from the map
+	c.mu.RLock()
+	_, ok1 := c.items["expire1"]
+	_, ok2 := c.items["expire2"]
+	_, ok3 := c.items["persist"]
+	c.mu.RUnlock()
+
+	assert.False(t, ok1, "expire1 should have been purged")
+	assert.False(t, ok2, "expire2 should have been purged")
+	assert.True(t, ok3, "persist should still exist")
+
+	// Persistent item should still be accessible
+	val, err := c.Get(ctx, "persist")
+	require.NoError(t, err)
+	assert.Equal(t, "val3", val)
+}
+
+func TestMemoryCache_PurgeExpired_EmptyCache(t *testing.T) {
+	c := NewMemoryCache()
+	// Should not panic on empty cache
+	c.purgeExpired()
+}
+
 func TestMemoryCache_OverwriteExistingKey(t *testing.T) {
 	ctx := context.Background()
 	c := NewMemoryCache()

@@ -3,6 +3,7 @@ package httputil
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -394,6 +395,29 @@ func TestBindForm_EmptyForm(t *testing.T) {
 
 	_, err := BindForm[testFormData](req)
 	require.Error(t, err)
+}
+
+// ---------- BindForm ParseForm error ----------
+
+type errReader struct{}
+
+func (errReader) Read([]byte) (int, error) { return 0, fmt.Errorf("read error") }
+
+func TestBindForm_ParseFormError(t *testing.T) {
+	// A body that errors on read causes ParseForm to fail.
+	req := httptest.NewRequest(http.MethodPost, "/", io.NopCloser(errReader{}))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.ContentLength = 10
+
+	type FormData struct {
+		Name string `schema:"name"`
+	}
+	_, err := BindForm[FormData](req)
+	require.Error(t, err)
+
+	var appErr *apperrors.AppError
+	require.ErrorAs(t, err, &appErr)
+	assert.Equal(t, apperrors.BadRequest, appErr.Type)
 }
 
 // ---------- JSON edge cases ----------

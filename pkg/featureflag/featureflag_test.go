@@ -75,6 +75,14 @@ func TestFeatureFlagService(t *testing.T) {
 		}
 	})
 
+	t.Run("IsEnabled_WithAttributes", func(t *testing.T) {
+		svc := initService(t)
+		got := svc.IsEnabled("dark-mode", "user-123", map[string]interface{}{"plan": "premium"})
+		if !got {
+			t.Error("IsEnabled(dark-mode, with attributes) = false, want true")
+		}
+	})
+
 	t.Run("IsEnabled_FlagNotFound", func(t *testing.T) {
 		svc := initService(t)
 		got := svc.IsEnabled("nonexistent-flag", "user-123", nil)

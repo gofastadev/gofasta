@@ -129,6 +129,36 @@ func TestFileNameWithoutExt(t *testing.T) {
 	}
 }
 
+func TestRender_ExecutionError(t *testing.T) {
+	dir := t.TempDir()
+	// A template that calls a function that doesn't exist will fail during execution.
+	// Using {{template "nonexistent"}} triggers an execution error because
+	// the associated template doesn't exist.
+	writeTemplate(t, dir, "bad.html", `{{template "nonexistent" .}}`)
+	r := NewTemplateRenderer(dir, "App")
+	_, err := r.Render("bad", map[string]any{})
+	if err == nil {
+		t.Fatal("expected error for template execution failure")
+	}
+	if !strings.Contains(err.Error(), "failed to render") {
+		t.Errorf("error = %q, want it to contain 'failed to render'", err.Error())
+	}
+}
+
+func TestLoadAll_MalformedTemplate(t *testing.T) {
+	dir := t.TempDir()
+	writeTemplate(t, dir, "broken.html", "{{.Unclosed")
+	r := NewTemplateRenderer(dir, "App")
+	// The malformed template should be skipped (not parsed), so rendering it returns not-found
+	_, err := r.Render("broken", nil)
+	if err == nil {
+		t.Fatal("expected error for skipped malformed template")
+	}
+	if !strings.Contains(err.Error(), "not found") {
+		t.Errorf("error = %q, want it to mention 'not found'", err.Error())
+	}
+}
+
 // writeTemplate is a helper that writes a template file into the given directory.
 func writeTemplate(t *testing.T, dir, name, content string) {
 	t.Helper()

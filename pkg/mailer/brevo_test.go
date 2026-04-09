@@ -157,6 +157,70 @@ func TestBrevoSender_Send_WithReplyTo(t *testing.T) {
 	}
 }
 
+func TestBrevoSender_Send_WithCCAndBCC(t *testing.T) {
+	var capturedBody []byte
+
+	transport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var err error
+		capturedBody, err = io.ReadAll(req.Body)
+		if err != nil {
+			return nil, err
+		}
+		return &http.Response{
+			StatusCode: 201,
+			Body:       io.NopCloser(strings.NewReader(`{"messageId":"abc123"}`)),
+		}, nil
+	})
+
+	b := newTestBrevoSender(t, transport)
+	err := b.Send(context.Background(), EmailMessage{
+		To:       []string{"user@example.com"},
+		CC:       []string{"cc1@example.com", "cc2@example.com"},
+		BCC:      []string{"bcc@example.com"},
+		Subject:  "CC/BCC Test",
+		HTMLBody: "<p>body</p>",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var body brevoRequest
+	if err := json.Unmarshal(capturedBody, &body); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
+	if len(body.CC) != 2 {
+		t.Errorf("CC count = %d, want 2", len(body.CC))
+	}
+	if body.CC[0].Email != "cc1@example.com" {
+		t.Errorf("CC[0].Email = %q, want %q", body.CC[0].Email, "cc1@example.com")
+	}
+	if len(body.BCC) != 1 {
+		t.Errorf("BCC count = %d, want 1", len(body.BCC))
+	}
+	if body.BCC[0].Email != "bcc@example.com" {
+		t.Errorf("BCC[0].Email = %q, want %q", body.BCC[0].Email, "bcc@example.com")
+	}
+}
+
+func TestBrevoSender_Send_TemplateError(t *testing.T) {
+	transport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		return &http.Response{
+			StatusCode: 201,
+			Body:       io.NopCloser(strings.NewReader(`{}`)),
+		}, nil
+	})
+
+	b := newTestBrevoSender(t, transport)
+	err := b.Send(context.Background(), EmailMessage{
+		To:       []string{"user@example.com"},
+		Subject:  "Template Error",
+		Template: "nonexistent_template",
+	})
+	if err == nil {
+		t.Fatal("expected error for nonexistent template")
+	}
+}
+
 func TestBrevoSender_ResolveBody_HTMLBody(t *testing.T) {
 	b := newTestBrevoSender(t, nil)
 	msg := EmailMessage{HTMLBody: "<p>Direct HTML</p>"}
