@@ -78,13 +78,12 @@ func ServeWS(hub *Hub, w http.ResponseWriter, r *http.Request, opts ...ClientOpt
 func (c *Client) readPump() {
 	defer func() {
 		c.hub.unregister <- c
-		c.conn.Close()
+		_ = c.conn.Close()
 	}()
 	c.conn.SetReadLimit(maxMsgSize)
-	c.conn.SetReadDeadline(time.Now().Add(pongWait))
+	_ = c.conn.SetReadDeadline(time.Now().Add(pongWait))
 	c.conn.SetPongHandler(func(string) error {
-		c.conn.SetReadDeadline(time.Now().Add(pongWait))
-		return nil
+		return c.conn.SetReadDeadline(time.Now().Add(pongWait))
 	})
 	for {
 		_, message, err := c.conn.ReadMessage()
@@ -99,21 +98,21 @@ func (c *Client) writePump() {
 	ticker := time.NewTicker(c.pingPeriod)
 	defer func() {
 		ticker.Stop()
-		c.conn.Close()
+		_ = c.conn.Close()
 	}()
 	for {
 		select {
 		case message, ok := <-c.send:
-			c.conn.SetWriteDeadline(time.Now().Add(c.writeWait))
+			_ = c.conn.SetWriteDeadline(time.Now().Add(c.writeWait))
 			if !ok {
-				c.conn.WriteMessage(ws.CloseMessage, []byte{})
+				_ = c.conn.WriteMessage(ws.CloseMessage, []byte{})
 				return
 			}
 			if err := c.conn.WriteMessage(ws.TextMessage, message); err != nil {
 				return
 			}
 		case <-ticker.C:
-			c.conn.SetWriteDeadline(time.Now().Add(c.writeWait))
+			_ = c.conn.SetWriteDeadline(time.Now().Add(c.writeWait))
 			if err := c.conn.WriteMessage(ws.PingMessage, nil); err != nil {
 				return
 			}

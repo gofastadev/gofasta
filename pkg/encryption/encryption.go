@@ -9,7 +9,7 @@ import (
 	"io"
 )
 
-var randReader io.Reader = rand.Reader
+var randReader = rand.Reader
 
 // Encrypter provides AES-GCM encryption/decryption for sensitive data.
 type Encrypter struct {

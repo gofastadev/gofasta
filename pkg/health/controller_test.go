@@ -17,11 +17,13 @@ type mockCache struct {
 	pingErr error
 }
 
-func (m *mockCache) Get(_ context.Context, _ string) (string, error)                     { return "", nil }
-func (m *mockCache) Set(_ context.Context, _ string, _ interface{}, _ time.Duration) error { return nil }
-func (m *mockCache) Delete(_ context.Context, _ string) error                              { return nil }
-func (m *mockCache) Flush(_ context.Context) error                                         { return nil }
-func (m *mockCache) Ping(_ context.Context) error                                          { return m.pingErr }
+func (m *mockCache) Get(_ context.Context, _ string) (string, error) { return "", nil }
+func (m *mockCache) Set(_ context.Context, _ string, _ interface{}, _ time.Duration) error {
+	return nil
+}
+func (m *mockCache) Delete(_ context.Context, _ string) error { return nil }
+func (m *mockCache) Flush(_ context.Context) error            { return nil }
+func (m *mockCache) Ping(_ context.Context) error             { return m.pingErr }
 
 func newTestDB(t *testing.T) *gorm.DB {
 	t.Helper()

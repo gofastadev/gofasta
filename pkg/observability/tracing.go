@@ -25,7 +25,7 @@ func InitTracer(serviceName string) func() {
 	))
 	slog.Info("tracer initialized", "service", serviceName)
 	return func() {
-		tp.Shutdown(context.Background())
+		_ = tp.Shutdown(context.Background())
 	}
 }
 

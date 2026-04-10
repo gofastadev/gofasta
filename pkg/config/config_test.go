@@ -254,8 +254,8 @@ func TestSetupDB_Postgres_PoolConfig(t *testing.T) {
 	}
 	ctx := context.Background()
 
-	pgContainer, err := postgres.RunContainer(ctx,
-		testcontainers.WithImage("postgres:16-alpine"),
+	pgContainer, err := postgres.Run(ctx,
+		"postgres:16-alpine",
 		postgres.WithDatabase("testdb"),
 		postgres.WithUsername("testuser"),
 		postgres.WithPassword("testpass"),

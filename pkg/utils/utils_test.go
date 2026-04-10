@@ -42,9 +42,9 @@ func TestCamelToSnake(t *testing.T) {
 	}
 }
 
-// --- ParseIdStringIsValidUUID ---
+// --- ParseIDStringIsValidUUID ---
 
-func TestParseIdStringIsValidUUID(t *testing.T) {
+func TestParseIDStringIsValidUUID(t *testing.T) {
 	tests := []struct {
 		name      string
 		input     string
@@ -59,7 +59,7 @@ func TestParseIdStringIsValidUUID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := ParseIdStringIsValidUUID(tt.input)
+			result, err := ParseIDStringIsValidUUID(tt.input)
 			if tt.expectErr {
 				assert.Error(t, err)
 			} else {
@@ -224,7 +224,7 @@ func TestGeneratePassword_UsesCharset(t *testing.T) {
 	pwd, err := GeneratePassword(100)
 	require.NoError(t, err)
 	for _, c := range pwd {
-		assert.Contains(t, CHARSET, string(c), "password contains character not in CHARSET: %c", c)
+		assert.Contains(t, Charset, string(c), "password contains character not in Charset: %c", c)
 	}
 }
 
@@ -240,7 +240,7 @@ func TestGeneratePassword_RandError(t *testing.T) {
 func TestRandomChar_Success(t *testing.T) {
 	c, err := randomChar()
 	require.NoError(t, err)
-	assert.Contains(t, CHARSET, string(c))
+	assert.Contains(t, Charset, string(c))
 }
 
 // --- ConvertStructToMap ---

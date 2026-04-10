@@ -21,7 +21,7 @@ type TemplateRenderer struct {
 
 // NewTemplateRenderer creates a renderer that loads templates from the given directory.
 // Templates in layouts/ are used as base layouts.
-func NewTemplateRenderer(templatesDir string, appName string) *TemplateRenderer {
+func NewTemplateRenderer(templatesDir, appName string) *TemplateRenderer {
 	r := &TemplateRenderer{
 		dir:       templatesDir,
 		templates: make(map[string]*template.Template),
@@ -76,7 +76,9 @@ func (r *TemplateRenderer) loadAll() {
 
 	for _, emailFile := range emails {
 		name := fileNameWithoutExt(emailFile)
-		files := append(layouts, emailFile)
+		files := make([]string, 0, len(layouts)+1)
+		files = append(files, layouts...)
+		files = append(files, emailFile)
 		tmpl, err := template.New(filepath.Base(emailFile)).ParseFiles(files...)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "warning: failed to parse email template %s: %v\n", name, err)

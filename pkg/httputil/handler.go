@@ -27,10 +27,10 @@ func Handle(h AppHandler) http.HandlerFunc {
 				if appErr.Details != nil {
 					response["details"] = appErr.Details
 				}
-				JSON(w, status, response)
+				_ = JSON(w, status, response)
 			} else {
 				slog.Error("unhandled error", "error", err, "method", r.Method, "path", r.URL.Path)
-				JSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal Server Error"})
+				_ = JSON(w, http.StatusInternalServerError, map[string]string{"error": "Internal Server Error"})
 			}
 		}
 	}

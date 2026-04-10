@@ -37,6 +37,8 @@ func NewHub(logger *slog.Logger) *Hub {
 }
 
 // Run starts the hub's event loop. Call this in a goroutine.
+//
+//nolint:gocognit // single select loop; refactoring would obscure the state machine.
 func (h *Hub) Run() {
 	for {
 		select {

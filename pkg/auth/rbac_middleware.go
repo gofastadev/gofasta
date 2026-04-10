@@ -18,11 +18,11 @@ func RequireRole(roles ...string) middleware.Middleware {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			claims, err := ClaimsFromContext(r.Context())
 			if err != nil {
-				httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "authentication required"})
+				_ = httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "authentication required"})
 				return
 			}
 			if !roleSet[claims.Role] {
-				httputil.JSON(w, http.StatusForbidden, map[string]string{"error": "insufficient permissions"})
+				_ = httputil.JSON(w, http.StatusForbidden, map[string]string{"error": "insufficient permissions"})
 				return
 			}
 			next.ServeHTTP(w, r)
@@ -37,12 +37,12 @@ func RequirePermission(rbac *RBACService, resource, action string) middleware.Mi
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			claims, err := ClaimsFromContext(r.Context())
 			if err != nil {
-				httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "authentication required"})
+				_ = httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "authentication required"})
 				return
 			}
 			allowed, err := rbac.Enforce(claims.Role, resource, action)
 			if err != nil || !allowed {
-				httputil.JSON(w, http.StatusForbidden, map[string]string{"error": "permission denied"})
+				_ = httputil.JSON(w, http.StatusForbidden, map[string]string{"error": "permission denied"})
 				return
 			}
 			next.ServeHTTP(w, r)

@@ -25,6 +25,7 @@ type SMTPSender struct {
 	logger   *slog.Logger
 }
 
+// NewSMTPSender returns an SMTP-backed EmailSender.
 func NewSMTPSender(cfg config.SMTPConfig, fromName, fromAddress string, renderer *TemplateRenderer, logger *slog.Logger) *SMTPSender {
 	return &SMTPSender{
 		cfg:      cfg,
@@ -35,6 +36,9 @@ func NewSMTPSender(cfg config.SMTPConfig, fromName, fromAddress string, renderer
 	}
 }
 
+// Send delivers msg over SMTP, optionally upgrading to TLS via STARTTLS.
+//
+//nolint:gocyclo // linear branch coverage for SMTP connection + MIME assembly.
 func (s *SMTPSender) Send(ctx context.Context, msg EmailMessage) error {
 	htmlBody, err := s.resolveBody(msg)
 	if err != nil {
@@ -65,7 +69,7 @@ func (s *SMTPSender) Send(ctx context.Context, msg EmailMessage) error {
 	if err != nil {
 		return fmt.Errorf("smtp client: %w", err)
 	}
-	defer client.Close()
+	defer func() { _ = client.Close() }()
 
 	// STARTTLS if not already using TLS and server supports it
 	if !s.cfg.UseTLS {
@@ -125,12 +129,12 @@ func (s *SMTPSender) Send(ctx context.Context, msg EmailMessage) error {
 		sb.WriteString("\r\n")
 
 		mw := multipart.NewWriter(&sb)
-		mw.SetBoundary(boundary)
+		_ = mw.SetBoundary(boundary)
 
 		htmlPart, _ := mw.CreatePart(textproto.MIMEHeader{
 			"Content-Type": {"text/html; charset=UTF-8"},
 		})
-		htmlPart.Write([]byte(htmlBody))
+		_, _ = htmlPart.Write([]byte(htmlBody))
 
 		for _, att := range msg.Attachments {
 			ct := att.ContentType
@@ -139,12 +143,12 @@ func (s *SMTPSender) Send(ctx context.Context, msg EmailMessage) error {
 			}
 			attPart, _ := mw.CreatePart(textproto.MIMEHeader{
 				"Content-Type":              {ct},
-				"Content-Disposition":       {fmt.Sprintf(`attachment; filename="%s"`, mime.QEncoding.Encode("UTF-8", att.Filename))},
+				"Content-Disposition":       {fmt.Sprintf("attachment; filename=%q", mime.QEncoding.Encode("UTF-8", att.Filename))},
 				"Content-Transfer-Encoding": {"base64"},
 			})
-			attPart.Write([]byte(base64.StdEncoding.EncodeToString(att.Content)))
+			_, _ = attPart.Write([]byte(base64.StdEncoding.EncodeToString(att.Content)))
 		}
-		mw.Close()
+		_ = mw.Close()
 	}
 
 	if _, err := wc.Write([]byte(sb.String())); err != nil {

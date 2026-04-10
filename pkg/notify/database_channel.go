@@ -20,6 +20,7 @@ type DBNotification struct {
 	CreatedAt time.Time  `gorm:"not null" json:"createdAt"`
 }
 
+// TableName overrides GORM's default table name.
 func (DBNotification) TableName() string { return "notifications" }
 
 // DatabaseChannel stores notifications in the database for in-app notification center.
@@ -27,12 +28,15 @@ type DatabaseChannel struct {
 	db *gorm.DB
 }
 
+// NewDatabaseChannel returns a DatabaseChannel that persists notifications via db.
 func NewDatabaseChannel(db *gorm.DB) *DatabaseChannel {
 	return &DatabaseChannel{db: db}
 }
 
+// Channel returns the channel identifier for routing.
 func (c *DatabaseChannel) Channel() Channel { return ChannelDatabase }
 
+// Send persists n as a notification record for recipient.
 func (c *DatabaseChannel) Send(ctx context.Context, recipient Recipient, n Notification) error {
 	dataJSON, _ := json.Marshal(n.Data)
 	record := DBNotification{

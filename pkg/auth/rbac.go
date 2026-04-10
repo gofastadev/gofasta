@@ -12,6 +12,8 @@ type RBACService struct {
 	enforcer *casbin.Enforcer
 }
 
+// NewRBACService constructs an RBACService from the Casbin model and policy
+// paths declared in AuthConfig.
 func NewRBACService(cfg *config.AuthConfig) (*RBACService, error) {
 	enforcer, err := casbin.NewEnforcer(cfg.RBACModelPath, cfg.RBACPolicyPath)
 	if err != nil {

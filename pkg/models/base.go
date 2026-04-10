@@ -8,6 +8,9 @@ import (
 	"gorm.io/gorm"
 )
 
+// BaseModel is the interface every gofasta domain model should satisfy.
+// It exposes the common framework fields (ID, timestamps, soft-delete,
+// active/deletable flags, optimistic-concurrency version).
 type BaseModel interface {
 	gorm.Model
 	GetID() uuid.UUID
@@ -31,20 +34,35 @@ type BaseModelImpl struct {
 	IsDeletable   bool      `gorm:"type:bool;not null;default:true"`
 }
 
-func (b BaseModelImpl) GetID() uuid.UUID        { return b.ID }
+// GetID returns the model's UUID primary key.
+func (b BaseModelImpl) GetID() uuid.UUID { return b.ID }
+
+// GetCreatedAt returns the creation timestamp.
 func (b BaseModelImpl) GetCreatedAt() time.Time { return b.CreatedAt }
+
+// GetUpdatedAt returns the last-update timestamp.
 func (b BaseModelImpl) GetUpdatedAt() time.Time { return b.UpdatedAt }
-func (b BaseModelImpl) GetIsActive() bool       { return b.IsActive }
-func (b BaseModelImpl) GetIsDeletable() bool    { return b.IsDeletable }
-func (b BaseModelImpl) GetRecordVersion() int   { return b.RecordVersion }
+
+// GetIsActive reports whether the record is currently active.
+func (b BaseModelImpl) GetIsActive() bool { return b.IsActive }
+
+// GetIsDeletable reports whether the record may be deleted.
+func (b BaseModelImpl) GetIsDeletable() bool { return b.IsDeletable }
+
+// GetRecordVersion returns the optimistic-concurrency version counter.
+func (b BaseModelImpl) GetRecordVersion() int { return b.RecordVersion }
+
+// GetDeletedAt returns the soft-delete timestamp (zero if not deleted).
 func (b BaseModelImpl) GetDeletedAt() time.Time { return b.DeletedAt }
 
-func (base *BaseModelImpl) BeforeCreate(txt *gorm.DB) error {
-	base.ID = uuid.New()
-	base.CreatedAt = time.Now()
-	base.UpdatedAt = time.Now()
-	base.IsActive = true
-	base.IsDeletable = true
-	base.RecordVersion = 1
+// BeforeCreate is a GORM hook that populates the UUID, timestamps, and
+// defaults for a new record.
+func (b *BaseModelImpl) BeforeCreate(_ *gorm.DB) error {
+	b.ID = uuid.New()
+	b.CreatedAt = time.Now()
+	b.UpdatedAt = time.Now()
+	b.IsActive = true
+	b.IsDeletable = true
+	b.RecordVersion = 1
 	return nil
 }

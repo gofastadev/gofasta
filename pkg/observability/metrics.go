@@ -33,6 +33,7 @@ type metricsRecorder struct {
 	statusCode int
 }
 
+// WriteHeader captures the HTTP status before forwarding it to the underlying writer.
 func (m *metricsRecorder) WriteHeader(code int) {
 	m.statusCode = code
 	m.ResponseWriter.WriteHeader(code)

@@ -11,7 +11,7 @@ import (
 
 func isUUIDv4Valid(fl validator.FieldLevel) bool {
 	id := getValue(fl)
-	_, err := utils.ParseIdStringIsValidUUID(id)
+	_, err := utils.ParseIDStringIsValidUUID(id)
 	return err == nil
 }
 
@@ -29,7 +29,7 @@ func isRecordExistByName(db *gorm.DB) validator.Func {
 	}
 }
 
-func isRecordExistById(db *gorm.DB) validator.Func {
+func isRecordExistByID(db *gorm.DB) validator.Func {
 	return func(fl validator.FieldLevel) bool {
 		id := getValue(fl)
 		tableName := fl.Param()

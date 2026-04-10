@@ -17,19 +17,19 @@ func JWTAuth(jwtService *JWTService) middleware.Middleware {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			authHeader := r.Header.Get("Authorization")
 			if authHeader == "" {
-				httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "authentication required"})
+				_ = httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "authentication required"})
 				return
 			}
 
 			token := strings.TrimPrefix(authHeader, "Bearer ")
 			if token == authHeader {
-				httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid authorization format, expected: Bearer <token>"})
+				_ = httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid authorization format, expected: Bearer <token>"})
 				return
 			}
 
 			claims, err := jwtService.ValidateToken(token)
 			if err != nil {
-				httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid or expired token"})
+				_ = httputil.JSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid or expired token"})
 				return
 			}
 

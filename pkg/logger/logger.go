@@ -14,7 +14,7 @@ func NewLogger(cfg *config.LogConfig) *slog.Logger {
 	opts := &slog.HandlerOptions{Level: level}
 
 	var handler slog.Handler
-	if strings.ToLower(cfg.Format) == "json" {
+	if strings.EqualFold(cfg.Format, "json") {
 		handler = slog.NewJSONHandler(os.Stdout, opts)
 	} else {
 		handler = slog.NewTextHandler(os.Stdout, opts)

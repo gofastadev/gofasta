@@ -14,7 +14,7 @@ type Store struct {
 
 // NewCookieStore creates a cookie-based session store.
 // Secret should be 32 or 64 bytes for HMAC signing.
-func NewCookieStore(secret string, sessionName string) *Store {
+func NewCookieStore(secret, sessionName string) *Store {
 	return &Store{
 		store: sessions.NewCookieStore([]byte(secret)),
 		name:  sessionName,
@@ -22,7 +22,7 @@ func NewCookieStore(secret string, sessionName string) *Store {
 }
 
 // NewFilesystemStore creates a filesystem-based session store.
-func NewFilesystemStore(path string, secret string, sessionName string) *Store {
+func NewFilesystemStore(path, secret, sessionName string) *Store {
 	return &Store{
 		store: sessions.NewFilesystemStore(path, []byte(secret)),
 		name:  sessionName,

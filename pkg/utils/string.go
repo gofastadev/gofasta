@@ -8,19 +8,22 @@ import (
 	"github.com/google/uuid"
 )
 
+// CamelToSnake converts a camelCase or PascalCase identifier to snake_case.
 func CamelToSnake(s string) string {
 	re := regexp.MustCompile("([a-z0-9])([A-Z])")
 	snake := re.ReplaceAllString(s, "${1}_${2}")
 	return strings.ToLower(snake)
 }
 
-func ParseIdStringIsValidUUID(u string) (uuid.UUID, error) {
+// ParseIDStringIsValidUUID parses a string as a UUID and returns it alongside any parse error.
+func ParseIDStringIsValidUUID(u string) (uuid.UUID, error) {
 	value, err := uuid.Parse(u)
 	return value, err
 }
 
+// ConvertUpperCamelToLowerCamel converts a PascalCase identifier to camelCase.
 func ConvertUpperCamelToLowerCamel(input string) string {
-	if len(input) == 0 {
+	if input == "" {
 		return input
 	}
 	var words []string

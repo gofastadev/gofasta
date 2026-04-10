@@ -9,6 +9,7 @@ import (
 
 type contextKey string
 
+// ClaimsKey is the context key under which JWT Claims are stored.
 const ClaimsKey contextKey = "claims"
 
 // Claims holds JWT token payload data.

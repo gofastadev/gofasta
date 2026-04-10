@@ -24,6 +24,7 @@ type SendGridSender struct {
 	logger   *slog.Logger
 }
 
+// NewSendGridSender returns a SendGrid-backed EmailSender.
 func NewSendGridSender(cfg config.SendGridConfig, fromName, fromAddress string, renderer *TemplateRenderer, logger *slog.Logger) *SendGridSender {
 	return &SendGridSender{
 		client:   sendgrid.NewSendClient(cfg.APIKey),
@@ -33,6 +34,7 @@ func NewSendGridSender(cfg config.SendGridConfig, fromName, fromAddress string, 
 	}
 }
 
+// Send delivers msg via the SendGrid HTTP API.
 func (s *SendGridSender) Send(ctx context.Context, msg EmailMessage) error {
 	htmlBody, err := s.resolveBody(msg)
 	if err != nil {

@@ -19,6 +19,7 @@ type SMSChannel struct {
 	fromNumber string
 }
 
+// NewSMSChannel builds an SMSChannel backed by the Twilio REST API.
 func NewSMSChannel(accountSID, authToken, fromNumber string) *SMSChannel {
 	client := twilio.NewRestClientWithParams(twilio.ClientParams{
 		Username: accountSID,
@@ -27,9 +28,12 @@ func NewSMSChannel(accountSID, authToken, fromNumber string) *SMSChannel {
 	return &SMSChannel{api: client.Api, fromNumber: fromNumber}
 }
 
+// Channel returns the channel identifier for routing.
 func (c *SMSChannel) Channel() Channel { return ChannelSMS }
 
-func (c *SMSChannel) Send(ctx context.Context, recipient Recipient, n Notification) error {
+// Send dispatches n to recipient as an SMS. The context is accepted for API
+// symmetry with other channels but not forwarded to the Twilio client.
+func (c *SMSChannel) Send(_ context.Context, recipient Recipient, n Notification) error {
 	params := &api.CreateMessageParams{}
 	params.SetTo(recipient.Phone)
 	params.SetFrom(c.fromNumber)

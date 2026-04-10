@@ -4,6 +4,9 @@ import (
 	"reflect"
 )
 
+// ConvertStructToMap reflects over obj and returns a snake_case-keyed map
+// of its non-nil pointer, interface, map, slice, channel, and function fields.
+// It is intended for building GORM update-only change sets.
 func ConvertStructToMap(obj interface{}) map[string]interface{} {
 	result := make(map[string]interface{})
 	value := reflect.ValueOf(obj)
