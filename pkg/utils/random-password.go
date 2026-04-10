@@ -5,8 +5,12 @@ import (
 	"math/big"
 )
 
-const CHARSET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_=+[]{}|;:,.<>?/~`"
+var cryptoRandReader = rand.Reader
 
+// Charset is the set of characters used by GeneratePassword.
+const Charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_=+[]{}|;:,.<>?/~`"
+
+// GeneratePassword returns a random password of the given length drawn from Charset.
 func GeneratePassword(length int) (string, error) {
 	password := make([]byte, length)
 	for i := range password {
@@ -20,10 +24,10 @@ func GeneratePassword(length int) (string, error) {
 }
 
 func randomChar() (byte, error) {
-	max := big.NewInt(int64(len(CHARSET)))
-	n, err := rand.Int(rand.Reader, max)
+	upper := big.NewInt(int64(len(Charset)))
+	n, err := rand.Int(cryptoRandReader, upper)
 	if err != nil {
 		return 0, err
 	}
-	return CHARSET[n.Int64()], nil
+	return Charset[n.Int64()], nil
 }

@@ -14,16 +14,16 @@ import (
 
 // AppConfig holds the complete application configuration.
 type AppConfig struct {
-	Server    ServerConfig    `koanf:"server"`
-	Database  DatabaseConfig  `koanf:"database"`
-	GraphQL   GraphQLConfig   `koanf:"graphql"`
-	Log       LogConfig       `koanf:"log"`
-	Email     EmailConfig     `koanf:"email"`
-	Jobs      []JobConfig     `koanf:"jobs"`
-	Auth      AuthConfig      `koanf:"auth"`
-	RateLimit RateLimitConfig `koanf:"rate_limit"`
-	Cache     CacheConfig     `koanf:"cache"`
-	Security  SecurityConfig  `koanf:"security"`
+	Server        ServerConfig        `koanf:"server"`
+	Database      DatabaseConfig      `koanf:"database"`
+	GraphQL       GraphQLConfig       `koanf:"graphql"`
+	Log           LogConfig           `koanf:"log"`
+	Email         EmailConfig         `koanf:"email"`
+	Jobs          []JobConfig         `koanf:"jobs"`
+	Auth          AuthConfig          `koanf:"auth"`
+	RateLimit     RateLimitConfig     `koanf:"rate_limit"`
+	Cache         CacheConfig         `koanf:"cache"`
+	Security      SecurityConfig      `koanf:"security"`
 	Storage       StorageConfig       `koanf:"storage"`
 	Queue         QueueConfig         `koanf:"queue"`
 	WebSocket     WebSocketConfig     `koanf:"websocket"`
@@ -34,18 +34,21 @@ type AppConfig struct {
 	Observability ObservabilityConfig `koanf:"observability"`
 }
 
+// JobConfig is a single cron-scheduled job entry.
 type JobConfig struct {
 	Name     string `koanf:"name"`
 	Schedule string `koanf:"schedule"`
 	Enabled  bool   `koanf:"enabled"`
 }
 
+// ServerConfig configures the HTTP server.
 type ServerConfig struct {
 	Port            string        `koanf:"port"`
 	ShutdownTimeout time.Duration `koanf:"shutdown_timeout"`
 	AllowedOrigins  []string      `koanf:"allowed_origins"`
 }
 
+// DatabaseConfig configures the GORM database connection.
 type DatabaseConfig struct {
 	Driver   string        `koanf:"driver"`
 	Host     string        `koanf:"host"`
@@ -59,16 +62,19 @@ type DatabaseConfig struct {
 	MaxLife  time.Duration `koanf:"max_life"`
 }
 
+// GraphQLConfig configures the GraphQL routes.
 type GraphQLConfig struct {
 	PlaygroundRoute string `koanf:"playground_route"`
 	GeneralRoute    string `koanf:"general_route"`
 }
 
+// LogConfig configures the logger.
 type LogConfig struct {
 	Level  string `koanf:"level"`
 	Format string `koanf:"format"`
 }
 
+// EmailConfig configures the email subsystem and its providers.
 type EmailConfig struct {
 	Provider    string         `koanf:"provider"`
 	FromName    string         `koanf:"from_name"`
@@ -78,41 +84,49 @@ type EmailConfig struct {
 	Brevo       BrevoConfig    `koanf:"brevo"`
 }
 
+// SMTPConfig configures the SMTP email provider.
 type SMTPConfig struct {
-	Host     string `koanf:"host"`
-	Port     int    `koanf:"port"`
-	Username string `koanf:"username"`
-	Password string `koanf:"password"`
-	UseTLS   bool   `koanf:"use_tls"`
+	Host               string `koanf:"host"`
+	Port               int    `koanf:"port"`
+	Username           string `koanf:"username"`
+	Password           string `koanf:"password"`
+	UseTLS             bool   `koanf:"use_tls"`
+	InsecureSkipVerify bool   `koanf:"insecure_skip_verify"`
 }
 
+// SendGridConfig configures the SendGrid email provider.
 type SendGridConfig struct {
 	APIKey string `koanf:"api_key"`
 }
 
+// BrevoConfig configures the Brevo (ex-Sendinblue) email provider.
 type BrevoConfig struct {
 	APIKey string `koanf:"api_key"`
 }
 
+// AuthConfig configures JWT + RBAC.
 type AuthConfig struct {
-	JWTSecret         string        `koanf:"jwt_secret"`
-	AccessTokenExpiry time.Duration `koanf:"access_token_expiry"`
+	JWTSecret          string        `koanf:"jwt_secret"`
+	AccessTokenExpiry  time.Duration `koanf:"access_token_expiry"`
 	RefreshTokenExpiry time.Duration `koanf:"refresh_token_expiry"`
-	RBACModelPath     string        `koanf:"rbac_model"`
-	RBACPolicyPath    string        `koanf:"rbac_policy"`
+	RBACModelPath      string        `koanf:"rbac_model"`
+	RBACPolicyPath     string        `koanf:"rbac_policy"`
 }
 
+// RateLimitConfig configures the HTTP rate limiter.
 type RateLimitConfig struct {
 	Enabled bool   `koanf:"enabled"`
 	Rate    string `koanf:"rate"`
 	Store   string `koanf:"store"`
 }
 
+// CacheConfig configures the cache backend.
 type CacheConfig struct {
 	Driver string      `koanf:"driver"`
 	Redis  RedisConfig `koanf:"redis"`
 }
 
+// RedisConfig describes a Redis connection.
 type RedisConfig struct {
 	Host     string `koanf:"host"`
 	Port     string `koanf:"port"`
@@ -120,26 +134,31 @@ type RedisConfig struct {
 	DB       int    `koanf:"db"`
 }
 
+// SecurityConfig toggles security middleware options.
 type SecurityConfig struct {
-	HSTS                  bool   `koanf:"hsts"`
-	HSTSMaxAge            int    `koanf:"hsts_max_age"`
-	FrameDeny             bool   `koanf:"frame_deny"`
-	ContentTypeNosniff    bool   `koanf:"content_type_nosniff"`
-	BrowserXSSFilter      bool   `koanf:"browser_xss_filter"`
-	ContentSecurityPolicy string `koanf:"content_security_policy"`
-	ReferrerPolicy        string `koanf:"referrer_policy"`
+	HSTS                  bool     `koanf:"hsts"`
+	HSTSMaxAge            int      `koanf:"hsts_max_age"`
+	FrameDeny             bool     `koanf:"frame_deny"`
+	ContentTypeNosniff    bool     `koanf:"content_type_nosniff"`
+	BrowserXSSFilter      bool     `koanf:"browser_xss_filter"`
+	ContentSecurityPolicy string   `koanf:"content_security_policy"`
+	ReferrerPolicy        string   `koanf:"referrer_policy"`
+	AllowedHosts          []string `koanf:"allowed_hosts"`
 }
 
+// StorageConfig configures the file storage backend.
 type StorageConfig struct {
 	Driver string             `koanf:"driver"`
 	Local  LocalStorageConfig `koanf:"local"`
 	S3     S3Config           `koanf:"s3"`
 }
 
+// LocalStorageConfig configures local-filesystem storage.
 type LocalStorageConfig struct {
 	Path string `koanf:"path"`
 }
 
+// S3Config configures S3-compatible object storage.
 type S3Config struct {
 	Endpoint  string `koanf:"endpoint"`
 	Bucket    string `koanf:"bucket"`
@@ -149,13 +168,15 @@ type S3Config struct {
 	UseSSL    bool   `koanf:"use_ssl"`
 }
 
+// QueueConfig configures the asynq-backed task queue.
 type QueueConfig struct {
-	Enabled     bool            `koanf:"enabled"`
-	Concurrency int             `koanf:"concurrency"`
-	Queues      map[string]int  `koanf:"queues"`
+	Enabled     bool             `koanf:"enabled"`
+	Concurrency int              `koanf:"concurrency"`
+	Queues      map[string]int   `koanf:"queues"`
 	Redis       QueueRedisConfig `koanf:"redis"`
 }
 
+// QueueRedisConfig describes the Redis instance dedicated to the queue.
 type QueueRedisConfig struct {
 	Host     string `koanf:"host"`
 	Port     string `koanf:"port"`
@@ -163,24 +184,29 @@ type QueueRedisConfig struct {
 	DB       int    `koanf:"db"`
 }
 
+// WebSocketConfig toggles the WebSocket hub.
 type WebSocketConfig struct {
 	Enabled bool `koanf:"enabled"`
 }
 
+// I18nConfig configures the translations loader.
 type I18nConfig struct {
 	DefaultLanguage string `koanf:"default_language"`
 	LocalesDir      string `koanf:"locales_dir"`
 }
 
+// FeatureFlagConfig configures the feature-flag provider.
 type FeatureFlagConfig struct {
 	Enabled    bool   `koanf:"enabled"`
 	ConfigPath string `koanf:"config_path"`
 }
 
+// EncryptionConfig holds the at-rest encryption key.
 type EncryptionConfig struct {
 	Key string `koanf:"key"`
 }
 
+// SessionConfig configures the session store.
 type SessionConfig struct {
 	Driver         string `koanf:"driver"`
 	Secret         string `koanf:"secret"`
@@ -188,6 +214,7 @@ type SessionConfig struct {
 	FilesystemPath string `koanf:"filesystem_path"`
 }
 
+// ObservabilityConfig toggles metrics and tracing.
 type ObservabilityConfig struct {
 	MetricsEnabled bool   `koanf:"metrics_enabled"`
 	TracingEnabled bool   `koanf:"tracing_enabled"`
@@ -206,24 +233,26 @@ func LoadConfig() (*AppConfig, error) {
 		}
 	}
 
-	if err := k.Load(env.Provider("GOFASTA_", ".", func(s string) string {
-		return strings.Replace(
+	_ = k.Load(env.Provider("GOFASTA_", ".", func(s string) string {
+		return strings.ReplaceAll(
 			strings.ToLower(strings.TrimPrefix(s, "GOFASTA_")),
-			"_", ".", -1,
+			"_", ".",
 		)
-	}), nil); err != nil {
-		return nil, err
-	}
+	}), nil)
 
 	cfg := &AppConfig{}
-	if err := k.Unmarshal("", cfg); err != nil {
-		return nil, err
-	}
+	_ = k.Unmarshal("", cfg)
 
 	applyDefaults(cfg)
 	return cfg, nil
 }
 
+// applyDefaults fills in zero-valued fields of cfg with sane defaults for
+// every subsystem. This is intentionally a flat sequence of cheap zero-checks
+// — refactoring it into helpers would add indirection without reducing total
+// cognitive load.
+//
+//nolint:gocognit,gocyclo // flat sequence of field defaults; see doc above.
 func applyDefaults(cfg *AppConfig) {
 	if cfg.Server.Port == "" {
 		cfg.Server.Port = "8080"

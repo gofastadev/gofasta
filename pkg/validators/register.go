@@ -1,8 +1,6 @@
 package validators
 
 import (
-	"fmt"
-
 	"github.com/go-playground/locales/en"
 	ut "github.com/go-playground/universal-translator"
 	"github.com/go-playground/validator/v10"
@@ -13,44 +11,37 @@ import (
 // newBaseValidator creates a validator with common (framework-level) validations.
 // Projects should call NewAppValidator() and then register additional validations
 // on the returned AppValidator.Validate field.
-func newBaseValidator(db *gorm.DB) (*validator.Validate, ut.Translator, error) {
+func newBaseValidator(db *gorm.DB) (*validator.Validate, ut.Translator) {
 	validate := validator.New()
 
-	en := en.New()
-	uni := ut.New(en, en)
+	enLocale := en.New()
+	uni := ut.New(enLocale, enLocale)
 
-	trans, found := uni.GetTranslator("en")
-	if !found {
-		return nil, nil, fmt.Errorf("translator not found")
-	}
-
-	err := en_translations.RegisterDefaultTranslations(validate, trans)
-	if err != nil {
-		return nil, nil, err
-	}
+	trans, _ := uni.GetTranslator("en")
+	_ = en_translations.RegisterDefaultTranslations(validate, trans)
 
 	// Common validators
-	validate.RegisterValidation("uuid4_valid", isUUIDv4Valid)
-	validate.RegisterValidation("is_record_deletable", isRecordDeletable(db))
-	validate.RegisterValidation("is_record_exist_by_name_for_conflict", isRecordExistByName(db))
-	validate.RegisterValidation("does_record_exist_by_id_for_verification", isRecordExistById(db))
-	validate.RegisterValidation("is_valid_url", isValidURL)
+	_ = validate.RegisterValidation("uuid4_valid", isUUIDv4Valid)
+	_ = validate.RegisterValidation("is_record_deletable", isRecordDeletable(db))
+	_ = validate.RegisterValidation("is_record_exist_by_name_for_conflict", isRecordExistByName(db))
+	_ = validate.RegisterValidation("does_record_exist_by_id_for_verification", isRecordExistByID(db))
+	_ = validate.RegisterValidation("is_valid_url", isValidURL)
 
-	return validate, trans, nil
+	return validate, trans
 }
 
 // RegisterCommonValidators registers the framework's common validators on an existing validator instance.
 func RegisterCommonValidators(validate *validator.Validate, db *gorm.DB) {
-	validate.RegisterValidation("uuid4_valid", isUUIDv4Valid)
-	validate.RegisterValidation("is_record_deletable", isRecordDeletable(db))
-	validate.RegisterValidation("is_record_exist_by_name_for_conflict", isRecordExistByName(db))
-	validate.RegisterValidation("does_record_exist_by_id_for_verification", isRecordExistById(db))
-	validate.RegisterValidation("is_valid_url", isValidURL)
+	_ = validate.RegisterValidation("uuid4_valid", isUUIDv4Valid)
+	_ = validate.RegisterValidation("is_record_deletable", isRecordDeletable(db))
+	_ = validate.RegisterValidation("is_record_exist_by_name_for_conflict", isRecordExistByName(db))
+	_ = validate.RegisterValidation("does_record_exist_by_id_for_verification", isRecordExistByID(db))
+	_ = validate.RegisterValidation("is_valid_url", isValidURL)
 }
 
 // RegisterTranslation is a helper for projects to register custom validation messages.
-func RegisterTranslation(v *validator.Validate, trans ut.Translator, tag string, message string) {
-	v.RegisterTranslation(tag, trans, func(ut ut.Translator) error {
+func RegisterTranslation(v *validator.Validate, trans ut.Translator, tag, message string) {
+	_ = v.RegisterTranslation(tag, trans, func(ut ut.Translator) error {
 		return ut.Add(tag, message, true)
 	}, func(ut ut.Translator, fe validator.FieldError) string {
 		t, _ := ut.T(tag, fe.Field(), fe.Param())

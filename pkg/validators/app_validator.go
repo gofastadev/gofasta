@@ -18,10 +18,7 @@ type AppValidator struct {
 // NewAppValidator creates a validator with common validations registered.
 // Projects can extend it by registering additional validations on Validate.
 func NewAppValidator(db *gorm.DB) *AppValidator {
-	validate, trans, err := newBaseValidator(db)
-	if err != nil {
-		panic("failed to initialize validator: " + err.Error())
-	}
+	validate, trans := newBaseValidator(db)
 	return &AppValidator{
 		Validate: validate,
 		Trans:    trans,

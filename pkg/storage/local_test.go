@@ -75,6 +75,26 @@ func TestLocalStorage_Upload(t *testing.T) {
 	}
 }
 
+func TestLocalStorage_Upload_ReadOnlyPath(t *testing.T) {
+	tmpDir := t.TempDir()
+	// Create a read-only directory so MkdirAll for subdirectories fails
+	roDir := filepath.Join(tmpDir, "readonly")
+	os.Mkdir(roDir, 0555)
+
+	s := &LocalStorage{basePath: roDir}
+	err := s.Upload(context.Background(), "subdir/file.txt", strings.NewReader("data"), 4)
+	assert.Error(t, err, "MkdirAll should fail on read-only dir")
+}
+
+func TestLocalStorage_Upload_FileIsDirectory(t *testing.T) {
+	tmpDir := t.TempDir()
+	s := NewLocalStorage(config.LocalStorageConfig{Path: tmpDir})
+	// Create a directory where we'll try to create a file
+	os.MkdirAll(filepath.Join(tmpDir, "file.txt"), 0755)
+	err := s.Upload(context.Background(), "file.txt", strings.NewReader("data"), 4)
+	assert.Error(t, err)
+}
+
 func TestLocalStorage_Download(t *testing.T) {
 	s := newTestStorage(t)
 	ctx := context.Background()

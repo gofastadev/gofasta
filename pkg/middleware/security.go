@@ -17,6 +17,7 @@ func SecurityHeaders(cfg config.SecurityConfig) Middleware {
 		BrowserXssFilter:      cfg.BrowserXSSFilter,
 		ContentSecurityPolicy: cfg.ContentSecurityPolicy,
 		ReferrerPolicy:        cfg.ReferrerPolicy,
+		AllowedHosts:          cfg.AllowedHosts,
 	})
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

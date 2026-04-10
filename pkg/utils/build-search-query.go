@@ -7,6 +7,8 @@ import (
 	"gorm.io/gorm"
 )
 
+// BuildQueryForAnyModel applies case-insensitive ILIKE filters for every
+// non-nil *string value in filters, keyed by column name.
 func BuildQueryForAnyModel(db *gorm.DB, filters map[string]interface{}) (*gorm.DB, error) {
 	query := db
 	for key, value := range filters {

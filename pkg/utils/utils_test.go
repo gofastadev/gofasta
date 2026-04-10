@@ -1,11 +1,15 @@
 package utils
 
 import (
+	"errors"
 	"testing"
+	"testing/iotest"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
 
 	"github.com/gofastadev/gofasta/pkg/types"
 )
@@ -38,9 +42,9 @@ func TestCamelToSnake(t *testing.T) {
 	}
 }
 
-// --- ParseIdStringIsValidUUID ---
+// --- ParseIDStringIsValidUUID ---
 
-func TestParseIdStringIsValidUUID(t *testing.T) {
+func TestParseIDStringIsValidUUID(t *testing.T) {
 	tests := []struct {
 		name      string
 		input     string
@@ -55,7 +59,7 @@ func TestParseIdStringIsValidUUID(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, err := ParseIdStringIsValidUUID(tt.input)
+			result, err := ParseIDStringIsValidUUID(tt.input)
 			if tt.expectErr {
 				assert.Error(t, err)
 			} else {
@@ -220,8 +224,23 @@ func TestGeneratePassword_UsesCharset(t *testing.T) {
 	pwd, err := GeneratePassword(100)
 	require.NoError(t, err)
 	for _, c := range pwd {
-		assert.Contains(t, CHARSET, string(c), "password contains character not in CHARSET: %c", c)
+		assert.Contains(t, Charset, string(c), "password contains character not in Charset: %c", c)
 	}
+}
+
+func TestGeneratePassword_RandError(t *testing.T) {
+	oldReader := cryptoRandReader
+	cryptoRandReader = iotest.ErrReader(errors.New("entropy failure"))
+	defer func() { cryptoRandReader = oldReader }()
+
+	_, err := GeneratePassword(8)
+	require.Error(t, err)
+}
+
+func TestRandomChar_Success(t *testing.T) {
+	c, err := randomChar()
+	require.NoError(t, err)
+	assert.Contains(t, Charset, string(c))
 }
 
 // --- ConvertStructToMap ---
@@ -308,6 +327,73 @@ func TestConvertStructToMap(t *testing.T) {
 		result := ConvertStructToMap(Sample{Meta: map[string]string{"key": "val"}})
 		assert.Contains(t, result, "meta")
 	})
+}
+
+// --- BuildQueryForAnyModel ---
+
+func testDB(t *testing.T) *gorm.DB {
+	t.Helper()
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+	return db
+}
+
+func TestBuildQueryForAnyModel_WithStringFilters(t *testing.T) {
+	db := testDB(t)
+	name := "John"
+	filters := map[string]interface{}{
+		"name": &name,
+	}
+
+	result, err := BuildQueryForAnyModel(db, filters)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+}
+
+func TestBuildQueryForAnyModel_NilPointerSkipped(t *testing.T) {
+	db := testDB(t)
+	filters := map[string]interface{}{
+		"name": (*string)(nil),
+	}
+
+	result, err := BuildQueryForAnyModel(db, filters)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+}
+
+func TestBuildQueryForAnyModel_EmptyFilters(t *testing.T) {
+	db := testDB(t)
+	filters := map[string]interface{}{}
+
+	result, err := BuildQueryForAnyModel(db, filters)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+}
+
+func TestBuildQueryForAnyModel_NonStringPointerSkipped(t *testing.T) {
+	db := testDB(t)
+	num := 42
+	filters := map[string]interface{}{
+		"count": &num,
+	}
+
+	result, err := BuildQueryForAnyModel(db, filters)
+	require.NoError(t, err)
+	require.NotNil(t, result)
+}
+
+func TestBuildQueryForAnyModel_MultipleFilters(t *testing.T) {
+	db := testDB(t)
+	name := "Alice"
+	email := "alice@example.com"
+	filters := map[string]interface{}{
+		"name":  &name,
+		"email": &email,
+	}
+
+	result, err := BuildQueryForAnyModel(db, filters)
+	require.NoError(t, err)
+	require.NotNil(t, result)
 }
 
 // --- helpers ---

@@ -12,21 +12,23 @@ import (
 )
 
 // I18nService handles internationalization / message translation.
+//
+//nolint:revive // name kept for public-API stability; rename is a breaking change.
 type I18nService struct {
-	bundle       *i18n.Bundle
-	defaultLang  string
+	bundle      *i18n.Bundle
+	defaultLang string
 }
 
 // NewI18nService loads locale files from the given directory.
 // Files should be named like: en.yaml, fr.yaml, es.yaml
-func NewI18nService(localesDir string, defaultLang string) *I18nService {
+func NewI18nService(localesDir, defaultLang string) *I18nService {
 	bundle := i18n.NewBundle(language.English)
 	bundle.RegisterUnmarshalFunc("yaml", yaml.Unmarshal)
 
 	// Load all locale files
 	files, _ := filepath.Glob(filepath.Join(localesDir, "*.yaml"))
 	for _, f := range files {
-		bundle.LoadMessageFile(f)
+		_, _ = bundle.LoadMessageFile(f)
 	}
 
 	return &I18nService{bundle: bundle, defaultLang: defaultLang}
@@ -66,7 +68,7 @@ func CreateDefaultLocaleFile(localesDir string) {
 	if _, err := os.Stat(path); err == nil {
 		return
 	}
-	os.MkdirAll(localesDir, 0755)
+	_ = os.MkdirAll(localesDir, 0o755)
 	content := `# English translations
 welcome:
   other: "Welcome, {{.Name}}!"
@@ -81,5 +83,5 @@ validation_failed:
 internal_error:
   other: "An internal error occurred"
 `
-	os.WriteFile(path, []byte(content), 0644)
+	_ = os.WriteFile(path, []byte(content), 0o644)
 }

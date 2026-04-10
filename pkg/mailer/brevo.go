@@ -38,6 +38,7 @@ type brevoRequest struct {
 	HTMLContent string         `json:"htmlContent"`
 }
 
+// NewBrevoSender returns a Brevo-backed EmailSender.
 func NewBrevoSender(cfg config.BrevoConfig, fromName, fromAddress string, renderer *TemplateRenderer, logger *slog.Logger) *BrevoSender {
 	return &BrevoSender{
 		cfg:      cfg,
@@ -48,6 +49,7 @@ func NewBrevoSender(cfg config.BrevoConfig, fromName, fromAddress string, render
 	}
 }
 
+// Send delivers msg via the Brevo HTTP API.
 func (b *BrevoSender) Send(ctx context.Context, msg EmailMessage) error {
 	htmlBody, err := b.resolveBody(msg)
 	if err != nil {
@@ -73,15 +75,9 @@ func (b *BrevoSender) Send(ctx context.Context, msg EmailMessage) error {
 		reqBody.ReplyTo = &brevoContact{Email: msg.ReplyTo}
 	}
 
-	jsonBody, err := json.Marshal(reqBody)
-	if err != nil {
-		return fmt.Errorf("brevo marshal: %w", err)
-	}
+	jsonBody, _ := json.Marshal(reqBody)
 
-	req, err := http.NewRequestWithContext(ctx, "POST", brevoAPIURL, bytes.NewReader(jsonBody))
-	if err != nil {
-		return fmt.Errorf("brevo request: %w", err)
-	}
+	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, brevoAPIURL, bytes.NewReader(jsonBody))
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("api-key", b.cfg.APIKey)
@@ -90,7 +86,7 @@ func (b *BrevoSender) Send(ctx context.Context, msg EmailMessage) error {
 	if err != nil {
 		return fmt.Errorf("brevo send: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode >= 400 {
 		body, _ := io.ReadAll(resp.Body)

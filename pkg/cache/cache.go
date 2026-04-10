@@ -6,6 +6,8 @@ import (
 )
 
 // CacheService is the interface for all cache backends.
+//
+//nolint:revive // name kept for public-API stability; rename is a breaking change.
 type CacheService interface {
 	Get(ctx context.Context, key string) (string, error)
 	Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error

@@ -2,7 +2,9 @@ package encryption
 
 import (
 	"encoding/base64"
+	"errors"
 	"testing"
+	"testing/iotest"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -139,4 +141,17 @@ func TestDecrypt_WrongKey(t *testing.T) {
 
 	_, err = enc2.Decrypt(ciphertext)
 	assert.Error(t, err)
+}
+
+func TestEncrypt_RandReaderError(t *testing.T) {
+	enc, err := NewEncrypter(validKey)
+	require.NoError(t, err)
+
+	oldReader := randReader
+	randReader = iotest.ErrReader(errors.New("entropy failure"))
+	defer func() { randReader = oldReader }()
+
+	_, err = enc.Encrypt("hello")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "entropy failure")
 }

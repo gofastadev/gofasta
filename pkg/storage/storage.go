@@ -6,6 +6,8 @@ import (
 )
 
 // StorageService is the interface for file storage backends.
+//
+//nolint:revive // name kept for public-API stability; rename is a breaking change.
 type StorageService interface {
 	Upload(ctx context.Context, path string, reader io.Reader, size int64) error
 	Download(ctx context.Context, path string) (io.ReadCloser, error)

@@ -8,6 +8,7 @@ import (
 // Channel represents a notification delivery channel.
 type Channel string
 
+// Supported notification channels.
 const (
 	ChannelEmail    Channel = "email"
 	ChannelSMS      Channel = "sms"

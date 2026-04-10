@@ -3,6 +3,7 @@ package httputil
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -396,6 +397,29 @@ func TestBindForm_EmptyForm(t *testing.T) {
 	require.Error(t, err)
 }
 
+// ---------- BindForm ParseForm error ----------
+
+type errReader struct{}
+
+func (errReader) Read([]byte) (int, error) { return 0, fmt.Errorf("read error") }
+
+func TestBindForm_ParseFormError(t *testing.T) {
+	// A body that errors on read causes ParseForm to fail.
+	req := httptest.NewRequest(http.MethodPost, "/", io.NopCloser(errReader{}))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.ContentLength = 10
+
+	type FormData struct {
+		Name string `schema:"name"`
+	}
+	_, err := BindForm[FormData](req)
+	require.Error(t, err)
+
+	var appErr *apperrors.AppError
+	require.ErrorAs(t, err, &appErr)
+	assert.Equal(t, apperrors.BadRequest, appErr.Type)
+}
+
 // ---------- JSON edge cases ----------
 
 func TestJSON_NilData(t *testing.T) {
@@ -415,4 +439,39 @@ func TestJSON_SliceData(t *testing.T) {
 	var result []string
 	json.Unmarshal(rec.Body.Bytes(), &result)
 	assert.Equal(t, data, result)
+}
+
+// ---------- BindQuery decode error ----------
+
+func TestBindQuery_DecodeError(t *testing.T) {
+	// Use a struct with a type that can't be decoded from query string
+	type badQuery struct {
+		Count int `schema:"count" validate:"gte=0"`
+	}
+	req := httptest.NewRequest(http.MethodGet, "/?count=not_a_number", nil)
+
+	_, err := BindQuery[badQuery](req)
+	require.Error(t, err)
+
+	var appErr *apperrors.AppError
+	require.ErrorAs(t, err, &appErr)
+	assert.Equal(t, apperrors.BadRequest, appErr.Type)
+}
+
+// ---------- BindForm decode error ----------
+
+func TestBindForm_DecodeError(t *testing.T) {
+	type badForm struct {
+		Count int `schema:"count" validate:"gte=0"`
+	}
+	body := "count=not_a_number"
+	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(body))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	_, err := BindForm[badForm](req)
+	require.Error(t, err)
+
+	var appErr *apperrors.AppError
+	require.ErrorAs(t, err, &appErr)
+	assert.Equal(t, apperrors.BadRequest, appErr.Type)
 }

@@ -23,7 +23,7 @@ type Scheduler struct {
 // New creates a new scheduler with second-precision cron support.
 func New(logger *slog.Logger) *Scheduler {
 	return &Scheduler{
-		cron: cron.New(cron.WithSeconds(), cron.WithLogger(cron.PrintfLogger(slog.NewLogLogger(logger.Handler(), slog.LevelDebug)))),
+		cron:   cron.New(cron.WithSeconds(), cron.WithLogger(cron.PrintfLogger(slog.NewLogLogger(logger.Handler(), slog.LevelDebug)))),
 		logger: logger,
 	}
 }

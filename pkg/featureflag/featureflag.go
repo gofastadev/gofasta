@@ -9,6 +9,8 @@ import (
 )
 
 // FeatureFlagService manages feature flags for gradual rollouts and A/B testing.
+//
+//nolint:revive // name kept for public-API stability; rename is a breaking change.
 type FeatureFlagService struct {
 	logger *slog.Logger
 }
@@ -27,7 +29,7 @@ func NewFeatureFlagService(configPath string, logger *slog.Logger) (*FeatureFlag
 }
 
 // IsEnabled checks if a feature flag is enabled for a given user context.
-func (s *FeatureFlagService) IsEnabled(flagKey string, userID string, attributes map[string]interface{}) bool {
+func (s *FeatureFlagService) IsEnabled(flagKey, userID string, attributes map[string]interface{}) bool {
 	ctx := ffcontext.NewEvaluationContextBuilder(userID).Build()
 	for k, v := range attributes {
 		ctx = ffcontext.NewEvaluationContextBuilder(userID).AddCustom(k, v).Build()

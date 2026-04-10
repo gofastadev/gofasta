@@ -6,8 +6,8 @@ import (
 	"sync"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/gorilla/schema"
 	apperrors "github.com/gofastadev/gofasta/pkg/errors"
+	"github.com/gorilla/schema"
 )
 
 var (
