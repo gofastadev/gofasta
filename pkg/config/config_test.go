@@ -85,15 +85,14 @@ func TestLoadConfig_EnvOverrides(t *testing.T) {
 	}
 }
 
-
 func TestApplyDefaults(t *testing.T) {
 	cfg := &AppConfig{}
 	applyDefaults(cfg)
 
 	checks := []struct {
 		name string
-		got  interface{}
-		want interface{}
+		got  any
+		want any
 	}{
 		{"Server.Port", cfg.Server.Port, "8080"},
 		{"Server.ShutdownTimeout", cfg.Server.ShutdownTimeout, 15 * time.Second},
