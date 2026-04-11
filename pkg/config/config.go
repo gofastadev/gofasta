@@ -224,7 +224,31 @@ type ObservabilityConfig struct {
 
 // LoadConfig loads configuration from config.yaml (if present), then overlays
 // environment variables prefixed with GOFASTA_ (e.g., GOFASTA_DATABASE_HOST).
+// Equivalent to LoadConfigWithPrefix("GOFASTA_") — kept for backwards
+// compatibility. Callers that want a project-specific env var prefix
+// (e.g. MYAPP_DATABASE_HOST) should use LoadConfigWithPrefix directly.
 func LoadConfig() (*AppConfig, error) {
+	return LoadConfigWithPrefix("GOFASTA_")
+}
+
+// LoadConfigWithPrefix is the same as LoadConfig but reads environment
+// variables using the given prefix. The prefix is stripped, lowercased,
+// and underscores become dots before the key is looked up on koanf — so
+// prefix="MYAPP_" maps MYAPP_DATABASE_HOST → database.host.
+//
+// Projects scaffolded by `gofasta new` call this with their project-
+// specific prefix (e.g. "MYAPP_") so env vars match the project name in
+// .env files, Dockerfiles, CI configs, and k8s manifests. This keeps the
+// generated project's configuration surface named after the project
+// itself, not the toolkit — and lets a developer swap pkg/config for a
+// different loader later without having to rename every env var across
+// their infrastructure files.
+//
+// An empty prefix is valid and causes every env var to be considered —
+// typically you don't want this because unrelated vars like PATH would
+// be parsed as config keys. Pass a non-empty prefix like "GOFASTA_" or
+// "MYAPP_".
+func LoadConfigWithPrefix(prefix string) (*AppConfig, error) {
 	k := koanf.New(".")
 
 	if _, err := os.Stat("config.yaml"); err == nil {
@@ -233,9 +257,9 @@ func LoadConfig() (*AppConfig, error) {
 		}
 	}
 
-	_ = k.Load(env.Provider("GOFASTA_", ".", func(s string) string {
+	_ = k.Load(env.Provider(prefix, ".", func(s string) string {
 		return strings.ReplaceAll(
-			strings.ToLower(strings.TrimPrefix(s, "GOFASTA_")),
+			strings.ToLower(strings.TrimPrefix(s, prefix)),
 			"_", ".",
 		)
 	}), nil)
