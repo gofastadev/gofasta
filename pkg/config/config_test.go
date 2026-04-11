@@ -85,6 +85,75 @@ func TestLoadConfig_EnvOverrides(t *testing.T) {
 	}
 }
 
+// LoadConfigWithPrefix must honor a project-specific env prefix so a
+// scaffolded project named "myapp" can use MYAPP_DATABASE_HOST etc.
+// without colliding with other toolkit-scaffolded projects on the same
+// host that happen to also use GOFASTA_ as a prefix.
+func TestLoadConfigWithPrefix_ProjectPrefix(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Chdir(tmpDir)
+	t.Setenv("MYAPP_SERVER_PORT", "4000")
+	t.Setenv("MYAPP_DATABASE_DRIVER", "mysql")
+	t.Setenv("MYAPP_DATABASE_HOST", "db.internal")
+	t.Setenv("MYAPP_DATABASE_PORT", "3306")
+
+	cfg, err := LoadConfigWithPrefix("MYAPP_")
+	if err != nil {
+		t.Fatalf("LoadConfigWithPrefix error: %v", err)
+	}
+	if cfg.Server.Port != "4000" {
+		t.Errorf("Server.Port = %q, want %q", cfg.Server.Port, "4000")
+	}
+	if cfg.Database.Driver != "mysql" {
+		t.Errorf("Database.Driver = %q, want %q", cfg.Database.Driver, "mysql")
+	}
+	if cfg.Database.Host != "db.internal" {
+		t.Errorf("Database.Host = %q, want %q", cfg.Database.Host, "db.internal")
+	}
+	if cfg.Database.Port != "3306" {
+		t.Errorf("Database.Port = %q, want %q", cfg.Database.Port, "3306")
+	}
+}
+
+// A prefix mismatch must be ignored — MYAPP_* vars should not leak into
+// a LoadConfigWithPrefix("OTHER_") call on the same process.
+func TestLoadConfigWithPrefix_IgnoresOtherPrefixes(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Chdir(tmpDir)
+	t.Setenv("MYAPP_DATABASE_DRIVER", "mysql")
+
+	cfg, err := LoadConfigWithPrefix("OTHER_")
+	if err != nil {
+		t.Fatalf("LoadConfigWithPrefix error: %v", err)
+	}
+	// MYAPP_DATABASE_DRIVER must NOT bleed through.
+	if cfg.Database.Driver != "postgres" {
+		t.Errorf("Database.Driver = %q, want %q (the default, since OTHER_ prefix matched nothing)",
+			cfg.Database.Driver, "postgres")
+	}
+}
+
+// LoadConfig() must remain equivalent to LoadConfigWithPrefix("GOFASTA_")
+// so existing callers keep working without modification.
+func TestLoadConfig_IsAliasForGofastaPrefix(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Chdir(tmpDir)
+	t.Setenv("GOFASTA_DATABASE_DRIVER", "sqlite")
+
+	cfgA, err := LoadConfig()
+	if err != nil {
+		t.Fatalf("LoadConfig error: %v", err)
+	}
+	cfgB, err := LoadConfigWithPrefix("GOFASTA_")
+	if err != nil {
+		t.Fatalf("LoadConfigWithPrefix error: %v", err)
+	}
+	if cfgA.Database.Driver != cfgB.Database.Driver {
+		t.Errorf("LoadConfig and LoadConfigWithPrefix(\"GOFASTA_\") diverged: %q vs %q",
+			cfgA.Database.Driver, cfgB.Database.Driver)
+	}
+}
+
 func TestApplyDefaults(t *testing.T) {
 	cfg := &AppConfig{}
 	applyDefaults(cfg)
