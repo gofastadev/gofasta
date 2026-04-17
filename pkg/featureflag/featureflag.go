@@ -47,7 +47,16 @@ func NewFeatureFlagService(logger *slog.Logger) *FeatureFlagService {
 // that do not need a rule engine. Calling this replaces any previously
 // registered global provider.
 func NewInMemoryService(flags map[string]memprovider.InMemoryFlag, logger *slog.Logger) (*FeatureFlagService, error) {
-	if err := openfeature.SetProviderAndWait(memprovider.NewInMemoryProvider(flags)); err != nil {
+	return newServiceWithProvider(memprovider.NewInMemoryProvider(flags), logger)
+}
+
+// newServiceWithProvider registers an arbitrary OpenFeature provider and
+// returns a FeatureFlagService wired against it. Exposed as an unexported
+// helper so tests can exercise the provider-init-error branch with a mock
+// provider; callers outside the package should use NewInMemoryService or
+// register their provider directly via openfeature.SetProvider.
+func newServiceWithProvider(provider openfeature.FeatureProvider, logger *slog.Logger) (*FeatureFlagService, error) {
+	if err := openfeature.SetProviderAndWait(provider); err != nil {
 		return nil, err
 	}
 	return NewFeatureFlagService(logger), nil

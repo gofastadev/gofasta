@@ -2,12 +2,54 @@ package featureflag
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"testing"
 
 	"github.com/open-feature/go-sdk/openfeature"
 	"github.com/open-feature/go-sdk/openfeature/memprovider"
 )
+
+// failingProvider implements openfeature.FeatureProvider + StateHandler and
+// always errors out of Init so tests can exercise the provider-init error
+// branch in newServiceWithProvider. Registered with
+// openfeature.SetProviderAndWait, it drives the OpenFeature SDK to return a
+// non-nil error which our helper must propagate unchanged.
+type failingProvider struct{}
+
+func (failingProvider) Metadata() openfeature.Metadata {
+	return openfeature.Metadata{Name: "always-failing"}
+}
+
+func (failingProvider) BooleanEvaluation(_ context.Context, _ string, defaultValue bool, _ openfeature.FlattenedContext) openfeature.BoolResolutionDetail {
+	return openfeature.BoolResolutionDetail{Value: defaultValue}
+}
+
+func (failingProvider) StringEvaluation(_ context.Context, _ string, defaultValue string, _ openfeature.FlattenedContext) openfeature.StringResolutionDetail {
+	return openfeature.StringResolutionDetail{Value: defaultValue}
+}
+
+func (failingProvider) FloatEvaluation(_ context.Context, _ string, defaultValue float64, _ openfeature.FlattenedContext) openfeature.FloatResolutionDetail {
+	return openfeature.FloatResolutionDetail{Value: defaultValue}
+}
+
+func (failingProvider) IntEvaluation(_ context.Context, _ string, defaultValue int64, _ openfeature.FlattenedContext) openfeature.IntResolutionDetail {
+	return openfeature.IntResolutionDetail{Value: defaultValue}
+}
+
+func (failingProvider) ObjectEvaluation(_ context.Context, _ string, defaultValue any, _ openfeature.FlattenedContext) openfeature.InterfaceResolutionDetail {
+	return openfeature.InterfaceResolutionDetail{Value: defaultValue}
+}
+
+func (failingProvider) Hooks() []openfeature.Hook { return nil }
+
+// Init satisfies openfeature.StateHandler and always returns an error —
+// this is what SetProviderAndWait surfaces to our constructor's error branch.
+func (failingProvider) Init(_ openfeature.EvaluationContext) error {
+	return errors.New("synthetic provider init failure")
+}
+
+func (failingProvider) Shutdown() {}
 
 // sampleFlags returns an in-memory flag map with one enabled flag
 // ("dark-mode") and one disabled flag ("experimental-search") used as shared
@@ -122,4 +164,18 @@ func TestClose(t *testing.T) {
 	// provider registered.
 	svc := NewFeatureFlagService(slog.Default())
 	svc.Close()
+}
+
+func TestNewServiceWithProvider_InitError(t *testing.T) {
+	resetProvider(t)
+	// Register a provider whose Init returns an error. The helper must
+	// propagate the SDK's error unchanged rather than returning a broken
+	// service with a nil client.
+	svc, err := newServiceWithProvider(failingProvider{}, slog.Default())
+	if err == nil {
+		t.Fatal("expected error from failing provider init, got nil")
+	}
+	if svc != nil {
+		t.Errorf("expected nil service on init failure, got %+v", svc)
+	}
 }
