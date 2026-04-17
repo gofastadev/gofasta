@@ -102,7 +102,7 @@ Every package lives under `pkg/`. Here's what each one does:
 | Package | What it does |
 |---------|-------------|
 | `pkg/observability` | Prometheus metrics (request count, duration, in-flight requests) exposed at `/metrics`, and distributed tracing with OpenTelemetry. Both available as HTTP middleware. |
-| `pkg/featureflag` | Feature flag management using go-feature-flag. Evaluate flags for gradual rollouts and A/B testing. |
+| `pkg/featureflag` | Thin wrapper around the OpenFeature Go SDK for evaluating feature flags. Works with any OpenFeature provider — in-memory, Flagd, LaunchDarkly, go-feature-flag, or custom — registered via `openfeature.SetProvider`. |
 
 ### Testing
 
