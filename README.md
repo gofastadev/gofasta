@@ -104,6 +104,10 @@ Every package lives under `pkg/`. Here's what each one does:
 | `pkg/observability` | Prometheus metrics (request count, duration, in-flight requests) exposed at `/metrics`, and distributed tracing with OpenTelemetry. Both available as HTTP middleware. |
 | `pkg/featureflag` | Thin wrapper around the OpenFeature Go SDK for evaluating feature flags. Works with any OpenFeature provider — in-memory, Flagd, LaunchDarkly, go-feature-flag, or custom — registered via `openfeature.SetProvider`. |
 
+### `pkg/config.JSONSchema()`
+
+`pkg/config` additionally exports a `JSONSchema()` function that reflects over `AppConfig` and returns a JSON Schema (Draft 7) describing the complete config shape. Fields, types, durations, enums (via `validate:"oneof=..."` tags), and required fields (via `validate:"required"`) are all honored. Used by the scaffold's `cmd/schema` helper binary, which the CLI's `gofasta config schema` command shells out to — keeps the emitted schema always in sync with the exact library version pinned by the project.
+
 ### Testing
 
 | Package | What it does |
