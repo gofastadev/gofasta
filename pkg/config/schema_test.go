@@ -231,3 +231,116 @@ func TestJSONSchema_DurationIsNotInt(t *testing.T) {
 		f.Type.Field(1).Type,
 		"test guards AuthConfig.AccessTokenExpiry remains a time.Duration")
 }
+
+// --- branch-coverage tests -------------------------------------------------
+//
+// AppConfig's real fields don't exercise every path in the reflection
+// helpers (no floats, no interfaces, no unexported fields, no koanf:"-"
+// skips, no desc tags, no validate:"required"). The tests below craft
+// small local structs that specifically hit each untouched branch so
+// schema.go reaches 100% coverage.
+
+// TestSchemaForType_Float — the float32 / float64 branch maps to
+// JSON Schema "number". No AppConfig field is currently float-typed.
+func TestSchemaForType_Float(t *testing.T) {
+	type Money struct {
+		Price32 float32 `koanf:"price32"`
+		Price64 float64 `koanf:"price64"`
+	}
+	schema := schemaForStruct(reflect.TypeOf(Money{}))
+	props := schema["properties"].(map[string]any)
+	assert.Equal(t, "number", props["price32"].(map[string]any)["type"])
+	assert.Equal(t, "number", props["price64"].(map[string]any)["type"])
+}
+
+// TestSchemaForType_Fallback — kinds that don't correspond to any JSON
+// type (channels, functions, raw interfaces) fall through the dispatch
+// switch and return an empty schema map. Guards against accidental
+// panics when a future AppConfig field adds such a type.
+func TestSchemaForType_Fallback(t *testing.T) {
+	// reflect.Type of a chan yields a reflect.Kind not handled in the
+	// switch, exercising the default: branch.
+	schema := schemaForType(reflect.TypeOf(make(chan int)))
+	assert.Empty(t, schema)
+
+	// func type hits the same default branch.
+	schema = schemaForType(reflect.TypeOf(func() {}))
+	assert.Empty(t, schema)
+
+	// interface{} (any) also falls through.
+	var i any
+	schema = schemaForType(reflect.TypeOf(&i).Elem())
+	assert.Empty(t, schema)
+}
+
+// TestSchemaForStruct_SkipsUnexportedFields — reflection on a struct
+// with an unexported field should not include that field in the
+// generated schema properties.
+func TestSchemaForStruct_SkipsUnexportedFields(t *testing.T) {
+	type WithUnexported struct {
+		Exported   string `koanf:"exported"`
+		unexported string //nolint:unused // field intentionally unexported for this test
+	}
+	schema := schemaForStruct(reflect.TypeOf(WithUnexported{}))
+	props := schema["properties"].(map[string]any)
+	assert.Contains(t, props, "exported")
+	assert.NotContains(t, props, "unexported")
+}
+
+// TestSchemaForStruct_SkipsDashKoanfTag — a koanf:"-" tag marks the
+// field as excluded from loading; the schema must honor the same
+// convention and omit it from the properties.
+func TestSchemaForStruct_SkipsDashKoanfTag(t *testing.T) {
+	type WithDash struct {
+		Visible string `koanf:"visible"`
+		Hidden  string `koanf:"-"`
+	}
+	schema := schemaForStruct(reflect.TypeOf(WithDash{}))
+	props := schema["properties"].(map[string]any)
+	assert.Contains(t, props, "visible")
+	assert.NotContains(t, props, "-")
+	assert.NotContains(t, props, "hidden")
+}
+
+// TestSchemaForStruct_HonorsDescTag — a `desc:"..."` tag is copied
+// verbatim into the field's "description" property.
+func TestSchemaForStruct_HonorsDescTag(t *testing.T) {
+	type WithDesc struct {
+		Name string `koanf:"name" desc:"Human-readable service name shown in the logs."`
+	}
+	schema := schemaForStruct(reflect.TypeOf(WithDesc{}))
+	props := schema["properties"].(map[string]any)
+	name := props["name"].(map[string]any)
+	assert.Equal(t,
+		"Human-readable service name shown in the logs.",
+		name["description"],
+	)
+}
+
+// TestSchemaForStruct_MarksRequiredFields — a field tagged with
+// validate:"required" lands in the parent object's "required" list.
+// No AppConfig field is currently tagged required, so this is
+// specifically the path that the live schema doesn't hit.
+func TestSchemaForStruct_MarksRequiredFields(t *testing.T) {
+	type WithRequired struct {
+		Key   string `koanf:"key"    validate:"required"`
+		Value string `koanf:"value"`
+		Other string `koanf:"other"  validate:"required,min=1"`
+	}
+	schema := schemaForStruct(reflect.TypeOf(WithRequired{}))
+	req, ok := schema["required"].([]string)
+	require.True(t, ok, "required list must be present")
+	// Sorted deterministically.
+	assert.Equal(t, []string{"key", "other"}, req)
+}
+
+// TestFieldName_HandlesCommaSeparatedKoanfTag — koanf tags can carry
+// options after a comma (e.g. `koanf:"name,omitempty"`). fieldName
+// returns only the first token.
+func TestFieldName_HandlesCommaSeparatedKoanfTag(t *testing.T) {
+	type X struct {
+		FirstName string `koanf:"first_name,omitempty"`
+	}
+	got := fieldName(reflect.TypeOf(X{}).Field(0))
+	assert.Equal(t, "first_name", got)
+}
