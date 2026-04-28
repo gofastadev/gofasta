@@ -4,8 +4,13 @@
 # a clean GitHub release page with a curated changelog body, mirroring the
 # release pattern of the cli repo.
 #
+# Build-skipping is config-level (`builds: [{skip: true}]` below), not CLI-
+# level — in GoReleaser v2, `build` is not a valid value for the `--skip`
+# flag. The CLI `--skip=archive` covers the archive phase since there are
+# no binaries to archive.
+#
 # Docs: https://goreleaser.com
-# Run locally: goreleaser release --snapshot --clean --skip=build,archive
+# Run locally: goreleaser release --snapshot --clean --skip=archive
 
 version: 2
 

@@ -112,7 +112,7 @@ Every package lives under `pkg/`. Here's what each one does:
 
 | Package | What it does |
 |---------|-------------|
-| `pkg/testutil/testdb` | Spins up a PostgreSQL container using testcontainers-go for integration tests. Call `SetupTestDB(t)` in your test and get a real `*gorm.DB` — the container is automatically cleaned up when the test finishes. |
+| `pkg/testutil/testdb` | Spins up a PostgreSQL container using testcontainers-go for integration tests. Call `SetupTestDB(t)` in your test and get a real `*gorm.DB` — the container is automatically cleaned up when the test finishes. **Requires Docker** on the machine running the tests (install: <https://docs.docker.com/get-docker/>). |
 
 ## Architecture
 
