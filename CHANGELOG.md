@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 - **`config.JSONSchema()`** — emits a JSON Schema (Draft 7) describing the `AppConfig` struct by reflecting over its fields and struct tags. Honors `koanf:"name"` for field naming, `validate:"required"` for required fields, `validate:"oneof=a b c"` for enums, and `desc:"..."` for descriptions. Consumed by the CLI's new `gofasta config schema` command (which shells out to a project-local helper) so the emitted schema always matches the exact library version pinned in `go.mod`. Editor extensions (VS Code YAML, JetBrains) and CI pipelines can consume the output directly for autocomplete and config validation.
-- Initial public release of the Gofasta framework library
+- Initial public release of the Gofasta library — a collection of independent Go packages under `pkg/*`
 - `pkg/auth` — JWT authentication and RBAC authorization
 - `pkg/cache` — In-memory and Redis cache backends
 - `pkg/config` — Configuration loading via YAML and environment variables

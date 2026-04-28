@@ -94,7 +94,7 @@ Every package lives under `pkg/`. Here's what each one does:
 
 | Package | What it does |
 |---------|-------------|
-| `pkg/validators` | Input validation framework wrapping go-playground/validator. Provides `AppValidator` with `ValidateStruct()` that returns structured error DTOs. Includes common validators: UUID validation, record existence checks, URL validation, and record deletability checks. Projects register their own custom validators on top. |
+| `pkg/validators` | Input validation package wrapping go-playground/validator. Provides `AppValidator` with `ValidateStruct()` that returns structured error DTOs. Includes common validators: UUID validation, record existence checks, URL validation, and record deletability checks. Projects register their own custom validators on top. |
 | `pkg/i18n` | Internationalization using go-i18n. Loads translation files from a `locales/` directory and translates messages based on the request's language. |
 
 ### Observability
