@@ -1,0 +1,64 @@
+# GoReleaser configuration for the gofasta library.
+# The library ships no binaries — Go's module proxy resolves consumers
+# directly from the pushed Git tag. GoReleaser is used here only to publish
+# a clean GitHub release page with a curated changelog body, mirroring the
+# release pattern of the cli repo.
+#
+# Docs: https://goreleaser.com
+# Run locally: goreleaser release --snapshot --clean --skip=build,archive
+
+version: 2
+
+project_name: gofasta
+
+# No builds — this is a library.
+builds:
+  - skip: true
+
+# No archives either — there is nothing to archive.
+archives:
+  - id: skip
+    formats: [binary]
+    files: []
+
+changelog:
+  use: github
+  sort: asc
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\(.+\))??!?:.+$'
+      order: 0
+    - title: Bug fixes
+      regexp: '^.*?fix(\(.+\))??!?:.+$'
+      order: 1
+    - title: Documentation
+      regexp: '^.*?docs(\(.+\))??!?:.+$'
+      order: 2
+    - title: Other
+      order: 999
+  filters:
+    exclude:
+      - "^chore:"
+      - "^ci:"
+      - "^test:"
+      - "merge conflict"
+      - "Merge pull request"
+      - "Merge branch"
+
+release:
+  github:
+    owner: gofastadev
+    name: gofasta
+  draft: false
+  prerelease: auto
+  mode: replace
+  header: |
+    ## Gofasta library {{ .Tag }}
+
+    Add to your project's `go.mod`:
+
+    ```bash
+    go get github.com/gofastadev/gofasta@{{ .Tag }}
+    ```
+  footer: |
+    See [`CHANGELOG.md`](https://github.com/gofastadev/gofasta/blob/{{ .Tag }}/CHANGELOG.md) for the curated changelog and [`COMPATIBILITY.md`](https://github.com/gofastadev/release/blob/main/COMPATIBILITY.md) for the (cli, gofasta) pairing this release supports.

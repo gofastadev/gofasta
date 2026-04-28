@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  release:
+  goreleaser:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,7 +26,15 @@ jobs:
       - name: Verify build
         run: go build ./...
 
-      - name: Create GitHub release
-        uses: softprops/action-gh-release@v2
+      # The library ships no binaries — Go's module proxy serves consumers
+      # straight from the pushed Git tag. GoReleaser is invoked with build
+      # and archive steps skipped; it only publishes a curated GitHub release
+      # body so the release page stays consistent with the cli repo's.
+      - name: GoReleaser (release page only)
+        uses: goreleaser/goreleaser-action@v6
         with:
-          generate_release_notes: true
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --clean --skip=build,archive
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
