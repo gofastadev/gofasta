@@ -19,6 +19,8 @@ type AppConfig struct {
 	GraphQL       GraphQLConfig       `koanf:"graphql"`
 	Log           LogConfig           `koanf:"log"`
 	Email         EmailConfig         `koanf:"email"`
+	Slack         SlackConfig         `koanf:"slack"`
+	WhatsApp      WhatsAppConfig      `koanf:"whatsapp"`
 	Jobs          []JobConfig         `koanf:"jobs"`
 	Auth          AuthConfig          `koanf:"auth"`
 	RateLimit     RateLimitConfig     `koanf:"rate_limit"`
@@ -102,6 +104,73 @@ type SendGridConfig struct {
 // BrevoConfig configures the Brevo (ex-Sendinblue) email provider.
 type BrevoConfig struct {
 	APIKey string `koanf:"api_key"`
+}
+
+// SlackConfig configures outbound Slack messaging via pkg/slack.
+//
+// Provider selects the delivery mode:
+//   - ""        → disabled (no-op sender; Send returns "not configured")
+//   - "webhook" → POST to a single Incoming Webhook URL
+//   - "api"     → use a bot token against api.slack.com (chat.postMessage,
+//     files.uploadV2)
+//
+// Token + WebhookURL are mutually independent — populate the one your
+// chosen provider needs.
+type SlackConfig struct {
+	Provider   string `koanf:"provider"`
+	BotToken   string `koanf:"bot_token"`
+	WebhookURL string `koanf:"webhook_url"`
+	// SigningSecret is consumed by app code that handles INBOUND
+	// interactivity callbacks (button clicks, slash commands). pkg/slack
+	// itself does outbound only — but the value lives here because the
+	// rest of slack config does, so the inbound handler can reach it
+	// via the same config service.
+	SigningSecret string `koanf:"signing_secret"`
+}
+
+// WhatsAppConfig configures outbound WhatsApp messaging via pkg/whatsapp.
+//
+// Provider selects the delivery backend:
+//   - ""         → disabled
+//   - "ultramsg" → UltraMsg instance API
+//   - "twilio"   → Twilio WhatsApp Business
+//   - "meta"     → Meta WhatsApp Cloud API
+//
+// Each provider reads its own subsection. Switching providers is a
+// config-only change (plus restart).
+type WhatsAppConfig struct {
+	Provider string                 `koanf:"provider"`
+	UltraMsg WhatsAppUltraMsgConfig `koanf:"ultramsg"`
+	Twilio   WhatsAppTwilioConfig   `koanf:"twilio"`
+	Meta     WhatsAppMetaConfig     `koanf:"meta"`
+}
+
+// WhatsAppUltraMsgConfig — UltraMsg uses an instance-scoped API. URL
+// shape: https://api.ultramsg.com/instance{ID}/. Token authenticates
+// every call; instance + token together identify a single WhatsApp
+// session.
+type WhatsAppUltraMsgConfig struct {
+	BaseURL    string `koanf:"base_url"`    // e.g. "https://api.ultramsg.com"
+	InstanceID string `koanf:"instance_id"` // e.g. "instance60301"
+	Token      string `koanf:"token"`
+}
+
+// WhatsAppTwilioConfig — Twilio Programmable Messaging WhatsApp. Auth
+// is HTTP Basic (Account SID + Auth Token). Sender numbers are
+// `whatsapp:+E164` and must be approved in the Twilio console.
+type WhatsAppTwilioConfig struct {
+	AccountSID string `koanf:"account_sid"`
+	AuthToken  string `koanf:"auth_token"`
+	FromNumber string `koanf:"from_number"` // e.g. "+14155238886"
+}
+
+// WhatsAppMetaConfig — Meta WhatsApp Cloud API (Graph). Bearer auth,
+// per-WABA phone-number IDs. Templates and interactive messages are
+// supported but you must have an approved WhatsApp Business Account.
+type WhatsAppMetaConfig struct {
+	AccessToken   string `koanf:"access_token"`
+	PhoneNumberID string `koanf:"phone_number_id"`
+	APIVersion    string `koanf:"api_version"` // e.g. "v20.0"; defaults to v20.0 when empty
 }
 
 // AuthConfig configures JWT + RBAC.
