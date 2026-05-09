@@ -25,6 +25,9 @@ func TestLoadConfig_Defaults(t *testing.T) {
 	if cfg.Server.Port != "8080" {
 		t.Errorf("Server.Port = %q, want %q", cfg.Server.Port, "8080")
 	}
+	if cfg.Server.Host != "127.0.0.1" {
+		t.Errorf("Server.Host = %q, want %q (loopback default avoids macOS firewall prompts on Air rebuilds)", cfg.Server.Host, "127.0.0.1")
+	}
 	if cfg.Server.ShutdownTimeout != 15*time.Second {
 		t.Errorf("Server.ShutdownTimeout = %v, want %v", cfg.Server.ShutdownTimeout, 15*time.Second)
 	}
@@ -82,6 +85,26 @@ func TestLoadConfig_EnvOverrides(t *testing.T) {
 	}
 	if cfg.Database.Driver != "sqlite" {
 		t.Errorf("Database.Driver = %q, want %q", cfg.Database.Driver, "sqlite")
+	}
+}
+
+// TestLoadConfig_ServerHostEnvOverride asserts that production / Docker
+// deployments can flip the Server.Host default (loopback) to 0.0.0.0 via
+// an env var alone, without editing config.yaml. This is the production
+// path the Dockerfile and compose manifests rely on; if it ever broke,
+// scaffolded apps would silently start binding to loopback inside a
+// container and become unreachable from the host.
+func TestLoadConfig_ServerHostEnvOverride(t *testing.T) {
+	tmpDir := t.TempDir()
+	t.Chdir(tmpDir)
+	t.Setenv("GOFASTA_SERVER_HOST", "0.0.0.0")
+
+	cfg, err := LoadConfig()
+	if err != nil {
+		t.Fatalf("LoadConfig() error: %v", err)
+	}
+	if cfg.Server.Host != "0.0.0.0" {
+		t.Errorf("Server.Host = %q, want %q", cfg.Server.Host, "0.0.0.0")
 	}
 }
 
@@ -163,6 +186,7 @@ func TestApplyDefaults(t *testing.T) {
 		got  any
 		want any
 	}{
+		{"Server.Host", cfg.Server.Host, "127.0.0.1"},
 		{"Server.Port", cfg.Server.Port, "8080"},
 		{"Server.ShutdownTimeout", cfg.Server.ShutdownTimeout, 15 * time.Second},
 		{"Database.Driver", cfg.Database.Driver, "postgres"},

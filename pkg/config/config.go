@@ -44,7 +44,17 @@ type JobConfig struct {
 }
 
 // ServerConfig configures the HTTP server.
+//
+// Host is the bind address. The default is 127.0.0.1 (loopback) so a
+// freshly-scaffolded project runs cleanly on macOS without the firewall
+// prompting for permission on every Air rebuild — macOS only fires that
+// dialog for processes listening on non-loopback interfaces, so binding
+// to 127.0.0.1 sidesteps it entirely. For production / containers, set
+// the host to 0.0.0.0 (or the desired interface) via env var, e.g.
+// MYAPP_SERVER_HOST=0.0.0.0. The scaffold's Dockerfile and compose
+// manifests already do this.
 type ServerConfig struct {
+	Host            string        `koanf:"host"`
 	Port            string        `koanf:"port"`
 	ShutdownTimeout time.Duration `koanf:"shutdown_timeout"`
 	AllowedOrigins  []string      `koanf:"allowed_origins"`
@@ -347,6 +357,9 @@ func LoadConfigWithPrefix(prefix string) (*AppConfig, error) {
 //
 //nolint:gocognit,gocyclo // flat sequence of field defaults; see doc above.
 func applyDefaults(cfg *AppConfig) {
+	if cfg.Server.Host == "" {
+		cfg.Server.Host = "127.0.0.1"
+	}
 	if cfg.Server.Port == "" {
 		cfg.Server.Port = "8080"
 	}
