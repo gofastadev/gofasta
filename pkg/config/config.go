@@ -21,6 +21,7 @@ type AppConfig struct {
 	Email         EmailConfig         `koanf:"email"`
 	Slack         SlackConfig         `koanf:"slack"`
 	WhatsApp      WhatsAppConfig      `koanf:"whatsapp"`
+	Push          PushConfig          `koanf:"push"`
 	Jobs          []JobConfig         `koanf:"jobs"`
 	Auth          AuthConfig          `koanf:"auth"`
 	RateLimit     RateLimitConfig     `koanf:"rate_limit"`
@@ -181,6 +182,35 @@ type WhatsAppMetaConfig struct {
 	AccessToken   string `koanf:"access_token"`
 	PhoneNumberID string `koanf:"phone_number_id"`
 	APIVersion    string `koanf:"api_version"` // e.g. "v20.0"; defaults to v20.0 when empty
+}
+
+// PushConfig configures outbound mobile push notifications via
+// pkg/push.
+//
+// Provider selects the delivery backend:
+//   - ""    → disabled (the noop sender — Send returns ErrNotConfigured)
+//   - "fcm" → Firebase Cloud Messaging via the official Admin SDK
+//
+// Each provider reads its own subsection. Switching providers is a
+// config-only change (plus restart).
+type PushConfig struct {
+	Provider string        `koanf:"provider"`
+	FCM      PushFCMConfig `koanf:"fcm"`
+}
+
+// PushFCMConfig — credentials for Firebase Cloud Messaging.
+//
+// Provide ONE of CredentialsJSON (raw service-account JSON inline in
+// env, useful for containerized deployments) or CredentialsFilePath
+// (a file on disk). CredentialsJSON wins when both are set.
+//
+// ProjectID is read from the credentials JSON when not set
+// explicitly; the override is mostly useful for tests against a fake
+// project.
+type PushFCMConfig struct {
+	CredentialsJSON     string `koanf:"credentials_json"`
+	CredentialsFilePath string `koanf:"credentials_file_path"`
+	ProjectID           string `koanf:"project_id"`
 }
 
 // AuthConfig configures JWT + RBAC.
