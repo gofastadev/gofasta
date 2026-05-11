@@ -15,6 +15,11 @@ import (
 
 const defaultMetaAPIVersion = "v20.0"
 
+// metaGraphBaseURL is the production Meta Graph API root. Var (not
+// const) so tests can repoint at an httptest server. Production never
+// reassigns; _test.go reassigns + restores via t.Cleanup.
+var metaGraphBaseURL = "https://graph.facebook.com"
+
 // MetaSender talks directly to the Meta WhatsApp Cloud API (Graph
 // version). Bearer auth, JSON payloads, per-WABA phone-number IDs.
 //
@@ -66,8 +71,8 @@ func (s *MetaSender) Send(ctx context.Context, msg Message) (*SendResult, error)
 	if to == "" {
 		return nil, fmt.Errorf("meta whatsapp: To is required")
 	}
-	endpoint := fmt.Sprintf("https://graph.facebook.com/%s/%s/messages",
-		s.cfg.APIVersion, s.cfg.PhoneNumberID)
+	endpoint := fmt.Sprintf("%s/%s/%s/messages",
+		metaGraphBaseURL, s.cfg.APIVersion, s.cfg.PhoneNumberID)
 
 	payload := metaSendPayload{
 		MessagingProduct: "whatsapp",
@@ -152,8 +157,8 @@ func (s *MetaSender) resolveMedia(ctx context.Context, media *MediaAttachment) (
 	if len(media.Content) == 0 {
 		return "", "", fmt.Errorf("meta whatsapp: media must have URL or Content")
 	}
-	uploadEndpoint := fmt.Sprintf("https://graph.facebook.com/%s/%s/media",
-		s.cfg.APIVersion, s.cfg.PhoneNumberID)
+	uploadEndpoint := fmt.Sprintf("%s/%s/%s/media",
+		metaGraphBaseURL, s.cfg.APIVersion, s.cfg.PhoneNumberID)
 	// Multipart upload: messaging_product, type, file (the bytes).
 	mid, uerr := uploadMetaMedia(ctx, s.client, uploadEndpoint, s.cfg.AccessToken, media)
 	if uerr != nil {

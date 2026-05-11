@@ -13,12 +13,16 @@ import (
 	"time"
 )
 
-const (
-	slackPostMessageURL     = "https://slack.com/api/chat.postMessage"
-	slackFilesUploadV2URL   = "https://slack.com/api/files.getUploadURLExternal"
-	slackFilesCompleteURL   = "https://slack.com/api/files.completeUploadExternal"
-	defaultSlackHTTPTimeout = 30 * time.Second
+// Endpoint URLs are vars (not consts) so tests can point them at an
+// httptest server. Production code never reassigns them; only
+// _test.go files do, and they restore the originals on cleanup.
+var (
+	slackPostMessageURL   = "https://slack.com/api/chat.postMessage"
+	slackFilesUploadV2URL = "https://slack.com/api/files.getUploadURLExternal"
+	slackFilesCompleteURL = "https://slack.com/api/files.completeUploadExternal"
 )
+
+const defaultSlackHTTPTimeout = 30 * time.Second
 
 // APISender posts to api.slack.com using a bot token.
 //

@@ -29,15 +29,37 @@ type FCMConfig struct {
 	ProjectID           string
 }
 
+// fcmClient is the subset of *firebase.Messaging.Client that
+// FCMSender depends on. Captured as an interface so tests can
+// substitute an in-memory fake; production always passes a real
+// *fcm.Client returned by app.Messaging(ctx).
+type fcmClient interface {
+	SendEachForMulticast(ctx context.Context, m *fcm.MulticastMessage) (*fcm.BatchResponse, error)
+	Send(ctx context.Context, m *fcm.Message) (string, error)
+	SubscribeToTopic(ctx context.Context, tokens []string, topic string) (*fcm.TopicManagementResponse, error)
+	UnsubscribeFromTopic(ctx context.Context, tokens []string, topic string) (*fcm.TopicManagementResponse, error)
+}
+
 // FCMSender implements Sender against Firebase Cloud Messaging.
 //
 // One client is constructed at boot and reused. The Firebase SDK
 // handles HTTP/2 pooling + token refresh internally, so we don't
 // need a per-request client.
 type FCMSender struct {
-	client *fcm.Client
+	client fcmClient
 	logger *slog.Logger
 }
+
+// firebaseNewAppFn and appMessagingFn are package-level seams over the
+// firebase-admin-go SDK so tests can drive every NewFCMSender branch
+// without an actual Google credential. Production assigns the real
+// SDK functions; tests reassign and restore on cleanup.
+var (
+	firebaseNewAppFn = firebase.NewApp
+	appMessagingFn   = func(app *firebase.App, ctx context.Context) (fcmClient, error) {
+		return app.Messaging(ctx)
+	}
+)
 
 // NewFCMSender builds the FCM client. It returns an error early if
 // the credentials are unreadable or the SDK can't initialize — boot
@@ -51,11 +73,11 @@ func NewFCMSender(cfg FCMConfig, logger *slog.Logger) (*FCMSender, error) {
 		return nil, err
 	}
 	conf := &firebase.Config{ProjectID: cfg.ProjectID}
-	app, err := firebase.NewApp(context.Background(), conf, option.WithCredentialsJSON(creds))
+	app, err := firebaseNewAppFn(context.Background(), conf, option.WithCredentialsJSON(creds))
 	if err != nil {
 		return nil, fmt.Errorf("fcm: firebase.NewApp: %w", err)
 	}
-	client, err := app.Messaging(context.Background())
+	client, err := appMessagingFn(app, context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("fcm: app.Messaging: %w", err)
 	}
@@ -225,6 +247,24 @@ func topicResultFromResponse(resp *fcm.TopicManagementResponse) *TopicMembership
 	return out
 }
 
+// SDK-predicate seams. The firebase-admin-go Is* functions only
+// recognize the SDK's internal error type (`*internal.FirebaseError`),
+// which is unreachable from outside the SDK module. Wrapping each
+// predicate behind a package-level var lets unit tests substitute a
+// stub that returns true for a synthesised error, exercising every
+// branch of classifyFCMError without depending on SDK internals.
+// Production assigns the real predicates; tests reassign and restore
+// via t.Cleanup.
+var (
+	isFCMUnregisteredFn        = fcm.IsUnregistered
+	isFCMInvalidArgumentFn     = fcm.IsInvalidArgument
+	isFCMQuotaExceededFn       = fcm.IsQuotaExceeded
+	isFCMSenderIDMismatchFn    = fcm.IsSenderIDMismatch
+	isFCMThirdPartyAuthErrorFn = fcm.IsThirdPartyAuthError
+	isFCMUnavailableFn         = fcm.IsUnavailable
+	isFCMInternalFn            = fcm.IsInternal
+)
+
 // classifyFCMError maps the SDK's typed error to a machine-readable
 // code we can stash in TokenResult.ErrorCode. The full mapping
 // reference is at:
@@ -239,21 +279,21 @@ func classifyFCMError(err error) string {
 		return ""
 	}
 	switch {
-	case fcm.IsUnregistered(err):
+	case isFCMUnregisteredFn(err):
 		// IsUnregistered subsumes the legacy IsRegistrationTokenNotRegistered
 		// per the firebase-admin-go deprecation note.
 		return "UNREGISTERED"
-	case fcm.IsInvalidArgument(err):
+	case isFCMInvalidArgumentFn(err):
 		return "INVALID_ARGUMENT"
-	case fcm.IsQuotaExceeded(err):
+	case isFCMQuotaExceededFn(err):
 		return "QUOTA_EXCEEDED"
-	case fcm.IsSenderIDMismatch(err):
+	case isFCMSenderIDMismatchFn(err):
 		return "SENDER_ID_MISMATCH"
-	case fcm.IsThirdPartyAuthError(err):
+	case isFCMThirdPartyAuthErrorFn(err):
 		return "THIRD_PARTY_AUTH_ERROR"
-	case fcm.IsUnavailable(err):
+	case isFCMUnavailableFn(err):
 		return "UNAVAILABLE"
-	case fcm.IsInternal(err):
+	case isFCMInternalFn(err):
 		return "INTERNAL"
 	}
 	// Fall back to a sniff of the message — useful when the SDK

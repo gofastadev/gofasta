@@ -11,6 +11,19 @@ import (
 	"net/textproto"
 )
 
+// multipartBodyBufFn produces the buffer that multipart.NewWriter
+// renders into. Var (not const) so tests can substitute a writer
+// that fails on demand, exercising the rare `if err != nil` branches
+// after each Write that are otherwise unreachable when writing to a
+// bytes.Buffer (which never fails). Production always returns a
+// fresh *bytes.Buffer.
+type readWriteBuffer interface {
+	io.Reader
+	io.Writer
+}
+
+var multipartBodyBufFn = func() readWriteBuffer { return &bytes.Buffer{} }
+
 // uploadMetaMedia POSTs raw bytes to /{phone-number-id}/media and
 // returns the resulting media ID. Split out so the main meta.go file
 // stays focused on the message-send path.
@@ -19,8 +32,8 @@ func uploadMetaMedia(ctx context.Context, client *http.Client, endpoint, accessT
 		return "", errMissingContentType
 	}
 
-	var body bytes.Buffer
-	mw := multipart.NewWriter(&body)
+	body := multipartBodyBufFn()
+	mw := multipart.NewWriter(body)
 	if writeErr := mw.WriteField("messaging_product", "whatsapp"); writeErr != nil {
 		return "", writeErr
 	}
@@ -45,7 +58,7 @@ func uploadMetaMedia(ctx context.Context, client *http.Client, endpoint, accessT
 		return "", closeErr
 	}
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, &body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, body)
 	if err != nil {
 		return "", err
 	}

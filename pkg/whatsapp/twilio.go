@@ -33,6 +33,11 @@ type TwilioSender struct {
 	logger *slog.Logger
 }
 
+// twilioBaseURL is the production Twilio Messages API root. Vars (not
+// const) so tests can repoint at an httptest server. Production never
+// reassigns; _test.go reassigns + restores via t.Cleanup.
+var twilioBaseURL = "https://api.twilio.com"
+
 // NewTwilioSender constructs the Twilio-backed Sender. Account SID +
 // Auth Token authenticate every call (HTTP Basic).
 func NewTwilioSender(cfg config.WhatsAppTwilioConfig, logger *slog.Logger) *TwilioSender {
@@ -48,7 +53,7 @@ func (s *TwilioSender) Name() string { return "whatsapp-twilio" }
 
 // Send dispatches via Twilio's Messages API.
 func (s *TwilioSender) Send(ctx context.Context, msg Message) (*SendResult, error) {
-	endpoint := fmt.Sprintf("https://api.twilio.com/2010-04-01/Accounts/%s/Messages.json", s.cfg.AccountSID)
+	endpoint := fmt.Sprintf("%s/2010-04-01/Accounts/%s/Messages.json", twilioBaseURL, s.cfg.AccountSID)
 	form := url.Values{}
 	form.Set("From", "whatsapp:"+strings.TrimPrefix(s.cfg.FromNumber, "whatsapp:"))
 	form.Set("To", "whatsapp:"+normalizeTwilioTo(msg.To))
