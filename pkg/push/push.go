@@ -74,6 +74,9 @@ type Sender interface {
 // PriorityNormal can be deferred by the OS to save battery.
 type Priority string
 
+// Priority values understood by every provider; each provider maps
+// them to its own native field (FCM Android priority, APNs priority,
+// etc.) on the way out.
 const (
 	PriorityNormal Priority = "normal"
 	PriorityHigh   Priority = "high"

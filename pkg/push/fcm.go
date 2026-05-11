@@ -62,6 +62,7 @@ func NewFCMSender(cfg FCMConfig, logger *slog.Logger) (*FCMSender, error) {
 	return &FCMSender{client: client, logger: logger}, nil
 }
 
+// Name reports the provider name embedded in logs and metrics.
 func (s *FCMSender) Name() string { return "fcm" }
 
 // SendToTokens — uses SendEachForMulticast under the hood, which
@@ -126,6 +127,10 @@ func (s *FCMSender) SendToTopic(ctx context.Context, topic string, msg Message) 
 	}, nil
 }
 
+// SubscribeToTopic subscribes the given device tokens to a topic via
+// FCM's IID API. Empty topic or empty token list is a no-op (returns
+// an empty result, not an error) so callers can pass through filtered
+// input without conditional plumbing.
 func (s *FCMSender) SubscribeToTopic(ctx context.Context, topic string, tokens []string) (*TopicMembershipResult, error) {
 	if topic == "" || len(tokens) == 0 {
 		return &TopicMembershipResult{}, nil
@@ -137,6 +142,8 @@ func (s *FCMSender) SubscribeToTopic(ctx context.Context, topic string, tokens [
 	return topicResultFromResponse(resp), nil
 }
 
+// UnsubscribeFromTopic removes the given device tokens from a topic.
+// Empty inputs are treated the same as SubscribeToTopic.
 func (s *FCMSender) UnsubscribeFromTopic(ctx context.Context, topic string, tokens []string) (*TopicMembershipResult, error) {
 	if topic == "" || len(tokens) == 0 {
 		return &TopicMembershipResult{}, nil
@@ -221,7 +228,8 @@ func topicResultFromResponse(resp *fcm.TopicManagementResponse) *TopicMembership
 // classifyFCMError maps the SDK's typed error to a machine-readable
 // code we can stash in TokenResult.ErrorCode. The full mapping
 // reference is at:
-//   https://firebase.google.com/docs/reference/fcm/rest/v1/ErrorCode
+//
+//	https://firebase.google.com/docs/reference/fcm/rest/v1/ErrorCode
 //
 // We surface the codes the registry-pruner cares about; everything
 // else falls through as "UNKNOWN" with the original message preserved
@@ -231,7 +239,9 @@ func classifyFCMError(err error) string {
 		return ""
 	}
 	switch {
-	case fcm.IsUnregistered(err) || fcm.IsRegistrationTokenNotRegistered(err):
+	case fcm.IsUnregistered(err):
+		// IsUnregistered subsumes the legacy IsRegistrationTokenNotRegistered
+		// per the firebase-admin-go deprecation note.
 		return "UNREGISTERED"
 	case fcm.IsInvalidArgument(err):
 		return "INVALID_ARGUMENT"
