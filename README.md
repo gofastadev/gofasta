@@ -2,9 +2,21 @@
 
 [![CI](https://github.com/gofastadev/gofasta/actions/workflows/ci.yml/badge.svg)](https://github.com/gofastadev/gofasta/actions/workflows/ci.yml) [![CodeQL](https://github.com/gofastadev/gofasta/actions/workflows/codeql.yml/badge.svg)](https://github.com/gofastadev/gofasta/actions/workflows/codeql.yml) [![codecov](https://codecov.io/gh/gofastadev/gofasta/graph/badge.svg)](https://codecov.io/gh/gofastadev/gofasta) [![Go Reference](https://pkg.go.dev/badge/github.com/gofastadev/gofasta.svg)](https://pkg.go.dev/github.com/gofastadev/gofasta) [![Go Report Card](https://goreportcard.com/badge/github.com/gofastadev/gofasta)](https://goreportcard.com/report/github.com/gofastadev/gofasta) [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT) [![Go Version](https://img.shields.io/github/go-mod/go-version/gofastadev/gofasta)](https://github.com/gofastadev/gofasta/blob/main/go.mod) [![Release](https://img.shields.io/github/v/release/gofastadev/gofasta)](https://github.com/gofastadev/gofasta/releases)
 
-Gofasta is a Go library that provides production-ready building blocks for backend services. It handles the infrastructure plumbing — authentication, caching, database setup, email, logging, middleware, and more — so you can focus on writing business logic.
+Gofasta is a Go backend toolkit. This repo is the **library** your project imports — every package under `pkg/*` is self-contained and exposes a clear interface for one concern (auth, caching, database setup, email, middleware, observability, …) so you focus on business logic.
 
-This repo is the **library** that your project imports. To create a new project, use the [Gofasta CLI](https://github.com/gofastadev/cli).
+To create a new project, use the [Gofasta CLI](https://github.com/gofastadev/cli) — `gofasta new <project>` scaffolds a working project with this library wired in.
+
+## The Gofasta project
+
+Gofasta is split across three independent repositories. Each has its own release cycle and `go.mod` / `package.json`.
+
+| Repo | Role |
+|------|------|
+| [`gofastadev/gofasta`](https://github.com/gofastadev/gofasta) | **You are here.** The library — every `pkg/*` your project imports. |
+| [`gofastadev/cli`](https://github.com/gofastadev/cli) | The `gofasta` binary — `gofasta new`, code generation, and the dev loop. |
+| [`gofastadev/website`](https://github.com/gofastadev/website) | The docs site at **[gofasta.dev](https://gofasta.dev)**. |
+
+For full documentation — guides, CLI reference, and a per-package API reference for everything below — visit **[gofasta.dev](https://gofasta.dev)**. This README covers library installation and the package overview; everything else is on the website.
 
 ## Quick Start
 
@@ -57,6 +69,7 @@ Every package lives under `pkg/`. Here's what each one does:
 | `pkg/httputil` | Three helpers for HTTP handlers: `Bind()` parses and validates request bodies, `Handle()` wraps handler functions that return errors into standard `http.Handler`, and `OK()`/`Created()`/`JSON()` write JSON responses. |
 | `pkg/middleware` | A collection of HTTP middleware: request logging, panic recovery, CORS, security headers (HSTS, CSP, X-Frame-Options), rate limiting, request ID generation, and content-type validation. Compose them with `middleware.Chain()`. |
 | `pkg/health` | A health check controller with three endpoints: `/health` (basic liveness), `/health/live` (process alive), `/health/ready` (checks database and cache connectivity). |
+| `pkg/graphql` | Shared GraphQL schema fragments (`.gql` files) for pagination, sorting, errors, and a default health Query/Mutation. Consumed by gqlgen at build time, not imported as Go code — keeps REST and GraphQL response shapes aligned. |
 
 ### Authentication & Security
 
@@ -70,7 +83,7 @@ Every package lives under `pkg/`. Here's what each one does:
 
 | Package | What it does |
 |---------|-------------|
-| `pkg/cache` | A caching interface with two implementations: in-memory and Redis. Methods: `Get`, `Set`, `Delete`, `Flush`, `Ping`. |
+| `pkg/cache` | A caching interface with two implementations: in-memory and Redis. Methods: `Get`, `Set`, `Delete`, `Exists`, `Flush`, `Close`. |
 | `pkg/storage` | File storage abstraction with two backends: local filesystem and S3-compatible storage (AWS S3, MinIO, etc.). Methods: `Upload`, `Download`, `Delete`, `URL`. |
 | `pkg/seeds` | A seeder registry for populating databases with test/development data. Call `Register()` to add seed functions and `RunAll()` to execute them. |
 
@@ -79,7 +92,10 @@ Every package lives under `pkg/`. Here's what each one does:
 | Package | What it does |
 |---------|-------------|
 | `pkg/mailer` | Email sending with three providers: SMTP, SendGrid, and Brevo (Sendinblue). Includes a template renderer that processes Go HTML templates for email bodies. |
-| `pkg/notify` | A notification system that sends messages through multiple channels: email, SMS (Twilio), Slack, and database (stores notifications in a table). |
+| `pkg/slack` | Outbound Slack messaging. Two delivery modes: incoming-webhook and bot-token (`api`). Supports threading, Block Kit, and `files.uploadV2`. |
+| `pkg/whatsapp` | Outbound WhatsApp messaging. Three providers: UltraMsg, Twilio Programmable Messaging, and Meta WhatsApp Cloud API. Media attachments, threaded replies. |
+| `pkg/push` | Outbound mobile push notifications. Firebase Cloud Messaging ships in the standard build; the `Sender` interface is provider-agnostic for swap-in alternatives. |
+| `pkg/notify` | A multi-channel notification orchestrator that delivers messages over email, SMS (Twilio), Slack, and a database channel that persists notifications to a table. |
 | `pkg/websocket` | WebSocket support with a hub that manages connections, rooms, and message broadcasting. |
 
 ### Background Processing
@@ -94,8 +110,9 @@ Every package lives under `pkg/`. Here's what each one does:
 
 | Package | What it does |
 |---------|-------------|
-| `pkg/validators` | Input validation framework wrapping go-playground/validator. Provides `AppValidator` with `ValidateStruct()` that returns structured error DTOs. Includes common validators: UUID validation, record existence checks, URL validation, and record deletability checks. Projects register their own custom validators on top. |
+| `pkg/validators` | Input validation package wrapping go-playground/validator. Provides `AppValidator` with `ValidateStruct()` that returns structured error DTOs. Includes common validators: UUID validation, record existence checks, URL validation, and record deletability checks. Projects register their own custom validators on top. |
 | `pkg/i18n` | Internationalization using go-i18n. Loads translation files from a `locales/` directory and translates messages based on the request's language. |
+| `pkg/utils` | Small standalone helpers used across the library — string-case conversion, slice helpers, time formatting, etc. Imported as needed; nothing here depends on the rest of the library. |
 
 ### Observability
 
@@ -112,7 +129,9 @@ Every package lives under `pkg/`. Here's what each one does:
 
 | Package | What it does |
 |---------|-------------|
-| `pkg/testutil/testdb` | Spins up a PostgreSQL container using testcontainers-go for integration tests. Call `SetupTestDB(t)` in your test and get a real `*gorm.DB` — the container is automatically cleaned up when the test finishes. |
+| `pkg/testutil/testdb` | Spins up a PostgreSQL container using testcontainers-go for integration tests. Call `SetupTestDB(t)` in your test and get a real `*gorm.DB` — the container is automatically cleaned up when the test finishes. **Requires Docker** on the machine running the tests (install: <https://docs.docker.com/get-docker/>). |
+
+> **Per-package reference.** Every `pkg/*` has a dedicated page on [gofasta.dev/docs/api-reference](https://gofasta.dev/docs/api-reference) with types, functions, configuration, and usage examples. The table above is a one-line tour; the website is the source of truth for API detail.
 
 ## Architecture
 
@@ -154,6 +173,10 @@ database:
   password: myapp
   name: myapp_dev
 ```
+
+## Maintenance and sustainability
+
+Gofasta is currently maintained by one person; sustainability planning — release cadence, security SLOs, the solo-to-team transition, and the automation arc that retires manual steps as the project matures — is documented in the [release coordination repo](https://github.com/gofastadev/release), specifically in [`CADENCE.md`](https://github.com/gofastadev/release/blob/main/CADENCE.md), [`RELEASING.md`](https://github.com/gofastadev/release/blob/main/RELEASING.md), and [`COMMUNITY.md`](https://github.com/gofastadev/release/blob/main/COMMUNITY.md). Read those three together for the full picture.
 
 ## License
 

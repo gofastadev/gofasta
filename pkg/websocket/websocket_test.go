@@ -449,10 +449,16 @@ func TestServeWS_WriteMessageError(t *testing.T) {
 func TestServeWS_PingError(t *testing.T) {
 	h := newTestHub(t)
 
-	// Short ping period so ticker fires fast, tiny writeWait so the ping write fails.
+	// Ping period must comfortably exceed wait() (50ms) so the
+	// initial "client registered" assertion runs BEFORE the first
+	// ping fires; otherwise CI's contended scheduler can fire the
+	// ping ticker first, unregister the client, and we'd see
+	// ClientCount==0 instead of 1 at the first check. 200ms is the
+	// shortest period that's been stable across both local runs and
+	// the GitHub Actions Linux runner.
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ServeWS(h, w, r,
-			WithPingPeriod(50*time.Millisecond),
+			WithPingPeriod(200*time.Millisecond),
 			WithWriteWait(time.Nanosecond),
 		)
 	}))
@@ -470,8 +476,11 @@ func TestServeWS_PingError(t *testing.T) {
 		t.Fatalf("expected 1 client, got %d", h.ClientCount())
 	}
 
-	// Wait for the short ping period to fire — writeWait is 1ns so the ping write fails
-	time.Sleep(300 * time.Millisecond)
+	// Wait long enough for the ping ticker to fire — PingPeriod is
+	// 200ms, writeWait is 1ns so the ping write fails on the first
+	// tick. 500ms (≈ 2.5× the period) is enough headroom even on a
+	// slow runner.
+	time.Sleep(500 * time.Millisecond)
 
 	if h.ClientCount() != 0 {
 		t.Errorf("expected 0 clients after ping error, got %d", h.ClientCount())

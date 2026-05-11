@@ -19,6 +19,9 @@ type AppConfig struct {
 	GraphQL       GraphQLConfig       `koanf:"graphql"`
 	Log           LogConfig           `koanf:"log"`
 	Email         EmailConfig         `koanf:"email"`
+	Slack         SlackConfig         `koanf:"slack"`
+	WhatsApp      WhatsAppConfig      `koanf:"whatsapp"`
+	Push          PushConfig          `koanf:"push"`
 	Jobs          []JobConfig         `koanf:"jobs"`
 	Auth          AuthConfig          `koanf:"auth"`
 	RateLimit     RateLimitConfig     `koanf:"rate_limit"`
@@ -42,7 +45,17 @@ type JobConfig struct {
 }
 
 // ServerConfig configures the HTTP server.
+//
+// Host is the bind address. The default is 127.0.0.1 (loopback) so a
+// freshly-scaffolded project runs cleanly on macOS without the firewall
+// prompting for permission on every Air rebuild — macOS only fires that
+// dialog for processes listening on non-loopback interfaces, so binding
+// to 127.0.0.1 sidesteps it entirely. For production / containers, set
+// the host to 0.0.0.0 (or the desired interface) via env var, e.g.
+// MYAPP_SERVER_HOST=0.0.0.0. The scaffold's Dockerfile and compose
+// manifests already do this.
 type ServerConfig struct {
+	Host            string        `koanf:"host"`
 	Port            string        `koanf:"port"`
 	ShutdownTimeout time.Duration `koanf:"shutdown_timeout"`
 	AllowedOrigins  []string      `koanf:"allowed_origins"`
@@ -102,6 +115,102 @@ type SendGridConfig struct {
 // BrevoConfig configures the Brevo (ex-Sendinblue) email provider.
 type BrevoConfig struct {
 	APIKey string `koanf:"api_key"`
+}
+
+// SlackConfig configures outbound Slack messaging via pkg/slack.
+//
+// Provider selects the delivery mode:
+//   - ""        → disabled (no-op sender; Send returns "not configured")
+//   - "webhook" → POST to a single Incoming Webhook URL
+//   - "api"     → use a bot token against api.slack.com (chat.postMessage,
+//     files.uploadV2)
+//
+// Token + WebhookURL are mutually independent — populate the one your
+// chosen provider needs.
+type SlackConfig struct {
+	Provider   string `koanf:"provider"`
+	BotToken   string `koanf:"bot_token"`
+	WebhookURL string `koanf:"webhook_url"`
+	// SigningSecret is consumed by app code that handles INBOUND
+	// interactivity callbacks (button clicks, slash commands). pkg/slack
+	// itself does outbound only — but the value lives here because the
+	// rest of slack config does, so the inbound handler can reach it
+	// via the same config service.
+	SigningSecret string `koanf:"signing_secret"`
+}
+
+// WhatsAppConfig configures outbound WhatsApp messaging via pkg/whatsapp.
+//
+// Provider selects the delivery backend:
+//   - ""         → disabled
+//   - "ultramsg" → UltraMsg instance API
+//   - "twilio"   → Twilio WhatsApp Business
+//   - "meta"     → Meta WhatsApp Cloud API
+//
+// Each provider reads its own subsection. Switching providers is a
+// config-only change (plus restart).
+type WhatsAppConfig struct {
+	Provider string                 `koanf:"provider"`
+	UltraMsg WhatsAppUltraMsgConfig `koanf:"ultramsg"`
+	Twilio   WhatsAppTwilioConfig   `koanf:"twilio"`
+	Meta     WhatsAppMetaConfig     `koanf:"meta"`
+}
+
+// WhatsAppUltraMsgConfig — UltraMsg uses an instance-scoped API. URL
+// shape: https://api.ultramsg.com/instance{ID}/. Token authenticates
+// every call; instance + token together identify a single WhatsApp
+// session.
+type WhatsAppUltraMsgConfig struct {
+	BaseURL    string `koanf:"base_url"`    // e.g. "https://api.ultramsg.com"
+	InstanceID string `koanf:"instance_id"` // e.g. "instance60301"
+	Token      string `koanf:"token"`
+}
+
+// WhatsAppTwilioConfig — Twilio Programmable Messaging WhatsApp. Auth
+// is HTTP Basic (Account SID + Auth Token). Sender numbers are
+// `whatsapp:+E164` and must be approved in the Twilio console.
+type WhatsAppTwilioConfig struct {
+	AccountSID string `koanf:"account_sid"`
+	AuthToken  string `koanf:"auth_token"`
+	FromNumber string `koanf:"from_number"` // e.g. "+14155238886"
+}
+
+// WhatsAppMetaConfig — Meta WhatsApp Cloud API (Graph). Bearer auth,
+// per-WABA phone-number IDs. Templates and interactive messages are
+// supported but you must have an approved WhatsApp Business Account.
+type WhatsAppMetaConfig struct {
+	AccessToken   string `koanf:"access_token"`
+	PhoneNumberID string `koanf:"phone_number_id"`
+	APIVersion    string `koanf:"api_version"` // e.g. "v20.0"; defaults to v20.0 when empty
+}
+
+// PushConfig configures outbound mobile push notifications via
+// pkg/push.
+//
+// Provider selects the delivery backend:
+//   - ""    → disabled (the noop sender — Send returns ErrNotConfigured)
+//   - "fcm" → Firebase Cloud Messaging via the official Admin SDK
+//
+// Each provider reads its own subsection. Switching providers is a
+// config-only change (plus restart).
+type PushConfig struct {
+	Provider string        `koanf:"provider"`
+	FCM      PushFCMConfig `koanf:"fcm"`
+}
+
+// PushFCMConfig — credentials for Firebase Cloud Messaging.
+//
+// Provide ONE of CredentialsJSON (raw service-account JSON inline in
+// env, useful for containerized deployments) or CredentialsFilePath
+// (a file on disk). CredentialsJSON wins when both are set.
+//
+// ProjectID is read from the credentials JSON when not set
+// explicitly; the override is mostly useful for tests against a fake
+// project.
+type PushFCMConfig struct {
+	CredentialsJSON     string `koanf:"credentials_json"`
+	CredentialsFilePath string `koanf:"credentials_file_path"`
+	ProjectID           string `koanf:"project_id"`
 }
 
 // AuthConfig configures JWT + RBAC.
@@ -278,6 +387,9 @@ func LoadConfigWithPrefix(prefix string) (*AppConfig, error) {
 //
 //nolint:gocognit,gocyclo // flat sequence of field defaults; see doc above.
 func applyDefaults(cfg *AppConfig) {
+	if cfg.Server.Host == "" {
+		cfg.Server.Host = "127.0.0.1"
+	}
 	if cfg.Server.Port == "" {
 		cfg.Server.Port = "8080"
 	}
