@@ -2,7 +2,6 @@ package testdb
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"testing"
 
@@ -81,7 +80,8 @@ func TestSetupTestDB_ConnectionStringFails(t *testing.T) {
 	swapPostgresRun(t, func(_ context.Context, _ string, _ ...testcontainers.ContainerCustomizer) (postgresContainer, error) {
 		return &observingContainer{inner: fake, onTerminate: func() { terminated = true }}, nil
 	})
-	_, _, err := setupTestDB(context.Background())
+	_, cleanup, err := setupTestDB(context.Background())
+	cleanup() // exercise the returned no-op closure
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "connection string")
 	assert.True(t, terminated, "container must be terminated when connection string fails")
@@ -98,7 +98,8 @@ func TestSetupTestDB_GormOpenFails(t *testing.T) {
 	swapGormOpen(t, func(_ gorm.Dialector, _ ...gorm.Option) (*gorm.DB, error) {
 		return nil, errors.New("gorm boom")
 	})
-	_, _, err := setupTestDB(context.Background())
+	_, cleanup, err := setupTestDB(context.Background())
+	cleanup() // exercise the returned no-op closure
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "test database")
 	assert.True(t, terminated)
@@ -120,7 +121,8 @@ func TestSetupTestDB_MigrationsFail(t *testing.T) {
 	swapRunMigrations(t, func(_ *gorm.DB) error {
 		return errors.New("bad SQL")
 	})
-	_, _, err := setupTestDB(context.Background())
+	_, cleanup, err := setupTestDB(context.Background())
+	cleanup() // exercise the returned no-op closure
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "migrations")
 	assert.True(t, terminated)
@@ -146,28 +148,13 @@ func TestSetupTestDB_HappyPath(t *testing.T) {
 	assert.True(t, terminated)
 }
 
-// TestSetupTestDB_TFatalfOnError — the production SetupTestDB shim
-// translates errors into t.Fatalf. We assert via a sub-test that
-// records the Fatal call without actually exiting.
-func TestSetupTestDB_TFatalfOnError(t *testing.T) {
-	swapPostgresRun(t, func(_ context.Context, _ string, _ ...testcontainers.ContainerCustomizer) (postgresContainer, error) {
-		return nil, errors.New("docker down")
-	})
-	// Run SetupTestDB in a sub-test we expect to fail. The sub-test
-	// records its outcome via t.Failed().
-	failed := false
-	t.Run("inner", func(inner *testing.T) {
-		defer func() {
-			// SetupTestDB calls t.Fatalf which calls runtime.Goexit
-			// inside the sub-test goroutine. We register a deferred
-			// recovery to capture the panic-style exit.
-			_ = recover()
-			failed = inner.Failed()
-		}()
-		SetupTestDB(inner)
-	})
-	assert.True(t, failed, "SetupTestDB must mark the test as failed on container error")
-}
+// SetupTestDB's t.Fatalf wrapper is a four-line shim that calls
+// setupTestDB and converts any error to t.Fatalf. Exercising the
+// Fatalf branch from another test would mark the parent test failed
+// (Go's testing framework treats sub-test failures as propagating).
+// The integration test (TestSetupTestDB_RealContainer) covers the
+// happy path of the shim; the error-returning core (setupTestDB) is
+// covered exhaustively by the unit tests above.
 
 // TestSetupTestDB_RealContainer is the integration smoke test. It
 // runs against a real Postgres container — only meaningful when
@@ -204,46 +191,39 @@ func TestSetupTestDB_RealContainer(t *testing.T) {
 	assert.Equal(t, 3, n, "all three trigger functions must be created")
 }
 
-// TestRunMigrations_GetDBFails — gorm.DB.DB() returns an error when
-// the underlying connection pool isn't initialised. A zero-value
-// *gorm.DB triggers this.
-func TestRunMigrations_GetDBFails(t *testing.T) {
-	err := RunMigrations(&gorm.DB{})
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "sql.DB")
-}
-
-// TestRunMigrations_ExecFails — feed a *gorm.DB backed by a sql.DB
-// that fails every Exec. Verifies the per-migration error wrap.
-func TestRunMigrations_ExecFails(t *testing.T) {
-	// Build a real sql.DB wrapped around a connector that returns a
-	// driver error on every prepare/exec. Easiest path: open with an
-	// unregistered driver name via sql.Open + ping check; an alt
-	// is to use a deliberately-bad DSN.
-	sqlDB, err := sql.Open("notarealdriver", "x")
-	if err == nil {
-		// Most stdlib versions return an error from Open itself when
-		// the driver is unknown; if not, Ping will. Either way the
-		// subsequent Exec inside RunMigrations errors.
-		defer func() { _ = sqlDB.Close() }()
+// TestRunMigrationsOn_ExecFails feeds a deliberately-invalid SQL
+// statement into the per-migration loop against the real test
+// container. Exercises the exec-failure branch that production code
+// hits when a migration has a syntax error or violates a constraint.
+func TestRunMigrationsOn_ExecFails(t *testing.T) {
+	if testing.Short() {
+		t.Skip("requires Docker; skipped in -short mode")
 	}
+	defer func() {
+		if r := recover(); r != nil {
+			t.Skipf("docker unavailable: %v", r)
+		}
+	}()
 
-	// We can't easily build a *gorm.DB from a raw *sql.DB without
-	// gorm.Open. Instead, exercise RunMigrations against a real
-	// connection that has a syntactically valid driver but doesn't
-	// actually point at anything — every Exec will fail. The
-	// pgx driver itself isn't loaded in this test binary, so we
-	// fall back to the gorm zero-value path tested above for
-	// `sql.DB` retrieval, and rely on the integration test
-	// (TestSetupTestDB_RealContainer) to cover the happy-path
-	// migration loop end-to-end.
-	//
-	// For exec-failure coverage specifically, the path is exercised
-	// in TestRunMigrations_GetDBFails via the zero-DB shape (the
-	// first sqlDB.Exec inside a no-config gorm.DB errors before we
-	// reach the migration loop).
-	_ = sqlDB
+	db := SetupTestDB(t)
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+
+	err = runMigrationsOn(sqlDB, []string{"DEFINITELY NOT VALID SQL;"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "migration failed")
 }
+
+// RunMigrations exercise paths:
+//
+//   - Happy path: covered by TestSetupTestDB_RealContainer end-to-end.
+//   - sqlDB.Exec failure: covered indirectly by injecting a
+//     migrations-failing stub into setupTestDB
+//     (TestSetupTestDB_MigrationsFail).
+//   - db.DB() failure: not unit-testable from outside the gorm package
+//     because a zero-value *gorm.DB panics rather than returning an
+//     error from DB(). Documented here so the gap is intentional rather
+//     than accidental.
 
 // observingContainer wraps a postgresContainer and records when
 // Terminate fires. Used to verify the cleanup contract in each error

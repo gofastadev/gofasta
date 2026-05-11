@@ -630,7 +630,7 @@ func TestMetaSender_Send_BytesNoContentType(t *testing.T) {
 		AccessToken: "T", PhoneNumberID: "P",
 	}, discardLogger())
 	_, err := s.Send(context.Background(), Message{
-		To: "+1",
+		To:    "+1",
 		Media: &MediaAttachment{Type: "image", Content: []byte("x")},
 	})
 	require.Error(t, err)

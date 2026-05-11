@@ -499,7 +499,7 @@ func TestClassifyFCMError_Unknown(t *testing.T) {
 }
 
 // TestClassifyFCMError_PredicateBranches drives each typed-predicate
-// branch of classifyFCMError. The SDK's Is* functions recognise only
+// branch of classifyFCMError. The SDK's Is* functions recognize only
 // `*internal.FirebaseError`, which is unreachable from outside the
 // SDK module — so we flip the package-level predicate seams to
 // return true for a sentinel error, exercising every branch.
@@ -507,9 +507,9 @@ func TestClassifyFCMError_PredicateBranches(t *testing.T) {
 	sentinel := errors.New("sentinel")
 
 	cases := []struct {
-		name    string
-		swap    func(t *testing.T)
-		want    string
+		name string
+		swap func(t *testing.T)
+		want string
 	}{
 		{
 			name: "Unregistered",
@@ -670,4 +670,3 @@ func TestTokenResult_IsTokenInvalidated(t *testing.T) {
 	assert.False(t, TokenResult{}.IsTokenInvalidated())
 	assert.False(t, TokenResult{ErrorCode: "UNKNOWN"}.IsTokenInvalidated())
 }
-

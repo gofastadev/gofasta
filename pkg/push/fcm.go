@@ -251,7 +251,7 @@ func topicResultFromResponse(resp *fcm.TopicManagementResponse) *TopicMembership
 // recognize the SDK's internal error type (`*internal.FirebaseError`),
 // which is unreachable from outside the SDK module. Wrapping each
 // predicate behind a package-level var lets unit tests substitute a
-// stub that returns true for a synthesised error, exercising every
+// stub that returns true for a synthesized error, exercising every
 // branch of classifyFCMError without depending on SDK internals.
 // Production assigns the real predicates; tests reassign and restore
 // via t.Cleanup.

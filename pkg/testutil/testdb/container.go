@@ -3,6 +3,7 @@ package testdb
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"testing"
 	"time"
@@ -56,9 +57,6 @@ func SetupTestDB(t *testing.T) *gorm.DB {
 //
 // Returns the connected *gorm.DB, a cleanup function the caller must
 // register (via t.Cleanup or similar), and any error encountered.
-//
-//nolint:gocognit // linear pipeline of init steps; breaking it up
-// would obscure ordering.
 func setupTestDB(ctx context.Context) (*gorm.DB, func(), error) {
 	pgContainer, err := postgresRunFn(ctx,
 		"postgres:16-alpine",
@@ -102,40 +100,51 @@ func setupTestDB(ctx context.Context) (*gorm.DB, func(), error) {
 	return db, cleanup, nil
 }
 
+// defaultMigrations is the canonical baseline schema applied to every
+// test database. Exported as a slice (not inline) so unit tests can
+// reuse the production set or substitute their own to exercise
+// per-migration error paths in runMigrationsOn.
+var defaultMigrations = []string{
+	`CREATE EXTENSION IF NOT EXISTS citext;`,
+	`CREATE OR REPLACE FUNCTION update_updated_at_column()
+	RETURNS TRIGGER AS $$
+	BEGIN
+		NEW.updated_at = now();
+		RETURN NEW;
+	END;
+	$$ language 'plpgsql';`,
+	`CREATE OR REPLACE FUNCTION prevent_delete_non_deletable()
+	RETURNS TRIGGER AS $$
+	BEGIN
+		IF OLD.is_deletable = false THEN
+			RAISE EXCEPTION 'Cannot delete non-deletable record';
+		END IF;
+		RETURN OLD;
+	END;
+	$$ language 'plpgsql';`,
+	`CREATE OR REPLACE FUNCTION increment_record_version()
+	RETURNS TRIGGER AS $$
+	BEGIN
+		NEW.record_version = OLD.record_version + 1;
+		RETURN NEW;
+	END;
+	$$ language 'plpgsql';`,
+}
+
 // RunMigrations applies the base SQL migrations to the test database.
 func RunMigrations(db *gorm.DB) error {
 	sqlDB, err := db.DB()
 	if err != nil {
 		return fmt.Errorf("failed to get sql.DB: %w", err)
 	}
+	return runMigrationsOn(sqlDB, defaultMigrations)
+}
 
-	migrations := []string{
-		`CREATE EXTENSION IF NOT EXISTS citext;`,
-		`CREATE OR REPLACE FUNCTION update_updated_at_column()
-		RETURNS TRIGGER AS $$
-		BEGIN
-			NEW.updated_at = now();
-			RETURN NEW;
-		END;
-		$$ language 'plpgsql';`,
-		`CREATE OR REPLACE FUNCTION prevent_delete_non_deletable()
-		RETURNS TRIGGER AS $$
-		BEGIN
-			IF OLD.is_deletable = false THEN
-				RAISE EXCEPTION 'Cannot delete non-deletable record';
-			END IF;
-			RETURN OLD;
-		END;
-		$$ language 'plpgsql';`,
-		`CREATE OR REPLACE FUNCTION increment_record_version()
-		RETURNS TRIGGER AS $$
-		BEGIN
-			NEW.record_version = OLD.record_version + 1;
-			RETURN NEW;
-		END;
-		$$ language 'plpgsql';`,
-	}
-
+// runMigrationsOn is the testable core of RunMigrations. Split out so
+// unit tests can drive the per-migration exec-failure branch by
+// injecting a deliberately-bad SQL statement against a real test
+// database — without going through gorm.
+func runMigrationsOn(sqlDB *sql.DB, migrations []string) error {
 	for _, migration := range migrations {
 		if _, err := sqlDB.Exec(migration); err != nil {
 			return fmt.Errorf("migration failed: %w", err)
