@@ -59,7 +59,7 @@ func SetupTestDB(t *testing.T) *gorm.DB {
 // register (via t.Cleanup or similar), and any error encountered.
 func setupTestDB(ctx context.Context) (*gorm.DB, func(), error) {
 	pgContainer, err := postgresRunFn(ctx,
-		"postgres:16-alpine",
+		"postgres:18-alpine",
 		postgres.WithDatabase("testdb"),
 		postgres.WithUsername("testuser"),
 		postgres.WithPassword("testpass"),
