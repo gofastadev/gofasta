@@ -6,6 +6,8 @@ Gofasta is a Go backend toolkit. This repo is the **library** your project impor
 
 To create a new project, use the [Gofasta CLI](https://github.com/gofastadev/cli) — `gofasta new <project>` scaffolds a working project with this library wired in.
 
+> **Status:** pre-1.0 (`v0.1.x`). The API may change before `v1.0.0` — pin the exact version in your `go.mod` and read release notes when upgrading.
+
 ## The Gofasta project
 
 Gofasta is split across three independent repositories. Each has its own release cycle and `go.mod` / `package.json`.
@@ -177,6 +179,10 @@ database:
 ## Maintenance and sustainability
 
 Gofasta is currently maintained by one person; sustainability planning — release cadence, security SLOs, the solo-to-team transition, and the automation arc that retires manual steps as the project matures — is documented in the [release coordination repo](https://github.com/gofastadev/release), specifically in [`CADENCE.md`](https://github.com/gofastadev/release/blob/main/CADENCE.md), [`RELEASING.md`](https://github.com/gofastadev/release/blob/main/RELEASING.md), and [`COMMUNITY.md`](https://github.com/gofastadev/release/blob/main/COMMUNITY.md). Read those three together for the full picture.
+
+## Contributing
+
+Contributions are welcome — see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## License
 
