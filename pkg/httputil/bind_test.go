@@ -1,7 +1,6 @@
 package httputil
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,202 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-// ---------- Response helpers ----------
-
-func TestJSON_WritesStatusAndBody(t *testing.T) {
-	tests := []struct {
-		name   string
-		status int
-		data   interface{}
-	}{
-		{"ok with map", http.StatusOK, map[string]string{"msg": "hello"}},
-		{"created with struct", http.StatusCreated, struct {
-			ID int `json:"id"`
-		}{ID: 42}},
-		{"bad request", http.StatusBadRequest, map[string]string{"error": "bad"}},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			rec := httptest.NewRecorder()
-			err := JSON(rec, tt.status, tt.data)
-			require.NoError(t, err)
-
-			assert.Equal(t, tt.status, rec.Code)
-			assert.Equal(t, "application/json", rec.Header().Get("Content-Type"))
-
-			var got map[string]interface{}
-			err = json.Unmarshal(rec.Body.Bytes(), &got)
-			require.NoError(t, err)
-		})
-	}
-}
-
-func TestOK_Returns200(t *testing.T) {
-	rec := httptest.NewRecorder()
-	err := OK(rec, map[string]string{"status": "ok"})
-	require.NoError(t, err)
-
-	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Equal(t, "application/json", rec.Header().Get("Content-Type"))
-
-	var body map[string]string
-	json.Unmarshal(rec.Body.Bytes(), &body)
-	assert.Equal(t, "ok", body["status"])
-}
-
-func TestCreated_Returns201(t *testing.T) {
-	rec := httptest.NewRecorder()
-	err := Created(rec, map[string]int{"id": 1})
-	require.NoError(t, err)
-
-	assert.Equal(t, http.StatusCreated, rec.Code)
-	assert.Equal(t, "application/json", rec.Header().Get("Content-Type"))
-
-	var body map[string]int
-	json.Unmarshal(rec.Body.Bytes(), &body)
-	assert.Equal(t, 1, body["id"])
-}
-
-func TestNoContent_Returns204(t *testing.T) {
-	rec := httptest.NewRecorder()
-	err := NoContent(rec)
-	require.NoError(t, err)
-
-	assert.Equal(t, http.StatusNoContent, rec.Code)
-	assert.Empty(t, rec.Body.String())
-}
-
-// ---------- Handle adapter ----------
-
-func TestHandle_SuccessfulHandler(t *testing.T) {
-	h := Handle(func(w http.ResponseWriter, r *http.Request) error {
-		return OK(w, map[string]string{"result": "success"})
-	})
-
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
-
-	assert.Equal(t, http.StatusOK, rec.Code)
-	var body map[string]string
-	json.Unmarshal(rec.Body.Bytes(), &body)
-	assert.Equal(t, "success", body["result"])
-}
-
-func TestHandle_AppError(t *testing.T) {
-	tests := []struct {
-		name           string
-		err            *apperrors.AppError
-		expectedStatus int
-		expectedMsg    string
-	}{
-		{
-			name:           "not found",
-			err:            apperrors.NewNotFound("user not found", nil),
-			expectedStatus: http.StatusNotFound,
-			expectedMsg:    "user not found",
-		},
-		{
-			name:           "bad request",
-			err:            apperrors.NewBadRequest("invalid input", nil),
-			expectedStatus: http.StatusBadRequest,
-			expectedMsg:    "invalid input",
-		},
-		{
-			name:           "unauthorized",
-			err:            apperrors.NewUnauthorized("not authenticated", nil),
-			expectedStatus: http.StatusUnauthorized,
-			expectedMsg:    "not authenticated",
-		},
-		{
-			name:           "forbidden",
-			err:            apperrors.NewForbidden("access denied", nil),
-			expectedStatus: http.StatusForbidden,
-			expectedMsg:    "access denied",
-		},
-		{
-			name:           "conflict",
-			err:            apperrors.NewConflict("already exists", nil),
-			expectedStatus: http.StatusConflict,
-			expectedMsg:    "already exists",
-		},
-		{
-			name:           "validation",
-			err:            apperrors.NewValidation("validation failed", []string{"field required"}),
-			expectedStatus: http.StatusUnprocessableEntity,
-			expectedMsg:    "validation failed",
-		},
-		{
-			name:           "internal",
-			err:            apperrors.NewInternal("something broke", nil),
-			expectedStatus: http.StatusInternalServerError,
-			expectedMsg:    "something broke",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			h := Handle(func(w http.ResponseWriter, r *http.Request) error {
-				return tt.err
-			})
-
-			rec := httptest.NewRecorder()
-			h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
-
-			assert.Equal(t, tt.expectedStatus, rec.Code)
-
-			var body map[string]interface{}
-			json.Unmarshal(rec.Body.Bytes(), &body)
-			assert.Equal(t, tt.expectedMsg, body["error"])
-		})
-	}
-}
-
-func TestHandle_AppErrorWithDetails(t *testing.T) {
-	details := []map[string]string{{"field": "email", "message": "required"}}
-	appErr := apperrors.NewValidation("validation failed", details)
-
-	h := Handle(func(w http.ResponseWriter, r *http.Request) error {
-		return appErr
-	})
-
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/", nil))
-
-	assert.Equal(t, http.StatusUnprocessableEntity, rec.Code)
-
-	var body map[string]interface{}
-	json.Unmarshal(rec.Body.Bytes(), &body)
-	assert.Equal(t, "validation failed", body["error"])
-	assert.NotNil(t, body["details"])
-}
-
-func TestHandle_UnknownError(t *testing.T) {
-	h := Handle(func(w http.ResponseWriter, r *http.Request) error {
-		return fmt.Errorf("unexpected database error")
-	})
-
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
-
-	assert.Equal(t, http.StatusInternalServerError, rec.Code)
-
-	var body map[string]string
-	json.Unmarshal(rec.Body.Bytes(), &body)
-	assert.Equal(t, "Internal Server Error", body["error"])
-}
-
-func TestHandle_NilError(t *testing.T) {
-	h := Handle(func(w http.ResponseWriter, r *http.Request) error {
-		return OK(w, map[string]string{"ok": "true"})
-	})
-
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
-
-	assert.Equal(t, http.StatusOK, rec.Code)
-}
 
 // ---------- BindJSON ----------
 
@@ -345,6 +148,21 @@ func TestBindQuery_MissingOptionalFields(t *testing.T) {
 	assert.False(t, result.Active)
 }
 
+func TestBindQuery_DecodeError(t *testing.T) {
+	// Use a struct with a type that can't be decoded from query string
+	type badQuery struct {
+		Count int `schema:"count" validate:"gte=0"`
+	}
+	req := httptest.NewRequest(http.MethodGet, "/?count=not_a_number", nil)
+
+	_, err := BindQuery[badQuery](req)
+	require.Error(t, err)
+
+	var appErr *apperrors.AppError
+	require.ErrorAs(t, err, &appErr)
+	assert.Equal(t, apperrors.BadRequest, appErr.Type)
+}
+
 // ---------- BindForm ----------
 
 type testFormData struct {
@@ -397,14 +215,15 @@ func TestBindForm_EmptyForm(t *testing.T) {
 	require.Error(t, err)
 }
 
-// ---------- BindForm ParseForm error ----------
-
+// errReader is an io.Reader that always errors on Read. Used to drive
+// BindForm's ParseForm-error branch — once ParseForm sees a body with
+// non-zero ContentLength but unreadable contents, it surfaces the read
+// error and BindForm wraps it as a BadRequest.
 type errReader struct{}
 
 func (errReader) Read([]byte) (int, error) { return 0, fmt.Errorf("read error") }
 
 func TestBindForm_ParseFormError(t *testing.T) {
-	// A body that errors on read causes ParseForm to fail.
 	req := httptest.NewRequest(http.MethodPost, "/", io.NopCloser(errReader{}))
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.ContentLength = 10
@@ -419,46 +238,6 @@ func TestBindForm_ParseFormError(t *testing.T) {
 	require.ErrorAs(t, err, &appErr)
 	assert.Equal(t, apperrors.BadRequest, appErr.Type)
 }
-
-// ---------- JSON edge cases ----------
-
-func TestJSON_NilData(t *testing.T) {
-	rec := httptest.NewRecorder()
-	err := JSON(rec, http.StatusOK, nil)
-	require.NoError(t, err)
-	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Contains(t, rec.Body.String(), "null")
-}
-
-func TestJSON_SliceData(t *testing.T) {
-	rec := httptest.NewRecorder()
-	data := []string{"a", "b", "c"}
-	err := JSON(rec, http.StatusOK, data)
-	require.NoError(t, err)
-
-	var result []string
-	json.Unmarshal(rec.Body.Bytes(), &result)
-	assert.Equal(t, data, result)
-}
-
-// ---------- BindQuery decode error ----------
-
-func TestBindQuery_DecodeError(t *testing.T) {
-	// Use a struct with a type that can't be decoded from query string
-	type badQuery struct {
-		Count int `schema:"count" validate:"gte=0"`
-	}
-	req := httptest.NewRequest(http.MethodGet, "/?count=not_a_number", nil)
-
-	_, err := BindQuery[badQuery](req)
-	require.Error(t, err)
-
-	var appErr *apperrors.AppError
-	require.ErrorAs(t, err, &appErr)
-	assert.Equal(t, apperrors.BadRequest, appErr.Type)
-}
-
-// ---------- BindForm decode error ----------
 
 func TestBindForm_DecodeError(t *testing.T) {
 	type badForm struct {
