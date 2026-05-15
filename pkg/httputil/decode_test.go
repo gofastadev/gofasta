@@ -2,6 +2,7 @@ package httputil
 
 import (
 	"bytes"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -93,6 +94,23 @@ func TestDecodeForm_Success(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "Carol", got.Name)
 	assert.Equal(t, 25, got.Age)
+}
+
+// TestDecodeForm_ParseFormError — when the request body errors on read,
+// r.ParseForm() surfaces the read error and DecodeForm wraps it as
+// BadRequest. Drives the ParseForm-error branch that the happy-path
+// and bad-type tests don't exercise. Reuses errReader from bind_test.go,
+// which lives in the same package.
+func TestDecodeForm_ParseFormError(t *testing.T) {
+	req := httptest.NewRequest(http.MethodPost, "/x", io.NopCloser(errReader{}))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	req.ContentLength = 10
+
+	_, err := DecodeForm[decodeTestPayload](req)
+	require.Error(t, err)
+	var appErr *apperrors.AppError
+	require.ErrorAs(t, err, &appErr)
+	assert.Equal(t, http.StatusBadRequest, apperrors.HTTPStatus(appErr))
 }
 
 // TestDecodeForm_BadType — non-numeric value for an int field returns
