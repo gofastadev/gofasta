@@ -7,12 +7,13 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 func TestBaseModelImpl_Getters(t *testing.T) {
 	id := uuid.New()
 	now := time.Now()
-	deletedAt := now.Add(-time.Hour)
+	deletedAt := gorm.DeletedAt{Time: now.Add(-time.Hour), Valid: true}
 
 	model := BaseModelImpl{
 		ID:            id,
@@ -27,7 +28,9 @@ func TestBaseModelImpl_Getters(t *testing.T) {
 	assert.Equal(t, id, model.GetID())
 	assert.Equal(t, now, model.GetCreatedAt())
 	assert.Equal(t, now, model.GetUpdatedAt())
-	assert.Equal(t, deletedAt, model.GetDeletedAt())
+	got := model.GetDeletedAt()
+	assert.True(t, got.Valid, "GetDeletedAt should report Valid for a soft-deleted record")
+	assert.Equal(t, deletedAt.Time, got.Time)
 	assert.Equal(t, 3, model.GetRecordVersion())
 	assert.True(t, model.GetIsActive())
 	assert.False(t, model.GetIsDeletable())
@@ -39,7 +42,8 @@ func TestBaseModelImpl_GettersDefaults(t *testing.T) {
 	assert.Equal(t, uuid.Nil, model.GetID())
 	assert.True(t, model.GetCreatedAt().IsZero())
 	assert.True(t, model.GetUpdatedAt().IsZero())
-	assert.True(t, model.GetDeletedAt().IsZero())
+	// Zero-value gorm.DeletedAt has Valid=false (i.e. NOT soft-deleted).
+	assert.False(t, model.GetDeletedAt().Valid)
 	assert.Equal(t, 0, model.GetRecordVersion())
 	assert.False(t, model.GetIsActive())
 	assert.False(t, model.GetIsDeletable())
