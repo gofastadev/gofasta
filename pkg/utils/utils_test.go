@@ -154,6 +154,7 @@ func TestPreparePaginating_GetOffset(t *testing.T) {
 func TestPreparePaginating_GetSort(t *testing.T) {
 	desc := types.SortOrientationDesc
 	asc := types.SortOrientationAsc
+	bogusOrientation := types.SortOrientation("DROP TABLE users")
 
 	tests := []struct {
 		name     string
@@ -163,6 +164,11 @@ func TestPreparePaginating_GetSort(t *testing.T) {
 		{
 			"nil sorting defaults to created_at DESC",
 			PreparePaginating{},
+			"created_at DESC",
+		},
+		{
+			"empty sortByField defaults to created_at",
+			PreparePaginating{Sorting: &types.TSortingInputDto{SortByField: ""}},
 			"created_at DESC",
 		},
 		{
@@ -178,6 +184,39 @@ func TestPreparePaginating_GetSort(t *testing.T) {
 		{
 			"custom field, nil orientation defaults to DESC",
 			PreparePaginating{Sorting: &types.TSortingInputDto{SortByField: "name"}},
+			"name DESC",
+		},
+		// SQL-injection regression: any sortField that doesn't match a
+		// plain identifier ([a-zA-Z_][a-zA-Z0-9_]*) is rejected and
+		// replaced with "created_at" so the request still completes
+		// safely. Without this, GORM's Order() would happily execute
+		// arbitrary SQL embedded in the query string.
+		{
+			"injection via semicolon falls back",
+			PreparePaginating{Sorting: &types.TSortingInputDto{SortByField: "id; DROP TABLE users;--"}},
+			"created_at DESC",
+		},
+		{
+			"injection via space falls back",
+			PreparePaginating{Sorting: &types.TSortingInputDto{SortByField: "id ASC, name"}},
+			"created_at DESC",
+		},
+		{
+			"injection via quote falls back",
+			PreparePaginating{Sorting: &types.TSortingInputDto{SortByField: `id"--`}},
+			"created_at DESC",
+		},
+		{
+			"injection via leading digit falls back",
+			PreparePaginating{Sorting: &types.TSortingInputDto{SortByField: "1=1"}},
+			"created_at DESC",
+		},
+		// Invalid orientation (e.g. unmarshaled from a malicious JSON
+		// payload) falls back to DESC; we only honor the canonical
+		// ASC/DESC enum values.
+		{
+			"invalid orientation falls back to DESC",
+			PreparePaginating{Sorting: &types.TSortingInputDto{SortByField: "name", SortOrientation: &bogusOrientation}},
 			"name DESC",
 		},
 	}

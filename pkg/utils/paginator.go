@@ -3,9 +3,16 @@ package utils
 
 import (
 	"fmt"
+	"regexp"
 
 	"github.com/gofastadev/gofasta/pkg/types"
 )
+
+// safeIdentifier matches a plain SQL identifier — letters, digits, and
+// underscores, starting with a letter or underscore. Used by GetSort to
+// reject any sortField that could carry a SQL injection payload from a
+// query-string parameter.
+var safeIdentifier = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`)
 
 // PreparePaginating bundles pagination + sorting input DTOs and exposes
 // helpers for deriving GORM-friendly offset/limit/order values.
@@ -43,16 +50,35 @@ func (p *PreparePaginating) GetPage() int {
 	return 1
 }
 
-// GetSort returns the SQL ORDER BY clause derived from the sorting input,
-// defaulting to "created_at DESC" when no sorting is provided.
+// GetSort returns the SQL ORDER BY clause derived from the sorting
+// input, defaulting to "created_at DESC" when no sorting is provided.
+//
+// Both the field name and the orientation are validated:
+//   - The field name (after CamelToSnake) must be a plain identifier
+//     ([a-zA-Z_][a-zA-Z0-9_]*). GORM's Order() accepts arbitrary SQL
+//     expressions, so feeding raw query-string input here would let
+//     callers inject SQL via `?sortByField=col;DROP+TABLE+x;--`.
+//     Anything that doesn't match the identifier shape falls back to
+//     "created_at" so the request still completes safely.
+//   - The orientation is matched against the typed enum (SortOrientation.IsValid).
+//     Anything else falls back to "DESC".
+//
+// This sanitization is the boundary between user input and the ORM —
+// callers in repository code can pass the result directly to .Order().
 func (p *PreparePaginating) GetSort() string {
-	sortOrientation := "DESC"
 	sortField := "createdAt"
+	orientation := types.SortOrientationDesc
 	if p.Sorting != nil {
-		sortField = p.Sorting.SortByField
-		if p.Sorting.SortOrientation != nil {
-			sortOrientation = p.Sorting.SortOrientation.String()
+		if p.Sorting.SortByField != "" {
+			sortField = p.Sorting.SortByField
+		}
+		if p.Sorting.SortOrientation != nil && p.Sorting.SortOrientation.IsValid() {
+			orientation = *p.Sorting.SortOrientation
 		}
 	}
-	return fmt.Sprintf("%s %s", CamelToSnake(sortField), sortOrientation)
+	column := CamelToSnake(sortField)
+	if !safeIdentifier.MatchString(column) {
+		column = "created_at"
+	}
+	return fmt.Sprintf("%s %s", column, orientation.String())
 }
