@@ -17,6 +17,10 @@ func HTTPStatus(e *AppError) int {
 		return http.StatusForbidden
 	case BadRequest:
 		return http.StatusBadRequest
+	case PreconditionFailed:
+		return http.StatusPreconditionFailed
+	case PreconditionRequired:
+		return http.StatusPreconditionRequired
 	default:
 		return http.StatusInternalServerError
 	}

@@ -121,6 +121,20 @@ func TestErrorConstructors(t *testing.T) {
 			message:     "bad input",
 			hasDetails:  true,
 		},
+		{
+			name:        "NewPreconditionFailed",
+			constructor: func() *AppError { return NewPreconditionFailed("etag mismatch", inner) },
+			errType:     PreconditionFailed,
+			message:     "etag mismatch",
+			hasInternal: true,
+		},
+		{
+			name:        "NewPreconditionRequired",
+			constructor: func() *AppError { return NewPreconditionRequired("If-Match required", []string{"missing header"}) },
+			errType:     PreconditionRequired,
+			message:     "If-Match required",
+			hasDetails:  true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -152,6 +166,8 @@ func TestHTTPStatus(t *testing.T) {
 		{"Unauthorized", &AppError{Type: Unauthorized}, http.StatusUnauthorized},
 		{"Forbidden", &AppError{Type: Forbidden}, http.StatusForbidden},
 		{"BadRequest", &AppError{Type: BadRequest}, http.StatusBadRequest},
+		{"PreconditionFailed", &AppError{Type: PreconditionFailed}, http.StatusPreconditionFailed},
+		{"PreconditionRequired", &AppError{Type: PreconditionRequired}, http.StatusPreconditionRequired},
 		{"Internal", &AppError{Type: Internal}, http.StatusInternalServerError},
 		{"Unknown type defaults to 500", &AppError{Type: ErrorType(999)}, http.StatusInternalServerError},
 	}
@@ -164,7 +180,9 @@ func TestHTTPStatus(t *testing.T) {
 }
 
 func TestErrorType_Constants(t *testing.T) {
-	// Verify iota ordering
+	// Verify iota ordering. New entries MUST be appended at the end
+	// because existing values are stable API (clierr.Error JSON
+	// payloads bake these into integration tests downstream).
 	assert.Equal(t, ErrorType(0), NotFound)
 	assert.Equal(t, ErrorType(1), Validation)
 	assert.Equal(t, ErrorType(2), Conflict)
@@ -172,6 +190,8 @@ func TestErrorType_Constants(t *testing.T) {
 	assert.Equal(t, ErrorType(4), Unauthorized)
 	assert.Equal(t, ErrorType(5), Forbidden)
 	assert.Equal(t, ErrorType(6), BadRequest)
+	assert.Equal(t, ErrorType(7), PreconditionFailed)
+	assert.Equal(t, ErrorType(8), PreconditionRequired)
 }
 
 func TestAppError_ImplementsErrorInterface(t *testing.T) {
