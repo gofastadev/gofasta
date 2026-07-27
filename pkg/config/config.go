@@ -73,7 +73,17 @@ type ServerConfig struct {
 
 // DatabaseConfig configures the GORM database connection.
 type DatabaseConfig struct {
-	Driver   string        `koanf:"driver"`
+	Driver string `koanf:"driver"`
+	// DSN, when set, is used verbatim and every field below except Driver and
+	// the pool settings is ignored.
+	//
+	// The composed form cannot express driver options that live in the
+	// connection string — PostgreSQL's search_path, a non-UTC TimeZone,
+	// PgBouncer parameters, multi-host failover targets — and a project that
+	// needs one of those otherwise has no way to reach the dialector. Setting
+	// it here (typically from a DATABASE_URL environment variable) keeps that
+	// escape hatch open without every project reimplementing SetupDB.
+	DSN      string        `koanf:"dsn"`
 	Host     string        `koanf:"host"`
 	Port     string        `koanf:"port"`
 	User     string        `koanf:"user"`
@@ -237,6 +247,11 @@ type RateLimitConfig struct {
 	Enabled bool   `koanf:"enabled"`
 	Rate    string `koanf:"rate"`
 	Store   string `koanf:"store"`
+	// Redis is the backing store when Store is "redis". Required in that
+	// case: a rate limit is only global if every replica counts against the
+	// same store, and a memory store silently multiplies the effective limit
+	// by the replica count.
+	Redis RedisConfig `koanf:"redis"`
 }
 
 // CacheConfig configures the cache backend.

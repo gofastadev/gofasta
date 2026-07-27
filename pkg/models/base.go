@@ -16,8 +16,14 @@ import (
 // GORM's soft-delete plugin recognizes. Callers wanting just the
 // time can read .Time; callers wanting "is this deleted?" should
 // check .Valid (true = soft-deleted).
+// gorm.Model is deliberately NOT embedded here. It is a struct, and embedding
+// a non-interface type turns this into a constraint-only interface: the
+// compiler then rejects every ordinary use with "cannot use type
+// models.BaseModel outside a type constraint", so the interface documented
+// above could not actually be used as one. Its fields are wrong for this
+// project shape anyway — gorm.Model carries a uint ID, while BaseModelImpl
+// uses a UUID.
 type BaseModel interface {
-	gorm.Model
 	GetID() uuid.UUID
 	GetCreatedAt() time.Time
 	GetUpdatedAt() time.Time

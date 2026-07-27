@@ -65,19 +65,75 @@ func TestChain_NoMiddlewares(t *testing.T) {
 
 // ---------- CORS ----------
 
-func TestCORS_SetsHeaders(t *testing.T) {
+func TestCORS_EchoesMatchingOriginNotAJoinedList(t *testing.T) {
+	// Access-Control-Allow-Origin takes ONE origin. A previous implementation
+	// joined the configured origins with ", ", which browsers reject — every
+	// project with more than one origin had CORS failing on every request.
 	origins := []string{"https://example.com", "https://other.com"}
 	handler := CORS(origins)(noopHandler)
 
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Origin", "https://other.com")
 	rec := httptest.NewRecorder()
-	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+	handler.ServeHTTP(rec, req)
 
-	assert.Equal(t, "https://example.com, https://other.com", rec.Header().Get("Access-Control-Allow-Origin"))
-	assert.Equal(t, "GET, POST, PUT, DELETE, OPTIONS, PATCH", rec.Header().Get("Access-Control-Allow-Methods"))
-	assert.Equal(t, "Content-Type, Authorization, X-Request-ID", rec.Header().Get("Access-Control-Allow-Headers"))
+	assert.Equal(t, "https://other.com", rec.Header().Get("Access-Control-Allow-Origin"))
+	assert.NotContains(t, rec.Header().Get("Access-Control-Allow-Origin"), ",")
 	assert.Equal(t, "true", rec.Header().Get("Access-Control-Allow-Credentials"))
-	assert.Equal(t, "86400", rec.Header().Get("Access-Control-Max-Age"))
+	assert.Contains(t, rec.Header().Get("Vary"), "Origin")
 	assert.Equal(t, http.StatusOK, rec.Code)
+}
+
+func TestCORS_ExposesHeadersClientsNeed(t *testing.T) {
+	handler := CORS([]string{"https://example.com"})(noopHandler)
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Origin", "https://example.com")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	// Cookie-based refresh flows are invisible to JS without Set-Cookie here.
+	assert.Contains(t, rec.Header().Get("Access-Control-Expose-Headers"), "Set-Cookie")
+	// Apollo Client sends this on every non-simple request; omitting it from
+	// the allow-list fails the preflight for every GraphQL call.
+	assert.Contains(t, rec.Header().Get("Access-Control-Allow-Headers"), "Apollo-Require-Preflight")
+}
+
+func TestCORS_DisallowedOriginGetsNoCORSHeaders(t *testing.T) {
+	handler := CORS([]string{"https://example.com"})(noopHandler)
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Origin", "https://evil.com")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	assert.Empty(t, rec.Header().Get("Access-Control-Allow-Origin"))
+}
+
+func TestCORS_SuffixLookalikeOriginIsRejected(t *testing.T) {
+	// Matching must be exact: a suffix match on "example.com" would also
+	// accept "evil-example.com".
+	handler := CORS([]string{"https://example.com"})(noopHandler)
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Origin", "https://evil-example.com")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	assert.Empty(t, rec.Header().Get("Access-Control-Allow-Origin"))
+}
+
+func TestCORS_WildcardOmitsCredentials(t *testing.T) {
+	// "*" with Allow-Credentials: true is rejected by browsers.
+	handler := CORS([]string{"*"})(noopHandler)
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Origin", "https://anything.com")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	assert.Equal(t, "*", rec.Header().Get("Access-Control-Allow-Origin"))
+	assert.Empty(t, rec.Header().Get("Access-Control-Allow-Credentials"))
 }
 
 func TestCORS_PreflightReturnsNoContent(t *testing.T) {
@@ -103,20 +159,26 @@ func TestCORS_NonPreflightCallsNext(t *testing.T) {
 	assert.True(t, called)
 }
 
-func TestCORS_SingleOrigin(t *testing.T) {
-	handler := CORS([]string{"https://only.com"})(noopHandler)
+func TestCORS_RequestWithoutOriginIsStillServed(t *testing.T) {
+	// Non-browser clients send no Origin; they must not be blocked.
+	called := false
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { called = true })
+	handler := CORS([]string{"https://example.com"})(inner)
 
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
 
-	assert.Equal(t, "https://only.com", rec.Header().Get("Access-Control-Allow-Origin"))
+	assert.True(t, called)
+	assert.Empty(t, rec.Header().Get("Access-Control-Allow-Origin"))
 }
 
 func TestCORS_EmptyOrigins(t *testing.T) {
 	handler := CORS([]string{})(noopHandler)
 
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Origin", "https://example.com")
 	rec := httptest.NewRecorder()
-	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+	handler.ServeHTTP(rec, req)
 
 	assert.Equal(t, "", rec.Header().Get("Access-Control-Allow-Origin"))
 }

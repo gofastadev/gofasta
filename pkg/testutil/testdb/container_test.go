@@ -180,15 +180,21 @@ func TestSetupTestDB_RealContainer(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, sqlDB.Ping())
 
-	// Verify the migrations applied: citext extension is loaded and
-	// the helper functions are present.
+	// Verify the migrations applied: citext extension is loaded and the helper
+	// functions are present under the SAME names the scaffold's generated
+	// migrations reference in their CREATE TRIGGER statements. The names below
+	// are the contract — this package used to create shorter ones, so applying
+	// a generated migration set against a database prepared here failed with
+	// "function ... does not exist".
 	row := sqlDB.QueryRow(
 		"SELECT count(*) FROM pg_proc WHERE proname IN ($1,$2,$3)",
-		"update_updated_at_column", "prevent_delete_non_deletable", "increment_record_version",
+		"update_updated_at_column_function",
+		"avoid_deleting_record_with_is_deletable_equal_to_false_function",
+		"increment_record_version_column_function",
 	)
 	var n int
 	require.NoError(t, row.Scan(&n))
-	assert.Equal(t, 3, n, "all three trigger functions must be created")
+	assert.Equal(t, 3, n, "all three trigger functions must be created under their scaffold-migration names")
 }
 
 // TestRunMigrationsOn_ExecFails feeds a deliberately-invalid SQL
