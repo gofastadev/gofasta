@@ -39,6 +39,14 @@ func SetupDB(cfg *DatabaseConfig) *gorm.DB {
 }
 
 func buildDialector(cfg *DatabaseConfig) (gorm.Dialector, error) {
+	// An explicit DSN wins over the composed form. The templates below cannot
+	// express connection-string-only options (search_path, TimeZone overrides,
+	// PgBouncer parameters, multi-host targets), so without this a project
+	// needing any of them would have to bypass SetupDB entirely.
+	if cfg.DSN != "" {
+		return dialectorForDSN(cfg.Driver, cfg.DSN)
+	}
+
 	switch cfg.Driver {
 	case "postgres":
 		dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=%s TimeZone=UTC",
@@ -69,5 +77,26 @@ func buildDialector(cfg *DatabaseConfig) (gorm.Dialector, error) {
 
 	default:
 		return nil, fmt.Errorf("unsupported database driver: %q (supported: postgres, mysql, sqlite, sqlserver, clickhouse)", cfg.Driver)
+	}
+}
+
+// dialectorForDSN opens the driver's dialector against a caller-supplied
+// connection string. Driver selection still comes from cfg.Driver because a
+// DSN's scheme is not a reliable discriminator — "postgres://" and
+// "postgresql://" are both valid, and the key=value form has no scheme at all.
+func dialectorForDSN(driver, dsn string) (gorm.Dialector, error) {
+	switch driver {
+	case "postgres":
+		return postgres.Open(dsn), nil
+	case "mysql":
+		return mysql.Open(dsn), nil
+	case "sqlite":
+		return sqlite.Open(dsn), nil
+	case "sqlserver":
+		return sqlserver.Open(dsn), nil
+	case "clickhouse":
+		return clickhouse.Open(dsn), nil
+	default:
+		return nil, fmt.Errorf("unsupported database driver: %q (supported: postgres, mysql, sqlite, sqlserver, clickhouse)", driver)
 	}
 }

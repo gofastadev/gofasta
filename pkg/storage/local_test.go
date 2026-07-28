@@ -63,7 +63,7 @@ func TestLocalStorage_Upload(t *testing.T) {
 			ctx := context.Background()
 
 			reader := strings.NewReader(tt.content)
-			err := s.Upload(ctx, tt.path, reader, int64(len(tt.content)))
+			err := s.Upload(ctx, "", tt.path, reader, int64(len(tt.content)), nil)
 			require.NoError(t, err)
 
 			// Verify file exists on disk
@@ -82,7 +82,7 @@ func TestLocalStorage_Upload_ReadOnlyPath(t *testing.T) {
 	os.Mkdir(roDir, 0555)
 
 	s := &LocalStorage{basePath: roDir}
-	err := s.Upload(context.Background(), "subdir/file.txt", strings.NewReader("data"), 4)
+	err := s.Upload(context.Background(), "", "subdir/file.txt", strings.NewReader("data"), 4, nil)
 	assert.Error(t, err, "MkdirAll should fail on read-only dir")
 }
 
@@ -91,7 +91,7 @@ func TestLocalStorage_Upload_FileIsDirectory(t *testing.T) {
 	s := NewLocalStorage(config.LocalStorageConfig{Path: tmpDir})
 	// Create a directory where we'll try to create a file
 	os.MkdirAll(filepath.Join(tmpDir, "file.txt"), 0755)
-	err := s.Upload(context.Background(), "file.txt", strings.NewReader("data"), 4)
+	err := s.Upload(context.Background(), "", "file.txt", strings.NewReader("data"), 4, nil)
 	assert.Error(t, err)
 }
 
@@ -101,11 +101,11 @@ func TestLocalStorage_Download(t *testing.T) {
 
 	// Upload first
 	content := "download me"
-	err := s.Upload(ctx, "dl.txt", strings.NewReader(content), int64(len(content)))
+	err := s.Upload(ctx, "", "dl.txt", strings.NewReader(content), int64(len(content)), nil)
 	require.NoError(t, err)
 
 	// Download
-	rc, err := s.Download(ctx, "dl.txt")
+	rc, err := s.Download(ctx, "", "dl.txt")
 	require.NoError(t, err)
 	defer rc.Close()
 
@@ -118,7 +118,7 @@ func TestLocalStorage_Download_NonExistent(t *testing.T) {
 	s := newTestStorage(t)
 	ctx := context.Background()
 
-	_, err := s.Download(ctx, "nonexistent.txt")
+	_, err := s.Download(ctx, "", "nonexistent.txt")
 	assert.Error(t, err)
 }
 
@@ -127,11 +127,11 @@ func TestLocalStorage_Delete(t *testing.T) {
 	ctx := context.Background()
 
 	// Upload a file
-	err := s.Upload(ctx, "to_delete.txt", strings.NewReader("data"), 4)
+	err := s.Upload(ctx, "", "to_delete.txt", strings.NewReader("data"), 4, nil)
 	require.NoError(t, err)
 
 	// Delete it
-	err = s.Delete(ctx, "to_delete.txt")
+	err = s.Delete(ctx, "", "to_delete.txt")
 	require.NoError(t, err)
 
 	// Verify it's gone
@@ -143,7 +143,7 @@ func TestLocalStorage_Delete_NonExistent(t *testing.T) {
 	s := newTestStorage(t)
 	ctx := context.Background()
 
-	err := s.Delete(ctx, "nonexistent.txt")
+	err := s.Delete(ctx, "", "nonexistent.txt")
 	assert.Error(t, err)
 }
 
@@ -169,7 +169,7 @@ func TestLocalStorage_URL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			url := s.URL(tt.path)
+			url := s.URL("", tt.path)
 			assert.Equal(t, tt.expected, url)
 		})
 	}

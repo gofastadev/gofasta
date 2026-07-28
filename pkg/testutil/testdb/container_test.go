@@ -148,13 +148,33 @@ func TestSetupTestDB_HappyPath(t *testing.T) {
 	assert.True(t, terminated)
 }
 
-// SetupTestDB's t.Fatalf wrapper is a four-line shim that calls
-// setupTestDB and converts any error to t.Fatalf. Exercising the
-// Fatalf branch from another test would mark the parent test failed
-// (Go's testing framework treats sub-test failures as propagating).
-// The integration test (TestSetupTestDB_RealContainer) covers the
-// happy path of the shim; the error-returning core (setupTestDB) is
-// covered exhaustively by the unit tests above.
+// TestSetupTestDB_FatalsOnSetupError covers the shim's error branch.
+//
+// The branch cannot be driven through a sub-test, because a failure there
+// propagates to the parent. It can be driven on a throwaway *testing.T with no
+// parent: t.Fatalf records the failure on that value and then calls
+// runtime.Goexit, so running the call in its own goroutine confines the abort
+// to that goroutine and leaves this test's own T untouched.
+func TestSetupTestDB_FatalsOnSetupError(t *testing.T) {
+	swapPostgresRun(t, func(_ context.Context, _ string, _ ...testcontainers.ContainerCustomizer) (postgresContainer, error) {
+		return nil, errors.New("docker down")
+	})
+
+	var (
+		sink     testing.T
+		returned bool
+	)
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		SetupTestDB(&sink)
+		returned = true // not reached: Fatalf ends this goroutine
+	}()
+	<-done
+
+	assert.False(t, returned, "SetupTestDB must abort the test rather than return a nil DB")
+	assert.True(t, sink.Failed(), "the setup failure must be reported through the caller's *testing.T")
+}
 
 // TestSetupTestDB_RealContainer is the integration smoke test. It
 // runs against a real Postgres container — only meaningful when
@@ -180,15 +200,21 @@ func TestSetupTestDB_RealContainer(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, sqlDB.Ping())
 
-	// Verify the migrations applied: citext extension is loaded and
-	// the helper functions are present.
+	// Verify the migrations applied: citext extension is loaded and the helper
+	// functions are present under the SAME names the scaffold's generated
+	// migrations reference in their CREATE TRIGGER statements. The names below
+	// are the contract — this package used to create shorter ones, so applying
+	// a generated migration set against a database prepared here failed with
+	// "function ... does not exist".
 	row := sqlDB.QueryRow(
 		"SELECT count(*) FROM pg_proc WHERE proname IN ($1,$2,$3)",
-		"update_updated_at_column", "prevent_delete_non_deletable", "increment_record_version",
+		"update_updated_at_column_function",
+		"avoid_deleting_record_with_is_deletable_equal_to_false_function",
+		"increment_record_version_column_function",
 	)
 	var n int
 	require.NoError(t, row.Scan(&n))
-	assert.Equal(t, 3, n, "all three trigger functions must be created")
+	assert.Equal(t, 3, n, "all three trigger functions must be created under their scaffold-migration names")
 }
 
 // TestRunMigrationsOn_ExecFails feeds a deliberately-invalid SQL
@@ -220,10 +246,40 @@ func TestRunMigrationsOn_ExecFails(t *testing.T) {
 //   - sqlDB.Exec failure: covered indirectly by injecting a
 //     migrations-failing stub into setupTestDB
 //     (TestSetupTestDB_MigrationsFail).
-//   - db.DB() failure: not unit-testable from outside the gorm package
-//     because a zero-value *gorm.DB panics rather than returning an
-//     error from DB(). Documented here so the gap is intentional rather
-//     than accidental.
+//   - db.DB() failure: covered by TestRunMigrations_UnusableDBErrors.
+
+// TestRunMigrations_UnusableDBErrors covers the db.DB() failure branch.
+//
+// The Config must be non-nil: gorm.DB embeds *gorm.Config and DB() reads
+// ConnPool through it, so a fully zero-value &gorm.DB{} segfaults instead of
+// returning an error. With Config set and no pool assigned, DB() reports
+// ErrInvalidDB and the branch is reachable without a container.
+func TestRunMigrations_UnusableDBErrors(t *testing.T) {
+	err := RunMigrations(&gorm.DB{Config: &gorm.Config{}})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to get sql.DB")
+	assert.ErrorIs(t, err, gorm.ErrInvalidDB)
+}
+
+// TestSetupTestDB_EmptyImageFallsBackToDefault covers the Image fallback. A
+// project that clears the override — or assigns it from an unset env var —
+// must still get a working image rather than an empty container reference.
+func TestSetupTestDB_EmptyImageFallsBackToDefault(t *testing.T) {
+	var requestedImage string
+	swapPostgresRun(t, func(_ context.Context, image string, _ ...testcontainers.ContainerCustomizer) (postgresContainer, error) {
+		requestedImage = image
+		return nil, errors.New("not started; the image argument is what matters here")
+	})
+
+	orig := Image
+	Image = ""
+	t.Cleanup(func() { Image = orig })
+
+	_, cleanup, err := setupTestDB(context.Background())
+	cleanup()
+	require.Error(t, err)
+	assert.Equal(t, DefaultImage, requestedImage)
+}
 
 // observingContainer wraps a postgresContainer and records when
 // Terminate fires. Used to verify the cleanup contract in each error

@@ -50,6 +50,25 @@ func SetupTestDB(t *testing.T) *gorm.DB {
 	return db
 }
 
+// DefaultImage is the Postgres image used when none is configured.
+const DefaultImage = "postgres:18-alpine"
+
+// Image selects the container image SetupTestDB starts.
+//
+// Overridable because the default carries no extensions: a project storing
+// embeddings needs pgvector/pgvector:pgNN, one using geometry needs PostGIS,
+// and the extension has to exist in the image before any migration can CREATE
+// it. Set it once in TestMain:
+//
+//	func TestMain(m *testing.M) {
+//	    testdb.Image = "pgvector/pgvector:pg17"
+//	    os.Exit(m.Run())
+//	}
+//
+// Prefer the image the project actually deploys, so the test schema exercises
+// the same server version as production.
+var Image = DefaultImage
+
 // setupTestDB is the error-returning core of SetupTestDB. Split out
 // so unit tests can drive each failure branch without a real test
 // harness — SetupTestDB itself is a one-liner shim that translates
@@ -58,8 +77,12 @@ func SetupTestDB(t *testing.T) *gorm.DB {
 // Returns the connected *gorm.DB, a cleanup function the caller must
 // register (via t.Cleanup or similar), and any error encountered.
 func setupTestDB(ctx context.Context) (*gorm.DB, func(), error) {
+	image := Image
+	if image == "" {
+		image = DefaultImage
+	}
 	pgContainer, err := postgresRunFn(ctx,
-		"postgres:18-alpine",
+		image,
 		postgres.WithDatabase("testdb"),
 		postgres.WithUsername("testuser"),
 		postgres.WithPassword("testpass"),
@@ -104,31 +127,42 @@ func setupTestDB(ctx context.Context) (*gorm.DB, func(), error) {
 // test database. Exported as a slice (not inline) so unit tests can
 // reuse the production set or substitute their own to exercise
 // per-migration error paths in runMigrationsOn.
+// The function NAMES here must match the ones a scaffolded project's own
+// migrations create, because that project's CREATE TRIGGER statements
+// reference them by name. They previously did not — this package created
+// update_updated_at_column / prevent_delete_non_deletable /
+// increment_record_version while the generated migrations create
+// update_updated_at_column_function /
+// avoid_deleting_record_with_is_deletable_equal_to_false_function /
+// increment_record_version_column_function — so applying a real migration set
+// against a database prepared by this helper failed with "function ... does
+// not exist". Keep these in step with
+// cli/internal/skeleton/migrations/postgres/00000{2,3,4}_*.up.sql.
 var defaultMigrations = []string{
 	`CREATE EXTENSION IF NOT EXISTS citext;`,
-	`CREATE OR REPLACE FUNCTION update_updated_at_column()
+	`CREATE OR REPLACE FUNCTION update_updated_at_column_function()
 	RETURNS TRIGGER AS $$
 	BEGIN
-		NEW.updated_at = now();
+		NEW.updated_at := NOW();
 		RETURN NEW;
 	END;
-	$$ language 'plpgsql';`,
-	`CREATE OR REPLACE FUNCTION prevent_delete_non_deletable()
+	$$ LANGUAGE plpgsql;`,
+	`CREATE OR REPLACE FUNCTION avoid_deleting_record_with_is_deletable_equal_to_false_function()
 	RETURNS TRIGGER AS $$
 	BEGIN
 		IF OLD.is_deletable = false THEN
-			RAISE EXCEPTION 'Cannot delete non-deletable record';
+			RAISE EXCEPTION 'This record is not deletable';
 		END IF;
 		RETURN OLD;
 	END;
-	$$ language 'plpgsql';`,
-	`CREATE OR REPLACE FUNCTION increment_record_version()
+	$$ LANGUAGE plpgsql;`,
+	`CREATE OR REPLACE FUNCTION increment_record_version_column_function()
 	RETURNS TRIGGER AS $$
 	BEGIN
-		NEW.record_version = OLD.record_version + 1;
+		NEW.record_version := OLD.record_version + 1;
 		RETURN NEW;
 	END;
-	$$ language 'plpgsql';`,
+	$$ LANGUAGE plpgsql;`,
 }
 
 // RunMigrations applies the base SQL migrations to the test database.

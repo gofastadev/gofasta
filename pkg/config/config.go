@@ -2,6 +2,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"time"
@@ -10,6 +11,15 @@ import (
 	"github.com/knadh/koanf/providers/env"
 	"github.com/knadh/koanf/providers/file"
 	"github.com/knadh/koanf/v2"
+)
+
+// Development placeholders for security-critical secrets. applyDefaults fills
+// empty secrets with these so a project boots out of the box during local
+// development; ValidateSecrets then rejects them so they can never reach
+// production unnoticed.
+const (
+	PlaceholderJWTSecret     = "change-me-in-production"
+	PlaceholderSessionSecret = "change-me-in-production-32bytes!"
 )
 
 // AppConfig holds the complete application configuration.
@@ -63,7 +73,17 @@ type ServerConfig struct {
 
 // DatabaseConfig configures the GORM database connection.
 type DatabaseConfig struct {
-	Driver   string        `koanf:"driver"`
+	Driver string `koanf:"driver"`
+	// DSN, when set, is used verbatim and every field below except Driver and
+	// the pool settings is ignored.
+	//
+	// The composed form cannot express driver options that live in the
+	// connection string — PostgreSQL's search_path, a non-UTC TimeZone,
+	// PgBouncer parameters, multi-host failover targets — and a project that
+	// needs one of those otherwise has no way to reach the dialector. Setting
+	// it here (typically from a DATABASE_URL environment variable) keeps that
+	// escape hatch open without every project reimplementing SetupDB.
+	DSN      string        `koanf:"dsn"`
 	Host     string        `koanf:"host"`
 	Port     string        `koanf:"port"`
 	User     string        `koanf:"user"`
@@ -227,6 +247,11 @@ type RateLimitConfig struct {
 	Enabled bool   `koanf:"enabled"`
 	Rate    string `koanf:"rate"`
 	Store   string `koanf:"store"`
+	// Redis is the backing store when Store is "redis". Required in that
+	// case: a rate limit is only global if every replica counts against the
+	// same store, and a memory store silently multiplies the effective limit
+	// by the replica count.
+	Redis RedisConfig `koanf:"redis"`
 }
 
 // CacheConfig configures the cache backend.
@@ -448,7 +473,7 @@ func applyDefaults(cfg *AppConfig) {
 		cfg.Email.SMTP.Port = 587
 	}
 	if cfg.Auth.JWTSecret == "" {
-		cfg.Auth.JWTSecret = "change-me-in-production"
+		cfg.Auth.JWTSecret = PlaceholderJWTSecret
 	}
 	if cfg.Auth.AccessTokenExpiry == 0 {
 		cfg.Auth.AccessTokenExpiry = 15 * time.Minute
@@ -514,7 +539,7 @@ func applyDefaults(cfg *AppConfig) {
 		cfg.Session.Driver = "cookie"
 	}
 	if cfg.Session.Secret == "" {
-		cfg.Session.Secret = "change-me-in-production-32bytes!"
+		cfg.Session.Secret = PlaceholderSessionSecret
 	}
 	if cfg.Session.SessionName == "" {
 		cfg.Session.SessionName = "app_session"
@@ -528,4 +553,31 @@ func applyDefaults(cfg *AppConfig) {
 	if cfg.Observability.ServiceName == "" {
 		cfg.Observability.ServiceName = "app"
 	}
+}
+
+// ValidateSecrets returns an error when a security-critical secret is still
+// empty or set to a known development placeholder. Generated projects call this
+// at startup so a deployment that forgot to set real secrets fails loudly
+// instead of silently shipping forgeable JWTs and session cookies signed with a
+// publicly-known key.
+//
+// It is intentionally separate from LoadConfig: loading must still succeed with
+// placeholder defaults so local development works out of the box, while the
+// boot path decides when to enforce real secrets (typically always).
+func (cfg *AppConfig) ValidateSecrets() error {
+	var problems []string
+	if cfg.Auth.JWTSecret == "" || cfg.Auth.JWTSecret == PlaceholderJWTSecret {
+		problems = append(problems, "auth.jwt_secret")
+	}
+	if cfg.Session.Secret == "" || cfg.Session.Secret == PlaceholderSessionSecret {
+		problems = append(problems, "session.secret")
+	}
+	if len(problems) > 0 {
+		return fmt.Errorf(
+			"insecure default secret(s) in use: %s — set real values in config.yaml "+
+				"or via the corresponding *_AUTH_JWT_SECRET / *_SESSION_SECRET env vars",
+			strings.Join(problems, ", "),
+		)
+	}
+	return nil
 }

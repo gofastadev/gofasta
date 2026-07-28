@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"regexp"
 
+	"gorm.io/gorm/clause"
+
 	"github.com/gofastadev/gofasta/pkg/types"
 )
 
@@ -81,4 +83,33 @@ func (p *PreparePaginating) GetSort() string {
 		column = "created_at"
 	}
 	return fmt.Sprintf("%s %s", column, orientation.String())
+}
+
+// SafeOrderBy returns a GORM ORDER BY clause that is safe to hand directly to
+// db.Order(). The requested field (after CamelToSnake) is honored only when it
+// appears in allowed; anything else — including SQL-injection payloads arriving
+// from a query-string parameter — falls back to fallbackColumn. Because the
+// emitted column is always one of a fixed, code-defined allowlist, no user
+// input can reach the SQL as a raw identifier.
+//
+// This is stricter than GetSort (which only enforces the identifier shape): it
+// also rejects syntactically-valid-but-unknown columns, so a caller cannot sort
+// by or probe columns the resource does not expose. Repository code should build
+// its column allowlist from the model's own fields and pass the result to
+// .Order().
+func SafeOrderBy(field string, desc bool, allowed []string, fallbackColumn string) clause.OrderByColumn {
+	column := CamelToSnake(field)
+	if !containsColumn(allowed, column) {
+		column = fallbackColumn
+	}
+	return clause.OrderByColumn{Column: clause.Column{Name: column}, Desc: desc}
+}
+
+func containsColumn(allowed []string, column string) bool {
+	for _, c := range allowed {
+		if c == column {
+			return true
+		}
+	}
+	return false
 }
