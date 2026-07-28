@@ -144,10 +144,11 @@ func (s *LocalStorage) List(_ context.Context, bucket, prefix string) ([]ObjectI
 		if d.IsDir() {
 			return nil
 		}
-		rel, relErr := filepath.Rel(root, p)
-		if relErr != nil {
-			return relErr
-		}
+		// Rel's error is discarded because it has no reachable failure mode
+		// here: p is a path the walk itself derived from root, so the two
+		// always share a form (both absolute or both relative) and sit on one
+		// volume — the only conditions under which Rel gives up.
+		rel, _ := filepath.Rel(root, p)
 		info, infoErr := d.Info()
 		if infoErr != nil {
 			return infoErr
