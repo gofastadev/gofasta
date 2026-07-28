@@ -102,6 +102,37 @@ func TestLocalStorage_List_MissingPrefixIsEmptyNotError(t *testing.T) {
 	assert.Empty(t, got)
 }
 
+// TestLocalStorage_List_EntryStatFailurePropagates covers the per-entry Info()
+// branch, where an entry can be listed but not described.
+//
+// This one needs permissions rather than a path collision: ReadDir only needs
+// read on the directory, while Info() re-stats each entry and needs execute on
+// it. A directory set to r-- therefore enumerates its children and then fails
+// on every one of them. The alternative — removing the file between the
+// directory read and the stat — is a race, not a test.
+//
+// Skipped under root, which bypasses permission checks altogether. CI runs as
+// an unprivileged user, so the branch is still exercised there.
+func TestLocalStorage_List_EntryStatFailurePropagates(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root bypasses the permission check this test depends on")
+	}
+
+	s := newTestStorage(t)
+	ctx := context.Background()
+	require.NoError(t, s.Upload(ctx, "", "locked/file.txt", strings.NewReader("x"), 1, nil))
+
+	dir := filepath.Join(s.basePath, "locked")
+	require.NoError(t, os.Chmod(dir, 0o444))
+	// Restore before TempDir's own cleanup, which cannot remove a directory it
+	// is not allowed to traverse.
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o755) })
+
+	got, err := s.List(ctx, "", "locked")
+	require.Error(t, err)
+	assert.Nil(t, got, "a listing that cannot describe its entries must not return partial results")
+}
+
 // TestLocalStorage_List_WalkFailurePropagates is the counterpart: a walk error
 // that is not "missing prefix" is a real fault and must reach the caller rather
 // than be flattened into an empty listing.
