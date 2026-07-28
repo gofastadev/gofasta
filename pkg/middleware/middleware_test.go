@@ -183,6 +183,30 @@ func TestCORS_EmptyOrigins(t *testing.T) {
 	assert.Equal(t, "", rec.Header().Get("Access-Control-Allow-Origin"))
 }
 
+// TestCORS_BlankEntriesAreDiscarded covers the skip branch in the origin
+// parser. Origin lists usually arrive from an env var, so trailing separators
+// and padded entries are routine; a blank surviving into the allow-list would
+// be an origin that matches nothing useful while looking configured.
+func TestCORS_BlankEntriesAreDiscarded(t *testing.T) {
+	handler := CORS([]string{"", "   ", "https://app.example.com"})(noopHandler)
+
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Origin", "https://app.example.com")
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	assert.Equal(t, "https://app.example.com", rec.Header().Get("Access-Control-Allow-Origin"),
+		"the one real entry must still be honored")
+
+	// A blank entry must not have become a wildcard or an empty-origin match.
+	req = httptest.NewRequest(http.MethodGet, "/", nil)
+	req.Header.Set("Origin", "https://evil.example.com")
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	assert.Equal(t, "", rec.Header().Get("Access-Control-Allow-Origin"))
+}
+
 // ---------- ContentType ----------
 
 func TestContentType_SetsJSONHeader(t *testing.T) {

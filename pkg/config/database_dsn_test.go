@@ -40,6 +40,35 @@ func TestBuildDialector_FallsBackToComposedFields(t *testing.T) {
 	}
 }
 
+// TestBuildDialector_DSNAcrossSupportedDrivers walks every driver through the
+// DSN path. Driver selection cannot be inferred from the connection string —
+// "postgres://" and "postgresql://" are both valid and the key=value form has
+// no scheme at all — so each driver needs its own arm exercised.
+func TestBuildDialector_DSNAcrossSupportedDrivers(t *testing.T) {
+	cases := []struct {
+		driver string
+		dsn    string
+	}{
+		{"postgres", "postgresql://u:p@db:5432/app?sslmode=disable"},
+		{"mysql", "u:p@tcp(db:3306)/app?parseTime=true"},
+		{"sqlite", "file:app.db?cache=shared"},
+		{"sqlserver", "sqlserver://u:p@db:1433?database=app"},
+		{"clickhouse", "clickhouse://u:p@db:9000/app"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.driver, func(t *testing.T) {
+			d, err := buildDialector(&DatabaseConfig{Driver: tc.driver, DSN: tc.dsn})
+			if err != nil {
+				t.Fatalf("buildDialector(%s): %v", tc.driver, err)
+			}
+			if d == nil {
+				t.Fatalf("buildDialector(%s): nil dialector", tc.driver)
+			}
+		})
+	}
+}
+
 func TestBuildDialector_DSNWithUnsupportedDriver(t *testing.T) {
 	_, err := buildDialector(&DatabaseConfig{Driver: "oracle", DSN: "whatever"})
 	if err == nil {
