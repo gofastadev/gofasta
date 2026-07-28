@@ -41,7 +41,7 @@ func TestS3Storage_URL(t *testing.T) {
 	s, err := NewS3Storage(cfg)
 	require.NoError(t, err)
 
-	url := s.URL("path/to/file.txt")
+	url := s.URL("", "path/to/file.txt")
 	assert.Contains(t, url, "my-bucket")
 	assert.Contains(t, url, "path/to/file.txt")
 }
@@ -92,10 +92,10 @@ func TestS3Storage_Upload_Download_RoundTrip(t *testing.T) {
 	ctx := context.Background()
 
 	content := "hello, this is a round-trip test"
-	err := storage.Upload(ctx, "testfile.txt", strings.NewReader(content), int64(len(content)))
+	err := storage.Upload(ctx, "", "testfile.txt", strings.NewReader(content), int64(len(content)), nil)
 	require.NoError(t, err)
 
-	reader, err := storage.Download(ctx, "testfile.txt")
+	reader, err := storage.Download(ctx, "", "testfile.txt")
 	require.NoError(t, err)
 	defer reader.Close()
 
@@ -113,13 +113,13 @@ func TestS3Storage_Delete(t *testing.T) {
 	ctx := context.Background()
 
 	content := "file to be deleted"
-	err := storage.Upload(ctx, "deleteme.txt", strings.NewReader(content), int64(len(content)))
+	err := storage.Upload(ctx, "", "deleteme.txt", strings.NewReader(content), int64(len(content)), nil)
 	require.NoError(t, err)
 
-	err = storage.Delete(ctx, "deleteme.txt")
+	err = storage.Delete(ctx, "", "deleteme.txt")
 	require.NoError(t, err)
 
-	reader, err := storage.Download(ctx, "deleteme.txt")
+	reader, err := storage.Download(ctx, "", "deleteme.txt")
 	require.NoError(t, err)
 	defer reader.Close()
 
@@ -139,10 +139,10 @@ func TestS3Storage_Upload_SubdirectoryPath(t *testing.T) {
 	content := "nested file content"
 	path := "subdir/nested/file.txt"
 
-	err := storage.Upload(ctx, path, strings.NewReader(content), int64(len(content)))
+	err := storage.Upload(ctx, "", path, strings.NewReader(content), int64(len(content)), nil)
 	require.NoError(t, err)
 
-	reader, err := storage.Download(ctx, path)
+	reader, err := storage.Download(ctx, "", path)
 	require.NoError(t, err)
 	defer reader.Close()
 
@@ -184,6 +184,6 @@ func TestNewS3Storage_ConnectionError(t *testing.T) {
 	require.NotNil(t, storage)
 
 	ctx := context.Background()
-	err = storage.Upload(ctx, "file.txt", strings.NewReader("data"), 4)
+	err = storage.Upload(ctx, "", "file.txt", strings.NewReader("data"), 4, nil)
 	assert.Error(t, err, "expected error when uploading to an invalid endpoint")
 }
