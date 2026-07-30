@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -391,4 +392,138 @@ func TestSetupDB_Postgres_PoolConfig(t *testing.T) {
 	// Verify the DB works
 	err = sqlDB.Ping()
 	require.NoError(t, err)
+}
+
+// --- env-var key mapping (known-key matching) ---
+
+// TestLoadConfigWithPrefix_MultiWordLeafOverrides pins the fix for the
+// naive underscores-become-dots mapping: MYAPP_AUTH_JWT_SECRET used to
+// resolve to auth.jwt.secret (a key that doesn't exist) and the
+// documented override silently did nothing.
+func TestLoadConfigWithPrefix_MultiWordLeafOverrides(t *testing.T) {
+	chdirTempConfigTest(t)
+	t.Setenv("MYAPP_AUTH_JWT_SECRET", "env-jwt-secret")
+	t.Setenv("MYAPP_SESSION_SESSION_NAME", "env_session_name")
+	t.Setenv("MYAPP_DATABASE_MAX_IDLE", "17")
+	t.Setenv("MYAPP_RATE_LIMIT_ENABLED", "true")
+	t.Setenv("MYAPP_GRAPHQL_PLAYGROUND_ENABLED", "true")
+	t.Setenv("MYAPP_DATABASE_DEGRADED_FALLBACK", "true")
+
+	cfg, err := LoadConfigWithPrefix("MYAPP_")
+	if err != nil {
+		t.Fatalf("LoadConfigWithPrefix: %v", err)
+	}
+	if cfg.Auth.JWTSecret != "env-jwt-secret" {
+		t.Errorf("auth.jwt_secret override ignored: %q", cfg.Auth.JWTSecret)
+	}
+	if cfg.Session.SessionName != "env_session_name" {
+		t.Errorf("session.session_name override ignored: %q", cfg.Session.SessionName)
+	}
+	if cfg.Database.MaxIdle != 17 {
+		t.Errorf("database.max_idle override ignored: %d", cfg.Database.MaxIdle)
+	}
+	if !cfg.RateLimit.Enabled {
+		t.Error("rate_limit.enabled override ignored")
+	}
+	if !cfg.GraphQL.PlaygroundEnabled {
+		t.Error("graphql.playground_enabled override ignored")
+	}
+	if !cfg.Database.DegradedFallback {
+		t.Error("database.degraded_fallback override ignored")
+	}
+}
+
+// TestLoadConfigWithPrefix_SingleWordLeafStillWorks — the legacy
+// mapping cases must keep working unchanged.
+func TestLoadConfigWithPrefix_SingleWordLeafStillWorks(t *testing.T) {
+	chdirTempConfigTest(t)
+	t.Setenv("MYAPP_DATABASE_HOST", "db.internal")
+	t.Setenv("MYAPP_SERVER_PORT", "9090")
+	t.Setenv("MYAPP_SESSION_SECRET", "env-session-secret")
+
+	cfg, err := LoadConfigWithPrefix("MYAPP_")
+	if err != nil {
+		t.Fatalf("LoadConfigWithPrefix: %v", err)
+	}
+	if cfg.Database.Host != "db.internal" {
+		t.Errorf("database.host override ignored: %q", cfg.Database.Host)
+	}
+	if cfg.Server.Port != "9090" {
+		t.Errorf("server.port override ignored: %q", cfg.Server.Port)
+	}
+	if cfg.Session.Secret != "env-session-secret" {
+		t.Errorf("session.secret override ignored: %q", cfg.Session.Secret)
+	}
+}
+
+// TestKnownKoanfKeys_CoversEveryLeaf asserts the reflection index maps
+// the flattened form of every dotted leaf back to itself — i.e. no two
+// leaves collide and nested multi-word paths resolve.
+func TestKnownKoanfKeys_CoversEveryLeaf(t *testing.T) {
+	keys := knownKoanfKeys()
+	if len(keys) == 0 {
+		t.Fatal("empty key index")
+	}
+	for flat, dotted := range keys {
+		if strings.ReplaceAll(dotted, ".", "_") != flat {
+			t.Errorf("index inconsistent: %q -> %q", flat, dotted)
+		}
+	}
+	// Spot-check the leaves whose overrides were broken before the fix.
+	for flat, want := range map[string]string{
+		"auth_jwt_secret":            "auth.jwt_secret",
+		"server_allowed_origins":     "server.allowed_origins",
+		"rate_limit_enabled":         "rate_limit.enabled",
+		"graphql_playground_route":   "graphql.playground_route",
+		"session_cookie_same_site":   "session.cookie_same_site",
+		"database_degraded_fallback": "database.degraded_fallback",
+		"email_smtp_use_tls":         "email.smtp.use_tls",
+	} {
+		if got := keys[flat]; got != want {
+			t.Errorf("keys[%q] = %q, want %q", flat, got, want)
+		}
+	}
+}
+
+// TestApplyDefaults_NewFields — complexity limit and session cookie
+// defaults fill zero values; explicit values survive.
+func TestApplyDefaults_NewFields(t *testing.T) {
+	cfg := &AppConfig{}
+	applyDefaults(cfg)
+	if cfg.GraphQL.ComplexityLimit != 200 {
+		t.Errorf("ComplexityLimit default = %d, want 200", cfg.GraphQL.ComplexityLimit)
+	}
+	if cfg.Session.CookieSameSite != "lax" {
+		t.Errorf("CookieSameSite default = %q, want lax", cfg.Session.CookieSameSite)
+	}
+	if cfg.Session.CookieMaxAge != 30*24*60*60 {
+		t.Errorf("CookieMaxAge default = %d, want 30d", cfg.Session.CookieMaxAge)
+	}
+	if cfg.Database.DegradedFallback {
+		t.Error("DegradedFallback must default to false (fail fast)")
+	}
+	if cfg.GraphQL.PlaygroundEnabled || cfg.GraphQL.IntrospectionEnabled {
+		t.Error("playground/introspection must default to false at the framework level")
+	}
+
+	explicit := &AppConfig{}
+	explicit.GraphQL.ComplexityLimit = -1
+	applyDefaults(explicit)
+	if explicit.GraphQL.ComplexityLimit != -1 {
+		t.Errorf("explicit ComplexityLimit overwritten: %d", explicit.GraphQL.ComplexityLimit)
+	}
+}
+
+// chdirTempConfigTest isolates a test from any config.yaml in the
+// working directory so env overrides are the only input.
+func chdirTempConfigTest(t *testing.T) {
+	t.Helper()
+	orig, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(t.TempDir()); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.Chdir(orig) })
 }

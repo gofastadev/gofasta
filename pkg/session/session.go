@@ -12,19 +12,87 @@ type Store struct {
 	name  string
 }
 
+// Options controls the session cookie's attributes. The wrapped
+// gorilla/sessions store is unexported, so this is the only way callers
+// can set them — gorilla v1.2.x's own defaults are HTTPOnly=false,
+// Secure=false, SameSite unset, which is not an acceptable posture for
+// a session cookie.
+type Options struct {
+	// Secure marks the cookie HTTPS-only. Enable in production; the
+	// default is false so plain-HTTP local development keeps working.
+	Secure bool
+	// HTTPOnly hides the cookie from JavaScript. Default true.
+	HTTPOnly bool
+	// SameSite controls cross-site sending. Default http.SameSiteLaxMode.
+	SameSite http.SameSite
+	// MaxAge is the cookie lifetime in seconds. Default 30 days.
+	MaxAge int
+	// Path scopes the cookie. Default "/".
+	Path string
+}
+
+// DefaultOptions returns the safe defaults applied when a constructor
+// is called without explicit options.
+func DefaultOptions() Options {
+	return Options{
+		Secure:   false,
+		HTTPOnly: true,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   30 * 24 * 60 * 60,
+		Path:     "/",
+	}
+}
+
+// gorillaOptions converts Options, filling zero SameSite/MaxAge/Path
+// with the defaults so a partially-populated Options stays sane.
+func (o Options) gorillaOptions() *sessions.Options {
+	def := DefaultOptions()
+	if o.SameSite == 0 {
+		o.SameSite = def.SameSite
+	}
+	if o.MaxAge == 0 {
+		o.MaxAge = def.MaxAge
+	}
+	if o.Path == "" {
+		o.Path = def.Path
+	}
+	return &sessions.Options{
+		Path:     o.Path,
+		MaxAge:   o.MaxAge,
+		Secure:   o.Secure,
+		HttpOnly: o.HTTPOnly,
+		SameSite: o.SameSite,
+	}
+}
+
+// resolveOptions picks the caller's options (variadic keeps existing
+// call sites source-compatible) or the safe defaults.
+func resolveOptions(opts []Options) *sessions.Options {
+	if len(opts) > 0 {
+		return opts[0].gorillaOptions()
+	}
+	return DefaultOptions().gorillaOptions()
+}
+
 // NewCookieStore creates a cookie-based session store.
 // Secret should be 32 or 64 bytes for HMAC signing.
-func NewCookieStore(secret, sessionName string) *Store {
+// With no opts, DefaultOptions applies (HTTPOnly, SameSite=Lax).
+func NewCookieStore(secret, sessionName string, opts ...Options) *Store {
+	cs := sessions.NewCookieStore([]byte(secret))
+	cs.Options = resolveOptions(opts)
 	return &Store{
-		store: sessions.NewCookieStore([]byte(secret)),
+		store: cs,
 		name:  sessionName,
 	}
 }
 
 // NewFilesystemStore creates a filesystem-based session store.
-func NewFilesystemStore(path, secret, sessionName string) *Store {
+// With no opts, DefaultOptions applies (HTTPOnly, SameSite=Lax).
+func NewFilesystemStore(path, secret, sessionName string, opts ...Options) *Store {
+	fs := sessions.NewFilesystemStore(path, []byte(secret))
+	fs.Options = resolveOptions(opts)
 	return &Store{
-		store: sessions.NewFilesystemStore(path, []byte(secret)),
+		store: fs,
 		name:  sessionName,
 	}
 }

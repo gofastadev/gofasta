@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/gorilla/sessions"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -223,4 +224,68 @@ func TestStore_FilesystemStore_SetAndGet(t *testing.T) {
 	val, err := s.GetValue(r2, "fs_key")
 	require.NoError(t, err)
 	assert.Equal(t, "fs_value", val)
+}
+
+// TestNewCookieStore_DefaultOptions — with no explicit options the safe
+// defaults must land on the underlying gorilla store (gorilla v1.2.x
+// itself defaults to HTTPOnly=false / SameSite unset).
+func TestNewCookieStore_DefaultOptions(t *testing.T) {
+	s := NewCookieStore("secret-0123456789abcdef0123456789ab", "app_session")
+	cs, ok := s.store.(*sessions.CookieStore)
+	if !ok {
+		t.Fatal("expected *sessions.CookieStore")
+	}
+	if !cs.Options.HttpOnly {
+		t.Error("expected HTTPOnly true by default")
+	}
+	if cs.Options.SameSite != http.SameSiteLaxMode {
+		t.Errorf("expected SameSite Lax, got %v", cs.Options.SameSite)
+	}
+	if cs.Options.Path != "/" {
+		t.Errorf("expected Path /, got %q", cs.Options.Path)
+	}
+	if cs.Options.MaxAge != 30*24*60*60 {
+		t.Errorf("expected 30d MaxAge, got %d", cs.Options.MaxAge)
+	}
+	if cs.Options.Secure {
+		t.Error("expected Secure false by default (local dev over HTTP)")
+	}
+}
+
+// TestNewCookieStore_ExplicitOptions — caller options win; zero-valued
+// SameSite/MaxAge/Path backfill from defaults.
+func TestNewCookieStore_ExplicitOptions(t *testing.T) {
+	s := NewCookieStore("secret-0123456789abcdef0123456789ab", "app_session", Options{
+		Secure:   true,
+		HTTPOnly: true,
+		SameSite: http.SameSiteStrictMode,
+		MaxAge:   3600,
+		Path:     "/app",
+	})
+	cs := s.store.(*sessions.CookieStore)
+	if !cs.Options.Secure || cs.Options.SameSite != http.SameSiteStrictMode ||
+		cs.Options.MaxAge != 3600 || cs.Options.Path != "/app" {
+		t.Errorf("explicit options not applied: %+v", cs.Options)
+	}
+
+	partial := NewCookieStore("secret-0123456789abcdef0123456789ab", "s", Options{HTTPOnly: true})
+	pcs := partial.store.(*sessions.CookieStore)
+	if pcs.Options.SameSite != http.SameSiteLaxMode || pcs.Options.Path != "/" || pcs.Options.MaxAge == 0 {
+		t.Errorf("zero-value backfill missing: %+v", pcs.Options)
+	}
+}
+
+// TestNewFilesystemStore_OptionsApplied — same contract for the
+// filesystem store.
+func TestNewFilesystemStore_OptionsApplied(t *testing.T) {
+	s := NewFilesystemStore(t.TempDir(), "secret-0123456789abcdef0123456789ab", "s", Options{
+		Secure: true, HTTPOnly: true,
+	})
+	fs, ok := s.store.(*sessions.FilesystemStore)
+	if !ok {
+		t.Fatal("expected *sessions.FilesystemStore")
+	}
+	if !fs.Options.Secure || !fs.Options.HttpOnly {
+		t.Errorf("options not applied: %+v", fs.Options)
+	}
 }

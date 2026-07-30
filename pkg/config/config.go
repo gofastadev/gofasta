@@ -4,7 +4,9 @@ package config
 import (
 	"fmt"
 	"os"
+	"reflect"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/knadh/koanf/parsers/yaml"
@@ -93,12 +95,28 @@ type DatabaseConfig struct {
 	MaxIdle  int           `koanf:"max_idle"`
 	MaxOpen  int           `koanf:"max_open"`
 	MaxLife  time.Duration `koanf:"max_life"`
+	// DegradedFallback, when true, lets the application start against an
+	// in-memory stand-in database when the configured one is unreachable
+	// at boot. The zero value (false) is the safe default: an unreachable
+	// database refuses to start rather than silently serving requests
+	// against a throwaway store that health checks would report as up.
+	DegradedFallback bool `koanf:"degraded_fallback"`
 }
 
-// GraphQLConfig configures the GraphQL routes.
+// GraphQLConfig configures the GraphQL routes and server posture.
+//
+// PlaygroundEnabled and IntrospectionEnabled are plain booleans whose
+// zero value is false (safe-by-default); the scaffold's config.yaml
+// ships them as true for local development and its production manifests
+// override them to false via env vars. ComplexityLimit bounds the cost
+// of a single query (gqlgen's FixedComplexityLimit); 0 means "use the
+// default" (200 via applyDefaults), negative disables the limit.
 type GraphQLConfig struct {
-	PlaygroundRoute string `koanf:"playground_route"`
-	GeneralRoute    string `koanf:"general_route"`
+	PlaygroundRoute      string `koanf:"playground_route"`
+	GeneralRoute         string `koanf:"general_route"`
+	PlaygroundEnabled    bool   `koanf:"playground_enabled"`
+	IntrospectionEnabled bool   `koanf:"introspection_enabled"`
+	ComplexityLimit      int    `koanf:"complexity_limit"`
 }
 
 // LogConfig configures the logger.
@@ -346,6 +364,15 @@ type SessionConfig struct {
 	Secret         string `koanf:"secret"`
 	SessionName    string `koanf:"session_name"`
 	FilesystemPath string `koanf:"filesystem_path"`
+	// Cookie attributes for the session cookie, mirroring pkg/session's
+	// Options. Plain booleans (zero = false); the scaffold's config.yaml
+	// ships cookie_http_only: true and its production manifests set
+	// cookie_secure via env. cookie_same_site accepts lax|strict|none
+	// ("" → lax). cookie_max_age is seconds (0 → 30 days).
+	CookieSecure   bool   `koanf:"cookie_secure"`
+	CookieHTTPOnly bool   `koanf:"cookie_http_only"`
+	CookieSameSite string `koanf:"cookie_same_site"`
+	CookieMaxAge   int    `koanf:"cookie_max_age"`
 }
 
 // ObservabilityConfig toggles metrics and tracing.
@@ -366,9 +393,16 @@ func LoadConfig() (*AppConfig, error) {
 }
 
 // LoadConfigWithPrefix is the same as LoadConfig but reads environment
-// variables using the given prefix. The prefix is stripped, lowercased,
-// and underscores become dots before the key is looked up on koanf — so
-// prefix="MYAPP_" maps MYAPP_DATABASE_HOST → database.host.
+// variables using the given prefix. The prefix is stripped and the
+// remainder lowercased, then resolved against the known config keys
+// derived from AppConfig's koanf tags — so prefix="MYAPP_" maps
+// MYAPP_DATABASE_HOST → database.host AND MYAPP_AUTH_JWT_SECRET →
+// auth.jwt_secret (the leaf itself contains an underscore; a naive
+// underscores-become-dots mapping would produce auth.jwt.secret and
+// silently drop the override — the documented env override for every
+// multi-word key was broken this way). Names that don't match a known
+// key fall back to the legacy all-underscores-become-dots mapping, so
+// dynamic/map-typed keys keep working.
 //
 // Projects scaffolded by `gofasta new` call this with their project-
 // specific prefix (e.g. "MYAPP_") so env vars match the project name in
@@ -392,10 +426,11 @@ func LoadConfigWithPrefix(prefix string) (*AppConfig, error) {
 	}
 
 	_ = k.Load(env.Provider(prefix, ".", func(s string) string {
-		return strings.ReplaceAll(
-			strings.ToLower(strings.TrimPrefix(s, prefix)),
-			"_", ".",
-		)
+		flat := strings.ToLower(strings.TrimPrefix(s, prefix))
+		if dotted, ok := knownKoanfKeys()[flat]; ok {
+			return dotted
+		}
+		return strings.ReplaceAll(flat, "_", ".")
 	}), nil)
 
 	cfg := &AppConfig{}
@@ -403,6 +438,53 @@ func LoadConfigWithPrefix(prefix string) (*AppConfig, error) {
 
 	applyDefaults(cfg)
 	return cfg, nil
+}
+
+// knownKoanfKeyIndex maps the underscore-flattened form of every dotted
+// koanf leaf path in AppConfig ("auth_jwt_secret") to its dotted form
+// ("auth.jwt_secret"). Built once by reflection over the koanf struct
+// tags — reflection rather than koanf's Keys() because the YAML file may
+// omit whole sections whose env overrides must still resolve, and
+// applyDefaults runs after unmarshal so koanf never sees defaults.
+var (
+	knownKoanfKeysOnce sync.Once
+	knownKoanfKeyIndex map[string]string
+)
+
+func knownKoanfKeys() map[string]string {
+	knownKoanfKeysOnce.Do(func() {
+		knownKoanfKeyIndex = map[string]string{}
+		collectKoanfKeys(reflect.TypeOf(AppConfig{}), "", knownKoanfKeyIndex)
+	})
+	return knownKoanfKeyIndex
+}
+
+// collectKoanfKeys walks a config struct type, recording every leaf
+// field's dotted path keyed by its underscore-flattened form. Nested
+// config structs recurse; slices, maps, and scalar kinds (including
+// time.Duration) are leaves — env override of composite values goes
+// through the legacy mapping.
+func collectKoanfKeys(t reflect.Type, prefix string, out map[string]string) {
+	for i := 0; i < t.NumField(); i++ {
+		f := t.Field(i)
+		tag := f.Tag.Get("koanf")
+		if tag == "" || tag == "-" {
+			continue
+		}
+		dotted := tag
+		if prefix != "" {
+			dotted = prefix + "." + tag
+		}
+		ft := f.Type
+		if ft.Kind() == reflect.Pointer {
+			ft = ft.Elem()
+		}
+		if ft.Kind() == reflect.Struct {
+			collectKoanfKeys(ft, dotted, out)
+			continue
+		}
+		out[strings.ReplaceAll(dotted, ".", "_")] = dotted
+	}
 }
 
 // applyDefaults fills in zero-valued fields of cfg with sane defaults for
@@ -450,6 +532,9 @@ func applyDefaults(cfg *AppConfig) {
 	}
 	if cfg.GraphQL.GeneralRoute == "" {
 		cfg.GraphQL.GeneralRoute = "/graphql"
+	}
+	if cfg.GraphQL.ComplexityLimit == 0 {
+		cfg.GraphQL.ComplexityLimit = 200
 	}
 	if cfg.Log.Level == "" {
 		cfg.Log.Level = "info"
@@ -546,6 +631,12 @@ func applyDefaults(cfg *AppConfig) {
 	}
 	if cfg.Session.FilesystemPath == "" {
 		cfg.Session.FilesystemPath = "./sessions"
+	}
+	if cfg.Session.CookieSameSite == "" {
+		cfg.Session.CookieSameSite = "lax"
+	}
+	if cfg.Session.CookieMaxAge == 0 {
+		cfg.Session.CookieMaxAge = 30 * 24 * 60 * 60 // 30 days, in seconds
 	}
 	if cfg.Observability.MetricsPath == "" {
 		cfg.Observability.MetricsPath = "/metrics"

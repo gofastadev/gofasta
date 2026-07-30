@@ -3,11 +3,13 @@ package testdb
 import (
 	"context"
 	"errors"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
+	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -20,7 +22,7 @@ import (
 // integrated pipeline.
 // ─────────────────────────────────────────────────────────────────────
 
-// fakeContainer is the in-memory postgresContainer used by the unit
+// fakeContainer is the in-memory dbContainer used by the unit
 // tests. Each Fn field, when nil, returns a benign default; tests
 // assign only the ones they need.
 type fakeContainer struct {
@@ -37,7 +39,7 @@ func (f *fakeContainer) ConnectionString(_ context.Context, _ ...string) (string
 	return f.connStr, f.connStrErr
 }
 
-func swapPostgresRun(t *testing.T, fn func(ctx context.Context, image string, opts ...testcontainers.ContainerCustomizer) (postgresContainer, error)) {
+func swapPostgresRun(t *testing.T, fn func(ctx context.Context, image string, opts ...testcontainers.ContainerCustomizer) (dbContainer, error)) {
 	t.Helper()
 	orig := postgresRunFn
 	postgresRunFn = fn
@@ -62,7 +64,7 @@ func swapRunMigrations(t *testing.T, fn func(*gorm.DB) error) {
 // container fails to start. Returned error names the cause; cleanup
 // is a no-op (no container was created).
 func TestSetupTestDB_PostgresRunFails(t *testing.T) {
-	swapPostgresRun(t, func(_ context.Context, _ string, _ ...testcontainers.ContainerCustomizer) (postgresContainer, error) {
+	swapPostgresRun(t, func(_ context.Context, _ string, _ ...testcontainers.ContainerCustomizer) (dbContainer, error) {
 		return nil, errors.New("docker down")
 	})
 	_, cleanup, err := setupTestDB(context.Background())
@@ -77,7 +79,7 @@ func TestSetupTestDB_PostgresRunFails(t *testing.T) {
 func TestSetupTestDB_ConnectionStringFails(t *testing.T) {
 	var terminated bool
 	fake := &fakeContainer{connStrErr: errors.New("no port allocated")}
-	swapPostgresRun(t, func(_ context.Context, _ string, _ ...testcontainers.ContainerCustomizer) (postgresContainer, error) {
+	swapPostgresRun(t, func(_ context.Context, _ string, _ ...testcontainers.ContainerCustomizer) (dbContainer, error) {
 		return &observingContainer{inner: fake, onTerminate: func() { terminated = true }}, nil
 	})
 	_, cleanup, err := setupTestDB(context.Background())
@@ -92,7 +94,7 @@ func TestSetupTestDB_ConnectionStringFails(t *testing.T) {
 func TestSetupTestDB_GormOpenFails(t *testing.T) {
 	var terminated bool
 	fake := &fakeContainer{connStr: "host=127.0.0.1 port=1 user=u dbname=d"}
-	swapPostgresRun(t, func(_ context.Context, _ string, _ ...testcontainers.ContainerCustomizer) (postgresContainer, error) {
+	swapPostgresRun(t, func(_ context.Context, _ string, _ ...testcontainers.ContainerCustomizer) (dbContainer, error) {
 		return &observingContainer{inner: fake, onTerminate: func() { terminated = true }}, nil
 	})
 	swapGormOpen(t, func(_ gorm.Dialector, _ ...gorm.Option) (*gorm.DB, error) {
@@ -110,7 +112,7 @@ func TestSetupTestDB_GormOpenFails(t *testing.T) {
 func TestSetupTestDB_MigrationsFail(t *testing.T) {
 	var terminated bool
 	fake := &fakeContainer{connStr: "host=127.0.0.1 port=1 user=u dbname=d"}
-	swapPostgresRun(t, func(_ context.Context, _ string, _ ...testcontainers.ContainerCustomizer) (postgresContainer, error) {
+	swapPostgresRun(t, func(_ context.Context, _ string, _ ...testcontainers.ContainerCustomizer) (dbContainer, error) {
 		return &observingContainer{inner: fake, onTerminate: func() { terminated = true }}, nil
 	})
 	swapGormOpen(t, func(_ gorm.Dialector, _ ...gorm.Option) (*gorm.DB, error) {
@@ -133,7 +135,7 @@ func TestSetupTestDB_MigrationsFail(t *testing.T) {
 func TestSetupTestDB_HappyPath(t *testing.T) {
 	var terminated bool
 	fake := &fakeContainer{connStr: "host=127.0.0.1 port=1 user=u dbname=d"}
-	swapPostgresRun(t, func(_ context.Context, _ string, _ ...testcontainers.ContainerCustomizer) (postgresContainer, error) {
+	swapPostgresRun(t, func(_ context.Context, _ string, _ ...testcontainers.ContainerCustomizer) (dbContainer, error) {
 		return &observingContainer{inner: fake, onTerminate: func() { terminated = true }}, nil
 	})
 	swapGormOpen(t, func(_ gorm.Dialector, _ ...gorm.Option) (*gorm.DB, error) {
@@ -156,7 +158,7 @@ func TestSetupTestDB_HappyPath(t *testing.T) {
 // runtime.Goexit, so running the call in its own goroutine confines the abort
 // to that goroutine and leaves this test's own T untouched.
 func TestSetupTestDB_FatalsOnSetupError(t *testing.T) {
-	swapPostgresRun(t, func(_ context.Context, _ string, _ ...testcontainers.ContainerCustomizer) (postgresContainer, error) {
+	swapPostgresRun(t, func(_ context.Context, _ string, _ ...testcontainers.ContainerCustomizer) (dbContainer, error) {
 		return nil, errors.New("docker down")
 	})
 
@@ -266,7 +268,7 @@ func TestRunMigrations_UnusableDBErrors(t *testing.T) {
 // must still get a working image rather than an empty container reference.
 func TestSetupTestDB_EmptyImageFallsBackToDefault(t *testing.T) {
 	var requestedImage string
-	swapPostgresRun(t, func(_ context.Context, image string, _ ...testcontainers.ContainerCustomizer) (postgresContainer, error) {
+	swapPostgresRun(t, func(_ context.Context, image string, _ ...testcontainers.ContainerCustomizer) (dbContainer, error) {
 		requestedImage = image
 		return nil, errors.New("not started; the image argument is what matters here")
 	})
@@ -281,11 +283,11 @@ func TestSetupTestDB_EmptyImageFallsBackToDefault(t *testing.T) {
 	assert.Equal(t, DefaultImage, requestedImage)
 }
 
-// observingContainer wraps a postgresContainer and records when
+// observingContainer wraps a dbContainer and records when
 // Terminate fires. Used to verify the cleanup contract in each error
 // test.
 type observingContainer struct {
-	inner       postgresContainer
+	inner       dbContainer
 	onTerminate func()
 }
 
@@ -298,4 +300,93 @@ func (o *observingContainer) Terminate(ctx context.Context, opts ...testcontaine
 
 func (o *observingContainer) ConnectionString(ctx context.Context, args ...string) (string, error) {
 	return o.inner.ConnectionString(ctx, args...)
+}
+
+// swapDriver sets the package Driver for one test.
+func swapDriver(t *testing.T, driver string) {
+	t.Helper()
+	orig := Driver
+	Driver = driver
+	t.Cleanup(func() { Driver = orig })
+}
+
+// TestSetupTestDB_UnsupportedDriverErrors — an unknown Driver value
+// must fail with a descriptive error, not fall through to postgres.
+func TestSetupTestDB_UnsupportedDriverErrors(t *testing.T) {
+	swapDriver(t, "oracle")
+	_, _, err := setupTestDB(context.Background())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `unsupported driver "oracle"`)
+}
+
+// TestSetupTestDB_SQLiteInProcess — the sqlite driver needs no Docker:
+// it opens a temp-file database, runs (no-op) migrations, and cleanup
+// removes the directory.
+func TestSetupTestDB_SQLiteInProcess(t *testing.T) {
+	swapDriver(t, "sqlite")
+	db, cleanup, err := setupTestDB(context.Background())
+	require.NoError(t, err)
+	t.Cleanup(cleanup)
+	require.NotNil(t, db)
+	assert.Equal(t, "sqlite", db.Name())
+
+	type row struct{ ID uint }
+	require.NoError(t, db.AutoMigrate(&row{}))
+	require.NoError(t, db.Create(&row{}).Error)
+}
+
+// TestDefaultImageFor — each container driver resolves its own default
+// image; Image (when set) overrides via startContainer's caller.
+func TestDefaultImageFor(t *testing.T) {
+	assert.Equal(t, DefaultImage, defaultImageFor("postgres"))
+	assert.Equal(t, "mysql:8.4", defaultImageFor("mysql"))
+	assert.Equal(t, "mcr.microsoft.com/mssql/server:2022-latest", defaultImageFor("sqlserver"))
+	assert.Equal(t, "clickhouse/clickhouse-server:24.8-alpine", defaultImageFor("clickhouse"))
+}
+
+// TestDialectorFor — driver names map to the matching GORM dialector.
+func TestDialectorFor(t *testing.T) {
+	cases := map[string]string{
+		"postgres":   "postgres",
+		"mysql":      "mysql",
+		"sqlserver":  "sqlserver",
+		"clickhouse": "clickhouse",
+	}
+	for driver, want := range cases {
+		assert.Equal(t, want, dialectorFor(driver, "dsn").Name(), "driver=%s", driver)
+	}
+}
+
+// TestStartContainer_DispatchesPerDriver — each driver hits its own run
+// seam with that driver's default image.
+func TestStartContainer_DispatchesPerDriver(t *testing.T) {
+	errStop := errors.New("stop before docker")
+	var gotImage string
+	record := func(_ context.Context, image string, _ ...testcontainers.ContainerCustomizer) (dbContainer, error) {
+		gotImage = image
+		return nil, errStop
+	}
+
+	origMy, origMs, origCh := mysqlRunFn, mssqlRunFn, clickhouseRunFn
+	mysqlRunFn, mssqlRunFn, clickhouseRunFn = record, record, record
+	t.Cleanup(func() { mysqlRunFn, mssqlRunFn, clickhouseRunFn = origMy, origMs, origCh })
+
+	for driver, wantImage := range map[string]string{
+		"mysql":      "mysql:8.4",
+		"sqlserver":  "mcr.microsoft.com/mssql/server:2022-latest",
+		"clickhouse": "clickhouse/clickhouse-server:24.8-alpine",
+	} {
+		gotImage = ""
+		_, err := startContainer(context.Background(), driver)
+		require.ErrorIs(t, err, errStop, "driver=%s", driver)
+		assert.Equal(t, wantImage, gotImage, "driver=%s", driver)
+	}
+}
+
+// TestRunMigrations_NonPostgresIsNoop — only postgres has a shared
+// baseline; other drivers' scaffolded migrations are self-contained.
+func TestRunMigrations_NonPostgresIsNoop(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(filepath.Join(t.TempDir(), "x.db")), &gorm.Config{})
+	require.NoError(t, err)
+	require.NoError(t, RunMigrations(db))
 }

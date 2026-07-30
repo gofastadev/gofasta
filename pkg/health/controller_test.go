@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -207,5 +208,80 @@ func TestReady_NilCache(t *testing.T) {
 	}
 	if len(checks) != 1 {
 		t.Errorf("expected 1 check (db only), got %d", len(checks))
+	}
+}
+
+// readyBody runs Ready and decodes the response.
+func readyBody(t *testing.T, c *Controller) (int, map[string]interface{}) {
+	t.Helper()
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/health/ready", nil)
+	if err := c.Ready(rec, req); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	var body map[string]interface{}
+	if err := json.NewDecoder(rec.Body).Decode(&body); err != nil {
+		t.Fatalf("failed to decode body: %v", err)
+	}
+	return rec.Code, body
+}
+
+// TestReady_NilDB — a nil *gorm.DB must report down, not panic.
+func TestReady_NilDB(t *testing.T) {
+	c := NewController(nil, nil)
+	code, body := readyBody(t, c)
+	if code != http.StatusServiceUnavailable {
+		t.Errorf("expected 503, got %d", code)
+	}
+	if body["status"] != "down" {
+		t.Errorf("expected status down, got %v", body["status"])
+	}
+}
+
+// TestReady_NoConnectionPool — the last-resort &gorm.DB{} fallback has
+// no pool; previously this nil-dereferenced inside PingContext.
+func TestReady_NoConnectionPool(t *testing.T) {
+	c := NewController(&gorm.DB{Config: &gorm.Config{}}, nil)
+	code, body := readyBody(t, c)
+	if code != http.StatusServiceUnavailable {
+		t.Errorf("expected 503, got %d", code)
+	}
+	if body["status"] != "down" {
+		t.Errorf("expected status down, got %v", body["status"])
+	}
+}
+
+// TestReady_DegradedDriverMismatch — a live connection on a driver that
+// differs from the configured one (degraded-fallback mode) must fail
+// readiness even though the ping succeeds.
+func TestReady_DegradedDriverMismatch(t *testing.T) {
+	db := newTestDB(t) // sqlite
+	c := NewControllerForDriver(db, nil, "postgres")
+	code, body := readyBody(t, c)
+	if code != http.StatusServiceUnavailable {
+		t.Errorf("expected 503, got %d", code)
+	}
+	checks := body["checks"].([]interface{})
+	dbCheck := checks[0].(map[string]interface{})
+	if dbCheck["status"] != "down" {
+		t.Errorf("expected db check down, got %v", dbCheck["status"])
+	}
+	errMsg, _ := dbCheck["error"].(string)
+	if !strings.Contains(errMsg, "degraded") {
+		t.Errorf("expected degraded error message, got %q", errMsg)
+	}
+}
+
+// TestReady_MatchingDriverUp — the driver check passes when configured
+// and connected drivers agree.
+func TestReady_MatchingDriverUp(t *testing.T) {
+	db := newTestDB(t)
+	c := NewControllerForDriver(db, nil, "sqlite")
+	code, body := readyBody(t, c)
+	if code != http.StatusOK {
+		t.Errorf("expected 200, got %d", code)
+	}
+	if body["status"] != "up" {
+		t.Errorf("expected status up, got %v", body["status"])
 	}
 }
