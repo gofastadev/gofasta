@@ -215,3 +215,18 @@ func TestDerefFilterValue(t *testing.T) {
 	_, ok = derefFilterValue((*bool)(nil))
 	assert.False(t, ok)
 }
+
+// TestDerefFilterValue_AllNilPointerForms — every pointer arm's nil
+// branch must skip the filter (not dereference).
+func TestDerefFilterValue_AllNilPointerForms(t *testing.T) {
+	for _, v := range []interface{}{
+		(*string)(nil),
+		(*int)(nil),
+		(*int64)(nil),
+		(*float64)(nil),
+		(*bool)(nil),
+	} {
+		_, ok := derefFilterValue(v)
+		assert.False(t, ok, "%T nil pointer must be skipped", v)
+	}
+}

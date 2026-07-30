@@ -194,3 +194,31 @@ func TestQuotePGValue(t *testing.T) {
 		}
 	}
 }
+
+// TestBuildMigrateURL_SQLServerAndClickHouse — the two URL-form drivers
+// escape credentials through net/url like BuildDSN does.
+func TestBuildMigrateURL_SQLServerAndClickHouse(t *testing.T) {
+	ms, err := BuildMigrateURL(&DatabaseConfig{Driver: "sqlserver", Host: "db", Port: "1433",
+		User: "sa", Password: nastyPassword, Name: "my app"})
+	if err != nil {
+		t.Fatalf("sqlserver: %v", err)
+	}
+	if !strings.HasPrefix(ms, "sqlserver://") || strings.Count(ms, "@") != 1 {
+		t.Errorf("sqlserver migrate URL must escape credentials, got %q", ms)
+	}
+	if !strings.Contains(ms, "database=my+app") && !strings.Contains(ms, "database=my%20app") {
+		t.Errorf("database name must be query-escaped, got %q", ms)
+	}
+
+	ch, err := BuildMigrateURL(&DatabaseConfig{Driver: "clickhouse", Host: "db", Port: "9000",
+		User: "u", Password: nastyPassword, Name: "analytics"})
+	if err != nil {
+		t.Fatalf("clickhouse: %v", err)
+	}
+	if !strings.HasPrefix(ch, "clickhouse://") || strings.Count(ch, "@") != 1 {
+		t.Errorf("clickhouse migrate URL must escape credentials, got %q", ch)
+	}
+	if !strings.HasSuffix(ch, "/analytics") {
+		t.Errorf("clickhouse migrate URL must carry the db path, got %q", ch)
+	}
+}

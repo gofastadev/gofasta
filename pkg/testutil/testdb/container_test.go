@@ -390,3 +390,115 @@ func TestRunMigrations_NonPostgresIsNoop(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, RunMigrations(db))
 }
+
+// --- sqlite error branches (driven through the package seams) ---
+
+func TestSetupSQLiteTestDB_MkdirTempError(t *testing.T) {
+	swapDriver(t, "sqlite")
+	orig := osMkdirTempFn
+	osMkdirTempFn = func(dir, pattern string) (string, error) {
+		return "", errors.New("disk full")
+	}
+	t.Cleanup(func() { osMkdirTempFn = orig })
+
+	_, _, err := setupTestDB(context.Background())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "sqlite temp dir")
+}
+
+func TestSetupSQLiteTestDB_OpenError(t *testing.T) {
+	swapDriver(t, "sqlite")
+	swapGormOpen(t, func(_ gorm.Dialector, _ ...gorm.Option) (*gorm.DB, error) {
+		return nil, errors.New("open failed")
+	})
+
+	_, _, err := setupTestDB(context.Background())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "sqlite test database")
+}
+
+func TestSetupSQLiteTestDB_MigrationsError(t *testing.T) {
+	swapDriver(t, "sqlite")
+	origRun := runMigrationsFn
+	runMigrationsFn = func(_ *gorm.DB) error { return errors.New("boom") }
+	t.Cleanup(func() { runMigrationsFn = origRun })
+
+	_, _, err := setupTestDB(context.Background())
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "failed to run migrations")
+}
+
+// TestSetupSQLiteTestDB_ErrorCleanupsAreNoops — the cleanup funcs
+// returned on error paths must be callable no-ops (callers register
+// them unconditionally via t.Cleanup).
+func TestSetupSQLiteTestDB_ErrorCleanupsAreNoops(t *testing.T) {
+	swapDriver(t, "sqlite")
+
+	orig := osMkdirTempFn
+	osMkdirTempFn = func(dir, pattern string) (string, error) { return "", errors.New("x") }
+	_, cleanup, err := setupTestDB(context.Background())
+	osMkdirTempFn = orig
+	require.Error(t, err)
+	cleanup() // must not panic
+
+	origOpen := gormOpenFn
+	gormOpenFn = func(_ gorm.Dialector, _ ...gorm.Option) (*gorm.DB, error) {
+		return nil, errors.New("open failed")
+	}
+	_, cleanup, err = setupTestDB(context.Background())
+	gormOpenFn = origOpen
+	require.Error(t, err)
+	cleanup()
+
+	origRun := runMigrationsFn
+	runMigrationsFn = func(_ *gorm.DB) error { return errors.New("boom") }
+	_, cleanup, err = setupTestDB(context.Background())
+	runMigrationsFn = origRun
+	require.Error(t, err)
+	cleanup()
+}
+
+// TestConnectionString_NonPostgresPath — non-postgres drivers call
+// ConnectionString without the sslmode arg.
+func TestConnectionString_NonPostgresPath(t *testing.T) {
+	c := &fakeConnStringContainer{}
+	_, err := connectionString(context.Background(), c, "mysql")
+	require.NoError(t, err)
+	assert.Zero(t, c.gotArgs, "non-postgres drivers pass no extra args")
+
+	_, err = connectionString(context.Background(), c, "postgres")
+	require.NoError(t, err)
+	assert.Equal(t, 1, c.gotArgs, "postgres passes sslmode=disable")
+}
+
+type fakeConnStringContainer struct{ gotArgs int }
+
+func (f *fakeConnStringContainer) Terminate(context.Context, ...testcontainers.TerminateOption) error {
+	return nil
+}
+func (f *fakeConnStringContainer) ConnectionString(_ context.Context, args ...string) (string, error) {
+	f.gotArgs = len(args)
+	return "dsn", nil
+}
+
+// TestProductionRunSeams_DelegateToTestcontainers — invoke the real
+// mysql/mssql/clickhouse run closures with an already-canceled context:
+// they must reach the testcontainers module (returning its error)
+// rather than being dead wiring. Requires a Docker daemon like the rest
+// of the non-short suite; the postgres closure is covered by the
+// end-to-end test.
+func TestProductionRunSeams_DelegateToTestcontainers(t *testing.T) {
+	if testing.Short() {
+		t.Skip("requires Docker")
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	for name, run := range map[string]func(context.Context, string, ...testcontainers.ContainerCustomizer) (dbContainer, error){
+		"mysql":      mysqlRunFn,
+		"mssql":      mssqlRunFn,
+		"clickhouse": clickhouseRunFn,
+	} {
+		_, err := run(ctx, defaultImageFor(name))
+		assert.Error(t, err, "%s closure must reach testcontainers and surface its context error", name)
+	}
+}

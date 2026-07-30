@@ -52,6 +52,7 @@ var (
 	}
 	gormOpenFn      = gorm.Open
 	runMigrationsFn = RunMigrations
+	osMkdirTempFn   = os.MkdirTemp
 )
 
 // SetupTestDB provisions a test database for the configured Driver,
@@ -172,7 +173,7 @@ func setupTestDB(ctx context.Context) (*gorm.DB, func(), error) {
 // setupSQLiteTestDB opens an in-process sqlite database backed by a
 // temp file — no container, no Docker requirement.
 func setupSQLiteTestDB() (*gorm.DB, func(), error) {
-	dir, err := os.MkdirTemp("", "gofasta-testdb-*")
+	dir, err := osMkdirTempFn("", "gofasta-testdb-*")
 	if err != nil {
 		return nil, func() {}, fmt.Errorf("failed to create sqlite temp dir: %w", err)
 	}

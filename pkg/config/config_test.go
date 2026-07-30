@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -526,4 +527,53 @@ func chdirTempConfigTest(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.Chdir(orig) })
+}
+
+// TestLoadConfigWithPrefix_UnknownKeyUsesLegacyMapping — an env name
+// that matches no known config key falls back to the legacy
+// underscores-become-dots mapping (dynamic/map-typed keys rely on it).
+func TestLoadConfigWithPrefix_UnknownKeyUsesLegacyMapping(t *testing.T) {
+	chdirTempConfigTest(t)
+	// No AppConfig key matches; the callback must take the legacy path
+	// without disturbing the known-key overrides in the same load.
+	t.Setenv("MYAPP_TOTALLY_UNKNOWN_KEY", "x")
+	t.Setenv("MYAPP_SERVER_HOST", "known.internal")
+
+	cfg, err := LoadConfigWithPrefix("MYAPP_")
+	if err != nil {
+		t.Fatalf("LoadConfigWithPrefix: %v", err)
+	}
+	if cfg.Server.Host != "known.internal" {
+		t.Errorf("known key override lost alongside an unknown key: %q", cfg.Server.Host)
+	}
+}
+
+// TestCollectKoanfKeys_SkipsUntaggedAndUnwrapsPointers — fields without
+// a koanf tag (or tagged "-") are invisible to env mapping, and
+// pointer-to-struct fields recurse through their element type.
+func TestCollectKoanfKeys_SkipsUntaggedAndUnwrapsPointers(t *testing.T) {
+	type inner struct {
+		Leaf string `koanf:"multi_word_leaf"`
+	}
+	type sample struct {
+		Untagged string
+		Excluded string `koanf:"-"`
+		Nested   *inner `koanf:"nested"`
+		Plain    string `koanf:"plain"`
+	}
+	out := map[string]string{}
+	collectKoanfKeys(reflect.TypeOf(sample{}), "root", out)
+
+	if _, ok := out["root_untagged"]; ok {
+		t.Error("untagged field must be skipped")
+	}
+	if _, ok := out["root_-"]; ok {
+		t.Error("koanf:\"-\" field must be skipped")
+	}
+	if got := out["root_nested_multi_word_leaf"]; got != "root.nested.multi_word_leaf" {
+		t.Errorf("pointer-to-struct field must recurse, got %q", got)
+	}
+	if got := out["root_plain"]; got != "root.plain" {
+		t.Errorf("plain leaf missing, got %q", got)
+	}
 }
