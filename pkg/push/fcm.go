@@ -73,7 +73,12 @@ func NewFCMSender(cfg FCMConfig, logger *slog.Logger) (*FCMSender, error) {
 		return nil, err
 	}
 	conf := &firebase.Config{ProjectID: cfg.ProjectID}
-	app, err := firebaseNewAppFn(context.Background(), conf, option.WithCredentialsJSON(creds))
+	// WithAuthCredentialsJSON (not the deprecated WithCredentialsJSON):
+	// it validates that the supplied JSON actually IS a service-account
+	// credential, so a tampered credentials file can't smuggle in a
+	// different credential type (e.g. external_account, which can
+	// execute local commands during token exchange).
+	app, err := firebaseNewAppFn(context.Background(), conf, option.WithAuthCredentialsJSON(option.ServiceAccount, creds))
 	if err != nil {
 		return nil, fmt.Errorf("fcm: firebase.NewApp: %w", err)
 	}
