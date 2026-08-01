@@ -19,7 +19,7 @@ jobs:
 
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
-          go-version: "1.25.0"
+          go-version: "1.25.x"
 
       - name: Lint
         uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9
@@ -31,8 +31,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # The declared floor plus the current stable release.
-        go-version: ["1.25.0", "stable"]
+        # The newest patch of the declared floor (exact-pinning the .0
+        # patch freezes CI on unpatched stdlib — govulncheck fails on
+        # reachable stdlib CVEs) plus current stable.
+        go-version: ["1.25.x", "stable"]
     # Without GOTOOLCHAIN=local the go command silently upgrades itself
     # to go.mod's toolchain and the matrix tests one version twice.
     env:
@@ -52,7 +54,7 @@ jobs:
         run: go test -race -shuffle=on -coverprofile=coverage.out -covermode=atomic ./...
 
       - name: Upload coverage to Codecov
-        if: matrix.go-version == '1.25.0'
+        if: matrix.go-version == '1.25.x'
         uses: codecov/codecov-action@0fb7174895f61a3b6b78fc075e0cd60383518dac # v5
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
@@ -80,7 +82,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
-          go-version: "1.25.0"
+          go-version: "1.25.x"
       - name: Build
         run: go build ./...
       - name: Vet (compiles all test code)
