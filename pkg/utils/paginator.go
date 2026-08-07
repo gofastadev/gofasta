@@ -1,4 +1,3 @@
-// Package utils provides shared utility functions for gofasta applications.
 package utils
 
 import (

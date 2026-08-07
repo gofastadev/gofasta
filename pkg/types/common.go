@@ -1,4 +1,3 @@
-// Package types provides common DTO types used across gofasta applications.
 package types
 
 import (

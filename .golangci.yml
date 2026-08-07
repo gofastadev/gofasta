@@ -56,6 +56,10 @@ linters:
         - name: exported
           arguments:
             - "checkPrivateReceivers"
+        # Enforces the input of tools/docsgen: every package must carry a
+        # doc comment, because the README package tables are generated
+        # from them (make docs-sync / docs-check).
+        - name: package-comments
         - name: if-return
         - name: increment-decrement
         - name: var-naming

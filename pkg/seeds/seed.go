@@ -1,4 +1,3 @@
-// Package seeds provides a seeder registry for gofasta applications.
 package seeds
 
 import (
