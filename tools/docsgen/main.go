@@ -11,6 +11,10 @@ import (
 	"os"
 )
 
+// osExit is a seam so tests can observe the failure exit without killing
+// the test process.
+var osExit = os.Exit
+
 func main() {
 	check := flag.Bool("check", false, "verify README.md is in sync instead of rewriting it")
 	repo := flag.String("repo", ".", "repository root containing README.md and pkg/")
@@ -18,6 +22,6 @@ func main() {
 
 	if err := Run(*repo, *check); err != nil {
 		fmt.Fprintln(os.Stderr, "docsgen:", err)
-		os.Exit(1)
+		osExit(1)
 	}
 }
