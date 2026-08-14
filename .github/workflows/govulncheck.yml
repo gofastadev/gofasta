@@ -26,6 +26,14 @@ jobs:
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: "1.25.x"
+          # A vulnerability gate has to run on the newest patch release of the
+          # pinned minor, not on whatever the runner image happens to cache.
+          # Without this, setup-go reuses the cached toolchain, so every Go
+          # security release fails this job with stdlib findings whose only
+          # remedy is "build with the toolchain that shipped the fix" — six
+          # landed at once when the image sat on go1.25.12 and the fixes were
+          # in go1.25.13.
+          check-latest: true
 
       # Hard gate: every shipped runtime package must be clean.
       # pkg/testutil is excluded from the gate because it links the
