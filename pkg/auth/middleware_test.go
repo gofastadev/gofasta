@@ -12,6 +12,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var noopHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+})
+
 // ---------- JWTAuth middleware ----------
 
 func TestJWTAuth_ValidToken(t *testing.T) {

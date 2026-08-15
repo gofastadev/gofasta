@@ -10,6 +10,22 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func testJWTService() *JWTService {
+	return NewJWTService(&config.AuthConfig{
+		JWTSecret:          "test-secret-key-for-testing",
+		AccessTokenExpiry:  15 * time.Minute,
+		RefreshTokenExpiry: 24 * time.Hour,
+	})
+}
+
+func expiredJWTService() *JWTService {
+	return NewJWTService(&config.AuthConfig{
+		JWTSecret:          "test-secret-key-for-testing",
+		AccessTokenExpiry:  -1 * time.Second, // already expired
+		RefreshTokenExpiry: -1 * time.Second,
+	})
+}
+
 // ---------- NewJWTService ----------
 
 func TestNewJWTService(t *testing.T) {
