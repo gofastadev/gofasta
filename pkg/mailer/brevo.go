@@ -36,6 +36,7 @@ type brevoRequest struct {
 	ReplyTo     *brevoContact  `json:"replyTo,omitempty"`
 	Subject     string         `json:"subject"`
 	HTMLContent string         `json:"htmlContent"`
+	TextContent string         `json:"textContent,omitempty"`
 }
 
 // NewBrevoSender returns a Brevo-backed EmailSender.
@@ -44,7 +45,7 @@ func NewBrevoSender(cfg config.BrevoConfig, fromName, fromAddress string, render
 		cfg:      cfg,
 		from:     brevoContact{Name: fromName, Email: fromAddress},
 		renderer: renderer,
-		logger:   logger,
+		logger:   loggerOrDefault(logger),
 		client:   &http.Client{},
 	}
 }
@@ -60,6 +61,7 @@ func (b *BrevoSender) Send(ctx context.Context, msg EmailMessage) error {
 		Sender:      b.from,
 		Subject:     msg.Subject,
 		HTMLContent: htmlBody,
+		TextContent: msg.TextBody,
 	}
 
 	for _, to := range msg.To {
