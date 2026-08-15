@@ -1,4 +1,4 @@
-.PHONY: fmt fmt-check vet lint lint-install test coverage build clean ci preflight
+.PHONY: fmt fmt-check vet lint lint-install test coverage build clean ci preflight docs-sync docs-check
 
 ## Pinned golangci-lint version. MUST match .github/workflows/ci.yml so a
 ## green local run predicts a green CI run. If you bump this, bump the
@@ -55,8 +55,16 @@ build:
 clean:
 	rm -f coverage.out coverage.html storage_coverage.out
 
+## Regenerate the README package tables from pkg/* doc comments
+docs-sync:
+	go run ./tools/docsgen
+
+## Verify the README package tables match pkg/* doc comments (CI gate)
+docs-check:
+	go run ./tools/docsgen -check
+
 ## Run all checks (what CI runs)
-ci: lint test build
+ci: lint test build docs-check
 
 ## Preflight — the full set of checks that MUST pass locally before any
 ## task is considered complete. Intended to be run before every commit and
@@ -65,9 +73,10 @@ ci: lint test build
 ##
 ## Order matters: fmt-check is first (cheapest, catches the most common
 ## slip), then vet, then lint (errcheck + staticcheck + revive + the
-## rest), then race tests, then a final build sanity check. Each step
+## rest), then race tests, then a build sanity check, then docs-check
+## (README package tables must match pkg/* doc comments). Each step
 ## blocks the next — a formatting failure stops the run before tests
 ## even start.
-preflight: fmt-check vet lint test build
+preflight: fmt-check vet lint test build docs-check
 	@echo ""
 	@echo "  ✓ preflight green — safe to commit."

@@ -1,4 +1,3 @@
-// Package config provides configuration loading for gofasta applications.
 package config
 
 import (

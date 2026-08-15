@@ -783,9 +783,12 @@ func TestSMTPSender_Send_WriteCloseError(t *testing.T) {
 		renderer, slog.Default(),
 	)
 
-	// Use a very large body (>TCP buffer size) to ensure Write detects the broken pipe
-	// before the entire message is buffered. The mock reads 64 bytes then RSTs.
-	largeBody := strings.Repeat("X", 256*1024) // 256KB, exceeds typical TCP buffer
+	// The body must exceed the combined kernel socket buffers so the client
+	// cannot finish Write before the server's RST arrives: the mock reads only
+	// 64 bytes, so the client blocks mid-Write until the RST unblocks it with
+	// a broken pipe. A smaller body can fit entirely in the loopback buffers,
+	// letting Write return nil and deferring the error to Close.
+	largeBody := strings.Repeat("X", 16*1024*1024)
 	msg := EmailMessage{
 		To:       []string{"r@example.com"},
 		Subject:  "Test",
@@ -795,9 +798,8 @@ func TestSMTPSender_Send_WriteCloseError(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error when server closes after DATA")
 	}
-	// Either "smtp write" or "smtp close" depending on timing
-	if !strings.Contains(err.Error(), "smtp write") && !strings.Contains(err.Error(), "smtp close") {
-		t.Errorf("error = %q, want 'smtp write' or 'smtp close'", err.Error())
+	if !strings.Contains(err.Error(), "smtp write") {
+		t.Errorf("error = %q, want 'smtp write'", err.Error())
 	}
 }
 

@@ -1,4 +1,3 @@
-// Package models provides the base model types for gofasta applications.
 package models
 
 import (

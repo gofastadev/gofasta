@@ -1,4 +1,3 @@
-// Package validators provides a reusable validation framework for gofasta applications.
 package validators
 
 import (

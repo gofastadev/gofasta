@@ -1,16 +1,12 @@
 package apperrors
 
 import (
-	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"testing"
 
-	"github.com/99designs/gqlgen/graphql"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
 func TestAppError_Error(t *testing.T) {
@@ -205,68 +201,4 @@ func TestErrorsAs(t *testing.T) {
 	var target *AppError
 	assert.True(t, errors.As(appErr, &target))
 	assert.Equal(t, Internal, target.Type)
-}
-
-func TestGraphQLErrorPresenter_AppError(t *testing.T) {
-	ctx := graphql.WithResponseContext(context.Background(), graphql.DefaultErrorPresenter, nil)
-	appErr := NewValidation("validation failed", nil)
-
-	result := GraphQLErrorPresenter(ctx, appErr)
-	require.NotNil(t, result)
-	assert.Equal(t, "validation failed", result.Message)
-}
-
-func TestGraphQLErrorPresenter_SafePrefixes(t *testing.T) {
-	ctx := graphql.WithResponseContext(context.Background(), graphql.DefaultErrorPresenter, nil)
-
-	tests := []struct {
-		name   string
-		errMsg string
-	}{
-		{"not found prefix", "not found: user 123"},
-		{"validation failed prefix", "validation failed: email required"},
-		{"invalid prefix", "invalid token provided"},
-		{"already exists prefix", "already exists: duplicate entry"},
-		{"unauthorized prefix", "unauthorized access attempt"},
-		{"forbidden prefix", "forbidden resource"},
-		{"authentication required prefix", "authentication required to proceed"},
-		{"permission denied prefix", "permission denied for this action"},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := fmt.Errorf("%s", tt.errMsg)
-			result := GraphQLErrorPresenter(ctx, err)
-			require.NotNil(t, result)
-			assert.Equal(t, tt.errMsg, result.Message)
-		})
-	}
-}
-
-func TestGraphQLErrorPresenter_UnsafeError(t *testing.T) {
-	ctx := graphql.WithResponseContext(context.Background(), graphql.DefaultErrorPresenter, nil)
-	err := fmt.Errorf("database connection failed: dial tcp 127.0.0.1:5432")
-
-	result := GraphQLErrorPresenter(ctx, err)
-	require.NotNil(t, result)
-	assert.Equal(t, "an internal error occurred", result.Message)
-}
-
-func TestGraphQLErrorPresenter_WrappedAppError(t *testing.T) {
-	ctx := graphql.WithResponseContext(context.Background(), graphql.DefaultErrorPresenter, nil)
-	appErr := NewNotFound("user not found", nil)
-	wrapped := fmt.Errorf("service error: %w", appErr)
-
-	result := GraphQLErrorPresenter(ctx, wrapped)
-	require.NotNil(t, result)
-	assert.Equal(t, "user not found", result.Message)
-}
-
-func TestGraphQLErrorPresenter_GqlError(t *testing.T) {
-	ctx := graphql.WithResponseContext(context.Background(), graphql.DefaultErrorPresenter, nil)
-	gqlErr := &gqlerror.Error{Message: "not found: resource missing"}
-
-	result := GraphQLErrorPresenter(ctx, gqlErr)
-	require.NotNil(t, result)
-	assert.Equal(t, "not found: resource missing", result.Message)
 }

@@ -1,4 +1,3 @@
-// Package health provides health check endpoints for gofasta applications.
 package health
 
 import (

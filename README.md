@@ -56,72 +56,89 @@ Every package lives under `pkg/`. Here's what each one does:
 
 ### Core Infrastructure
 
+<!-- gofasta:begin pkg-table:core -->
 | Package | What it does |
 |---------|-------------|
-| `pkg/config` | Loads configuration from `config.yaml` and environment variables. Provides `LoadConfig()` to get an `AppConfig` struct with all settings, and `SetupDB()` to create a database connection. Supports Postgres, MySQL, SQLite, SQL Server, and ClickHouse. |
-| `pkg/logger` | Creates a structured logger using Go's `slog` package. Configurable output format (text or JSON) and log level. |
-| `pkg/errors` | Defines application error types (`NotFound`, `BadRequest`, `Conflict`, `Internal`, etc.) and maps them to HTTP status codes. Also provides a GraphQL error presenter that formats errors for GraphQL responses. |
-| `pkg/models` | Provides `BaseModelImpl` — a struct you embed in your domain models to get standard fields: `ID` (UUID), `CreatedAt`, `UpdatedAt`, `DeletedAt`, `RecordVersion`, `IsActive`, `IsDeletable`. Includes a GORM `BeforeCreate` hook that auto-generates UUIDs and timestamps. |
-| `pkg/types` | Common DTO (Data Transfer Object) types used across projects: `TPaginationInputDto`, `TSortingInputDto`, `TPaginationObjectDto`, `TCommonAPIErrorDto`, `TCommonResponseDto`, and the `SortOrientation` enum. |
+| `pkg/config` | Package config loads configuration from config.yaml and environment variables. It provides LoadConfig() to get an AppConfig struct with all settings, and SetupDB() to create a database connection. Supports Postgres, MySQL, SQLite, SQL Server, and ClickHouse. |
+| `pkg/logger` | Package logger creates a structured logger using Go's slog package. Output format (text or JSON) and log level are configurable. |
+| `pkg/errors` | Package apperrors defines application error types (NotFound, BadRequest, Conflict, Internal, etc.) and maps them to HTTP status codes. It also provides a GraphQL error presenter that formats errors for GraphQL responses. |
+| `pkg/models` | Package models provides BaseModelImpl, a struct you embed in your domain models to get standard fields: ID (UUID), CreatedAt, UpdatedAt, DeletedAt, RecordVersion, IsActive, IsDeletable. It includes a GORM BeforeCreate hook that auto-generates UUIDs and timestamps. |
+| `pkg/types` | Package types provides common DTO (Data Transfer Object) types used across gofasta applications: TPaginationInputDto, TSortingInputDto, TPaginationObjectDto, TCommonAPIErrorDto, TCommonResponseDto, and the SortOrientation enum. |
+| `pkg/database` | Package database provides transaction propagation for the repository layer. |
+<!-- gofasta:end pkg-table:core -->
 
 ### HTTP & API
 
+<!-- gofasta:begin pkg-table:http -->
 | Package | What it does |
 |---------|-------------|
-| `pkg/httputil` | Three helpers for HTTP handlers: `Bind()` parses and validates request bodies, `Handle()` wraps handler functions that return errors into standard `http.Handler`, and `OK()`/`Created()`/`JSON()` write JSON responses. |
-| `pkg/middleware` | A collection of HTTP middleware: request logging, panic recovery, CORS, security headers (HSTS, CSP, X-Frame-Options), rate limiting, request ID generation, and content-type validation. Compose them with `middleware.Chain()`. |
-| `pkg/health` | A health check controller with three endpoints: `/health` (basic liveness), `/health/live` (process alive), `/health/ready` (checks database and cache connectivity). |
+| `pkg/httputil` | Package httputil provides three helpers for HTTP handlers: Bind() parses and validates request bodies, Handle() wraps handler functions that return errors into standard http.Handler, and OK()/Created()/JSON() write JSON responses. |
+| `pkg/middleware` | Package middleware is a collection of HTTP middleware: request logging, panic recovery, CORS, security headers (HSTS, CSP, X-Frame-Options), rate limiting, request ID generation, and content-type validation. Compose them with Chain(). |
+| `pkg/health` | Package health provides a health check controller with three endpoints: /health (basic liveness), /health/live (process alive), and /health/ready (checks database and cache connectivity). |
 | `pkg/graphql` | Shared GraphQL schema fragments (`.gql` files) for pagination, sorting, errors, and a default health Query/Mutation. Consumed by gqlgen at build time, not imported as Go code — keeps REST and GraphQL response shapes aligned. |
+<!-- gofasta:end pkg-table:http -->
 
 ### Authentication & Security
 
+<!-- gofasta:begin pkg-table:security -->
 | Package | What it does |
 |---------|-------------|
-| `pkg/auth` | JWT token management (generate, validate, refresh) and RBAC (Role-Based Access Control) using Casbin. Includes middleware for extracting JWT from requests and enforcing role-based permissions. |
-| `pkg/encryption` | AES-256-GCM encryption and decryption for sensitive data at rest. |
-| `pkg/session` | Server-side session management wrapping gorilla/sessions. Supports cookie-based and filesystem-based session stores. |
+| `pkg/auth` | Package auth provides JWT token management (generate, validate, refresh) and RBAC (Role-Based Access Control) using Casbin. It includes middleware for extracting JWT from requests and enforcing role-based permissions. |
+| `pkg/encryption` | Package encryption provides AES-256-GCM encryption and decryption for sensitive data at rest. |
+| `pkg/session` | Package session provides server-side session management wrapping gorilla/sessions. It supports cookie-based and filesystem-based session stores. |
+<!-- gofasta:end pkg-table:security -->
 
 ### Data & Storage
 
+<!-- gofasta:begin pkg-table:data -->
 | Package | What it does |
 |---------|-------------|
-| `pkg/cache` | A caching interface with two implementations: in-memory and Redis. Methods: `Get`, `Set`, `Delete`, `Exists`, `Flush`, `Close`. |
-| `pkg/storage` | File storage abstraction with two backends: local filesystem and S3-compatible storage (AWS S3, MinIO, etc.). Methods: `Upload`, `Download`, `Delete`, `URL`. |
-| `pkg/seeds` | A seeder registry for populating databases with test/development data. Call `Register()` to add seed functions and `RunAll()` to execute them. |
+| `pkg/cache` | Package cache provides a caching interface with two implementations: in-memory and Redis. Methods: Get, Set, Delete, Exists, Flush, Close. |
+| `pkg/storage` | Package storage provides a file storage abstraction with two backends: local filesystem and S3-compatible storage (AWS S3, MinIO, etc.). Methods: Upload, Download, Delete, URL. |
+| `pkg/seeds` | Package seeds provides a seeder registry for populating databases with test/development data. Call Register() to add seed functions and RunAll() to execute them. |
+<!-- gofasta:end pkg-table:data -->
 
 ### Communication
 
+<!-- gofasta:begin pkg-table:communication -->
 | Package | What it does |
 |---------|-------------|
-| `pkg/mailer` | Email sending with three providers: SMTP, SendGrid, and Brevo (Sendinblue). Includes a template renderer that processes Go HTML templates for email bodies. |
-| `pkg/slack` | Outbound Slack messaging. Two delivery modes: incoming-webhook and bot-token (`api`). Supports threading, Block Kit, and `files.uploadV2`. |
-| `pkg/whatsapp` | Outbound WhatsApp messaging. Three providers: UltraMsg, Twilio Programmable Messaging, and Meta WhatsApp Cloud API. Media attachments, threaded replies. |
-| `pkg/push` | Outbound mobile push notifications. Firebase Cloud Messaging ships in the standard build; the `Sender` interface is provider-agnostic for swap-in alternatives. |
-| `pkg/notify` | A multi-channel notification orchestrator that delivers messages over email, SMS (Twilio), Slack, and a database channel that persists notifications to a table. |
-| `pkg/websocket` | WebSocket support with a hub that manages connections, rooms, and message broadcasting. |
+| `pkg/mailer` | Package mailer sends email with three providers: SMTP, SendGrid, and Brevo (Sendinblue). It includes a template renderer that processes Go HTML templates for email bodies. |
+| `pkg/slack` | Package slack provides outbound Slack messaging primitives. It is the counterpart to pkg/mailer for chat: a SlackSender interface and one or more concrete implementations selected by configuration. |
+| `pkg/whatsapp` | Package whatsapp provides outbound WhatsApp messaging primitives. It is the chat counterpart to pkg/mailer and pkg/slack. |
+| `pkg/push` | Package push provides outbound mobile push notification primitives. It is the mobile counterpart to pkg/mailer, pkg/slack and pkg/whatsapp. |
+| `pkg/notify` | Package notify is a multi-channel notification orchestrator that delivers messages over email, SMS (Twilio), Slack, and a database channel that persists notifications to a table. |
+| `pkg/websocket` | Package websocket provides WebSocket support with a hub that manages connections, rooms, and message broadcasting. |
+<!-- gofasta:end pkg-table:communication -->
 
 ### Background Processing
 
+<!-- gofasta:begin pkg-table:background -->
 | Package | What it does |
 |---------|-------------|
-| `pkg/scheduler` | Cron job scheduling using robfig/cron. Register jobs with cron expressions (6-field format with seconds). |
-| `pkg/queue` | Async task queue backed by Redis using hibiken/asynq. Enqueue tasks for background processing with configurable concurrency. |
-| `pkg/resilience` | Retry policies with exponential backoff using failsafe-go. Wrap unreliable operations with automatic retry logic. |
+| `pkg/scheduler` | Package scheduler provides cron job scheduling using robfig/cron. Register jobs with cron expressions (6-field format with seconds). |
+| `pkg/queue` | Package queue provides an async task queue backed by Redis using hibiken/asynq. Enqueue tasks for background processing with configurable concurrency. |
+| `pkg/resilience` | Package resilience provides retry policies with exponential backoff using failsafe-go. Wrap unreliable operations with automatic retry logic. |
+<!-- gofasta:end pkg-table:background -->
 
 ### Validation & i18n
 
+<!-- gofasta:begin pkg-table:validation -->
 | Package | What it does |
 |---------|-------------|
-| `pkg/validators` | Input validation package wrapping go-playground/validator. Provides `AppValidator` with `ValidateStruct()` that returns structured error DTOs. Includes common validators: UUID validation, record existence checks, URL validation, and record deletability checks. Projects register their own custom validators on top. |
-| `pkg/i18n` | Internationalization using go-i18n. Loads translation files from a `locales/` directory and translates messages based on the request's language. |
-| `pkg/utils` | Small standalone helpers used across the library — string-case conversion, slice helpers, time formatting, etc. Imported as needed; nothing here depends on the rest of the library. |
+| `pkg/validators` | Package validators wraps go-playground/validator for input validation. It provides AppValidator with ValidateStruct() that returns structured error DTOs, plus common validators: UUID validation, record existence checks, URL validation, and record deletability checks. Projects register their own custom validators on top. |
+| `pkg/i18n` | Package i18n provides internationalization using go-i18n. It loads translation files from a locales/ directory and translates messages based on the request's language. |
+| `pkg/utils` | Package utils provides small standalone helpers used across the library: string-case conversion, slice helpers, time formatting, and similar. Imported as needed; nothing here depends on the rest of the library. |
+<!-- gofasta:end pkg-table:validation -->
 
 ### Observability
 
+<!-- gofasta:begin pkg-table:observability -->
 | Package | What it does |
 |---------|-------------|
-| `pkg/observability` | Prometheus metrics (request count, duration, in-flight requests) exposed at `/metrics`, and distributed tracing with OpenTelemetry. Both available as HTTP middleware. |
-| `pkg/featureflag` | Thin wrapper around the OpenFeature Go SDK for evaluating feature flags. Works with any OpenFeature provider — in-memory, Flagd, LaunchDarkly, go-feature-flag, or custom — registered via `openfeature.SetProvider`. |
+| `pkg/observability` | Package observability provides Prometheus metrics (request count, duration, in-flight requests) exposed at /metrics, and distributed tracing with OpenTelemetry. Both are available as HTTP middleware. |
+| `pkg/featureflag` | Package featureflag wraps the OpenFeature Go SDK so callers can evaluate feature flags through a stable interface while remaining free to swap the underlying provider (in-memory, Flagd, LaunchDarkly, go-feature-flag, ConfigCat, or a custom implementation) at application startup via openfeature.SetProvider. |
+<!-- gofasta:end pkg-table:observability -->
 
 ### `pkg/config.JSONSchema()`
 
@@ -129,9 +146,11 @@ Every package lives under `pkg/`. Here's what each one does:
 
 ### Testing
 
+<!-- gofasta:begin pkg-table:testing -->
 | Package | What it does |
 |---------|-------------|
-| `pkg/testutil/testdb` | Spins up a PostgreSQL container using testcontainers-go for integration tests. Call `SetupTestDB(t)` in your test and get a real `*gorm.DB` — the container is automatically cleaned up when the test finishes. **Requires Docker** on the machine running the tests (install: <https://docs.docker.com/get-docker/>). |
+| `pkg/testutil/testdb` | Package testdb provides test database setup helpers using testcontainers. |
+<!-- gofasta:end pkg-table:testing -->
 
 > **Per-package reference.** Every `pkg/*` has a dedicated page on [gofasta.dev/docs/api-reference](https://gofasta.dev/docs/api-reference) with types, functions, configuration, and usage examples. The table above is a one-line tour; the website is the source of truth for API detail.
 
