@@ -12,6 +12,37 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
 )
 
+func TestInitTracer(t *testing.T) {
+	cleanup := InitTracer("test-service")
+	if cleanup == nil {
+		t.Fatal("expected non-nil cleanup function")
+	}
+	// Calling cleanup should not panic.
+	cleanup()
+}
+
+func TestTracingMiddleware_CallsNext(t *testing.T) {
+	called := false
+	inner := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		called = true
+		w.WriteHeader(http.StatusOK)
+	})
+
+	middleware := TracingMiddleware("test-service")
+	handler := middleware(inner)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/traced", nil)
+	handler.ServeHTTP(rec, req)
+
+	if !called {
+		t.Error("expected inner handler to be called")
+	}
+	if rec.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", rec.Code)
+	}
+}
+
 func TestInitTracer_RecordsTheServiceName(t *testing.T) {
 	// The service name is the only way a span backend can tell one service's
 	// spans from another's, so it has to reach the provider's resource rather
