@@ -7,6 +7,13 @@ require (
 	github.com/99designs/gqlgen v0.17.89
 	github.com/alicebob/miniredis/v2 v2.37.0
 	github.com/casbin/casbin/v2 v2.135.0
+	// PINNED: gorm-adapter/v3 v3.39+ and redis-watcher/v2 v2.7+ moved to
+	// casbin/v3. Upgrading either without moving casbin itself splits the
+	// build across two major versions of the same library, and the failure is
+	// a type mismatch on persist.Adapter rather than anything that names the
+	// cause. Move all three together or none.
+	github.com/casbin/gorm-adapter/v3 v3.38.0
+	github.com/casbin/redis-watcher/v2 v2.6.0
 	github.com/failsafe-go/failsafe-go v0.9.6
 	github.com/go-playground/locales v0.14.1
 	github.com/go-playground/universal-translator v0.18.1
@@ -110,6 +117,8 @@ require (
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.3 // indirect
+	github.com/glebarez/go-sqlite v1.20.3 // indirect
+	github.com/glebarez/sqlite v1.7.0 // indirect
 	github.com/go-faster/city v1.0.1 // indirect
 	github.com/go-faster/errors v0.7.1 // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
@@ -186,6 +195,7 @@ require (
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.67.5 // indirect
 	github.com/prometheus/procfs v0.20.1 // indirect
+	github.com/remyoudompheng/bigfft v0.0.0-20230126093431-47fa9a501578 // indirect
 	github.com/rs/xid v1.6.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/segmentio/asm v1.2.0 // indirect
@@ -229,6 +239,11 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260526163538-3dc84a4a5aaa // indirect
 	google.golang.org/grpc v1.83.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
+	gorm.io/plugin/dbresolver v1.6.0 // indirect
+	modernc.org/libc v1.22.2 // indirect
+	modernc.org/mathutil v1.5.0 // indirect
+	modernc.org/memory v1.5.0 // indirect
+	modernc.org/sqlite v1.20.3 // indirect
 	sigs.k8s.io/yaml v1.6.0 // indirect
 )
 

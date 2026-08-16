@@ -1135,3 +1135,49 @@ func TestSMTPReplyToSitsWithTheOtherHeaders(t *testing.T) {
 		t.Error("Reply-To was written after the message body")
 	}
 }
+
+func TestSMTPSender_Send_DialRespectsAContextDeadline(t *testing.T) {
+	// A server that accepts the connection and then says nothing used to hold
+	// the caller forever: net.Dial has no deadline and net/smtp predates
+	// context, so neither layer bounded the conversation.
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("listen: %v", err)
+	}
+	defer func() { _ = ln.Close() }()
+
+	go func() {
+		conn, err := ln.Accept()
+		if err != nil {
+			return
+		}
+		// Accept and stall: never send the 220 greeting.
+		defer func() { _ = conn.Close() }()
+		select {}
+	}()
+
+	addr := ln.Addr().(*net.TCPAddr)
+	s := NewSMTPSender(
+		config.SMTPConfig{Host: addr.IP.String(), Port: addr.Port},
+		"From", "from@example.com", nil, slog.Default(),
+	)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Millisecond)
+	defer cancel()
+
+	done := make(chan error, 1)
+	go func() {
+		done <- s.Send(ctx, EmailMessage{
+			To: []string{"to@example.com"}, Subject: "s", HTMLBody: "<p>b</p>",
+		})
+	}()
+
+	select {
+	case err := <-done:
+		if err == nil {
+			t.Fatal("a stalled server returned a successful send")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("Send did not return; the conversation has no deadline")
+	}
+}

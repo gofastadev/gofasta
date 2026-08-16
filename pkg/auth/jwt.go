@@ -13,6 +13,7 @@ type JWTService struct {
 	secret        []byte
 	accessExpiry  time.Duration
 	refreshExpiry time.Duration
+	issuer        string
 }
 
 // NewJWTService builds a JWTService from an AuthConfig.
@@ -21,49 +22,89 @@ func NewJWTService(cfg *config.AuthConfig) *JWTService {
 		secret:        []byte(cfg.JWTSecret),
 		accessExpiry:  cfg.AccessTokenExpiry,
 		refreshExpiry: cfg.RefreshTokenExpiry,
+		issuer:        cfg.Issuer,
 	}
 }
 
-// GenerateToken creates a signed access token for a user.
-func (s *JWTService) GenerateToken(userID, role string) (string, error) {
+// Issuer returns the issuer this service stamps and requires, or "" when it is
+// not configured to check one.
+func (s *JWTService) Issuer() string { return s.issuer }
+
+// GenerateToken creates a signed access token for a subject.
+//
+// subject becomes the registered `sub` claim: a user id, or under the
+// client-credentials grant a client id.
+func (s *JWTService) GenerateToken(subject, role string) (string, error) {
+	return s.GenerateTokenWithRoles(subject, role, nil)
+}
+
+// GenerateTokenWithRoles creates a signed access token carrying several roles.
+//
+// role and roles are both stamped and both honored on the way back in, so a
+// service can grant a primary role and additional ones without the caller
+// having to know which field a given check reads.
+func (s *JWTService) GenerateTokenWithRoles(subject, role string, roles []string) (string, error) {
 	claims := &Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(s.accessExpiry)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			Issuer:    s.issuer,
+			Subject:   subject,
 		},
-		UserID: userID,
-		Role:   role,
+		Role:  role,
+		Roles: roles,
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(s.secret)
 }
 
-// GenerateRefreshToken creates a long-lived refresh token.
-func (s *JWTService) GenerateRefreshToken(userID string) (string, error) {
+// GenerateRefreshToken creates a long-lived refresh token for a subject.
+func (s *JWTService) GenerateRefreshToken(subject string) (string, error) {
 	claims := &Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(s.refreshExpiry)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			Issuer:    s.issuer,
+			Subject:   subject,
 		},
-		UserID: userID,
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(s.secret)
 }
 
 // ValidateToken parses and validates a token string, returning the claims.
+//
+// Signature, expiry and — when [config.AuthConfig].Issuer is set — the issuer
+// are all checked here. Expiry is enforced by the library against the embedded
+// RegisteredClaims, which is why [Claims] must never shadow `exp`.
 func (s *JWTService) ValidateToken(tokenStr string) (*Claims, error) {
 	claims := &Claims{}
-	_, err := jwt.ParseWithClaims(tokenStr, claims, func(t *jwt.Token) (interface{}, error) {
-		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
-		}
-		return s.secret, nil
-	})
+	opts := []jwt.ParserOption{jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()})}
+	if s.issuer != "" {
+		opts = append(opts, jwt.WithIssuer(s.issuer))
+	}
+
+	_, err := jwt.ParseWithClaims(tokenStr, claims, s.keyFunc, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("invalid token: %w", err)
 	}
 	return claims, nil
+}
+
+// keyFunc supplies the verification key, and refuses to supply it for a token
+// that is not HMAC-signed.
+//
+// The parser already rejects such a token through WithValidMethods above,
+// before this is ever called, so the check is redundant on that path — and it
+// is kept anyway because it is the only thing standing between a caller that
+// builds its own parser without WithValidMethods and the alg-confusion attack,
+// where a token signed with the public half of an RSA key is verified against
+// that same public key as an HMAC secret.
+func (s *JWTService) keyFunc(t *jwt.Token) (interface{}, error) {
+	if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+		return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+	}
+	return s.secret, nil
 }
 
 // RefreshToken validates a refresh token and issues a new access token.
@@ -72,5 +113,5 @@ func (s *JWTService) RefreshToken(refreshTokenStr string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("invalid refresh token: %w", err)
 	}
-	return s.GenerateToken(claims.UserID, claims.Role)
+	return s.GenerateToken(claims.SubjectID(), claims.Role)
 }

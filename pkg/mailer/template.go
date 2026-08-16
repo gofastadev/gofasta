@@ -33,6 +33,15 @@ func NewTemplateRenderer(templatesDir, appName string) *TemplateRenderer {
 
 // Render executes a named template with the given data and returns the HTML string.
 func (r *TemplateRenderer) Render(name string, data map[string]any) (string, error) {
+	// A sender built with no renderer is a supported configuration: a project
+	// that renders its own HTML upstream passes nil rather than pointing the
+	// renderer at a directory it does not use. Reaching here means a message
+	// asked for a template anyway, which is a caller error worth naming rather
+	// than a nil dereference inside the send path.
+	if r == nil {
+		return "", fmt.Errorf("email template %q requested but this sender has no template renderer", name)
+	}
+
 	r.mu.RLock()
 	tmpl, ok := r.templates[name]
 	r.mu.RUnlock()

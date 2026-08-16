@@ -2,6 +2,7 @@ package mailer
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"io"
@@ -282,5 +283,88 @@ func TestBrevoSender_ResolveBody_Template(t *testing.T) {
 	}
 	if !strings.Contains(body, "Hello Bob") {
 		t.Errorf("body = %q, want it to contain 'Hello Bob'", body)
+	}
+}
+
+func TestBrevoSender_Send_WithAttachments(t *testing.T) {
+	// Dropping attachments was silent: the message still sent, just without
+	// the file, so an issued certificate went out as an empty-handed
+	// notification and nothing reported an error.
+	var capturedBody []byte
+
+	transport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var err error
+		capturedBody, err = io.ReadAll(req.Body)
+		if err != nil {
+			return nil, err
+		}
+		return &http.Response{
+			StatusCode: 201,
+			Body:       io.NopCloser(strings.NewReader(`{}`)),
+		}, nil
+	})
+
+	pdf := []byte("%PDF-1.4 certificate bytes")
+
+	b := newTestBrevoSender(t, transport)
+	err := b.Send(context.Background(), EmailMessage{
+		To:       []string{"learner@example.com"},
+		Subject:  "Your certificate",
+		HTMLBody: "<p>Attached</p>",
+		Attachments: []Attachment{
+			{Filename: "certificate.pdf", Content: pdf, ContentType: "application/pdf"},
+		},
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	var body brevoRequest
+	if err := json.Unmarshal(capturedBody, &body); err != nil {
+		t.Fatalf("failed to unmarshal: %v", err)
+	}
+	if len(body.Attachment) != 1 {
+		t.Fatalf("attachment count = %d, want 1", len(body.Attachment))
+	}
+	if body.Attachment[0].Name != "certificate.pdf" {
+		t.Errorf("attachment name = %q, want %q", body.Attachment[0].Name, "certificate.pdf")
+	}
+	// Round-tripped rather than compared against a hardcoded string, so the
+	// test asserts the bytes arrive intact rather than that some particular
+	// encoding was used.
+	decoded, err := base64.StdEncoding.DecodeString(body.Attachment[0].Content)
+	if err != nil {
+		t.Fatalf("attachment content is not base64: %v", err)
+	}
+	if string(decoded) != string(pdf) {
+		t.Errorf("attachment content = %q, want %q", decoded, pdf)
+	}
+}
+
+func TestBrevoSender_Send_OmitsAttachmentKeyWhenThereAreNone(t *testing.T) {
+	// Brevo rejects an empty "attachment" array, so the field has to be absent
+	// rather than present-and-empty for the common case.
+	var capturedBody []byte
+
+	transport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		var err error
+		capturedBody, err = io.ReadAll(req.Body)
+		if err != nil {
+			return nil, err
+		}
+		return &http.Response{StatusCode: 201, Body: io.NopCloser(strings.NewReader(`{}`))}, nil
+	})
+
+	b := newTestBrevoSender(t, transport)
+	if err := b.Send(context.Background(), EmailMessage{
+		To:       []string{"user@example.com"},
+		Subject:  "No attachments",
+		HTMLBody: "<p>body</p>",
+	}); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if strings.Contains(string(capturedBody), `"attachment"`) {
+		t.Errorf("attachment key present with no attachments: %s", capturedBody)
 	}
 }

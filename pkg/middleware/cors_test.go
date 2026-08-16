@@ -3,6 +3,7 @@ package middleware
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -148,4 +149,100 @@ func TestCORS_BlankEntriesAreDiscarded(t *testing.T) {
 	handler.ServeHTTP(rec, req)
 
 	assert.Equal(t, "", rec.Header().Get("Access-Control-Allow-Origin"))
+}
+
+func TestCORSWith_CustomAllowedHeaders(t *testing.T) {
+	// The gap this closes: a service whose clients send a custom header must
+	// be able to allow it, or every preflight for those requests fails. With
+	// only an origin list there was no way to express that.
+	h := CORSWith(CORSOptions{
+		AllowedOrigins: []string{"https://app.example.com"},
+		AllowedHeaders: []string{"Content-Type", "Authorization", "client-id"},
+	})(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+
+	req := httptest.NewRequest(http.MethodOptions, "/graphql", nil)
+	req.Header.Set("Origin", "https://app.example.com")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	got := rec.Header().Get("Access-Control-Allow-Headers")
+	if !strings.Contains(got, "client-id") {
+		t.Errorf("Allow-Headers = %q, want the custom header", got)
+	}
+}
+
+func TestCORSWith_CustomMethodsExposedAndMaxAge(t *testing.T) {
+	h := CORSWith(CORSOptions{
+		AllowedOrigins: []string{"https://app.example.com"},
+		AllowedMethods: []string{"GET", "POST"},
+		ExposedHeaders: []string{"X-Total-Count"},
+		MaxAge:         "600",
+	})(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+
+	req := httptest.NewRequest(http.MethodOptions, "/", nil)
+	req.Header.Set("Origin", "https://app.example.com")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if got := rec.Header().Get("Access-Control-Allow-Methods"); got != "GET, POST" {
+		t.Errorf("Allow-Methods = %q", got)
+	}
+	if got := rec.Header().Get("Access-Control-Expose-Headers"); got != "X-Total-Count" {
+		t.Errorf("Expose-Headers = %q", got)
+	}
+	if got := rec.Header().Get("Access-Control-Max-Age"); got != "600" {
+		t.Errorf("Max-Age = %q", got)
+	}
+}
+
+func TestCORS_KeepsItsDefaultsThroughTheNewPath(t *testing.T) {
+	// CORS now delegates to CORSWith. Existing callers must see no change.
+	h := CORS([]string{"https://app.example.com"})(
+		http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+
+	req := httptest.NewRequest(http.MethodOptions, "/", nil)
+	req.Header.Set("Origin", "https://app.example.com")
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+
+	if got := rec.Header().Get("Access-Control-Allow-Headers"); !strings.Contains(got, "Apollo-Require-Preflight") {
+		t.Errorf("Allow-Headers = %q, want the defaults preserved", got)
+	}
+	if got := rec.Header().Get("Access-Control-Expose-Headers"); !strings.Contains(got, "Set-Cookie") {
+		t.Errorf("Expose-Headers = %q, want the defaults preserved", got)
+	}
+	if got := rec.Header().Get("Access-Control-Max-Age"); got != "86400" {
+		t.Errorf("Max-Age = %q, want the default", got)
+	}
+}
+
+func TestCORSOriginsFromEnv(t *testing.T) {
+	t.Run("unset falls back to localhost", func(t *testing.T) {
+		t.Setenv("CORS_ALLOWED_ORIGINS", "")
+		got := CORSOriginsFromEnv()
+		if len(got) != 2 || got[0] != "http://localhost:3000" {
+			t.Errorf("got %v, want the two localhost dev origins", got)
+		}
+	})
+
+	t.Run("splits and trims", func(t *testing.T) {
+		t.Setenv("CORS_ALLOWED_ORIGINS", " https://a.example.com , https://b.example.com ")
+		got := CORSOriginsFromEnv()
+		want := []string{"https://a.example.com", "https://b.example.com"}
+		if len(got) != len(want) {
+			t.Fatalf("got %v, want %v", got, want)
+		}
+		for i := range want {
+			if got[i] != want[i] {
+				t.Errorf("origin %d = %q, want %q", i, got[i], want[i])
+			}
+		}
+	})
+
+	t.Run("blank entries are discarded", func(t *testing.T) {
+		t.Setenv("CORS_ALLOWED_ORIGINS", "https://a.example.com,,  ,")
+		if got := CORSOriginsFromEnv(); len(got) != 1 {
+			t.Errorf("got %v, want the blanks dropped", got)
+		}
+	})
 }

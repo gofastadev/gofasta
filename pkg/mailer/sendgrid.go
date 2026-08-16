@@ -2,6 +2,7 @@ package mailer
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"log/slog"
 
@@ -25,13 +26,39 @@ type SendGridSender struct {
 }
 
 // NewSendGridSender returns a SendGrid-backed EmailSender.
-func NewSendGridSender(cfg config.SendGridConfig, fromName, fromAddress string, renderer *TemplateRenderer, logger *slog.Logger) *SendGridSender {
+func NewSendGridSender(cfg config.SendGridConfig, fromName, fromAddress string, renderer *TemplateRenderer, logger *slog.Logger, opts ...SenderOption) *SendGridSender {
 	return &SendGridSender{
-		client:   sendgrid.NewSendClient(cfg.APIKey),
+		client: &sendgridRESTClient{
+			request: sendgrid.GetRequest(cfg.APIKey, sendGridMailPath, ""),
+			rest:    &rest.Client{HTTPClient: resolveSenderOptions(opts).httpClient},
+		},
 		from:     mail.NewEmail(fromName, fromAddress),
 		renderer: renderer,
 		logger:   loggerOrDefault(logger),
 	}
+}
+
+// sendGridMailPath is the v3 send endpoint, the same one sendgrid.NewSendClient
+// targets.
+const sendGridMailPath = "/v3/mail/send"
+
+// sendgridRESTClient sends through a rest.Client the caller owns.
+//
+// sendgrid.NewSendClient routes every request through rest.DefaultClient, a
+// package-level global. Honoring WithHTTPClient by reassigning that global
+// would change the transport for every SendGrid client in the process — and
+// race with any other goroutine constructing one. Holding our own rest.Client
+// keeps the choice local to this sender.
+type sendgridRESTClient struct {
+	request rest.Request
+	rest    *rest.Client
+}
+
+// SendWithContext implements sendgridClient.
+func (c *sendgridRESTClient) SendWithContext(ctx context.Context, email *mail.SGMailV3) (*rest.Response, error) {
+	req := c.request
+	req.Body = mail.GetRequestBody(email)
+	return c.rest.SendWithContext(ctx, req)
 }
 
 // Send delivers msg via the SendGrid HTTP API.
@@ -73,7 +100,11 @@ func (s *SendGridSender) Send(ctx context.Context, msg EmailMessage) error {
 		a := mail.NewAttachment()
 		a.SetFilename(att.Filename)
 		a.SetType(att.ContentType)
-		a.SetContent(string(att.Content))
+		// SendGrid requires attachment content base64-encoded. Passing the raw
+		// bytes produced a request the API accepted and a file the recipient
+		// could not open — the send reported success either way, so the only
+		// symptom was a corrupt attachment.
+		a.SetContent(base64.StdEncoding.EncodeToString(att.Content))
 		m.AddAttachment(a)
 	}
 

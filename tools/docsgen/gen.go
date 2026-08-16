@@ -24,13 +24,13 @@ type category struct {
 // package without deciding where it is documented breaks the build.
 var categories = []category{
 	{Slug: "core", Dirs: []string{"config", "logger", "errors", "models", "types", "database"}},
-	{Slug: "http", Dirs: []string{"httputil", "middleware", "health", "graphql"}},
+	{Slug: "http", Dirs: []string{"httputil", "httpcontext", "middleware", "health", "graphql"}},
 	{Slug: "security", Dirs: []string{"auth", "encryption", "session"}},
 	{Slug: "data", Dirs: []string{"cache", "storage", "seeds"}},
 	{Slug: "communication", Dirs: []string{"mailer", "slack", "whatsapp", "push", "notify", "websocket"}},
 	{Slug: "background", Dirs: []string{"scheduler", "queue", "resilience"}},
 	{Slug: "validation", Dirs: []string{"validators", "i18n", "utils"}},
-	{Slug: "observability", Dirs: []string{"observability", "featureflag"}},
+	{Slug: "observability", Dirs: []string{"observability", "auditlog", "featureflag"}},
 	{Slug: "testing", Dirs: []string{"testutil"}},
 }
 

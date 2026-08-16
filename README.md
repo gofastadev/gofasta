@@ -73,6 +73,7 @@ Every package lives under `pkg/`. Here's what each one does:
 | Package | What it does |
 |---------|-------------|
 | `pkg/httputil` | Package httputil provides three helpers for HTTP handlers: Bind() parses and validates request bodies, Handle() wraps handler functions that return errors into standard http.Handler, and OK()/Created()/JSON() write JSON responses. |
+| `pkg/httpcontext` | Package httpcontext carries request-scoped values that the handler chain needs but a handler signature cannot pass. |
 | `pkg/middleware` | Package middleware is a collection of HTTP middleware: request logging, panic recovery, CORS, security headers (HSTS, CSP, X-Frame-Options), rate limiting, request ID generation, and content-type validation. Compose them with Chain(). |
 | `pkg/health` | Package health provides a health check controller with three endpoints: /health (basic liveness), /health/live (process alive), and /health/ready (checks database and cache connectivity). |
 | `pkg/graphql` | Shared GraphQL schema fragments (`.gql` files) for pagination, sorting, errors, and a default health Query/Mutation. Consumed by gqlgen at build time, not imported as Go code — keeps REST and GraphQL response shapes aligned. |
@@ -137,6 +138,7 @@ Every package lives under `pkg/`. Here's what each one does:
 | Package | What it does |
 |---------|-------------|
 | `pkg/observability` | Package observability provides Prometheus metrics (request count, duration, in-flight requests) exposed at /metrics, and distributed tracing with OpenTelemetry. Both are available as HTTP middleware. |
+| `pkg/auditlog` | Package auditlog records who did what, from where, and when. |
 | `pkg/featureflag` | Package featureflag wraps the OpenFeature Go SDK so callers can evaluate feature flags through a stable interface while remaining free to swap the underlying provider (in-memory, Flagd, LaunchDarkly, go-feature-flag, ConfigCat, or a custom implementation) at application startup via openfeature.SetProvider. |
 <!-- gofasta:end pkg-table:observability -->
 

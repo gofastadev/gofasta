@@ -34,9 +34,10 @@ func SetupDB(cfg *DatabaseConfig) *gorm.DB {
 
 	if cfg.Driver != "sqlite" {
 		sqlDB, _ := db.DB()
-		sqlDB.SetMaxIdleConns(cfg.MaxIdle)
-		sqlDB.SetMaxOpenConns(cfg.MaxOpen)
-		sqlDB.SetConnMaxLifetime(cfg.MaxLife)
+		pool := poolOrDefaults(cfg)
+		sqlDB.SetMaxIdleConns(pool.idle)
+		sqlDB.SetMaxOpenConns(pool.open)
+		sqlDB.SetConnMaxLifetime(pool.life)
 	}
 
 	return db
@@ -198,3 +199,39 @@ func dialectorForDSN(driver, dsn string) (gorm.Dialector, error) {
 		return nil, fmt.Errorf("unsupported database driver: %q (supported: postgres, mysql, sqlite, sqlserver, clickhouse)", driver)
 	}
 }
+
+// poolOrDefaults fills in pool limits the caller left unset.
+//
+// LoadConfig applies these when reading config.yaml, but a caller that builds
+// a DatabaseConfig literal — passing a DSN directly, say — gets the zero
+// value, and database/sql reads zero MaxOpenConns as *unlimited*. A service
+// under load then opens connections until PostgreSQL refuses them, which
+// surfaces as "too many clients" on an unrelated request rather than anywhere
+// near the code that configured the pool.
+func poolOrDefaults(cfg *DatabaseConfig) struct {
+	idle, open int
+	life       time.Duration
+} {
+	pool := struct {
+		idle, open int
+		life       time.Duration
+	}{idle: cfg.MaxIdle, open: cfg.MaxOpen, life: cfg.MaxLife}
+
+	if pool.idle == 0 {
+		pool.idle = defaultMaxIdleConns
+	}
+	if pool.open == 0 {
+		pool.open = defaultMaxOpenConns
+	}
+	if pool.life == 0 {
+		pool.life = defaultConnMaxLifetime
+	}
+	return pool
+}
+
+// Pool defaults, matching the ones LoadConfig applies.
+const (
+	defaultMaxIdleConns    = 10
+	defaultMaxOpenConns    = 100
+	defaultConnMaxLifetime = time.Hour
+)

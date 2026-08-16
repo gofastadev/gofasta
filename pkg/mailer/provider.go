@@ -9,16 +9,16 @@ import (
 
 // NewEmailSender creates the appropriate email sender based on the configured provider.
 // This is the factory used by Wire DI — the developer never calls this directly.
-func NewEmailSender(cfg *config.EmailConfig, renderer *TemplateRenderer, logger *slog.Logger) (EmailSender, error) {
+func NewEmailSender(cfg *config.EmailConfig, renderer *TemplateRenderer, logger *slog.Logger, opts ...SenderOption) (EmailSender, error) {
 	switch cfg.Provider {
 	case "smtp":
 		return NewSMTPSender(cfg.SMTP, cfg.FromName, cfg.FromAddress, renderer, logger), nil
 	case "sendgrid":
-		return NewSendGridSender(cfg.SendGrid, cfg.FromName, cfg.FromAddress, renderer, logger), nil
+		return NewSendGridSender(cfg.SendGrid, cfg.FromName, cfg.FromAddress, renderer, logger, opts...), nil
 	case "brevo":
-		return NewBrevoSender(cfg.Brevo, cfg.FromName, cfg.FromAddress, renderer, logger), nil
+		return NewBrevoSender(cfg.Brevo, cfg.FromName, cfg.FromAddress, renderer, logger, opts...), nil
 	case "resend":
-		return NewResendSender(cfg.Resend, cfg.FromName, cfg.FromAddress, renderer, logger), nil
+		return NewResendSender(cfg.Resend, cfg.FromName, cfg.FromAddress, renderer, logger, opts...), nil
 	default:
 		return nil, fmt.Errorf("unknown email provider: %q (supported: smtp, sendgrid, brevo, resend)", cfg.Provider)
 	}

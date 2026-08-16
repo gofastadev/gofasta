@@ -166,3 +166,21 @@ func writeTemplate(t *testing.T, dir, name, content string) {
 		t.Fatalf("failed to write template %s: %v", name, err)
 	}
 }
+
+func TestRender_NilRendererReportsRatherThanPanics(t *testing.T) {
+	// Senders are constructed with a nil renderer by projects that render
+	// their own HTML. A message that sets Template anyway used to take the
+	// send path through a nil dereference.
+	var r *TemplateRenderer
+
+	out, err := r.Render("welcome", nil)
+	if err == nil {
+		t.Fatal("nil renderer returned no error")
+	}
+	if out != "" {
+		t.Errorf("output = %q, want empty", out)
+	}
+	if !strings.Contains(err.Error(), "welcome") {
+		t.Errorf("error %q does not name the template that was asked for", err)
+	}
+}
