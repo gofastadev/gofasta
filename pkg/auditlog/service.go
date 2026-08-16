@@ -25,13 +25,22 @@ import (
 // the identity elsewhere supplies its own.
 type SubjectFunc func(ctx context.Context) *string
 
-// defaultSubject reads the user ID from gofasta's Claims.
+// defaultSubject reads the acting user from gofasta's Claims.
+//
+// Through [auth.Claims.SubjectID], not the UserID field: tokens minted by an
+// OAuth 2.0 / OIDC provider carry the identity in the registered `sub` claim
+// and leave `user_id` empty. Reading the field directly writes a subject-less
+// row for every such caller — and "who did this" is the first question anyone
+// asks of an audit log.
 func defaultSubject(ctx context.Context) *string {
 	claims, err := auth.ClaimsFromContext(ctx)
-	if err != nil || claims == nil || claims.UserID == "" {
+	if err != nil {
 		return nil
 	}
-	id := claims.UserID
+	id := claims.SubjectID()
+	if id == "" {
+		return nil
+	}
 	return &id
 }
 

@@ -264,6 +264,16 @@ type AuthConfig struct {
 	RefreshTokenExpiry time.Duration `koanf:"refresh_token_expiry"`
 	RBACModelPath      string        `koanf:"rbac_model"`
 	RBACPolicyPath     string        `koanf:"rbac_policy"`
+
+	// Issuer names this application in the tokens it mints, and is required of
+	// the tokens it accepts. Leave it empty and any party holding the signing
+	// secret can mint a token this service honors — which is every service in
+	// a fleet that shares one secret, so a token minted for the reporting tool
+	// unlocks the payments API.
+	//
+	// Empty means no issuer is stamped and none is checked, preserving the
+	// behavior of deployments that predate this field.
+	Issuer string `koanf:"issuer"`
 }
 
 // RateLimitConfig configures the HTTP rate limiter.

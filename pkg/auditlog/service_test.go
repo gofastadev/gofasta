@@ -8,6 +8,7 @@ import (
 
 	"github.com/gofastadev/gofasta/pkg/auth"
 	"github.com/gofastadev/gofasta/pkg/httpcontext"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 // ctxWithRequest builds the context httpcontext.Middleware would produce.
@@ -123,5 +124,30 @@ func TestFromContext_EndToEndThroughTheMiddleware(t *testing.T) {
 
 	if ip != "192.0.2.44:1234" || ua != "jedi/2.0" {
 		t.Errorf("ip/ua = %q/%q through the real middleware", ip, ua)
+	}
+}
+
+func TestFromContext_DefaultSubjectReadsAnOIDCSubClaim(t *testing.T) {
+	// The Descholar case, and the OIDC case generally: identity arrives in the
+	// registered `sub` claim, not `user_id`. Reading UserID directly gives every
+	// such caller a subject-less audit row.
+	s := NewAuditService(nil, "test")
+
+	ctx := context.WithValue(context.Background(), auth.ClaimsKey, &auth.Claims{
+		RegisteredClaims: jwt.RegisteredClaims{Subject: "11111111-2222-3333-4444-555555555555"},
+	})
+	userID, _, _ := s.FromContext(ctx)
+
+	if userID == nil || *userID != "11111111-2222-3333-4444-555555555555" {
+		t.Errorf("userID = %v, want the sub claim", userID)
+	}
+}
+
+func TestFromContext_ClaimsWithNoIdentityYieldNoSubject(t *testing.T) {
+	s := NewAuditService(nil, "test")
+
+	ctx := context.WithValue(context.Background(), auth.ClaimsKey, &auth.Claims{})
+	if userID, _, _ := s.FromContext(ctx); userID != nil {
+		t.Errorf("userID = %v, want nil so the empty case stays detectable", userID)
 	}
 }

@@ -210,3 +210,83 @@ func TestTokenRoundTrip(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "user-42", newClaims.UserID)
 }
+
+// ---------- issuer ----------
+
+func issuerJWTService(issuer string) *JWTService {
+	return NewJWTService(&config.AuthConfig{
+		JWTSecret:          "test-secret-key-for-testing",
+		AccessTokenExpiry:  15 * time.Minute,
+		RefreshTokenExpiry: 24 * time.Hour,
+		Issuer:             issuer,
+	})
+}
+
+func TestValidateToken_RejectsAnotherIssuersToken(t *testing.T) {
+	// Every service in a fleet usually shares one signing secret, so the
+	// signature alone does not say the token was minted for *this* service.
+	// Without the issuer check, a token for the reporting tool opens payments.
+	payments := issuerJWTService("payments")
+	reporting := issuerJWTService("reporting")
+
+	token, err := reporting.GenerateToken("user-1", "admin")
+	require.NoError(t, err)
+
+	_, err = payments.ValidateToken(token)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "issuer")
+
+	// Its own issuer still passes.
+	own, err := payments.GenerateToken("user-1", "admin")
+	require.NoError(t, err)
+	_, err = payments.ValidateToken(own)
+	assert.NoError(t, err)
+}
+
+func TestValidateToken_NoIssuerConfiguredChecksNone(t *testing.T) {
+	// Deployments that predate the field must keep working unchanged.
+	unset := testJWTService()
+	token, err := issuerJWTService("somebody-else").GenerateToken("user-1", "admin")
+	require.NoError(t, err)
+
+	claims, err := unset.ValidateToken(token)
+	require.NoError(t, err)
+	assert.Equal(t, "user-1", claims.UserID)
+}
+
+func TestGenerateToken_StampsIssuerAndSubject(t *testing.T) {
+	svc := issuerJWTService("descholar")
+	token, err := svc.GenerateToken("user-1", "admin")
+	require.NoError(t, err)
+
+	claims, err := svc.ValidateToken(token)
+	require.NoError(t, err)
+	assert.Equal(t, "descholar", claims.Issuer)
+	// Subject as well as UserID, so a consumer reading either convention finds
+	// the identity.
+	assert.Equal(t, "user-1", claims.Subject)
+	assert.Equal(t, "user-1", claims.SubjectID())
+}
+
+func TestGenerateTokenWithRoles_RoundTrips(t *testing.T) {
+	svc := testJWTService()
+	token, err := svc.GenerateTokenWithRoles("user-1", "admin", []string{"facilitator", "learner"})
+	require.NoError(t, err)
+
+	claims, err := svc.ValidateToken(token)
+	require.NoError(t, err)
+	assert.Equal(t, "admin", claims.Role)
+	assert.Equal(t, []string{"facilitator", "learner"}, claims.Roles)
+	assert.True(t, claims.HasRole("learner"))
+}
+
+func TestValidateToken_RejectsNoneAlgorithm(t *testing.T) {
+	// alg=none is the classic JWT forgery: strip the signature and claim the
+	// token needs none. WithValidMethods pins HS256 before the keyfunc runs.
+	unsigned, err := jwt.NewWithClaims(jwt.SigningMethodNone, &Claims{UserID: "attacker"}).
+		SignedString(jwt.UnsafeAllowNoneSignatureType)
+	require.NoError(t, err)
+
+	_, err = testJWTService().ValidateToken(unsigned)
+	assert.Error(t, err)
+}
