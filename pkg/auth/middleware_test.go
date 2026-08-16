@@ -40,7 +40,7 @@ func TestJWTAuth_ValidToken(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	require.NotNil(t, gotClaims)
-	assert.Equal(t, "user-1", gotClaims.UserID)
+	assert.Equal(t, "user-1", gotClaims.SubjectID())
 	assert.Equal(t, "admin", gotClaims.Role)
 }
 
@@ -193,7 +193,7 @@ func TestJWTAuth_ResolvesAnOpaqueReferenceToItsToken(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	require.NotNil(t, gotClaims)
-	assert.Equal(t, "user-1", gotClaims.UserID)
+	assert.Equal(t, "user-1", gotClaims.SubjectID())
 	// The resolved token, not the handle — this is what gets forwarded onward.
 	assert.Equal(t, token, gotToken)
 }
@@ -286,7 +286,7 @@ func TestJWTAuth_HeaderWinsOverCookie(t *testing.T) {
 	handler.ServeHTTP(httptest.NewRecorder(), req)
 
 	require.NotNil(t, got)
-	assert.Equal(t, "from-header", got.UserID)
+	assert.Equal(t, "from-header", got.SubjectID())
 }
 
 func TestJWTAuth_NoCookieNamesConfiguredIgnoresCookies(t *testing.T) {
@@ -336,7 +336,7 @@ func TestOptionalJWTAuth_PassesAnonymousAndAuthenticatedAlike(t *testing.T) {
 	handler.ServeHTTP(rec, good)
 	assert.Equal(t, http.StatusOK, rec.Code)
 	require.NotNil(t, claims)
-	assert.Equal(t, "user-1", claims.UserID)
+	assert.Equal(t, "user-1", claims.SubjectID())
 }
 
 // ---------- GraphQLAuth ----------
@@ -436,7 +436,7 @@ func TestGraphQLAuth_PublicOperationStillAuthenticatesWhenItCan(t *testing.T) {
 	handler.ServeHTTP(httptest.NewRecorder(), req)
 
 	require.NotNil(t, claims)
-	assert.Equal(t, "user-1", claims.UserID)
+	assert.Equal(t, "user-1", claims.SubjectID())
 }
 
 func TestGraphQLAuth_ResolverAppliesToBothPaths(t *testing.T) {

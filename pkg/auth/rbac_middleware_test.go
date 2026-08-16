@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -25,19 +26,19 @@ func TestRequireRole(t *testing.T) {
 		{
 			name:           "allowed role",
 			allowedRoles:   []string{"admin", "editor"},
-			claims:         &Claims{UserID: "user-1", Role: "admin"},
+			claims:         &Claims{RegisteredClaims: jwt.RegisteredClaims{Subject: "user-1"}, Role: "admin"},
 			wantStatusCode: http.StatusOK,
 		},
 		{
 			name:           "second allowed role",
 			allowedRoles:   []string{"admin", "editor"},
-			claims:         &Claims{UserID: "user-2", Role: "editor"},
+			claims:         &Claims{RegisteredClaims: jwt.RegisteredClaims{Subject: "user-2"}, Role: "editor"},
 			wantStatusCode: http.StatusOK,
 		},
 		{
 			name:           "denied role",
 			allowedRoles:   []string{"admin"},
-			claims:         &Claims{UserID: "user-3", Role: "viewer"},
+			claims:         &Claims{RegisteredClaims: jwt.RegisteredClaims{Subject: "user-3"}, Role: "viewer"},
 			wantStatusCode: http.StatusForbidden,
 			wantError:      "insufficient permissions",
 		},
@@ -96,14 +97,14 @@ func TestRequirePermission(t *testing.T) {
 			name:           "allowed permission",
 			resource:       "/users",
 			action:         "read",
-			claims:         &Claims{UserID: "user-1", Role: "admin"},
+			claims:         &Claims{RegisteredClaims: jwt.RegisteredClaims{Subject: "user-1"}, Role: "admin"},
 			wantStatusCode: http.StatusOK,
 		},
 		{
 			name:           "denied permission - wrong role",
 			resource:       "/users",
 			action:         "write",
-			claims:         &Claims{UserID: "user-2", Role: "editor"},
+			claims:         &Claims{RegisteredClaims: jwt.RegisteredClaims{Subject: "user-2"}, Role: "editor"},
 			wantStatusCode: http.StatusForbidden,
 			wantError:      "permission denied",
 		},
@@ -111,7 +112,7 @@ func TestRequirePermission(t *testing.T) {
 			name:           "denied permission - unknown role",
 			resource:       "/users",
 			action:         "read",
-			claims:         &Claims{UserID: "user-3", Role: "viewer"},
+			claims:         &Claims{RegisteredClaims: jwt.RegisteredClaims{Subject: "user-3"}, Role: "viewer"},
 			wantStatusCode: http.StatusForbidden,
 			wantError:      "permission denied",
 		},
@@ -167,7 +168,7 @@ func TestRequirePermission_NextHandlerCalled(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/users", nil)
-	ctx := context.WithValue(req.Context(), ClaimsKey, &Claims{UserID: "user-1", Role: "admin"})
+	ctx := context.WithValue(req.Context(), ClaimsKey, &Claims{RegisteredClaims: jwt.RegisteredClaims{Subject: "user-1"}, Role: "admin"})
 	req = req.WithContext(ctx)
 
 	handler.ServeHTTP(rec, req)
@@ -191,7 +192,7 @@ func TestRequirePermission_NextHandlerNotCalledOnDenied(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/users", nil)
-	ctx := context.WithValue(req.Context(), ClaimsKey, &Claims{UserID: "user-2", Role: "viewer"})
+	ctx := context.WithValue(req.Context(), ClaimsKey, &Claims{RegisteredClaims: jwt.RegisteredClaims{Subject: "user-2"}, Role: "viewer"})
 	req = req.WithContext(ctx)
 
 	handler.ServeHTTP(rec, req)

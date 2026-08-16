@@ -12,12 +12,12 @@ import (
 // ---------- ClaimsFromContext ----------
 
 func TestClaimsFromContext_WithClaims(t *testing.T) {
-	claims := &Claims{UserID: "user-123", Role: "admin"}
+	claims := &Claims{RegisteredClaims: jwt.RegisteredClaims{Subject: "user-123"}, Role: "admin"}
 	ctx := context.WithValue(context.Background(), ClaimsKey, claims)
 
 	got, err := ClaimsFromContext(ctx)
 	require.NoError(t, err)
-	assert.Equal(t, "user-123", got.UserID)
+	assert.Equal(t, "user-123", got.SubjectID())
 	assert.Equal(t, "admin", got.Role)
 }
 
@@ -54,23 +54,19 @@ func TestClaimsKey_Value(t *testing.T) {
 
 // ---------- SubjectID ----------
 
-func TestSubjectID_PrefersUserIDThenFallsBackToSub(t *testing.T) {
-	// The failure this guards: an OIDC token carries the identity in `sub` and
-	// nothing in `user_id`. Code reading UserID directly records every such
-	// caller as anonymous, and an audit row loses the one field that names who
-	// acted.
+func TestSubjectID_ReadsTheRegisteredSubClaim(t *testing.T) {
+	// One storage, one accessor. `sub` is the registered claim every OAuth 2.0
+	// / OIDC issuer emits (RFC 7519 4.1.2); there is no second private claim to
+	// disagree with it.
 	tests := []struct {
 		name   string
 		claims *Claims
 		want   string
 	}{
-		{"own token", &Claims{UserID: "user-1"}, "user-1"},
-		{"oidc token", &Claims{RegisteredClaims: jwt.RegisteredClaims{Subject: "uuid-9"}}, "uuid-9"},
-		{"both, user_id wins", &Claims{
-			UserID:           "user-1",
-			RegisteredClaims: jwt.RegisteredClaims{Subject: "uuid-9"},
-		}, "user-1"},
-		{"neither", &Claims{}, ""},
+		{"oidc subject", &Claims{RegisteredClaims: jwt.RegisteredClaims{Subject: "uuid-9"}}, "uuid-9"},
+		{"client credentials subject", &Claims{RegisteredClaims: jwt.RegisteredClaims{Subject: "svc-client"}}, "svc-client"},
+		{"no subject", &Claims{}, ""},
+		// Nil-safe so an unauthenticated context yields "" rather than a panic.
 		{"nil claims", nil, ""},
 	}
 	for _, tt := range tests {

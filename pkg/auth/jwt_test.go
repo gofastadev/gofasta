@@ -64,7 +64,7 @@ func TestValidateToken_Valid(t *testing.T) {
 
 	claims, err := svc.ValidateToken(token)
 	require.NoError(t, err)
-	assert.Equal(t, "user-1", claims.UserID)
+	assert.Equal(t, "user-1", claims.SubjectID())
 	assert.Equal(t, "editor", claims.Role)
 	assert.NotNil(t, claims.ExpiresAt)
 	assert.NotNil(t, claims.IssuedAt)
@@ -123,7 +123,7 @@ func TestGenerateRefreshToken_Success(t *testing.T) {
 
 	claims, err := svc.ValidateToken(token)
 	require.NoError(t, err)
-	assert.Equal(t, "user-1", claims.UserID)
+	assert.Equal(t, "user-1", claims.SubjectID())
 	assert.Empty(t, claims.Role) // refresh tokens don't include role
 }
 
@@ -142,7 +142,7 @@ func TestRefreshToken_Success(t *testing.T) {
 	// Validate the new access token
 	claims, err := svc.ValidateToken(newAccessToken)
 	require.NoError(t, err)
-	assert.Equal(t, "user-1", claims.UserID)
+	assert.Equal(t, "user-1", claims.SubjectID())
 }
 
 func TestRefreshToken_InvalidRefreshToken(t *testing.T) {
@@ -173,8 +173,7 @@ func TestValidateToken_UnexpectedSigningMethod(t *testing.T) {
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
 		},
-		UserID: "user-1",
-		Role:   "admin",
+		Role: "admin",
 	})
 	tokenStr, err := token.SignedString(jwt.UnsafeAllowNoneSignatureType)
 	require.NoError(t, err)
@@ -194,7 +193,7 @@ func TestTokenRoundTrip(t *testing.T) {
 	// Validate it
 	claims, err := svc.ValidateToken(accessToken)
 	require.NoError(t, err)
-	assert.Equal(t, "user-42", claims.UserID)
+	assert.Equal(t, "user-42", claims.SubjectID())
 	assert.Equal(t, "moderator", claims.Role)
 
 	// Generate refresh token
@@ -208,7 +207,7 @@ func TestTokenRoundTrip(t *testing.T) {
 	// Validate the new access token
 	newClaims, err := svc.ValidateToken(newAccess)
 	require.NoError(t, err)
-	assert.Equal(t, "user-42", newClaims.UserID)
+	assert.Equal(t, "user-42", newClaims.SubjectID())
 }
 
 // ---------- issuer ----------
@@ -251,7 +250,7 @@ func TestValidateToken_NoIssuerConfiguredChecksNone(t *testing.T) {
 
 	claims, err := unset.ValidateToken(token)
 	require.NoError(t, err)
-	assert.Equal(t, "user-1", claims.UserID)
+	assert.Equal(t, "user-1", claims.SubjectID())
 }
 
 func TestGenerateToken_StampsIssuerAndSubject(t *testing.T) {
@@ -262,8 +261,6 @@ func TestGenerateToken_StampsIssuerAndSubject(t *testing.T) {
 	claims, err := svc.ValidateToken(token)
 	require.NoError(t, err)
 	assert.Equal(t, "descholar", claims.Issuer)
-	// Subject as well as UserID, so a consumer reading either convention finds
-	// the identity.
 	assert.Equal(t, "user-1", claims.Subject)
 	assert.Equal(t, "user-1", claims.SubjectID())
 }
@@ -283,7 +280,7 @@ func TestGenerateTokenWithRoles_RoundTrips(t *testing.T) {
 func TestValidateToken_RejectsNoneAlgorithm(t *testing.T) {
 	// alg=none is the classic JWT forgery: strip the signature and claim the
 	// token needs none. WithValidMethods pins HS256 before the keyfunc runs.
-	unsigned, err := jwt.NewWithClaims(jwt.SigningMethodNone, &Claims{UserID: "attacker"}).
+	unsigned, err := jwt.NewWithClaims(jwt.SigningMethodNone, &Claims{RegisteredClaims: jwt.RegisteredClaims{Subject: "attacker"}}).
 		SignedString(jwt.UnsafeAllowNoneSignatureType)
 	require.NoError(t, err)
 

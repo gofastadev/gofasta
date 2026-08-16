@@ -22,14 +22,20 @@ const (
 
 // Claims holds JWT token payload data.
 //
-// Two identity conventions are in the wild and both are supported. Tokens this
-// package issues carry the user id in `user_id`; tokens issued by an OAuth 2.0
-// / OIDC provider carry it in the registered `sub` claim. Read it through
-// [Claims.SubjectID] rather than either field, or half the tokens read as
-// anonymous.
+// The authenticated principal is the registered `sub` claim (RFC 7519 §4.1.2),
+// which is what every OAuth 2.0 / OIDC issuer emits and what the IANA JWT
+// claims registry reserves for the purpose. Read it through [Claims.SubjectID].
 //
-// Roles work the same way: a single `role`, or a `roles` array. [Claims.HasRole]
-// and friends look at both.
+// It is a *subject*, not necessarily a user: under the client-credentials grant
+// `sub` conventionally holds a client id. Code that assumes it names a row in a
+// users table is wrong for that grant.
+//
+// `sub` is unique within the issuer, not globally — the globally unique identity
+// is the pair (`iss`, `sub`). Accepting tokens from more than one issuer and
+// keying on `sub` alone lets two issuers' subjects collide into one identity.
+//
+// Roles come as a single `role` or a `roles` array; [Claims.HasRole] and friends
+// read both.
 //
 // Do not add fields that shadow a registered claim — an `Exp int64` with tag
 // `json:"exp"` wins the unmarshal over the embedded RegisteredClaims.ExpiresAt,
@@ -37,23 +43,18 @@ const (
 // validate clean and nothing reports it.
 type Claims struct {
 	jwt.RegisteredClaims
-	UserID string   `json:"user_id"`
-	Role   string   `json:"role"`
-	Roles  []string `json:"roles,omitempty"`
+	Role  string   `json:"role"`
+	Roles []string `json:"roles,omitempty"`
 }
 
-// SubjectID returns the authenticated user's identifier: UserID when the token
-// carries one, otherwise the registered `sub` claim.
+// SubjectID returns the authenticated principal — the registered `sub` claim —
+// or "" when the token names none.
 //
-// Anything recording *who* did something — an audit row, an ownership check —
-// must go through this. Reading UserID directly yields "" for every OIDC token
-// and the record silently loses its subject.
+// Anything recording *who* acted, or checking ownership, goes through this. It
+// is nil-safe so an unauthenticated context yields "" rather than a panic.
 func (c *Claims) SubjectID() string {
 	if c == nil {
 		return ""
-	}
-	if c.UserID != "" {
-		return c.UserID
 	}
 	return c.Subject
 }

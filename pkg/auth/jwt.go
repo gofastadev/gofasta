@@ -30,9 +30,12 @@ func NewJWTService(cfg *config.AuthConfig) *JWTService {
 // not configured to check one.
 func (s *JWTService) Issuer() string { return s.issuer }
 
-// GenerateToken creates a signed access token for a user.
-func (s *JWTService) GenerateToken(userID, role string) (string, error) {
-	return s.GenerateTokenWithRoles(userID, role, nil)
+// GenerateToken creates a signed access token for a subject.
+//
+// subject becomes the registered `sub` claim: a user id, or under the
+// client-credentials grant a client id.
+func (s *JWTService) GenerateToken(subject, role string) (string, error) {
+	return s.GenerateTokenWithRoles(subject, role, nil)
 }
 
 // GenerateTokenWithRoles creates a signed access token carrying several roles.
@@ -40,32 +43,30 @@ func (s *JWTService) GenerateToken(userID, role string) (string, error) {
 // role and roles are both stamped and both honored on the way back in, so a
 // service can grant a primary role and additional ones without the caller
 // having to know which field a given check reads.
-func (s *JWTService) GenerateTokenWithRoles(userID, role string, roles []string) (string, error) {
+func (s *JWTService) GenerateTokenWithRoles(subject, role string, roles []string) (string, error) {
 	claims := &Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(s.accessExpiry)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			Issuer:    s.issuer,
-			Subject:   userID,
+			Subject:   subject,
 		},
-		UserID: userID,
-		Role:   role,
-		Roles:  roles,
+		Role:  role,
+		Roles: roles,
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(s.secret)
 }
 
-// GenerateRefreshToken creates a long-lived refresh token.
-func (s *JWTService) GenerateRefreshToken(userID string) (string, error) {
+// GenerateRefreshToken creates a long-lived refresh token for a subject.
+func (s *JWTService) GenerateRefreshToken(subject string) (string, error) {
 	claims := &Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(s.refreshExpiry)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			Issuer:    s.issuer,
-			Subject:   userID,
+			Subject:   subject,
 		},
-		UserID: userID,
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(s.secret)
@@ -101,5 +102,5 @@ func (s *JWTService) RefreshToken(refreshTokenStr string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("invalid refresh token: %w", err)
 	}
-	return s.GenerateToken(claims.UserID, claims.Role)
+	return s.GenerateToken(claims.SubjectID(), claims.Role)
 }
