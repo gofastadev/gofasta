@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"reflect"
 	"strings"
@@ -424,10 +425,23 @@ func LoadConfig() (*AppConfig, error) {
 func LoadConfigWithPrefix(prefix string) (*AppConfig, error) {
 	k := koanf.New(".")
 
+	// config.yaml is resolved against the process working directory, and its
+	// absence is not an error — env vars alone are a valid configuration.
+	//
+	// It is logged, though. A binary started from the wrong directory loads
+	// none of the file's settings and reports success, so every value silently
+	// becomes its zero or its default: tracing off, log level back to the
+	// handler default, a metrics path that no longer matches the scrape
+	// config. One line at startup is the difference between noticing that on
+	// day one and noticing it during an incident.
 	if _, err := os.Stat("config.yaml"); err == nil {
 		if err := k.Load(file.Provider("config.yaml"), yaml.Parser()); err != nil {
 			return nil, err
 		}
+	} else {
+		wd, _ := os.Getwd()
+		slog.Info("no config.yaml found; using defaults and environment only",
+			"working_directory", wd, "env_prefix", prefix)
 	}
 
 	_ = k.Load(env.Provider(prefix, ".", func(s string) string {
