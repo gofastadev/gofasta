@@ -155,3 +155,59 @@ func TestTracingMiddlewareWith_NilLabellerFallsBackToPath(t *testing.T) {
 		t.Fatalf("got %d spans, first named %q", len(spans), spans[0].Name)
 	}
 }
+
+func TestTracingMiddlewareWith_RenamesOnceTheRouteIsKnown(t *testing.T) {
+	// The case this exists for: a router that records its matched pattern only
+	// while serving, so the labeller cannot answer on the way in. The span must
+	// still end up carrying the pattern rather than the raw path.
+	shutdown := InitTracer("discovery")
+	defer shutdown()
+
+	tp, ok := otel.GetTracerProvider().(*sdktrace.TracerProvider)
+	if !ok {
+		t.Fatal("global tracer provider is not an SDK provider")
+	}
+	exporter := tracetest.NewInMemoryExporter()
+	tp.RegisterSpanProcessor(sdktrace.NewSimpleSpanProcessor(exporter))
+
+	routed := false
+	mw := TracingMiddlewareWith("discovery", func(*http.Request) string {
+		if !routed {
+			return ""
+		}
+		return "/keys/{version}"
+	})
+	handler := mw(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { routed = true }))
+	handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/keys/7", nil))
+
+	spans := exporter.GetSpans()
+	if len(spans) != 1 {
+		t.Fatalf("exported %d spans, want 1", len(spans))
+	}
+	if spans[0].Name != "GET /keys/{version}" {
+		t.Errorf("span name = %q, want the pattern the router supplied after routing", spans[0].Name)
+	}
+}
+
+func TestTracingMiddlewareWith_KeepsThePathWhenNothingRoutes(t *testing.T) {
+	// An unmatched request never gets a pattern. Renaming to "" would leave a
+	// span called "GET ", which is worse than the path it started with.
+	shutdown := InitTracer("discovery")
+	defer shutdown()
+
+	tp, ok := otel.GetTracerProvider().(*sdktrace.TracerProvider)
+	if !ok {
+		t.Fatal("global tracer provider is not an SDK provider")
+	}
+	exporter := tracetest.NewInMemoryExporter()
+	tp.RegisterSpanProcessor(sdktrace.NewSimpleSpanProcessor(exporter))
+
+	mw := TracingMiddlewareWith("discovery", func(*http.Request) string { return "" })
+	mw(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {})).
+		ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/unmatched", nil))
+
+	spans := exporter.GetSpans()
+	if len(spans) != 1 || spans[0].Name != "GET /unmatched" {
+		t.Fatalf("got %d spans, first named %q; want GET /unmatched", len(spans), spans[0].Name)
+	}
+}
