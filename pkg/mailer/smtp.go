@@ -117,6 +117,13 @@ func (s *SMTPSender) Send(ctx context.Context, msg EmailMessage) error {
 	if len(msg.CC) > 0 {
 		sb.WriteString("CC: " + strings.Join(msg.CC, ", ") + "\r\n")
 	}
+	// Reply-To is what makes a no-reply sending address usable: mail goes out
+	// from the platform's address but a recipient's reply reaches a human. The
+	// API providers all honor EmailMessage.ReplyTo, so SMTP dropping it made
+	// the field mean different things per provider.
+	if msg.ReplyTo != "" {
+		sb.WriteString("Reply-To: " + msg.ReplyTo + "\r\n")
+	}
 	sb.WriteString("Subject: " + msg.Subject + "\r\n")
 	sb.WriteString("MIME-Version: 1.0\r\n")
 

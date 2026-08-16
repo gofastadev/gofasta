@@ -1072,3 +1072,66 @@ func TestSendersTolerateNilLogger(t *testing.T) {
 	_ = NewBrevoSender(config.BrevoConfig{}, "From", "from@example.com", nil, nil)
 	_ = NewSendGridSender(config.SendGridConfig{}, "From", "from@example.com", nil, nil)
 }
+
+// Reply-To is what makes a no-reply From usable: the platform sends, a human
+// receives the reply. Brevo, SendGrid and Resend all honor
+// EmailMessage.ReplyTo, so SMTP dropping it made one field mean two different
+// things depending on which provider a tenant had configured.
+//
+// These reuse smtpBodyFor / capturingSMTPServer from smtp_test.go so the
+// assertions are on the MIME document that actually went over the wire.
+
+func TestSMTPWritesReplyTo(t *testing.T) {
+	body := smtpBodyFor(t, EmailMessage{
+		To:       []string{"learner@example.com"},
+		Subject:  "Your certificate",
+		HTMLBody: "<p>Congratulations</p>",
+		ReplyTo:  "support@example.com",
+	})
+
+	if !strings.Contains(body, "Reply-To: support@example.com\r\n") {
+		t.Fatalf("Reply-To header missing from the wire payload:\n%s", body)
+	}
+}
+
+func TestSMTPOmitsEmptyReplyTo(t *testing.T) {
+	// An empty field must not produce a bare "Reply-To:" header — a malformed
+	// header is grounds for some receivers to reject the message outright.
+	body := smtpBodyFor(t, EmailMessage{
+		To:       []string{"learner@example.com"},
+		Subject:  "No reply address",
+		HTMLBody: "<p>Body</p>",
+	})
+
+	if strings.Contains(body, "Reply-To:") {
+		t.Fatalf("Reply-To header written with no address:\n%s", body)
+	}
+}
+
+func TestSMTPReplyToSitsWithTheOtherHeaders(t *testing.T) {
+	body := smtpBodyFor(t, EmailMessage{
+		To:       []string{"learner@example.com"},
+		CC:       []string{"facilitator@example.com"},
+		Subject:  "Ordering check",
+		HTMLBody: "<p>Body</p>",
+		ReplyTo:  "support@example.com",
+	})
+
+	for _, header := range []string{
+		"To: learner@example.com",
+		"CC: facilitator@example.com",
+		"Reply-To: support@example.com",
+		"Subject: Ordering check",
+		"MIME-Version: 1.0",
+	} {
+		if !strings.Contains(body, header+"\r\n") {
+			t.Errorf("missing header %q in:\n%s", header, body)
+		}
+	}
+
+	// Headers precede the body — a misplaced write would land Reply-To inside
+	// the message text, where it is inert.
+	if strings.Index(body, "Reply-To:") > strings.Index(body, "<p>Body</p>") {
+		t.Error("Reply-To was written after the message body")
+	}
+}

@@ -59,13 +59,21 @@ func TracingMiddleware(serviceName string) func(http.Handler) http.Handler {
 // TracingMiddlewareWith creates the same spans, naming them from the supplied
 // labeller instead of the request path.
 //
-// The labeller is called before the handler runs, because a span has to be
-// named when it starts. That rules out a router that only records its matched
-// route while serving; supply a labeller that can answer from the request
-// alone, or accept the path-named default.
+// The labeller is consulted twice, because the routers this exists for record
+// their matched route only while serving. It runs once before the handler, so
+// a span that never completes still carries the best name available; then
+// again after, renaming the span if the router has since supplied a pattern.
+// Renaming a span before End is explicitly allowed by the OTel spec and is how
+// `http.route` gets onto a span at all.
 //
-// A labeller that returns "" falls back to the literal path, so an unmatched
-// request still produces a span with something readable in it.
+// With chi that means:
+//
+//	observability.TracingMiddlewareWith(name, func(r *http.Request) string {
+//	    return chi.RouteContext(r.Context()).RoutePattern()
+//	})
+//
+// A labeller that returns "" at both points leaves the span named after the
+// literal path, which is the right answer for a request that matched no route.
 func TracingMiddlewareWith(serviceName string, label PathLabeller) func(http.Handler) http.Handler {
 	if label == nil {
 		label = rawPath
@@ -83,7 +91,15 @@ func TracingMiddlewareWith(serviceName string, label PathLabeller) func(http.Han
 			ctx, span := tracer.Start(ctx, r.Method+" "+name, trace.WithSpanKind(trace.SpanKindServer))
 			defer span.End()
 
-			next.ServeHTTP(w, r.WithContext(ctx))
+			r = r.WithContext(ctx)
+			next.ServeHTTP(w, r)
+
+			// The router has routed by now. Rename only on a real improvement:
+			// a labeller that still answers "" must not overwrite the path
+			// name with nothing.
+			if routed := label(r); routed != "" && routed != name {
+				span.SetName(r.Method + " " + routed)
+			}
 		})
 	}
 }
