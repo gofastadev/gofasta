@@ -290,3 +290,123 @@ func TestRateLimitWith_NoKeyFuncKeepsTheIPDefault(t *testing.T) {
 		t.Errorf("second request from one IP = %d, want 429", got)
 	}
 }
+
+// testClientAddr is the one client every prefix test counts against; keeping it
+// fixed is what makes "two services, two counters" mean something.
+const testClientAddr = "203.0.113.10:1234"
+
+// serveOnce drives one request through the middleware, which is what makes the
+// limiter touch its store.
+func serveOnce(t *testing.T, m Middleware) {
+	t.Helper()
+	called := false
+	h := m(http.HandlerFunc(func(http.ResponseWriter, *http.Request) { called = true }))
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	req.RemoteAddr = testClientAddr
+	h.ServeHTTP(httptest.NewRecorder(), req)
+	require.True(t, called, "the request never reached the handler")
+}
+
+// This is the failure the Prefix option exists to prevent, and it is invisible
+// from inside any one service: three services sharing a Redis and no prefix
+// count into the same keys, so each enforces roughly a third of its configured
+// limit — and the users being throttled are being throttled by traffic to a
+// service they never called.
+func TestNewRateLimitWith_PrefixNamespacesTheCounterKeys(t *testing.T) {
+	mr := miniredis.RunT(t)
+	host, port, err := net.SplitHostPort(mr.Addr())
+	require.NoError(t, err)
+
+	m, err := NewRateLimitWith(config.RateLimitConfig{
+		Rate:  "100-S",
+		Store: "redis",
+		Redis: config.RedisConfig{Host: host, Port: port},
+	}, RateLimitOptions{Prefix: "ratelimit:orders:graphql"})
+	require.NoError(t, err)
+	require.NotNil(t, m)
+
+	serveOnce(t, m)
+
+	keys := mr.Keys()
+	require.NotEmpty(t, keys, "rate limit state should be held in redis")
+	for _, key := range keys {
+		assert.True(t, strings.HasPrefix(key, "ratelimit:orders:graphql"),
+			"key %q is outside this service's namespace", key)
+	}
+}
+
+// The other half of the pair, and it records a discrepancy rather than the
+// documented behavior: RateLimitOptions.Prefix says it "defaults to the
+// limiter library's shared prefix", but NewRateLimitWith builds the redis store
+// through limiter's NewStoreWithOptions, which takes options.Prefix verbatim
+// and applies no default of its own — only NewStore fills in
+// limiter.DefaultPrefix. An unset Prefix therefore writes counters at the root
+// of the keyspace as ":<client>", not under "limiter:".
+//
+// Two consequences, neither of which changes whether limiting works:
+//
+//   - The memory store still uses "limiter", so the two backends disagree about
+//     where a counter lives. Switching cfg.Store resets every counter.
+//   - The same zero-value StoreOptions also passes MaxRetry: 0 instead of
+//     limiter.DefaultMaxRetry (3), so the redis store stops retrying a key
+//     under contention.
+//
+// Left as-is because fixing it moves live counter keys; see the note in the
+// review notes rather than treating this test as an endorsement.
+func TestNewRateLimitWith_NoPrefixWritesAtTheKeyspaceRoot(t *testing.T) {
+	mr := miniredis.RunT(t)
+	host, port, err := net.SplitHostPort(mr.Addr())
+	require.NoError(t, err)
+
+	m, err := NewRateLimitWith(config.RateLimitConfig{
+		Rate:  "100-S",
+		Store: "redis",
+		Redis: config.RedisConfig{Host: host, Port: port},
+	}, RateLimitOptions{})
+	require.NoError(t, err)
+
+	serveOnce(t, m)
+
+	keys := mr.Keys()
+	require.NotEmpty(t, keys)
+	for _, key := range keys {
+		assert.True(t, strings.HasPrefix(key, ":"),
+			"key %q — if this now starts with %q the default was fixed, and this test should say so",
+			key, "limiter")
+	}
+}
+
+// Two services on one Redis, counting separately. Without the prefix these
+// would be the same key for the same client, and the second service's traffic
+// would spend the first service's budget.
+func TestNewRateLimitWith_DifferentPrefixesDoNotShareCounters(t *testing.T) {
+	mr := miniredis.RunT(t)
+	host, port, err := net.SplitHostPort(mr.Addr())
+	require.NoError(t, err)
+
+	cfg := config.RateLimitConfig{
+		Rate:  "100-S",
+		Store: "redis",
+		Redis: config.RedisConfig{Host: host, Port: port},
+	}
+
+	orders, err := NewRateLimitWith(cfg, RateLimitOptions{Prefix: "ratelimit:orders"})
+	require.NoError(t, err)
+	billing, err := NewRateLimitWith(cfg, RateLimitOptions{Prefix: "ratelimit:billing"})
+	require.NoError(t, err)
+
+	serveOnce(t, orders)
+	serveOnce(t, billing)
+
+	var sawOrders, sawBilling bool
+	for _, key := range mr.Keys() {
+		switch {
+		case strings.HasPrefix(key, "ratelimit:orders"):
+			sawOrders = true
+		case strings.HasPrefix(key, "ratelimit:billing"):
+			sawBilling = true
+		}
+	}
+	assert.True(t, sawOrders && sawBilling,
+		"the same client from two services must produce two counters, got keys %v", mr.Keys())
+}
