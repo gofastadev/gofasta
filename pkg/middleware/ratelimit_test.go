@@ -237,3 +237,56 @@ func readRESPLine(r *bufio.Reader) (string, error) {
 	}
 	return strings.TrimRight(line, "\r\n"), nil
 }
+
+func TestRateLimitWith_KeyFuncDecidesWhatIsCounted(t *testing.T) {
+	// The default counts per client IP. A service that wants per-user limits
+	// had no way to say so, which meant one office behind a NAT could exhaust
+	// a limit meant for an individual.
+	mwFn := RateLimitWith(config.RateLimitConfig{Rate: "2-S"}, RateLimitOptions{
+		KeyFunc: func(r *http.Request) string { return r.Header.Get("X-User") },
+	})
+	h := mwFn(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	call := func(user string) int {
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.Header.Set("X-User", user)
+		req.RemoteAddr = "10.0.0.1:1234" // identical IP for both users
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		return rec.Code
+	}
+
+	// Exhaust ada's allowance.
+	call("ada")
+	call("ada")
+	if got := call("ada"); got != http.StatusTooManyRequests {
+		t.Errorf("third request for ada = %d, want 429", got)
+	}
+
+	// grace shares the IP but not the key, so she is unaffected.
+	if got := call("grace"); got != http.StatusOK {
+		t.Errorf("first request for grace = %d, want 200 — the key is the IP, not the user", got)
+	}
+}
+
+func TestRateLimitWith_NoKeyFuncKeepsTheIPDefault(t *testing.T) {
+	mwFn := RateLimitWith(config.RateLimitConfig{Rate: "1-S"}, RateLimitOptions{})
+	h := mwFn(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+
+	call := func() int {
+		req := httptest.NewRequest(http.MethodGet, "/", nil)
+		req.RemoteAddr = "10.0.0.9:1234"
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, req)
+		return rec.Code
+	}
+
+	call()
+	if got := call(); got != http.StatusTooManyRequests {
+		t.Errorf("second request from one IP = %d, want 429", got)
+	}
+}
