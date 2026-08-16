@@ -41,7 +41,7 @@ type resendRequest struct {
 }
 
 // NewResendSender returns a Resend-backed EmailSender.
-func NewResendSender(cfg config.ResendConfig, fromName, fromAddress string, renderer *TemplateRenderer, logger *slog.Logger) *ResendSender {
+func NewResendSender(cfg config.ResendConfig, fromName, fromAddress string, renderer *TemplateRenderer, logger *slog.Logger, opts ...SenderOption) *ResendSender {
 	from := fromAddress
 	if fromName != "" {
 		from = fmt.Sprintf("%s <%s>", fromName, fromAddress)
@@ -51,7 +51,7 @@ func NewResendSender(cfg config.ResendConfig, fromName, fromAddress string, rend
 		from:     from,
 		renderer: renderer,
 		logger:   loggerOrDefault(logger),
-		client:   &http.Client{},
+		client:   resolveSenderOptions(opts).httpClient,
 	}
 }
 
