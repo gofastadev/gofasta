@@ -17,7 +17,9 @@ func NewEmailSender(cfg *config.EmailConfig, renderer *TemplateRenderer, logger 
 		return NewSendGridSender(cfg.SendGrid, cfg.FromName, cfg.FromAddress, renderer, logger), nil
 	case "brevo":
 		return NewBrevoSender(cfg.Brevo, cfg.FromName, cfg.FromAddress, renderer, logger), nil
+	case "resend":
+		return NewResendSender(cfg.Resend, cfg.FromName, cfg.FromAddress, renderer, logger), nil
 	default:
-		return nil, fmt.Errorf("unknown email provider: %q (supported: smtp, sendgrid, brevo)", cfg.Provider)
+		return nil, fmt.Errorf("unknown email provider: %q (supported: smtp, sendgrid, brevo, resend)", cfg.Provider)
 	}
 }

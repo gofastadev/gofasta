@@ -1,11 +1,7 @@
 package mailer
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
-	"fmt"
-	"io"
 	"log/slog"
 	"net/http"
 
@@ -77,25 +73,13 @@ func (b *BrevoSender) Send(ctx context.Context, msg EmailMessage) error {
 		reqBody.ReplyTo = &brevoContact{Email: msg.ReplyTo}
 	}
 
-	jsonBody, _ := json.Marshal(reqBody)
-
-	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, brevoAPIURL, bytes.NewReader(jsonBody))
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("api-key", b.cfg.APIKey)
-
-	resp, err := b.client.Do(req)
-	if err != nil {
-		return fmt.Errorf("brevo send: %w", err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode >= 400 {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("brevo error: status %d, body: %s", resp.StatusCode, string(body))
+	if _, err := postJSON(ctx, b.client, "brevo", brevoAPIURL, map[string]string{
+		"api-key": b.cfg.APIKey,
+	}, reqBody); err != nil {
+		return err
 	}
 
-	b.logger.Info("email sent via Brevo", "to", msg.To, "subject", msg.Subject, "status", resp.StatusCode)
+	b.logger.Info("email sent via Brevo", "to", msg.To, "subject", msg.Subject)
 	return nil
 }
 

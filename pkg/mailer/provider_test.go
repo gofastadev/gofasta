@@ -75,3 +75,22 @@ func TestNewEmailSender_Unknown(t *testing.T) {
 		t.Fatal("expected error for unknown provider")
 	}
 }
+
+func TestNewEmailSender_Resend(t *testing.T) {
+	cfg := &config.EmailConfig{
+		Provider:    "resend",
+		FromName:    "Test",
+		FromAddress: "test@example.com",
+		Resend:      config.ResendConfig{APIKey: "test-key"},
+	}
+	renderer := NewTemplateRenderer(t.TempDir(), "App")
+	logger := slog.Default()
+
+	sender, err := NewEmailSender(cfg, renderer, logger)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if _, ok := sender.(*ResendSender); !ok {
+		t.Errorf("expected *ResendSender, got %T", sender)
+	}
+}
