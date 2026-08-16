@@ -15,6 +15,7 @@ import (
 	"github.com/gofastadev/gofasta/pkg/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/ulule/limiter/v3"
 )
 
 func TestRateLimit_AllowsRequests(t *testing.T) {
@@ -335,25 +336,15 @@ func TestNewRateLimitWith_PrefixNamespacesTheCounterKeys(t *testing.T) {
 	}
 }
 
-// The other half of the pair, and it records a discrepancy rather than the
-// documented behavior: RateLimitOptions.Prefix says it "defaults to the
-// limiter library's shared prefix", but NewRateLimitWith builds the redis store
-// through limiter's NewStoreWithOptions, which takes options.Prefix verbatim
-// and applies no default of its own — only NewStore fills in
-// limiter.DefaultPrefix. An unset Prefix therefore writes counters at the root
-// of the keyspace as ":<client>", not under "limiter:".
-//
-// Two consequences, neither of which changes whether limiting works:
-//
-//   - The memory store still uses "limiter", so the two backends disagree about
-//     where a counter lives. Switching cfg.Store resets every counter.
-//   - The same zero-value StoreOptions also passes MaxRetry: 0 instead of
-//     limiter.DefaultMaxRetry (3), so the redis store stops retrying a key
-//     under contention.
-//
-// Left as-is because fixing it moves live counter keys; see the note in the
-// review notes rather than treating this test as an endorsement.
-func TestNewRateLimitWith_NoPrefixWritesAtTheKeyspaceRoot(t *testing.T) {
+// The other half of the pair, and the regression test for a defect this file
+// found: NewRateLimitWith builds the redis store through limiter's
+// NewStoreWithOptions, which takes the StoreOptions fields verbatim — only
+// NewStore fills in the library defaults. Passing a zero value therefore wrote
+// counters at the root of the keyspace as ":<client>" rather than under
+// "limiter:", contradicting what RateLimitOptions.Prefix documents and
+// disagreeing with the memory store, which does use "limiter:". Switching
+// cfg.Store then silently reset every counter.
+func TestNewRateLimitWith_NoPrefixUsesTheLibraryDefault(t *testing.T) {
 	mr := miniredis.RunT(t)
 	host, port, err := net.SplitHostPort(mr.Addr())
 	require.NoError(t, err)
@@ -370,10 +361,33 @@ func TestNewRateLimitWith_NoPrefixWritesAtTheKeyspaceRoot(t *testing.T) {
 	keys := mr.Keys()
 	require.NotEmpty(t, keys)
 	for _, key := range keys {
-		assert.True(t, strings.HasPrefix(key, ":"),
-			"key %q — if this now starts with %q the default was fixed, and this test should say so",
-			key, "limiter")
+		assert.True(t, strings.HasPrefix(key, limiter.DefaultPrefix+":"),
+			"key %q is not under the library's default prefix", key)
 	}
+}
+
+// The prefix is visible in the keyspace, so the tests above can see it. The
+// other two fields are not: MaxRetry only shows up as occasional lost
+// increments when two requests race on one key, and CleanUpInterval not at all
+// on this store. They are asserted here, where the options are built.
+func TestRedisStoreOptions_StartFromTheLibraryDefaults(t *testing.T) {
+	got := redisStoreOptions(RateLimitOptions{})
+
+	assert.Equal(t, limiter.DefaultPrefix, got.Prefix,
+		"an unset prefix must not put counters at the root of the keyspace")
+	assert.Equal(t, limiter.DefaultMaxRetry, got.MaxRetry,
+		"MaxRetry 0 drops the retry the store performs under contention")
+	assert.Equal(t, limiter.DefaultCleanUpInterval, got.CleanUpInterval)
+}
+
+func TestRedisStoreOptions_PrefixOverridesOnlyThePrefix(t *testing.T) {
+	// The override must not take the other defaults down with it, which is what
+	// building the struct fresh around opts.Prefix would do.
+	got := redisStoreOptions(RateLimitOptions{Prefix: "ratelimit:orders:graphql"})
+
+	assert.Equal(t, "ratelimit:orders:graphql", got.Prefix)
+	assert.Equal(t, limiter.DefaultMaxRetry, got.MaxRetry)
+	assert.Equal(t, limiter.DefaultCleanUpInterval, got.CleanUpInterval)
 }
 
 // Two services on one Redis, counting separately. Without the prefix these

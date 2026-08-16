@@ -95,16 +95,38 @@ func NewRateLimitWith(cfg config.RateLimitConfig, opts RateLimitOptions) (Middle
 		return nil, fmt.Errorf("rate limit redis store unreachable at %s:%s: %w", cfg.Redis.Host, cfg.Redis.Port, err)
 	}
 
-	storeOpts := limiter.StoreOptions{}
-	if opts.Prefix != "" {
-		storeOpts.Prefix = opts.Prefix
-	}
-	store, err := redisstore.NewStoreWithOptions(client, storeOpts)
+	store, err := redisstore.NewStoreWithOptions(client, redisStoreOptions(opts))
 	if err != nil {
 		_ = client.Close()
 		return nil, fmt.Errorf("building redis rate limit store: %w", err)
 	}
 	return rateLimitWithStore(store, cfg.Rate, opts), nil
+}
+
+// redisStoreOptions builds the limiter store options, starting from the
+// library's own defaults.
+//
+// Seeding them is load-bearing rather than tidy. redisstore.NewStoreWithOptions
+// copies these fields verbatim — only limiter's NewStore constructor fills them
+// in — so a zero value would:
+//
+//   - write counters at the root of the keyspace as ":<client>" rather than
+//     under "limiter:", contradicting what RateLimitOptions.Prefix documents and
+//     disagreeing with the memory store, so that switching cfg.Store silently
+//     resets every counter; and
+//   - set MaxRetry to 0, dropping the retry the store performs when two
+//     requests race on the same key, which shows up only as occasional lost
+//     increments under load.
+func redisStoreOptions(opts RateLimitOptions) limiter.StoreOptions {
+	storeOpts := limiter.StoreOptions{
+		Prefix:          limiter.DefaultPrefix,
+		CleanUpInterval: limiter.DefaultCleanUpInterval,
+		MaxRetry:        limiter.DefaultMaxRetry,
+	}
+	if opts.Prefix != "" {
+		storeOpts.Prefix = opts.Prefix
+	}
+	return storeOpts
 }
 
 // rateLimitWithStore wires a limiter store into the stdlib middleware. The rate
