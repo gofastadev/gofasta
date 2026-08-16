@@ -12,8 +12,18 @@ import (
 	"net/smtp"
 	"net/textproto"
 	"strings"
+	"time"
 
 	"github.com/gofastadev/gofasta/pkg/config"
+)
+
+// Bounds on the SMTP conversation, applied when the caller's context carries
+// no deadline of its own. Generous enough for a large attachment over a slow
+// link, short enough that a stalled server is a failed send rather than a
+// goroutine held for the life of the process.
+const (
+	defaultDialTimeout = 15 * time.Second
+	defaultSendTimeout = 60 * time.Second
 )
 
 // SMTPSender sends emails via SMTP with optional STARTTLS.
@@ -47,22 +57,43 @@ func (s *SMTPSender) Send(ctx context.Context, msg EmailMessage) error {
 
 	addr := net.JoinHostPort(s.cfg.Host, fmt.Sprintf("%d", s.cfg.Port))
 
+	// The dial honors the caller's context and, failing that, a bounded
+	// default. net.Dial has no deadline of its own, so a server that accepted
+	// the connection and then went quiet used to hold the calling goroutine
+	// for the life of the process — the same defect the HTTP senders had.
+	dialCtx, cancel := context.WithTimeout(ctx, defaultDialTimeout)
+	defer cancel()
+
 	var conn net.Conn
+	dialer := &net.Dialer{}
 	if s.cfg.UseTLS {
-		tlsConn, err := tls.Dial("tcp", addr, &tls.Config{
-			ServerName:         s.cfg.Host,
-			InsecureSkipVerify: s.cfg.InsecureSkipVerify,
-		})
+		tlsConn, err := (&tls.Dialer{
+			NetDialer: dialer,
+			Config: &tls.Config{
+				ServerName:         s.cfg.Host,
+				InsecureSkipVerify: s.cfg.InsecureSkipVerify,
+			},
+		}).DialContext(dialCtx, "tcp", addr)
 		if err != nil {
 			return fmt.Errorf("smtp tls dial: %w", err)
 		}
 		conn = tlsConn
 	} else {
-		plainConn, err := net.Dial("tcp", addr)
+		plainConn, err := dialer.DialContext(dialCtx, "tcp", addr)
 		if err != nil {
 			return fmt.Errorf("smtp dial: %w", err)
 		}
 		conn = plainConn
+	}
+
+	// The conversation that follows is not context-aware — net/smtp predates
+	// context — so the deadline is put on the connection directly. Without it
+	// a server that completes the handshake and then stalls mid-DATA is the
+	// same leak one step later.
+	if deadline, ok := ctx.Deadline(); ok {
+		_ = conn.SetDeadline(deadline)
+	} else {
+		_ = conn.SetDeadline(time.Now().Add(defaultSendTimeout))
 	}
 
 	client, err := smtp.NewClient(conn, s.cfg.Host)

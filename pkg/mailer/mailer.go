@@ -32,6 +32,12 @@ type EmailMessage struct {
 }
 
 // Attachment represents an email file attachment.
+//
+// Content is the file's raw bytes, package-wide. Each sender applies whatever
+// encoding its transport needs — base64 for the JSON APIs, a base64 MIME part
+// for SMTP — so a caller never pre-encodes. A sender that forwards these bytes
+// unencoded to an API expecting base64 produces a request the API accepts and
+// a file the recipient cannot open, with success reported either way.
 type Attachment struct {
 	Filename    string
 	Content     []byte

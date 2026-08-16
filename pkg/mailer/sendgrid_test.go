@@ -3,8 +3,11 @@ package mailer
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
+	"io"
 	"log/slog"
+	"net/http"
 	"strings"
 	"testing"
 
@@ -318,5 +321,56 @@ func TestSendGridSender_Send_TextBodyListedBeforeHTML(t *testing.T) {
 	}
 	if capturedEmail.Content[1].Type != "text/html" || capturedEmail.Content[1].Value != "<p>Hello</p>" {
 		t.Errorf("second content part = %q %q, want text/html %q", capturedEmail.Content[1].Type, capturedEmail.Content[1].Value, "<p>Hello</p>")
+	}
+}
+
+func TestSendGridSender_Send_AttachmentContentIsBase64(t *testing.T) {
+	// SendGrid requires attachment content base64-encoded. Sending raw bytes
+	// produced a request the API accepted and a file the recipient could not
+	// open, with success reported either way.
+	var captured []byte
+	transport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		captured, _ = io.ReadAll(req.Body)
+		return &http.Response{
+			StatusCode: 202,
+			Body:       io.NopCloser(strings.NewReader(`{}`)),
+			Header:     make(http.Header),
+		}, nil
+	})
+
+	s := NewSendGridSender(config.SendGridConfig{APIKey: "k"}, "From", "from@example.com",
+		nil, slog.Default(), WithHTTPClient(&http.Client{Transport: transport}))
+
+	pdf := []byte("%PDF-1.4 binary\x00\xff bytes")
+	if err := s.Send(context.Background(), EmailMessage{
+		To:       []string{"to@example.com"},
+		Subject:  "cert",
+		HTMLBody: "<p>hi</p>",
+		Attachments: []Attachment{
+			{Filename: "certificate.pdf", Content: pdf, ContentType: "application/pdf"},
+		},
+	}); err != nil {
+		t.Fatalf("Send: %v", err)
+	}
+
+	var body struct {
+		Attachments []struct {
+			Content  string `json:"content"`
+			Filename string `json:"filename"`
+		} `json:"attachments"`
+	}
+	if err := json.Unmarshal(captured, &body); err != nil {
+		t.Fatalf("payload is not JSON: %v\n%s", err, captured)
+	}
+	if len(body.Attachments) != 1 {
+		t.Fatalf("attachment count = %d, want 1", len(body.Attachments))
+	}
+
+	decoded, err := base64.StdEncoding.DecodeString(body.Attachments[0].Content)
+	if err != nil {
+		t.Fatalf("attachment content is not base64: %v (%q)", err, body.Attachments[0].Content)
+	}
+	if string(decoded) != string(pdf) {
+		t.Errorf("decoded attachment = %q, want the original bytes", decoded)
 	}
 }

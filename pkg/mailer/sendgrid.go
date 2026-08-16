@@ -2,6 +2,7 @@ package mailer
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"log/slog"
 
@@ -99,7 +100,11 @@ func (s *SendGridSender) Send(ctx context.Context, msg EmailMessage) error {
 		a := mail.NewAttachment()
 		a.SetFilename(att.Filename)
 		a.SetType(att.ContentType)
-		a.SetContent(string(att.Content))
+		// SendGrid requires attachment content base64-encoded. Passing the raw
+		// bytes produced a request the API accepted and a file the recipient
+		// could not open — the send reported success either way, so the only
+		// symptom was a corrupt attachment.
+		a.SetContent(base64.StdEncoding.EncodeToString(att.Content))
 		m.AddAttachment(a)
 	}
 
