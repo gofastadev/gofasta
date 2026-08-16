@@ -1,10 +1,12 @@
 package auth
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/casbin/casbin/v2/model"
 	"github.com/gofastadev/gofasta/pkg/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -438,4 +440,217 @@ func TestRemoveRoleForUserInDomain_RevokesAccess(t *testing.T) {
 	allowed, err = svc.EnforceInDomain("alice", "inst-a", "/courses/intro", "create")
 	require.NoError(t, err)
 	assert.False(t, allowed, "revoking the role did not revoke the access")
+}
+
+// ---------- construction failures ----------
+
+// flakyAdapter loads successfully the first time and fails afterwards, which is
+// what an adapter whose database goes away between startup and the first reload
+// looks like. Casbin loads once inside NewSyncedEnforcer, so a stub that always
+// failed would never get past construction.
+type flakyAdapter struct {
+	loads int
+	err   error
+}
+
+func (a *flakyAdapter) LoadPolicy(model.Model) error {
+	a.loads++
+	if a.loads > 1 {
+		return a.err
+	}
+	return nil
+}
+func (a *flakyAdapter) SavePolicy(model.Model) error               { return nil }
+func (a *flakyAdapter) AddPolicy(_, _ string, _ []string) error    { return nil }
+func (a *flakyAdapter) RemovePolicy(_, _ string, _ []string) error { return nil }
+func (a *flakyAdapter) RemoveFilteredPolicy(_, _ string, _ int, _ ...string) error {
+	return nil
+}
+
+// refusingWatcher fails to attach, the way a watcher whose Redis is unreachable
+// at the moment the enforcer is built does.
+type refusingWatcher struct{ err error }
+
+func (w refusingWatcher) SetUpdateCallback(func(string)) error { return w.err }
+func (w refusingWatcher) Update() error                        { return nil }
+func (w refusingWatcher) Close()                               {}
+
+func TestNewRBACServiceWithAdapter_RejectsAnUnreadableModel(t *testing.T) {
+	svc, err := NewRBACServiceWithAdapter(
+		filepath.Join(t.TempDir(), "absent_model.conf"), newSQLiteAdapter(t))
+
+	require.Error(t, err)
+	assert.Nil(t, svc)
+	assert.Contains(t, err.Error(), "enforcer init")
+}
+
+func TestNewRBACServiceWithAdapter_AWatcherThatCannotAttachIsFatal(t *testing.T) {
+	// Deliberately not survivable. A watcher that failed to attach leaves this
+	// replica enforcing a policy that silently stops tracking reality, and the
+	// only symptom is an authorization decision that disagrees with every other
+	// replica — the failure mode a watcher exists to prevent.
+	svc, err := NewRBACServiceWithAdapter(
+		writeDomainModel(t),
+		newSQLiteAdapter(t),
+		WithWatcher(refusingWatcher{err: errors.New("dial redis: connection refused")}),
+	)
+
+	require.Error(t, err)
+	assert.Nil(t, svc)
+	assert.Contains(t, err.Error(), "attaching watcher")
+	assert.Contains(t, err.Error(), "connection refused", "the cause must survive")
+}
+
+func TestNewRBACServiceWithAdapter_ReportsAFailedPolicyLoad(t *testing.T) {
+	svc, err := NewRBACServiceWithAdapter(
+		writeDomainModel(t),
+		&flakyAdapter{err: errors.New("policy table vanished")},
+	)
+
+	require.Error(t, err)
+	assert.Nil(t, svc)
+	assert.Contains(t, err.Error(), "loading policy")
+}
+
+func TestNewRBACServiceWithAdapter_IgnoresANilOption(t *testing.T) {
+	// Options are commonly built into a slice by a caller that appends
+	// conditionally; a nil left in it must not take the process down.
+	svc, err := NewRBACServiceWithAdapter(writeDomainModel(t), newSQLiteAdapter(t), nil)
+
+	require.NoError(t, err)
+	assert.NotNil(t, svc)
+}
+
+// ---------- Enforcer ----------
+
+func TestEnforcer_ExposesTheUnderlyingEnforcer(t *testing.T) {
+	// The escape hatch for the Casbin operations this wrapper does not cover.
+	// It must be the same enforcer, not a copy: a policy added through the
+	// wrapper has to be visible through the handle it hands out.
+	svc := domainFixture(t)
+
+	enforcer := svc.Enforcer()
+	require.NotNil(t, enforcer)
+
+	_, err := svc.AddPolicyInDomain("auditor", "inst-a", "/reports", "read", EffectAllow)
+	require.NoError(t, err)
+
+	allowed, err := enforcer.Enforce("auditor", "inst-a", "/reports", "read")
+	require.NoError(t, err)
+	assert.True(t, allowed, "the wrapper and the exposed enforcer disagree")
+}
+
+// ---------- RemovePolicyInDomain ----------
+
+func TestRemovePolicyInDomain_RevokesTheGrant(t *testing.T) {
+	svc := domainFixture(t)
+
+	_, err := svc.AddRoleForUserInDomain("mara", "auditor", "inst-a")
+	require.NoError(t, err)
+	_, err = svc.AddPolicyInDomain("auditor", "inst-a", "/reports", "read", EffectAllow)
+	require.NoError(t, err)
+
+	allowed, err := svc.EnforceInDomain("mara", "inst-a", "/reports", "read")
+	require.NoError(t, err)
+	require.True(t, allowed, "the fixture never granted the permission")
+
+	removed, err := svc.RemovePolicyInDomain("auditor", "inst-a", "/reports", "read", EffectAllow)
+	require.NoError(t, err)
+	assert.True(t, removed)
+
+	allowed, err = svc.EnforceInDomain("mara", "inst-a", "/reports", "read")
+	require.NoError(t, err)
+	assert.False(t, allowed, "the permission survived its removal")
+}
+
+func TestRemovePolicyInDomain_MustMatchTheStoredRuleExactly(t *testing.T) {
+	// Including the effect. A rule stored with one and removed without it is a
+	// different rule. Casbin reports that as (false, nil) rather than an error,
+	// so a caller that only checks err believes access was revoked when the
+	// grant is still there — the returned bool is the only signal.
+	svc := domainFixture(t)
+
+	_, err := svc.AddRoleForUserInDomain("mara", "auditor", "inst-a")
+	require.NoError(t, err)
+	_, err = svc.AddPolicyInDomain("auditor", "inst-a", "/reports", "read", EffectAllow)
+	require.NoError(t, err)
+
+	removed, err := svc.RemovePolicyInDomain("auditor", "inst-a", "/reports", "read")
+
+	require.NoError(t, err)
+	assert.False(t, removed, "nothing matched, and the caller has only this to go on")
+
+	allowed, err := svc.EnforceInDomain("mara", "inst-a", "/reports", "read")
+	require.NoError(t, err)
+	assert.True(t, allowed, "the grant is still in force after a mismatched removal")
+}
+
+// ---------- permissionsInDomain, at the boundary ----------
+
+// stubReader returns canned policy, including shapes a healthy enforcer would
+// not produce.
+type stubReader struct {
+	groupings    [][]string
+	groupingsErr error
+	policies     [][]string
+	policiesErr  error
+}
+
+func (r stubReader) GetFilteredGroupingPolicy(int, ...string) ([][]string, error) {
+	return r.groupings, r.groupingsErr
+}
+
+func (r stubReader) GetFilteredPolicy(int, ...string) ([][]string, error) {
+	return r.policies, r.policiesErr
+}
+
+func TestPermissionsInDomain_ReportsAFailureToReadGrants(t *testing.T) {
+	// An empty list and a failed read look identical to a caller that ignores
+	// the error, and a UI built on the first hides every action the user has.
+	_, err := permissionsInDomain(
+		stubReader{groupingsErr: errors.New("connection reset")}, "alice", "inst-a")
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "reading role grants")
+	assert.Contains(t, err.Error(), "connection reset")
+}
+
+func TestPermissionsInDomain_ReportsAFailureToReadPolicies(t *testing.T) {
+	_, err := permissionsInDomain(stubReader{
+		groupings:   [][]string{{"alice", "admin", "inst-a"}},
+		policiesErr: errors.New("connection reset"),
+	}, "alice", "inst-a")
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), `reading policies for role "admin"`)
+}
+
+func TestPermissionsInDomain_SkipsGrantsWithNoDomain(t *testing.T) {
+	// A two-field grant belongs to a three-argument model and cannot answer a
+	// domain-scoped question. Reading grant[2] to find out would panic.
+	got, err := permissionsInDomain(stubReader{
+		groupings: [][]string{
+			{"alice", "admin"},
+			{"alice", "auditor", "inst-a"},
+		},
+		policies: [][]string{{"auditor", "inst-a", "/reports", "read"}},
+	}, "alice", "inst-a")
+
+	require.NoError(t, err)
+	assert.Equal(t, []string{"/reports:read"}, got)
+}
+
+func TestPermissionsInDomain_SkipsPoliciesWithNoAction(t *testing.T) {
+	// Same guard on the other side: a three-field policy is a non-domain rule,
+	// and p[3] does not exist.
+	got, err := permissionsInDomain(stubReader{
+		groupings: [][]string{{"alice", "admin", "inst-a"}},
+		policies: [][]string{
+			{"admin", "/courses", "read"},
+			{"admin", "inst-a", "/courses", "create"},
+		},
+	}, "alice", "inst-a")
+
+	require.NoError(t, err)
+	assert.Equal(t, []string{"/courses:create"}, got)
 }

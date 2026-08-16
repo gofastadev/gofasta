@@ -197,7 +197,22 @@ func (s *RBACService) RemoveRoleForUserInDomain(subject, role, domain string) (b
 // permissions in every domain, which is how a platform-wide administrator is
 // expressed. Passing an empty domain returns permissions across all of them.
 func (s *RBACService) PermissionsInDomain(subject, domain string) ([]string, error) {
-	groupings, err := s.enforcer.GetFilteredGroupingPolicy(0, subject)
+	return permissionsInDomain(s.enforcer, subject, domain)
+}
+
+// policyReader is the part of the enforcer permissionsInDomain reads through.
+//
+// It is an interface so the two failure paths below can be exercised: a live
+// SyncedEnforcer backed by a file or a table returns an error from these only
+// when its adapter is already broken, and code that has never run once is code
+// that reports the wrong thing at the moment it finally does.
+type policyReader interface {
+	GetFilteredGroupingPolicy(fieldIndex int, fieldValues ...string) ([][]string, error)
+	GetFilteredPolicy(fieldIndex int, fieldValues ...string) ([][]string, error)
+}
+
+func permissionsInDomain(reader policyReader, subject, domain string) ([]string, error) {
+	groupings, err := reader.GetFilteredGroupingPolicy(0, subject)
 	if err != nil {
 		return nil, fmt.Errorf("rbac: reading role grants: %w", err)
 	}
@@ -214,7 +229,7 @@ func (s *RBACService) PermissionsInDomain(subject, domain string) ([]string, err
 			continue
 		}
 
-		policies, err := s.enforcer.GetFilteredPolicy(0, role, grantDomain)
+		policies, err := reader.GetFilteredPolicy(0, role, grantDomain)
 		if err != nil {
 			return nil, fmt.Errorf("rbac: reading policies for role %q: %w", role, err)
 		}

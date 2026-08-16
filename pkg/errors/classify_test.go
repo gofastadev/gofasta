@@ -156,3 +156,39 @@ func TestClassifyError_NilIsNil(t *testing.T) {
 		t.Errorf("ClassifyError(nil) = %v, want nil", got)
 	}
 }
+
+// The rules are ordered most-specific first, so several of them are only
+// reachable by wording that matches nothing earlier in the list. Those are the
+// phrasings a service actually produces when it has not adopted typed errors
+// yet, and a rule that is never reached silently classifies them as Internal —
+// where the presenters replace the message with a generic one and the client
+// learns nothing.
+func TestClassify_ReachesTheGeneralRules(t *testing.T) {
+	cases := map[string]ErrorType{
+		"the request is not authenticated": Unauthorized,
+		"unauthorized":                     Unauthorized,
+		"this action is not allowed":       Forbidden,
+		"forbidden":                        Forbidden,
+		"a scheduling conflict was found":  Conflict,
+		"the price must be greater than 0": Validation,
+	}
+
+	for msg, want := range cases {
+		t.Run(msg, func(t *testing.T) {
+			if got := Classify(msg).Type; got != want {
+				t.Errorf("Classify(%q).Type = %v, want %v", msg, got, want)
+			}
+		})
+	}
+}
+
+// Each of those wordings also has to survive the trip through an error value,
+// which is how callers actually reach Classify.
+func TestClassifyError_ReachesTheGeneralRules(t *testing.T) {
+	if got := ClassifyError(stderrors.New("forbidden")).Type; got != Forbidden {
+		t.Errorf("Type = %v, want Forbidden", got)
+	}
+	if got := ClassifyError(fmt.Errorf("wrapping: %w", stderrors.New("unauthorized"))).Type; got != Unauthorized {
+		t.Errorf("wrapped Type = %v, want Unauthorized", got)
+	}
+}

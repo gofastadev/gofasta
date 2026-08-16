@@ -84,16 +84,27 @@ func (s *JWTService) ValidateToken(tokenStr string) (*Claims, error) {
 		opts = append(opts, jwt.WithIssuer(s.issuer))
 	}
 
-	_, err := jwt.ParseWithClaims(tokenStr, claims, func(t *jwt.Token) (interface{}, error) {
-		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
-		}
-		return s.secret, nil
-	}, opts...)
+	_, err := jwt.ParseWithClaims(tokenStr, claims, s.keyFunc, opts...)
 	if err != nil {
 		return nil, fmt.Errorf("invalid token: %w", err)
 	}
 	return claims, nil
+}
+
+// keyFunc supplies the verification key, and refuses to supply it for a token
+// that is not HMAC-signed.
+//
+// The parser already rejects such a token through WithValidMethods above,
+// before this is ever called, so the check is redundant on that path — and it
+// is kept anyway because it is the only thing standing between a caller that
+// builds its own parser without WithValidMethods and the alg-confusion attack,
+// where a token signed with the public half of an RSA key is verified against
+// that same public key as an HMAC secret.
+func (s *JWTService) keyFunc(t *jwt.Token) (interface{}, error) {
+	if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+		return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+	}
+	return s.secret, nil
 }
 
 // RefreshToken validates a refresh token and issues a new access token.

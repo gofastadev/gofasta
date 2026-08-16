@@ -6,6 +6,7 @@ import (
 
 	"github.com/alicebob/miniredis/v2"
 	"github.com/casbin/casbin/v2/persist"
+	rediswatcher "github.com/casbin/redis-watcher/v2"
 	"github.com/gofastadev/gofasta/pkg/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -153,4 +154,117 @@ func TestNewRBACServiceWithAdapter_AttachesTheWatcher(t *testing.T) {
 	allowed, err := svc.EnforceInDomain("alice", "inst-a", "/courses/intro", "create")
 	require.NoError(t, err)
 	assert.True(t, allowed)
+}
+
+func TestNewGormAdapter_ReportsAnUnusableDatabase(t *testing.T) {
+	// The adapter creates its casbin_rule table on the way in, so a database
+	// that is already closed fails here rather than at the first authorization
+	// check — which is where it would otherwise show up, in a request.
+	db := newSQLiteDB(t)
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	require.NoError(t, sqlDB.Close())
+
+	adapter, err := NewGormAdapter(db)
+
+	require.Error(t, err)
+	assert.Nil(t, adapter)
+	assert.Contains(t, err.Error(), "gorm adapter init")
+}
+
+// ---------- the cluster branch ----------
+
+// noopWatcher is a watcher that attaches and does nothing, standing in for one
+// built against a real Redis cluster.
+type noopWatcher struct{}
+
+func (noopWatcher) SetUpdateCallback(func(string)) error { return nil }
+func (noopWatcher) Update() error                        { return nil }
+func (noopWatcher) Close()                               {}
+
+// stubClusterWatcher replaces the cluster constructor for the duration of a
+// test and records what it was asked for.
+func stubClusterWatcher(t *testing.T, watcher persist.Watcher, err error) *struct {
+	addrs   string
+	options rediswatcher.WatcherOptions
+} {
+	t.Helper()
+
+	got := &struct {
+		addrs   string
+		options rediswatcher.WatcherOptions
+	}{}
+
+	original := newClusterWatcher
+	newClusterWatcher = func(addrs string, options rediswatcher.WatcherOptions) (persist.Watcher, error) {
+		got.addrs = addrs
+		got.options = options
+		return watcher, err
+	}
+	t.Cleanup(func() { newClusterWatcher = original })
+
+	return got
+}
+
+func TestNewRedisWatcher_AddrsSelectsTheClusterClient(t *testing.T) {
+	// Addrs is what makes the choice explicit. Reaching for the cluster client
+	// to talk to a standalone Redis — or the reverse — means the password is
+	// read from a field the other client never looks at, and the watcher comes
+	// up unauthenticated against a Redis that requires a password.
+	got := stubClusterWatcher(t, noopWatcher{}, nil)
+
+	watcher, err := NewRedisWatcher(WatcherConfig{
+		Addrs:      []string{"node-a:6379", "node-b:6379", "node-c:6379"},
+		Password:   "s3cr3t",
+		Channel:    "policy",
+		IgnoreSelf: true,
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, watcher)
+
+	assert.Equal(t, "node-a:6379,node-b:6379,node-c:6379", got.addrs,
+		"every node has to be passed, or the client only knows part of the cluster")
+	assert.Equal(t, "s3cr3t", got.options.ClusterOptions.Password,
+		"the password must go to the cluster options, which is where the cluster client reads it")
+	assert.Equal(t, "policy", got.options.Channel)
+	assert.True(t, got.options.IgnoreSelf)
+}
+
+func TestNewRedisWatcher_ClusterDefaultsTheChannel(t *testing.T) {
+	// Replicas watching different channels never hear each other, and the
+	// cluster branch has to default it the same way the standalone one does.
+	got := stubClusterWatcher(t, noopWatcher{}, nil)
+
+	_, err := NewRedisWatcher(WatcherConfig{Addrs: []string{"node-a:6379"}})
+
+	require.NoError(t, err)
+	assert.Equal(t, DefaultPolicyChannel, got.options.Channel)
+}
+
+func TestNewRedisWatcher_ClusterFailureIsReported(t *testing.T) {
+	stubClusterWatcher(t, nil, fmt.Errorf("NOAUTH Authentication required"))
+
+	watcher, err := NewRedisWatcher(WatcherConfig{Addrs: []string{"node-a:6379"}})
+
+	require.Error(t, err)
+	assert.Nil(t, watcher)
+	assert.Contains(t, err.Error(), "redis cluster watcher")
+	assert.Contains(t, err.Error(), "NOAUTH",
+		"a caller that logs this and carries on must at least be able to read why")
+}
+
+func TestNewRedisWatcher_AddrsWinsOverAddr(t *testing.T) {
+	// Both set is a misconfiguration, and the documented rule is that Addrs
+	// selects cluster mode and Addr is ignored. Silently preferring Addr would
+	// dial one node of a cluster and appear to work.
+	got := stubClusterWatcher(t, noopWatcher{}, nil)
+
+	_, err := NewRedisWatcher(WatcherConfig{
+		Addr:  "standalone:6379",
+		Addrs: []string{"node-a:6379"},
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, "node-a:6379", got.addrs)
 }

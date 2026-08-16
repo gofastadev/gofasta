@@ -233,3 +233,143 @@ func TestRetryable_UnreplayableBodyIsNotRetried(t *testing.T) {
 		t.Error("a PUT with an unrewindable body was marked retryable")
 	}
 }
+
+// stubTransport answers every attempt with the same canned result.
+type stubTransport struct {
+	calls atomic.Int32
+	resp  *http.Response
+	err   error
+}
+
+func (s *stubTransport) RoundTrip(_ *http.Request) (*http.Response, error) {
+	s.calls.Add(1)
+	if s.err != nil {
+		return nil, s.err
+	}
+	return s.resp, nil
+}
+
+func TestRetryTransport_ReportsATransportError(t *testing.T) {
+	// A connection that never comes up is retried and then reported. Returning
+	// a nil error with a nil response here would hand the caller a response to
+	// dereference.
+	wire := errors.New("dial tcp: connection refused")
+	base := &stubTransport{err: wire}
+
+	req, err := http.NewRequest(http.MethodGet, "http://upstream.invalid/health", nil)
+	if err != nil {
+		t.Fatalf("NewRequest: %v", err)
+	}
+
+	resp, err := NewRetryTransport(base).RoundTrip(req)
+
+	if err == nil {
+		t.Fatal("RoundTrip returned nil for a transport that never answered")
+	}
+	if !errors.Is(err, wire) {
+		t.Errorf("err = %v, want the underlying transport error", err)
+	}
+	if resp != nil {
+		t.Errorf("resp = %v, want nil alongside the error", resp)
+	}
+	if got := base.calls.Load(); got != defaultMaxRetries+1 {
+		t.Errorf("base called %d times, want %d", got, defaultMaxRetries+1)
+	}
+}
+
+func TestRetryTransport_ReportsAFailureToRewindTheBody(t *testing.T) {
+	// GetBody is what makes a retry possible at all: each attempt needs its
+	// own reader. If it fails, the attempt cannot be made, and sending the
+	// request with the previous attempt's drained body would silently PUT
+	// nothing.
+	rewind := errors.New("cannot reopen body")
+	base := &stubTransport{err: errors.New("never reached")}
+
+	req, err := http.NewRequest(http.MethodPut, "http://upstream.invalid/thing",
+		strings.NewReader("payload"))
+	if err != nil {
+		t.Fatalf("NewRequest: %v", err)
+	}
+	req.GetBody = func() (io.ReadCloser, error) { return nil, rewind }
+
+	resp, err := NewRetryTransport(base).RoundTrip(req)
+
+	if err == nil {
+		t.Fatal("RoundTrip returned nil for a body that could not be rewound")
+	}
+	if !errors.Is(err, rewind) {
+		t.Errorf("err = %v, want the rewind failure", err)
+	}
+	if resp != nil {
+		t.Errorf("resp = %v, want nil alongside the error", resp)
+	}
+	if got := base.calls.Load(); got != 0 {
+		t.Errorf("base was called %d times; the request must not be sent at all", got)
+	}
+}
+
+func TestTransientError_NamesTheStatus(t *testing.T) {
+	// This is the error a caller sees when a transient status never recovered,
+	// and it is the only thing left saying which status caused the retries —
+	// the response body has been drained by then.
+	cases := map[int]string{
+		http.StatusTooManyRequests:    "Too Many Requests",
+		http.StatusBadGateway:         "Bad Gateway",
+		http.StatusServiceUnavailable: "Service Unavailable",
+		http.StatusGatewayTimeout:     "Gateway Timeout",
+	}
+
+	for status, want := range cases {
+		err := &transientError{status: status}
+		if got := err.Error(); got != want {
+			t.Errorf("transientError{%d}.Error() = %q, want %q", status, got, want)
+		}
+	}
+}
+
+func TestRetryTransport_ExhaustedRetriesSurfaceTheStatus(t *testing.T) {
+	// End to end: an upstream that answers 503 forever produces the transient
+	// error above rather than a response whose body has already been closed.
+	var calls atomic.Int32
+	srv := httptest.NewServer(countingHandler(&calls, http.StatusServiceUnavailable))
+	defer srv.Close()
+
+	client := &http.Client{Transport: NewRetryTransport(nil)}
+	resp, err := client.Get(srv.URL)
+	if err == nil {
+		_ = resp.Body.Close()
+		t.Fatal("Get returned a response for an upstream that only ever answered 503")
+	}
+	if !strings.Contains(err.Error(), "Service Unavailable") {
+		t.Errorf("err = %v, want it to name the status that caused the retries", err)
+	}
+}
+
+func TestTransientStatus(t *testing.T) {
+	// 500 is deliberately absent: an unhandled error upstream will keep being
+	// unhandled, and retrying it just multiplies load on a service already in
+	// trouble.
+	retryable := []int{
+		http.StatusTooManyRequests,
+		http.StatusBadGateway,
+		http.StatusServiceUnavailable,
+		http.StatusGatewayTimeout,
+	}
+	for _, code := range retryable {
+		if !transientStatus(code) {
+			t.Errorf("transientStatus(%d) = false, want true", code)
+		}
+	}
+
+	for _, code := range []int{
+		http.StatusOK,
+		http.StatusBadRequest,
+		http.StatusNotFound,
+		http.StatusInternalServerError,
+		http.StatusNotImplemented,
+	} {
+		if transientStatus(code) {
+			t.Errorf("transientStatus(%d) = true, want false", code)
+		}
+	}
+}

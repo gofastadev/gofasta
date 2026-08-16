@@ -287,3 +287,52 @@ func TestValidateToken_RejectsNoneAlgorithm(t *testing.T) {
 	_, err = testJWTService().ValidateToken(unsigned)
 	assert.Error(t, err)
 }
+
+// ---------- Issuer ----------
+
+func TestIssuer_ReportsWhatIsEnforced(t *testing.T) {
+	// Callers read this to decide whether tokens they mint elsewhere will be
+	// accepted here. An issuer that is configured but not reported leads to a
+	// caller stamping the wrong one, or none.
+	assert.Equal(t, "solago", issuerJWTService("solago").Issuer())
+}
+
+func TestIssuer_EmptyMeansNoCheck(t *testing.T) {
+	// "" is not a missing value to be filled in with a default — it is the
+	// configuration that says the issuer claim is not checked at all.
+	assert.Equal(t, "", testJWTService().Issuer())
+}
+
+// ---------- keyFunc ----------
+
+func TestKeyFunc_SuppliesTheSecretForAnHMACToken(t *testing.T) {
+	svc := testJWTService()
+
+	key, err := svc.keyFunc(jwt.NewWithClaims(jwt.SigningMethodHS256, &Claims{}))
+
+	require.NoError(t, err)
+	assert.Equal(t, svc.secret, key)
+}
+
+// The alg-confusion attack: a token signed with the public half of an RSA key
+// pair, presented as HMAC so that the public key — which the attacker also has
+// — becomes the shared secret. ValidateToken pins HS256 through
+// WithValidMethods before the keyfunc is reached, so this is the second of two
+// independent refusals; a caller that builds its own parser without that option
+// still gets this one.
+func TestKeyFunc_RefusesToKeyANonHMACToken(t *testing.T) {
+	for _, method := range []jwt.SigningMethod{
+		jwt.SigningMethodRS256,
+		jwt.SigningMethodES256,
+		jwt.SigningMethodNone,
+	} {
+		t.Run(method.Alg(), func(t *testing.T) {
+			key, err := testJWTService().keyFunc(jwt.NewWithClaims(method, &Claims{}))
+
+			require.Error(t, err)
+			assert.Nil(t, key, "no key may be handed to a non-HMAC token")
+			assert.Contains(t, err.Error(), "unexpected signing method")
+			assert.Contains(t, err.Error(), method.Alg(), "the error should name the algorithm presented")
+		})
+	}
+}

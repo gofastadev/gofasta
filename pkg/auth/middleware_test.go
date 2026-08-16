@@ -577,3 +577,34 @@ func TestJWTAuth_UnsetIssuerAcceptsAnyIssuer(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code,
 		"an unset issuer means no issuer check — configure Issuer to restore it")
 }
+
+// failingBody is a request body that errors partway through being read.
+type failingBody struct{ err error }
+
+func (b failingBody) Read([]byte) (int, error) { return 0, b.err }
+func (b failingBody) Close() error             { return nil }
+
+func TestGraphQLAuth_UnreadableBodyIsRejected(t *testing.T) {
+	// GraphQLAuth has to read the body to find the operation name, and a client
+	// that disconnects mid-upload makes that read fail. The one outcome that
+	// must not happen is falling through to the public path: an unreadable body
+	// would then be a way to skip authentication on every operation at once.
+	svc := testJWTService()
+
+	called := false
+	inner := http.HandlerFunc(func(http.ResponseWriter, *http.Request) { called = true })
+	handler := GraphQLAuth(svc, map[string]bool{"Login": true})(inner)
+
+	req := httptest.NewRequest(http.MethodPost, "/graphql", nil)
+	req.Body = failingBody{err: errors.New("unexpected EOF")}
+
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusBadRequest, rec.Code)
+	assert.False(t, called, "the handler ran despite the body never being read")
+
+	var body map[string]string
+	require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
+	assert.Contains(t, body["error"], "failed to read request body")
+}

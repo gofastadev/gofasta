@@ -18,6 +18,16 @@ import (
 // same channel; replicas on different channels never hear each other.
 const DefaultPolicyChannel = "casbin/policy_updated"
 
+// The watcher constructors, named so a test can substitute them. Both dial
+// Redis on the way in, so the cluster branch is otherwise only reachable with a
+// real Redis cluster on the machine running the tests — and a branch that
+// selects the wrong client is exactly the mistake [NewRedisWatcher]'s signature
+// exists to prevent.
+var (
+	newStandaloneWatcher = rediswatcher.NewWatcher
+	newClusterWatcher    = rediswatcher.NewWatcherWithCluster
+)
+
 // NewGormAdapter stores Casbin policy in the given database, in a `casbin_rule`
 // table the adapter creates if absent.
 //
@@ -80,7 +90,7 @@ func NewRedisWatcher(cfg WatcherConfig) (persist.Watcher, error) {
 	}
 
 	if len(cfg.Addrs) > 0 {
-		watcher, err := rediswatcher.NewWatcherWithCluster(strings.Join(cfg.Addrs, ","), rediswatcher.WatcherOptions{
+		watcher, err := newClusterWatcher(strings.Join(cfg.Addrs, ","), rediswatcher.WatcherOptions{
 			ClusterOptions: redis.ClusterOptions{Password: cfg.Password},
 			Channel:        channel,
 			IgnoreSelf:     cfg.IgnoreSelf,
@@ -95,7 +105,7 @@ func NewRedisWatcher(cfg WatcherConfig) (persist.Watcher, error) {
 		return nil, fmt.Errorf("rbac: watcher needs Addr (standalone) or Addrs (cluster)")
 	}
 
-	watcher, err := rediswatcher.NewWatcher(cfg.Addr, rediswatcher.WatcherOptions{
+	watcher, err := newStandaloneWatcher(cfg.Addr, rediswatcher.WatcherOptions{
 		Options:    redis.Options{Password: cfg.Password, DB: cfg.DB},
 		Channel:    channel,
 		IgnoreSelf: cfg.IgnoreSelf,
