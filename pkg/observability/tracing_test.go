@@ -137,3 +137,21 @@ func TestTracingMiddlewareWith_EmptyLabelFallsBackToThePath(t *testing.T) {
 		t.Fatalf("got %d spans, first named %q", len(spans), spans[0].Name)
 	}
 }
+
+func TestTracingMiddlewareWith_NilLabellerFallsBackToPath(t *testing.T) {
+	shutdown := InitTracer("discovery")
+	defer shutdown()
+
+	tp, _ := otel.GetTracerProvider().(*sdktrace.TracerProvider)
+	exporter := tracetest.NewInMemoryExporter()
+	tp.RegisterSpanProcessor(sdktrace.NewSimpleSpanProcessor(exporter))
+
+	mw := TracingMiddlewareWith("discovery", nil)
+	mw(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {})).
+		ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/nil-labeller", nil))
+
+	spans := exporter.GetSpans()
+	if len(spans) != 1 || spans[0].Name != "GET /nil-labeller" {
+		t.Fatalf("got %d spans, first named %q", len(spans), spans[0].Name)
+	}
+}
