@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"net/http"
+	"os"
 	"strings"
 )
 
@@ -163,4 +164,32 @@ func setCORSCommonHeaders(w http.ResponseWriter, methods, headers, exposed, maxA
 	w.Header().Set("Access-Control-Allow-Headers", headers)
 	w.Header().Set("Access-Control-Expose-Headers", exposed)
 	w.Header().Set("Access-Control-Max-Age", maxAge)
+}
+
+// CORSOriginsFromEnv reads the allowed origins from CORS_ALLOWED_ORIGINS, a
+// comma-separated list.
+//
+// Provided because every service that configures CORS from the environment
+// writes the same five lines otherwise, and because the fallback matters: with
+// no value set this returns the two localhost ports a web frontend uses in
+// development, so a fresh checkout works without configuration. A deployment
+// that sets nothing therefore allows only localhost — which fails closed
+// rather than open.
+//
+// Projects whose origins come from config.yaml should use
+// cfg.Server.AllowedOrigins instead; this is for the ones reading the
+// environment directly.
+func CORSOriginsFromEnv() []string {
+	raw := os.Getenv("CORS_ALLOWED_ORIGINS")
+	if strings.TrimSpace(raw) == "" {
+		return []string{"http://localhost:3000", "http://localhost:3001"}
+	}
+
+	origins := make([]string, 0, strings.Count(raw, ",")+1)
+	for _, o := range strings.Split(raw, ",") {
+		if trimmed := strings.TrimSpace(o); trimmed != "" {
+			origins = append(origins, trimmed)
+		}
+	}
+	return origins
 }

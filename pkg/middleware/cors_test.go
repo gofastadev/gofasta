@@ -215,3 +215,34 @@ func TestCORS_KeepsItsDefaultsThroughTheNewPath(t *testing.T) {
 		t.Errorf("Max-Age = %q, want the default", got)
 	}
 }
+
+func TestCORSOriginsFromEnv(t *testing.T) {
+	t.Run("unset falls back to localhost", func(t *testing.T) {
+		t.Setenv("CORS_ALLOWED_ORIGINS", "")
+		got := CORSOriginsFromEnv()
+		if len(got) != 2 || got[0] != "http://localhost:3000" {
+			t.Errorf("got %v, want the two localhost dev origins", got)
+		}
+	})
+
+	t.Run("splits and trims", func(t *testing.T) {
+		t.Setenv("CORS_ALLOWED_ORIGINS", " https://a.example.com , https://b.example.com ")
+		got := CORSOriginsFromEnv()
+		want := []string{"https://a.example.com", "https://b.example.com"}
+		if len(got) != len(want) {
+			t.Fatalf("got %v, want %v", got, want)
+		}
+		for i := range want {
+			if got[i] != want[i] {
+				t.Errorf("origin %d = %q, want %q", i, got[i], want[i])
+			}
+		}
+	})
+
+	t.Run("blank entries are discarded", func(t *testing.T) {
+		t.Setenv("CORS_ALLOWED_ORIGINS", "https://a.example.com,,  ,")
+		if got := CORSOriginsFromEnv(); len(got) != 1 {
+			t.Errorf("got %v, want the blanks dropped", got)
+		}
+	})
+}
