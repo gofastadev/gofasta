@@ -132,6 +132,7 @@ type EmailConfig struct {
 	SMTP        SMTPConfig     `koanf:"smtp"`
 	SendGrid    SendGridConfig `koanf:"sendgrid"`
 	Brevo       BrevoConfig    `koanf:"brevo"`
+	Resend      ResendConfig   `koanf:"resend"`
 }
 
 // SMTPConfig configures the SMTP email provider.
@@ -151,6 +152,11 @@ type SendGridConfig struct {
 
 // BrevoConfig configures the Brevo (ex-Sendinblue) email provider.
 type BrevoConfig struct {
+	APIKey string `koanf:"api_key"`
+}
+
+// ResendConfig configures the Resend email provider.
+type ResendConfig struct {
 	APIKey string `koanf:"api_key"`
 }
 

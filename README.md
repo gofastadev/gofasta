@@ -103,7 +103,7 @@ Every package lives under `pkg/`. Here's what each one does:
 <!-- gofasta:begin pkg-table:communication -->
 | Package | What it does |
 |---------|-------------|
-| `pkg/mailer` | Package mailer sends email with three providers: SMTP, SendGrid, and Brevo (Sendinblue). It includes a template renderer that processes Go HTML templates for email bodies. |
+| `pkg/mailer` | Package mailer sends email with four providers: SMTP, SendGrid, Brevo (Sendinblue), and Resend. It includes a template renderer that processes Go HTML templates for email bodies. |
 | `pkg/slack` | Package slack provides outbound Slack messaging primitives. It is the counterpart to pkg/mailer for chat: a SlackSender interface and one or more concrete implementations selected by configuration. |
 | `pkg/whatsapp` | Package whatsapp provides outbound WhatsApp messaging primitives. It is the chat counterpart to pkg/mailer and pkg/slack. |
 | `pkg/push` | Package push provides outbound mobile push notification primitives. It is the mobile counterpart to pkg/mailer, pkg/slack and pkg/whatsapp. |

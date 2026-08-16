@@ -32,7 +32,7 @@ func NewSMTPSender(cfg config.SMTPConfig, fromName, fromAddress string, renderer
 		from:     fromAddress,
 		fromName: fromName,
 		renderer: renderer,
-		logger:   logger,
+		logger:   loggerOrDefault(logger),
 	}
 }
 
@@ -120,36 +120,7 @@ func (s *SMTPSender) Send(ctx context.Context, msg EmailMessage) error {
 	sb.WriteString("Subject: " + msg.Subject + "\r\n")
 	sb.WriteString("MIME-Version: 1.0\r\n")
 
-	if len(msg.Attachments) == 0 {
-		sb.WriteString("Content-Type: text/html; charset=UTF-8\r\n")
-		sb.WriteString("\r\n")
-		sb.WriteString(htmlBody)
-	} else {
-		sb.WriteString("Content-Type: multipart/mixed; boundary=" + boundary + "\r\n")
-		sb.WriteString("\r\n")
-
-		mw := multipart.NewWriter(&sb)
-		_ = mw.SetBoundary(boundary)
-
-		htmlPart, _ := mw.CreatePart(textproto.MIMEHeader{
-			"Content-Type": {"text/html; charset=UTF-8"},
-		})
-		_, _ = htmlPart.Write([]byte(htmlBody))
-
-		for _, att := range msg.Attachments {
-			ct := att.ContentType
-			if ct == "" {
-				ct = "application/octet-stream"
-			}
-			attPart, _ := mw.CreatePart(textproto.MIMEHeader{
-				"Content-Type":              {ct},
-				"Content-Disposition":       {fmt.Sprintf("attachment; filename=%q", mime.QEncoding.Encode("UTF-8", att.Filename))},
-				"Content-Transfer-Encoding": {"base64"},
-			})
-			_, _ = attPart.Write([]byte(base64.StdEncoding.EncodeToString(att.Content)))
-		}
-		_ = mw.Close()
-	}
+	writeBody(&sb, msg, htmlBody, boundary)
 
 	if _, err := wc.Write([]byte(sb.String())); err != nil {
 		return fmt.Errorf("smtp write: %w", err)
@@ -167,4 +138,87 @@ func (s *SMTPSender) resolveBody(msg EmailMessage) (string, error) {
 		return s.renderer.Render(msg.Template, msg.TemplateData)
 	}
 	return msg.HTMLBody, nil
+}
+
+// writeAlternative writes the plain-text and HTML parts of a
+// multipart/alternative body, in RFC 2046 order: least-preferred first, so a
+// client that understands both shows the HTML.
+func writeAlternative(mw *multipart.Writer, htmlBody, textBody string) {
+	textPart, _ := mw.CreatePart(textproto.MIMEHeader{
+		"Content-Type": {"text/plain; charset=UTF-8"},
+	})
+	_, _ = textPart.Write([]byte(textBody))
+
+	htmlPart, _ := mw.CreatePart(textproto.MIMEHeader{
+		"Content-Type": {"text/html; charset=UTF-8"},
+	})
+	_, _ = htmlPart.Write([]byte(htmlBody))
+}
+
+// writeBody appends the message body to sb in the simplest MIME shape that
+// carries everything msg holds:
+//
+//	html only                 → text/html
+//	html + text               → multipart/alternative
+//	html + attachments        → multipart/mixed
+//	html + text + attachments → multipart/mixed wrapping an alternative
+//
+// Kept apart from Send so the SMTP conversation and the document assembly can
+// each be read on their own.
+func writeBody(sb *strings.Builder, msg EmailMessage, htmlBody, boundary string) {
+	switch {
+	case len(msg.Attachments) == 0 && msg.TextBody == "":
+		sb.WriteString("Content-Type: text/html; charset=UTF-8\r\n")
+		sb.WriteString("\r\n")
+		sb.WriteString(htmlBody)
+	case len(msg.Attachments) == 0:
+		// Both bodies, nothing to attach: multipart/alternative lets the
+		// client pick. Plain text goes first — the parts are ordered
+		// least-preferred to most-preferred per RFC 2046 §5.1.4.
+		sb.WriteString("Content-Type: multipart/alternative; boundary=" + boundary + "\r\n")
+		sb.WriteString("\r\n")
+
+		mw := multipart.NewWriter(sb)
+		_ = mw.SetBoundary(boundary)
+		writeAlternative(mw, htmlBody, msg.TextBody)
+		_ = mw.Close()
+	default:
+		sb.WriteString("Content-Type: multipart/mixed; boundary=" + boundary + "\r\n")
+		sb.WriteString("\r\n")
+
+		mw := multipart.NewWriter(sb)
+		_ = mw.SetBoundary(boundary)
+
+		if msg.TextBody != "" {
+			// The bodies nest one level down so the alternative applies to
+			// them alone, leaving the attachments as siblings of the pair.
+			altBoundary := boundary + "-alt"
+			altPart, _ := mw.CreatePart(textproto.MIMEHeader{
+				"Content-Type": {"multipart/alternative; boundary=" + altBoundary},
+			})
+			amw := multipart.NewWriter(altPart)
+			_ = amw.SetBoundary(altBoundary)
+			writeAlternative(amw, htmlBody, msg.TextBody)
+			_ = amw.Close()
+		} else {
+			htmlPart, _ := mw.CreatePart(textproto.MIMEHeader{
+				"Content-Type": {"text/html; charset=UTF-8"},
+			})
+			_, _ = htmlPart.Write([]byte(htmlBody))
+		}
+
+		for _, att := range msg.Attachments {
+			ct := att.ContentType
+			if ct == "" {
+				ct = "application/octet-stream"
+			}
+			attPart, _ := mw.CreatePart(textproto.MIMEHeader{
+				"Content-Type":              {ct},
+				"Content-Disposition":       {fmt.Sprintf("attachment; filename=%q", mime.QEncoding.Encode("UTF-8", att.Filename))},
+				"Content-Transfer-Encoding": {"base64"},
+			})
+			_, _ = attPart.Write([]byte(base64.StdEncoding.EncodeToString(att.Content)))
+		}
+		_ = mw.Close()
+	}
 }

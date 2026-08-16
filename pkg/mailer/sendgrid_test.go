@@ -286,3 +286,37 @@ func TestSendGridSender_Send_TemplateError(t *testing.T) {
 		t.Errorf("error = %q, want it to contain 'not found'", err.Error())
 	}
 }
+
+func TestSendGridSender_Send_TextBodyListedBeforeHTML(t *testing.T) {
+	var capturedEmail *mail.SGMailV3
+	mock := &mockSendGridClient{
+		sendFunc: func(ctx context.Context, email *mail.SGMailV3) (*rest.Response, error) {
+			capturedEmail = email
+			return &rest.Response{StatusCode: 202, Body: ""}, nil
+		},
+	}
+	s := newTestSendGridSender(t, mock)
+
+	err := s.Send(context.Background(), EmailMessage{
+		To:       []string{"user@example.com"},
+		Subject:  "Both bodies",
+		HTMLBody: "<p>Hello</p>",
+		TextBody: "Hello",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if capturedEmail == nil {
+		t.Fatal("expected email to be captured by mock")
+	}
+	if len(capturedEmail.Content) != 2 {
+		t.Fatalf("content parts = %d, want 2", len(capturedEmail.Content))
+	}
+	if capturedEmail.Content[0].Type != "text/plain" || capturedEmail.Content[0].Value != "Hello" {
+		t.Errorf("first content part = %q %q, want text/plain %q", capturedEmail.Content[0].Type, capturedEmail.Content[0].Value, "Hello")
+	}
+	if capturedEmail.Content[1].Type != "text/html" || capturedEmail.Content[1].Value != "<p>Hello</p>" {
+		t.Errorf("second content part = %q %q, want text/html %q", capturedEmail.Content[1].Type, capturedEmail.Content[1].Value, "<p>Hello</p>")
+	}
+}

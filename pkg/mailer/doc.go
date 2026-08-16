@@ -1,4 +1,4 @@
-// Package mailer sends email with three providers: SMTP, SendGrid, and Brevo
-// (Sendinblue). It includes a template renderer that processes Go HTML
-// templates for email bodies.
+// Package mailer sends email with four providers: SMTP, SendGrid, Brevo
+// (Sendinblue), and Resend. It includes a template renderer that processes Go
+// HTML templates for email bodies.
 package mailer

@@ -30,7 +30,7 @@ func NewSendGridSender(cfg config.SendGridConfig, fromName, fromAddress string, 
 		client:   sendgrid.NewSendClient(cfg.APIKey),
 		from:     mail.NewEmail(fromName, fromAddress),
 		renderer: renderer,
-		logger:   logger,
+		logger:   loggerOrDefault(logger),
 	}
 }
 
@@ -57,6 +57,12 @@ func (s *SendGridSender) Send(ctx context.Context, msg EmailMessage) error {
 	}
 	m.AddPersonalizations(p)
 
+	// Plain text first: SendGrid requires content parts in increasing order
+	// of preference, and rejects a request that lists text/html before
+	// text/plain.
+	if msg.TextBody != "" {
+		m.AddContent(mail.NewContent("text/plain", msg.TextBody))
+	}
 	m.AddContent(mail.NewContent("text/html", htmlBody))
 
 	if msg.ReplyTo != "" {
