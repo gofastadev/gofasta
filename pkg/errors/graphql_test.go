@@ -177,3 +177,62 @@ func TestGraphQLErrorPresenterPreservesExistingExtensions(t *testing.T) {
 	assert.Equal(t, "abc-123", result.Extensions["requestId"])
 	assert.Equal(t, CodeInternal, result.Extensions["code"])
 }
+
+// TestGraphQLErrorPresenterTranslatesGqlgenCodes covers the failures gqlgen
+// classifies before a resolver runs.
+//
+// gqlgen sets its own code extension for a query it cannot parse and for
+// variables that violate the schema. The presenter used to overwrite both
+// with INTERNAL, which tells a client to retry or show an outage page for a
+// request that will never succeed as written — the client has to change the
+// query, and only the code says so.
+func TestGraphQLErrorPresenterTranslatesGqlgenCodes(t *testing.T) {
+	for name, tc := range map[string]struct {
+		gqlgenCode string
+		want       string
+	}{
+		"a variable that violates the schema": {"GRAPHQL_VALIDATION_FAILED", CodeValidationFailed},
+		"a query that will not parse":         {"GRAPHQL_PARSE_FAILED", CodeBadRequest},
+	} {
+		t.Run(name, func(t *testing.T) {
+			err := &gqlerror.Error{
+				Message:    "must be defined",
+				Extensions: map[string]any{"code": tc.gqlgenCode},
+			}
+
+			got := GraphQLErrorPresenter(presenterContext(), err)
+			require.NotNil(t, got)
+			assert.Equal(t, tc.want, got.Extensions["code"])
+			// The message is gqlgen's own and names the offending field, so
+			// it survives rather than being replaced with the generic text.
+			assert.Equal(t, "must be defined", got.Message)
+		})
+	}
+}
+
+// TestGraphQLErrorPresenterIgnoresUnknownGqlgenCodes pins the boundary.
+//
+// Only the two codes that mean something specific to a client are
+// translated; anything else keeps the classification the presenter would
+// have made on its own, because inventing a mapping would be guessing.
+func TestGraphQLErrorPresenterIgnoresUnknownGqlgenCodes(t *testing.T) {
+	err := &gqlerror.Error{
+		Message:    "something went sideways",
+		Extensions: map[string]any{"code": "SOME_FUTURE_GQLGEN_CODE"},
+	}
+
+	got := GraphQLErrorPresenter(presenterContext(), err)
+	require.NotNil(t, got)
+	assert.Equal(t, CodeInternal, got.Extensions["code"])
+}
+
+// TestGraphQLErrorPresenterPrefersAppErrorClassification pins the precedence.
+//
+// An AppError is the application's own classification and outranks gqlgen's:
+// a resolver that returned NOT_FOUND must not have it rewritten because the
+// error traveled inside a gqlerror carrying a code of its own.
+func TestGraphQLErrorPresenterPrefersAppErrorClassification(t *testing.T) {
+	got := GraphQLErrorPresenter(presenterContext(), NewNotFound("course not found", nil))
+	require.NotNil(t, got)
+	assert.Equal(t, CodeNotFound, got.Extensions["code"])
+}

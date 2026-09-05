@@ -54,6 +54,16 @@ func GraphQLErrorPresenter(ctx context.Context, err error) *gqlerror.Error {
 		return defaultErr
 	}
 
+	// gqlgen classifies some failures before the resolver is ever reached —
+	// a variable that violates the schema, a query that will not parse — and
+	// writes its own vocabulary into the code extension. Translating it is
+	// strictly better than overwriting it with INTERNAL: the application did
+	// not make this classification, but gqlgen did, and it is right.
+	if translated, ok := translateGQLGenCode(defaultErr); ok {
+		setExtension(defaultErr, "code", translated)
+		return defaultErr
+	}
+
 	// Check if the error message starts with a known safe prefix
 	lowerMsg := strings.ToLower(msg)
 	for _, prefix := range safeErrorPrefixes {
@@ -72,6 +82,34 @@ func GraphQLErrorPresenter(ctx context.Context, err error) *gqlerror.Error {
 	defaultErr.Message = "an internal error occurred"
 	setExtension(defaultErr, "code", CodeInternal)
 	return defaultErr
+}
+
+// gqlgenCodes maps gqlgen's own error codes onto this package's vocabulary.
+//
+// Only the two that mean something specific are translated. gqlgen's other
+// codes describe transport or protocol problems the client cannot act on
+// differently, and inventing a mapping for them would be guessing.
+var gqlgenCodes = map[string]string{
+	"GRAPHQL_VALIDATION_FAILED": CodeValidationFailed,
+	"GRAPHQL_PARSE_FAILED":      CodeBadRequest,
+}
+
+// translateGQLGenCode reads a code gqlgen set on the error and returns this
+// package's equivalent.
+//
+// Both of gqlgen's are the client's mistake, not the server's, and both used
+// to reach the client as INTERNAL — which tells a frontend to retry or show
+// an outage page for a request that will never succeed as written.
+func translateGQLGenCode(err *gqlerror.Error) (string, bool) {
+	if err.Extensions == nil {
+		return "", false
+	}
+	existing, ok := err.Extensions["code"].(string)
+	if !ok {
+		return "", false
+	}
+	translated, ok := gqlgenCodes[existing]
+	return translated, ok
 }
 
 // setExtension writes key without clobbering extensions the resolver already
