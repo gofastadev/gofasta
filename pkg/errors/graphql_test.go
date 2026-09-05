@@ -230,7 +230,7 @@ func TestGraphQLErrorPresenterIgnoresUnknownGqlgenCodes(t *testing.T) {
 //
 // An AppError is the application's own classification and outranks gqlgen's:
 // a resolver that returned NOT_FOUND must not have it rewritten because the
-// error travelled inside a gqlerror carrying a code of its own.
+// error traveled inside a gqlerror carrying a code of its own.
 func TestGraphQLErrorPresenterPrefersAppErrorClassification(t *testing.T) {
 	got := GraphQLErrorPresenter(presenterContext(), NewNotFound("course not found", nil))
 	require.NotNil(t, got)
