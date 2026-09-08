@@ -1,8 +1,11 @@
 package httputil
 
 import (
+	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -137,4 +140,50 @@ func TestHandle_NilError(t *testing.T) {
 	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
 
 	assert.Equal(t, http.StatusOK, rec.Code)
+}
+
+// A 500 that logs nothing is a 500 nobody can debug: the body deliberately
+// carries only AppError.Message, so the wrapped cause exists in exactly one
+// place — the log. Before 2026-09-08 only the non-AppError branch logged, so
+// every `NewInternal(msg, cause)` answered 500 and discarded the cause.
+func TestHandle_LogsServerErrorsWithTheirCause(t *testing.T) {
+	var buf bytes.Buffer
+	restore := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
+	defer slog.SetDefault(restore)
+
+	cause := errors.New("decrypt: cipher: message authentication failed")
+	h := Handle(func(w http.ResponseWriter, r *http.Request) error {
+		return apperrors.NewInternal("slack app operation failed", cause)
+	})
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/slack_apps/x/channels", nil))
+
+	assert.Equal(t, http.StatusInternalServerError, rec.Code)
+	logged := buf.String()
+	assert.Contains(t, logged, "request failed")
+	assert.Contains(t, logged, "cipher: message authentication failed")
+	assert.Contains(t, logged, "/slack_apps/x/channels")
+	// The cause stays out of the response — it is for operators, not callers.
+	assert.NotContains(t, rec.Body.String(), "cipher")
+}
+
+// 4xx are the caller's to fix; logging each one turns a validation typo into
+// an operator alert.
+func TestHandle_DoesNotLogClientErrors(t *testing.T) {
+	var buf bytes.Buffer
+	restore := slog.Default()
+	slog.SetDefault(slog.New(slog.NewTextHandler(&buf, nil)))
+	defer slog.SetDefault(restore)
+
+	h := Handle(func(w http.ResponseWriter, r *http.Request) error {
+		return apperrors.NewNotFound("user not found", errors.New("no rows"))
+	})
+
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/users/x", nil))
+
+	assert.Equal(t, http.StatusNotFound, rec.Code)
+	assert.Empty(t, buf.String())
 }
