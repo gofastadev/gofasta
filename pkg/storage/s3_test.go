@@ -19,8 +19,9 @@ import (
 	tcminio "github.com/testcontainers/testcontainers-go/modules/minio"
 )
 
-// minioImage pins the MinIO release the S3 integration tests run against.
-const minioImage = "minio/minio:RELEASE.2024-01-16T16-07-38Z"
+// minioImage pins the S3 server the integration tests run against: Silo, the
+// community fork of MinIO, which keeps its command and MINIO_* variables.
+const minioImage = "pgsty/silo:RELEASE.2026-11-12T00-00-00Z"
 
 // defaultTestBucket backs the calls that pass "" as the bucket, which is how a
 // single-bucket project addresses storage.
