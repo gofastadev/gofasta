@@ -156,7 +156,7 @@ func (s *UltraMsgSender) postForm(ctx context.Context, endpoint string, form url
 	}
 	return &SendResult{
 		OK:              true,
-		ProviderMsgID:   resp.ID,
+		ProviderMsgID:   string(resp.ID),
 		Status:          "sent",
 		RawResponseJSON: string(body),
 	}, nil
@@ -196,12 +196,26 @@ func base64String(b []byte) string {
 
 // — wire types —
 
+// ultraMsgID is a message id as UltraMsg sends it: a string on some endpoints,
+// a bare number on others.
+type ultraMsgID string
+
+// UnmarshalJSON accepts a JSON string, number or null.
+func (id *ultraMsgID) UnmarshalJSON(data []byte) error {
+	value := strings.Trim(strings.TrimSpace(string(data)), `"`)
+	if value == "null" {
+		value = ""
+	}
+	*id = ultraMsgID(value)
+	return nil
+}
+
 type ultraMsgResponse struct {
-	ID      string `json:"id"`
-	Sent    string `json:"sent"`
-	Success bool   `json:"success"`
-	Error   string `json:"error,omitempty"`
-	Message string `json:"message,omitempty"`
+	ID      ultraMsgID `json:"id"`
+	Sent    string     `json:"sent"`
+	Success bool       `json:"success"`
+	Error   string     `json:"error,omitempty"`
+	Message string     `json:"message,omitempty"`
 }
 
 type uploadResponse struct {

@@ -74,6 +74,24 @@ func TestUltraMsgSender_SendChat_HappyPath(t *testing.T) {
 	assert.Equal(t, "whatsapp-ultramsg", s.Name())
 }
 
+func TestUltraMsgSender_SendChat_AcceptsTheIDAsANumberOrNull(t *testing.T) {
+	for body, want := range map[string]string{
+		`{"sent":"true","message":"ok","id":33172}`: "33172",
+		`{"sent":"true","message":"ok","id":null}`:  "",
+		`{"sent":"true","message":"ok"}`:            "",
+	} {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = w.Write([]byte(body))
+		}))
+		s := NewUltraMsgSender(config.WhatsAppUltraMsgConfig{BaseURL: srv.URL, InstanceID: "inst1", Token: "tok"}, discardLogger())
+		res, err := s.Send(context.Background(), Message{To: "+250788000000", Body: "hello"})
+		srv.Close()
+		require.NoError(t, err, body)
+		assert.True(t, res.OK, body)
+		assert.Equal(t, want, res.ProviderMsgID, body)
+	}
+}
+
 func TestUltraMsgSender_SendChat_Success_BoolFlag(t *testing.T) {
 	// Some UltraMsg responses use the boolean `success` flag instead of
 	// the string `sent:"true"`. Either form must register as OK.
